@@ -24,9 +24,16 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
+        if (!captchaToken) {
+          throw new Error('Bitte warte kurz auf die Sicherheitsprüfung (Bot-Schutz).');
+        }
+        
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
+          options: {
+            captchaToken: captchaToken
+          }
         });
         if (error) throw error;
         router.push('/');
@@ -114,15 +121,13 @@ export default function LoginPage() {
               </div>
             )}
 
-            {!isLogin && (
-              <div className="flex justify-center my-4">
-                <Turnstile 
-                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'} 
-                  onSuccess={(token) => setCaptchaToken(token)}
-                  options={{ theme: 'dark' }}
-                />
-              </div>
-            )}
+            <div className="flex justify-center my-4">
+              <Turnstile 
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'} 
+                onSuccess={(token) => setCaptchaToken(token)}
+                options={{ theme: 'dark' }}
+              />
+            </div>
 
             <button
               type="submit"
