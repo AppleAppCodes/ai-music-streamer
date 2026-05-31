@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import type { CSSProperties } from 'react';
 import SongCard from '@/components/ui/SongCard';
-import { Play, Heart, TrendingUp, ListMusic, Radio } from 'lucide-react';
+import { ChevronRight, Heart, ListMusic, Play, Radio, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +16,45 @@ type SongWithProfile = Song & {
     username?: string | null;
   } | null;
 };
+
+function SectionHeader({ title, actionLabel, href }: { title: string; actionLabel?: string; href?: string }) {
+  return (
+    <div className="flex items-end justify-between gap-4 mb-5">
+      <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">{title}</h2>
+      {actionLabel && href ? (
+        <Link
+          href={href}
+          className="group inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-white/70 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
+        >
+          {actionLabel}
+          <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function SongGridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div key={index} className="rounded-2xl border border-white/5 bg-white/[0.03] p-3 animate-pulse">
+          <div className="aspect-square rounded-xl bg-white/10" />
+          <div className="mt-4 h-4 w-4/5 rounded-full bg-white/10" />
+          <div className="mt-2 h-3 w-1/2 rounded-full bg-white/5" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptySongState({ title }: { title: string }) {
+  return (
+    <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-5 py-8 text-center text-sm font-medium text-white/45">
+      {title}
+    </div>
+  );
+}
 
 function ImageSlideshow({ images, currentIndex }: { images: string[], currentIndex: number }) {
   if (!images || images.length === 0) return null;
@@ -86,10 +126,10 @@ export default function Home() {
       icon: Heart, 
       color: "bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500", 
       images: ["linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)"], 
-      link: "#" 
+      link: "/collection/tracks" 
     },
     { 
-      title: 'Viral Charts', 
+      title: t('home.quickAccess.charts'), 
       icon: TrendingUp, 
       color: "bg-yellow-500", 
       images: ["linear-gradient(135deg, #eab308 0%, #a16207 100%)"], 
@@ -98,14 +138,14 @@ export default function Home() {
     { 
       title: t('home.quickAccess.artists'), 
       images: ["/kuenstler.jpeg", "/kuenstler2.jpeg", "/kuenstler3.jpeg", "/kuenstler4.jpeg"], 
-      link: "#" 
+      link: "/artists" 
     },
     { 
       title: t('home.quickAccess.playlists'), 
       icon: ListMusic, 
       color: "bg-teal-500", 
       images: ["linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)"], 
-      link: "#" 
+      link: "/playlists" 
     },
     { 
       title: t('home.quickAccess.radio'), 
@@ -136,7 +176,7 @@ export default function Home() {
   }, [quickAccessItems]);
 
   return (
-    <div className="relative flex flex-col gap-10 pb-12 pt-6 min-h-screen">
+    <div className="relative flex flex-col gap-12 pb-12 pt-6 min-h-screen overflow-hidden">
       
       {/* Dynamic Blurred Backgrounds */}
       <div className="absolute top-0 left-0 w-full h-[500px] pointer-events-none z-0 overflow-hidden">
@@ -164,19 +204,34 @@ export default function Home() {
 
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/80 to-black z-20" />
       </div>
+      <div className="pointer-events-none absolute right-[-120px] top-24 z-0 h-72 w-72 rounded-full bg-primary/20 blur-[90px]" />
+      <div className="pointer-events-none absolute left-[-120px] top-72 z-0 h-72 w-72 rounded-full bg-accent/10 blur-[100px]" />
 
       {/* Quick Access / Greeting Section */}
-      <section className="px-8 relative z-10">
-        <h1 className="text-3xl font-bold text-white mb-6 drop-shadow-md">{greeting}</h1>
+      <section className="px-4 sm:px-8 relative z-10">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-accent/80">AI Music Streamer</p>
+            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight drop-shadow-md">{greeting}</h1>
+            <p className="mt-3 max-w-2xl text-sm text-white/55">{t('home.subtitle')}</p>
+          </div>
+          <Link
+            href="/upload"
+            className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-black shadow-[0_18px_45px_rgba(255,255,255,0.16)] transition-transform hover:scale-[1.03] active:scale-[0.98]"
+          >
+            {t('nav.upload')}
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           {quickAccessItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.title}
                 href={item.link}
-                className="group flex items-center bg-white/10 hover:bg-white/20 transition-colors rounded-md overflow-hidden cursor-pointer shadow-lg backdrop-blur-sm border border-white/5"
+                className="group relative flex h-[72px] items-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] shadow-[0_14px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.12] hover:shadow-[0_20px_54px_rgba(0,0,0,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 onMouseEnter={() => {
                   setHoveredItem(item.title);
                   setSlideIndex(item.images && item.images.length > 1 ? 1 : 0);
@@ -186,7 +241,8 @@ export default function Home() {
                   setSlideIndex(0);
                 }}
               >
-                <div className={`w-16 h-16 shrink-0 relative shadow-md flex items-center justify-center ${item.color || 'bg-black'}`}>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className={`w-[72px] h-full shrink-0 relative shadow-md flex items-center justify-center ${item.color || 'bg-black'}`}>
                   {Icon ? (
                     <Icon 
                       className="w-8 h-8 text-white opacity-90 relative z-10" 
@@ -196,13 +252,13 @@ export default function Home() {
                     <ImageSlideshow images={item.images} currentIndex={hoveredItem === item.title && item.images.length > 1 ? slideIndex : 0} />
                   ) : null}
                 </div>
-                <div className="flex-1 font-semibold text-white px-4 text-sm truncate drop-shadow-sm">
+                <div className="relative flex-1 px-4 text-sm font-bold text-white truncate drop-shadow-sm">
                   {item.title}
                 </div>
-                <div className="pr-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-105 transition-transform">
+                <div className="relative pr-4 opacity-0 translate-x-2 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
+                  <span className="flex w-10 h-10 rounded-full bg-primary items-center justify-center text-white shadow-xl transition-transform group-hover:scale-105">
                     <Play className="w-5 h-5 fill-current ml-1" />
-                  </button>
+                  </span>
                 </div>
               </Link>
             );
@@ -211,48 +267,50 @@ export default function Home() {
       </section>
 
       {/* Popular Genres Section */}
-      <section className="px-8 relative z-10">
-        <h2 className="text-2xl font-bold text-white mb-4">{t('home.popularGenres')}</h2>
-        <div className="flex gap-3 overflow-x-auto py-8 px-6 -mx-6 no-scrollbar">
-          {GENRES.map((genre) => {
-            const Icon = genre.icon;
-            return (
-              <div 
-                key={genre.name} 
-                className={`group relative isolate min-w-[128px] h-20 rounded-xl p-3 flex flex-col justify-between shadow-lg cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.03] ${genre.color}`}
-              >
+      <section className="px-4 sm:px-8 relative z-10">
+        <SectionHeader title={t('home.popularGenres')} />
+        <div className="relative -mx-8">
+          <div 
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto py-14 px-8 no-scrollbar"
+            style={{ 
+              maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)', 
+              WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)' 
+            }}
+          >
+            {GENRES.map((genre) => {
+              const Icon = genre.icon;
+              return (
+                <div 
+                  key={genre.name} 
+                  className={`group relative isolate min-w-[132px] snap-start h-20 rounded-xl p-3 flex flex-col justify-between cursor-pointer overflow-visible shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-[1.04] hover:shadow-[0_0_40px_var(--genre-glow)] ${genre.color}`}
+                  style={{ '--genre-glow': genre.glow } as CSSProperties}
+                >
                 <div
-                  className="pointer-events-none absolute inset-0 -z-10 rounded-xl opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-80"
+                  className="pointer-events-none absolute -inset-4 -z-10 rounded-[1.75rem] opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
                   style={{
-                    background: `radial-gradient(circle at 50% 55%, ${genre.glow} 0%, ${genre.glow} 28%, transparent 68%)`,
+                    background: `radial-gradient(circle at 50% 58%, ${genre.glow} 0%, ${genre.glow} 38%, transparent 70%)`,
                   }}
                 />
-                <div className="pointer-events-none absolute inset-0 rounded-xl bg-white/0 transition-colors duration-300 group-hover:bg-white/10" />
-                <div className="w-full flex justify-end opacity-55 transition-opacity duration-300 group-hover:opacity-85">
+                <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-white/18 via-transparent to-black/15 opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="w-full flex justify-end opacity-65 transition-opacity duration-300 group-hover:opacity-95">
                   <Icon className="w-6 h-6 text-white" strokeWidth={1.7} />
                 </div>
                 <span className="relative font-bold text-white text-sm tracking-tight">{genre.name}</span>
               </div>
             );
           })}
+          </div>
         </div>
       </section>
 
       {/* Trending Section */}
-      <section className="px-8 relative z-10 min-h-[200px]">
-        <div className="flex items-end justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white hover:underline cursor-pointer">{t('home.trending')}</h2>
-          <span className="text-sm font-bold text-muted hover:text-white transition-colors cursor-pointer">
-            {t('home.seeAll')}
-          </span>
-        </div>
+      <section className="px-4 sm:px-8 relative z-10 min-h-[200px]">
+        <SectionHeader title={t('home.trending')} actionLabel={t('home.seeAll')} href="/collection/tracks" />
         
         {isLoading ? (
-          <div className="flex justify-center py-10">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          <SongGridSkeleton />
+        ) : trendingSongs.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
             {trendingSongs.map((song) => (
               <SongCard 
                 key={`trending-${song.id}`} 
@@ -261,24 +319,19 @@ export default function Home() {
               />
             ))}
           </div>
+        ) : (
+          <EmptySongState title={t('home.emptySongs')} />
         )}
       </section>
 
       {/* New Releases Section */}
-      <section className="px-8 relative z-10 min-h-[200px]">
-        <div className="flex items-end justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white hover:underline cursor-pointer">{t('home.newReleases')}</h2>
-          <span className="text-sm font-bold text-muted hover:text-white transition-colors cursor-pointer">
-            {t('home.seeAll')}
-          </span>
-        </div>
+      <section className="px-4 sm:px-8 relative z-10 min-h-[200px]">
+        <SectionHeader title={t('home.newReleases')} actionLabel={t('home.seeAll')} href="/collection/tracks" />
         
         {isLoading ? (
-          <div className="flex justify-center py-10">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          <SongGridSkeleton />
+        ) : newReleases.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
             {newReleases.map((song) => (
               <SongCard 
                 key={`new-${song.id}`} 
@@ -287,6 +340,8 @@ export default function Home() {
               />
             ))}
           </div>
+        ) : (
+          <EmptySongState title={t('home.emptySongs')} />
         )}
       </section>
     </div>
