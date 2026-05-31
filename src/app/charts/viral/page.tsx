@@ -235,9 +235,9 @@ export default function ViralChartsPage() {
                   </div>
                   
                   <div className="text-right text-sm text-white/50 font-mono tracking-wider flex items-center justify-end">
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <PlaylistAddButton songId={song.id} iconClassName="w-5 h-5 mr-4" />
-                      <LikeButton songId={song.id} iconClassName="w-5 h-5 mr-4" />
+                    <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-4 mr-4">
+                      <PlaylistAddButton songId={song.id} iconClassName="w-5 h-5" />
+                      <LikeButton songId={song.id} iconClassName="w-5 h-5" />
                     </div>
                     {song.plays.toLocaleString()}
                   </div>

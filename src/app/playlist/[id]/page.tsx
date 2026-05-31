@@ -371,9 +371,9 @@ export default function PlaylistPage() {
                     </div>
 
                     <div className="text-right text-sm text-white/50 tracking-wider flex items-center justify-end gap-3 md:col-span-2">
-                      <div onClick={(e) => e.stopPropagation()} className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <PlaylistAddButton songId={song.id} iconClassName="w-5 h-5 mr-4" />
-                        <LikeButton songId={song.id} iconClassName="w-5 h-5 mr-4" />
+                      <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-4 mr-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <PlaylistAddButton songId={song.id} iconClassName="w-5 h-5" />
+                        <LikeButton songId={song.id} iconClassName="w-5 h-5" />
                       </div>
                       
                       <span className="w-12 text-right">{formatDuration(song.duration)}</span>
