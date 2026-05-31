@@ -38,7 +38,7 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true, plays: newPlays });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in play count:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },

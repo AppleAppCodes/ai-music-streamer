@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, Mic2, Shuffle, Repeat } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import Link from 'next/link';
@@ -34,8 +34,8 @@ export default function AudioPlayer() {
   } = usePlayer();
   const { t } = useTranslation();
 
-  const [hasCountedPlay, setHasCountedPlay] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const countedSongIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     import('@/utils/supabase/client').then(({ createClient }) => {
@@ -50,26 +50,23 @@ export default function AudioPlayer() {
     });
   }, []);
 
-  // Reset play count flag when song changes
-  useEffect(() => {
-    setHasCountedPlay(false);
-  }, [currentSong?.id]);
-
   // Count play when song has played for 30 seconds
   useEffect(() => {
-    if (!currentSong || hasCountedPlay) return;
+    if (!currentSong || countedSongIdRef.current === currentSong.id) return;
 
     if (currentTime >= 30 || (duration > 0 && duration < 30 && currentTime >= duration - 0.5)) {
-      setHasCountedPlay(true);
+      countedSongIdRef.current = currentSong.id;
       fetch(`/api/songs/${currentSong.id}/play`, { method: 'POST' }).catch(console.error);
     }
-  }, [currentTime, currentSong, duration, hasCountedPlay]);
+  }, [currentTime, currentSong, duration]);
 
   if (!currentSong && !isLoggedIn) return null;
 
   const displayArtist = currentSong?.artist_name || currentSong?.creatorName || t('player.creatorFallback');
   const canPlayPrevious = queueIndex > 0;
   const canPlayNext = queueIndex >= 0 && queueIndex < queue.length - 1;
+  const progressPercent = Math.max(0, Math.min(100, Number.isFinite(progress) ? progress : 0));
+  const volumePercent = Math.max(0, Math.min(100, Number.isFinite(volume) ? volume * 100 : 0));
 
   return (
     <div className="fixed bottom-0 left-0 right-0 h-24 bg-surface border-t border-white/5 px-4 flex items-center justify-between z-50">
@@ -136,40 +133,43 @@ export default function AudioPlayer() {
         {/* Progress Bar */}
         <div className="flex items-center gap-2 w-full max-w-md">
           <span className="text-xs text-muted font-medium w-8 text-right">{formatTime(currentTime)}</span>
-          <div 
-            className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden group cursor-pointer"
-            onClick={(e) => {
-              const bounds = e.currentTarget.getBoundingClientRect();
-              const x = e.clientX - bounds.left;
-              seekTo((x / bounds.width) * 100);
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="any"
+            value={progressPercent}
+            aria-label="Song position"
+            className="player-slider flex-1"
+            style={{
+              background: `linear-gradient(to right, #ffffff 0%, #ffffff ${progressPercent}%, rgba(255,255,255,0.18) ${progressPercent}%, rgba(255,255,255,0.18) 100%)`,
             }}
-          >
-            <div 
-              className="h-full bg-white group-hover:bg-primary transition-colors relative"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+            onChange={(e) => seekTo(Number(e.currentTarget.value))}
+          />
           <span className="text-xs text-muted font-medium w-8">{formatTime(duration)}</span>
         </div>
       </div>
 
       {/* Extra Controls */}
       <div className={`flex items-center justify-end gap-4 w-1/3 min-w-[180px] ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`}>
-        <button className="text-muted hover:text-white transition-colors" title="AI Tool Info">
+        <button className="text-muted hover:text-white transition-colors" title="Creator Info">
           <Mic2 className="w-4 h-4" />
         </button>
         <div className="flex items-center gap-2 w-24">
           <Volume2 className="w-4 h-4 text-muted" />
-          <div 
-            className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden cursor-pointer"
-            onClick={(e) => {
-              const bounds = e.currentTarget.getBoundingClientRect();
-              const x = e.clientX - bounds.left;
-              setVolume(x / bounds.width);
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="any"
+            value={volumePercent}
+            aria-label="Volume"
+            className="player-slider flex-1"
+            style={{
+              background: `linear-gradient(to right, #ffffff 0%, #ffffff ${volumePercent}%, rgba(255,255,255,0.18) ${volumePercent}%, rgba(255,255,255,0.18) 100%)`,
             }}
-          >
-            <div className="h-full bg-white" style={{ width: `${volume * 100}%` }} />
-          </div>
+            onChange={(e) => setVolume(Number(e.currentTarget.value) / 100)}
+          />
         </div>
       </div>
     </div>

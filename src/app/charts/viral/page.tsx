@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
 import { Play, Pause, Clock3, TrendingUp, Shuffle, List, Check, Menu } from 'lucide-react';
+import Link from 'next/link';
 import { usePlayer } from '@/lib/player-context';
 import { useTranslation } from 'react-i18next';
 import LikeButton from '@/components/ui/LikeButton';
@@ -232,10 +233,20 @@ export default function ViralChartsPage() {
                       <img src={song.cover_url} alt={song.title} className="w-10 h-10 object-cover rounded shadow-md" />
                     )}
                     <div className="flex flex-col truncate">
-                      <span className={`text-base font-medium truncate ${currentSong?.id === song.id ? 'text-yellow-500' : 'text-white/90'}`}>
+                      <Link
+                        href={`/song/${song.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`text-base font-medium truncate hover:underline ${currentSong?.id === song.id ? 'text-yellow-500' : 'text-white/90 hover:text-white'}`}
+                      >
                         {song.title}
-                      </span>
-                      <span className="text-sm text-white/50 truncate">{displayArtist}</span>
+                      </Link>
+                      <Link
+                        href={`/artist/${encodeURIComponent(displayArtist)}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-sm text-white/50 truncate hover:text-white hover:underline"
+                      >
+                        {displayArtist}
+                      </Link>
                     </div>
                   </div>
                   

@@ -11,8 +11,13 @@ import { useTranslation } from 'react-i18next';
 import SongCard from '@/components/ui/SongCard';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
-import CustomSelect from '@/components/ui/CustomSelect';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+type SongWithProfile = Song & {
+  profiles?: {
+    username?: string | null;
+  } | null;
+};
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -33,8 +38,6 @@ export default function SongDetailPage() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   
   const [isEditing, setIsEditing] = useState(false);
-  const [editAiTool, setEditAiTool] = useState('Suno');
-  const [editCustomAiTool, setEditCustomAiTool] = useState('');
   const [editHumanEdit, setEditHumanEdit] = useState<number>(0);
   const [editVocalsType, setEditVocalsType] = useState<string>('AI');
   const [saving, setSaving] = useState(false);
@@ -50,17 +53,17 @@ export default function SongDetailPage() {
       // Fetch the main song
       const { data: songData } = await supabase
         .from('songs')
-        .select('*')
+        .select('*, profiles(username)')
         .eq('id', id)
         .single();
         
       if (songData) {
-        setSong(songData);
-        setEditAiTool(songData.ai_tool || 'Suno');
-        if (!['Suno', 'Udio', 'Stable Audio', 'Eigene DAW-Bearbeitung'].includes(songData.ai_tool || 'Suno')) {
-           setEditAiTool('Andere');
-           setEditCustomAiTool(songData.ai_tool || '');
-        }
+        const songWithProfile = songData as SongWithProfile;
+        const creatorName = songWithProfile.profiles?.username || songWithProfile.artist_name || 'Creator';
+        const songForState: SongWithProfile = { ...songWithProfile, creatorName };
+        delete songForState.profiles;
+
+        setSong(songForState);
         setEditHumanEdit(songData.human_edit ?? 0);
         setEditVocalsType(songData.vocals_type || 'AI');
         
@@ -91,19 +94,17 @@ export default function SongDetailPage() {
   const handleSaveMetadata = async () => {
     if (!song) return;
     setSaving(true);
-    const finalAiTool = editAiTool === 'Andere' ? editCustomAiTool : editAiTool;
     
     const { error } = await supabase
       .from('songs')
       .update({
-        ai_tool: finalAiTool,
         human_edit: editHumanEdit,
         vocals_type: editVocalsType
       })
       .eq('id', song.id);
       
     if (!error) {
-      setSong({ ...song, ai_tool: finalAiTool, human_edit: editHumanEdit, vocals_type: editVocalsType });
+      setSong({ ...song, human_edit: editHumanEdit, vocals_type: editVocalsType });
       setIsEditing(false);
     }
     setSaving(false);
@@ -127,6 +128,7 @@ export default function SongDetailPage() {
 
   const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
   const displayArtist = song.artist_name || t('player.creatorFallback');
+  const displayCreator = song.creatorName || displayArtist;
   const releaseYear = new Date(song.created_at).getFullYear();
   const durationText = formatDuration(song.duration);
 
@@ -268,28 +270,9 @@ export default function SongDetailPage() {
           {isEditing ? (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Erstellt mit (AI Tool)</label>
-                  <CustomSelect
-                    options={[
-                      { value: 'Suno', label: 'Suno' },
-                      { value: 'Udio', label: 'Udio' },
-                      { value: 'Stable Audio', label: 'Stable Audio' },
-                      { value: 'Eigene DAW-Bearbeitung', label: 'Eigene DAW-Bearbeitung' },
-                      { value: 'Andere', label: 'Andere ...' }
-                    ]}
-                    value={editAiTool}
-                    onChange={setEditAiTool}
-                  />
-                  {editAiTool === 'Andere' && (
-                    <input
-                      type="text"
-                      value={editCustomAiTool}
-                      onChange={(e) => setEditCustomAiTool(e.target.value)}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white mt-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                      placeholder="Name des Tools"
-                    />
-                  )}
+                <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                  <div className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Creator</div>
+                  <div className="font-semibold text-white/90">{displayCreator}</div>
                 </div>
 
                 <div>
@@ -348,8 +331,8 @@ export default function SongDetailPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="bg-black/20 rounded-xl p-4 transition-colors hover:bg-black/30">
-                <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Erstellt mit</div>
-                <div className="font-semibold text-white/90">{song.ai_tool || 'Unbekannt'}</div>
+                <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Creator</div>
+                <div className="font-semibold text-white/90">{displayCreator}</div>
               </div>
 
               <div className="bg-black/20 rounded-xl p-4 transition-colors hover:bg-black/30">

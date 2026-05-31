@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { UploadCloud, Music, Image as ImageIcon, Loader2, CheckCircle2 } from 'lucide-react';
+import { UploadCloud, Music, Image as ImageIcon, Loader2, CheckCircle2, UserCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ArtistAutocomplete from '@/components/ui/ArtistAutocomplete';
 import CustomSelect from '@/components/ui/CustomSelect';
@@ -22,8 +22,6 @@ export default function UploadPage() {
   const [isDraggingAudio, setIsDraggingAudio] = useState(false);
   const [isDraggingCover, setIsDraggingCover] = useState(false);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
-  const [aiTool, setAiTool] = useState('Suno');
-  const [customAiTool, setCustomAiTool] = useState('');
   const [humanEdit, setHumanEdit] = useState<number>(0);
   const [vocalsType, setVocalsType] = useState<string>('AI');
   
@@ -115,9 +113,8 @@ export default function UploadPage() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalAiTool = aiTool === 'Andere' ? customAiTool : aiTool;
 
-    if (!audioFile || !coverFile || !title || !artistName || !finalAiTool || !vocalsType) {
+    if (!audioFile || !coverFile || !title || !artistName || !vocalsType) {
       setError('Bitte fülle alle Pflichtfelder aus (Artist, Titel, Song, Cover, Metadaten).');
       return;
     }
@@ -167,7 +164,6 @@ export default function UploadPage() {
           mood,
           cover_url: coverUrl,
           audio_url: audioUrl,
-          ai_tool: finalAiTool,
           human_edit: humanEdit,
           vocals_type: vocalsType,
           duration: audioDuration || null,
@@ -189,6 +185,7 @@ export default function UploadPage() {
   };
 
   if (!user) return null; // Wait for auth redirect
+  const creatorDisplayName = user.user_metadata?.username || user.email?.split('@')[0] || 'Creator';
 
   if (success) {
     return (
@@ -255,34 +252,16 @@ export default function UploadPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-white/80 mb-2">Erstellt mit (AI Tool) *</label>
-                <CustomSelect
-                  options={[
-                    { value: 'Suno', label: 'Suno' },
-                    { value: 'Udio', label: 'Udio' },
-                    { value: 'Stable Audio', label: 'Stable Audio' },
-                    { value: 'Eigene DAW-Bearbeitung', label: 'Eigene DAW-Bearbeitung' },
-                    { value: 'Andere', label: 'Andere ...' }
-                  ]}
-                  value={aiTool}
-                  onChange={setAiTool}
-                />
-              </div>
-              
-              {aiTool === 'Andere' && (
-                <div>
-                  <label className="block text-sm font-semibold text-white/80 mb-2">Welches Tool?</label>
-                  <input
-                    type="text"
-                    value={customAiTool}
-                    onChange={(e) => setCustomAiTool(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                    placeholder="Name des Tools"
-                    required
-                  />
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 md:col-span-2">
+                <label className="block text-sm font-semibold text-white/80 mb-2">Creator</label>
+                <div className="flex items-center gap-3">
+                  <UserCircle className="w-5 h-5 text-indigo-300" />
+                  <div>
+                    <div className="font-semibold text-white">{creatorDisplayName}</div>
+                    <div className="text-xs text-white/45">Wird automatisch deinem Account zugeordnet.</div>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
 
             <div>

@@ -9,6 +9,7 @@
   },
   "home": {
     "greeting": "Guten Abend",
+    "subtitle": "Entdecke neue AI-Tracks, Genres und Charts an einem Ort.",
     "quickAccess": {
       "favorites": "Lieblingssongs",
       "charts": "Viral Charts",
@@ -19,7 +20,8 @@
     "popularGenres": "Beliebte Genres",
     "trending": "Für dich ausgewählt",
     "newReleases": "Zuletzt gehört",
-    "seeAll": "Alle anzeigen"
+    "seeAll": "Alle anzeigen",
+    "emptySongs": "Noch keine Songs verfügbar."
   },
   "song": {
     "single": "Single",
@@ -38,8 +40,6 @@
     "songTitlePlaceholder": "Name deines Meisterwerks",
     "genre": "Genre *",
     "mood": "Mood *",
-    "aiTool": "Erstellt mit (Optional)",
-    "aiToolPlaceholder": "z.B. Suno, Udio",
     "uploadAudio": "MP3 / M4A hochladen",
     "uploadAudioHint": "Max 50MB",
     "uploadCover": "Cover Artwork",

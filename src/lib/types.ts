@@ -24,7 +24,7 @@ export interface Song {
   mood: string;
   language: string;
   description: string;
-  ai_tool: string;
+  ai_tool?: string | null;
   human_edit?: number;
   vocals_type?: string;
   duration?: number;
