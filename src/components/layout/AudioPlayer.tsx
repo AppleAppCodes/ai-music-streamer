@@ -1,5 +1,5 @@
 'use client';
-
+import { useState, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, Mic2, Shuffle, Repeat } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import Link from 'next/link';
@@ -31,6 +31,23 @@ export default function AudioPlayer() {
     playPrevious
   } = usePlayer();
   const { t } = useTranslation();
+
+  const [hasCountedPlay, setHasCountedPlay] = useState(false);
+
+  // Reset play count flag when song changes
+  useEffect(() => {
+    setHasCountedPlay(false);
+  }, [currentSong?.id]);
+
+  // Count play when song has played for 30 seconds
+  useEffect(() => {
+    if (!currentSong || hasCountedPlay) return;
+
+    if (currentTime >= 30 || (duration > 0 && duration < 30 && currentTime >= duration - 0.5)) {
+      setHasCountedPlay(true);
+      fetch(`/api/songs/${currentSong.id}/play`, { method: 'POST' }).catch(console.error);
+    }
+  }, [currentTime, currentSong, duration, hasCountedPlay]);
 
   if (!currentSong) return null;
 
