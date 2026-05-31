@@ -63,7 +63,7 @@ export default function ArtistAutocomplete({ value, onChange }: ArtistAutocomple
 
   return (
     <div ref={wrapperRef} className="relative w-full">
-      <label className="block text-sm font-semibold text-white/80 mb-2">{t('upload.artistName')}</label>
+      <label className="block text-sm font-semibold text-white/80 mb-2">Creator / Artist (Hauptkünstler)</label>
       <input
         type="text"
         value={value}

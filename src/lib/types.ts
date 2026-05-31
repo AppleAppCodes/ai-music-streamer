@@ -27,6 +27,7 @@ export interface Song {
   ai_tool?: string | null;
   human_edit?: number;
   vocals_type?: string;
+  credits?: { role: string; name: string }[];
   duration?: number;
   plays: number;
   created_at: string;

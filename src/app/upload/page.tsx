@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { UploadCloud, Music, Image as ImageIcon, Loader2, CheckCircle2, UserCircle } from 'lucide-react';
+import { UploadCloud, Music, Image as ImageIcon, Loader2, CheckCircle2, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ArtistAutocomplete from '@/components/ui/ArtistAutocomplete';
 import CustomSelect from '@/components/ui/CustomSelect';
@@ -24,6 +24,7 @@ export default function UploadPage() {
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
   const [humanEdit, setHumanEdit] = useState<number>(0);
   const [vocalsType, setVocalsType] = useState<string>('AI');
+  const [credits, setCredits] = useState<{ role: string; name: string }[]>([]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -166,6 +167,7 @@ export default function UploadPage() {
           audio_url: audioUrl,
           human_edit: humanEdit,
           vocals_type: vocalsType,
+          credits,
           duration: audioDuration || null,
           plays: 0
         });
@@ -282,6 +284,61 @@ export default function UploadPage() {
                     />
                     <span className="text-white/80 text-sm">{type}</span>
                   </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Optional Credits Section */}
+            <div className="pt-4 border-t border-white/10">
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-sm font-semibold text-white/80">Weitere Credits (Optional)</label>
+                <button
+                  type="button"
+                  onClick={() => setCredits([...credits, { role: 'Creator', name: '' }])}
+                  className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  Hinzufügen
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                {credits.map((credit, index) => (
+                  <div key={index} className="flex gap-3 items-center">
+                    <select
+                      value={credit.role}
+                      onChange={(e) => {
+                        const newCredits = [...credits];
+                        newCredits[index].role = e.target.value;
+                        setCredits(newCredits);
+                      }}
+                      className="w-1/3 bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="Creator">Creator</option>
+                      <option value="Producer">Producer</option>
+                      <option value="Mixing Engineer">Mixing Engineer</option>
+                      <option value="Instrumentalist">Instrumentalist</option>
+                      <option value="Vocalist">Vocalist</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={credit.name}
+                      onChange={(e) => {
+                        const newCredits = [...credits];
+                        newCredits[index].name = e.target.value;
+                        setCredits(newCredits);
+                      }}
+                      placeholder="Name"
+                      className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCredits(credits.filter((_, i) => i !== index))}
+                      className="text-white/30 hover:text-red-400 transition-colors p-2"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>

@@ -79,15 +79,15 @@ body {
 }
 
 .player-slider::-webkit-slider-runnable-track {
-  height: 4px;
+  height: 2.5px;
   border-radius: 9999px;
   background: transparent;
 }
 
 .player-slider::-webkit-slider-thumb {
-  width: 13px;
-  height: 13px;
-  margin-top: -4.5px;
+  width: 10px;
+  height: 10px;
+  margin-top: -3.75px;
   appearance: none;
   border-radius: 9999px;
   background: #ffffff;
@@ -104,20 +104,20 @@ body {
 }
 
 .player-slider::-moz-range-track {
-  height: 4px;
+  height: 2.5px;
   border-radius: 9999px;
   background: transparent;
 }
 
 .player-slider::-moz-range-progress {
-  height: 4px;
+  height: 2.5px;
   border-radius: 9999px;
   background: #ffffff;
 }
 
 .player-slider::-moz-range-thumb {
-  width: 13px;
-  height: 13px;
+  width: 10px;
+  height: 10px;
   border: 0;
   border-radius: 9999px;
   background: #ffffff;

@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, MoreHorizontal, Clock3, Edit2, Save, X } from 'lucide-react';
+import { Play, Pause, MoreHorizontal, Clock3, Edit2, Save, X, Plus } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import { useTranslation } from 'react-i18next';
 import SongCard from '@/components/ui/SongCard';
@@ -41,6 +41,7 @@ export default function SongDetailPage() {
   const [editHumanEdit, setEditHumanEdit] = useState<number>(0);
   const [editVocalsType, setEditVocalsType] = useState<string>('AI');
   const [editArtistName, setEditArtistName] = useState<string>('');
+  const [editCredits, setEditCredits] = useState<{ role: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
 
   const supabase = createClient();
@@ -68,6 +69,7 @@ export default function SongDetailPage() {
         setEditHumanEdit(songData.human_edit ?? 0);
         setEditVocalsType(songData.vocals_type || 'AI');
         setEditArtistName(songData.artist_name || '');
+        setEditCredits(songData.credits || []);
         
         // Fetch related songs by the same artist
         const artistName = songData.artist_name || 'Creator';
@@ -102,12 +104,13 @@ export default function SongDetailPage() {
       .update({
         human_edit: editHumanEdit,
         vocals_type: editVocalsType,
-        artist_name: editArtistName
+        artist_name: editArtistName,
+        credits: editCredits
       })
       .eq('id', song.id);
       
     if (!error) {
-      setSong({ ...song, human_edit: editHumanEdit, vocals_type: editVocalsType, artist_name: editArtistName, creatorName: editArtistName });
+      setSong({ ...song, human_edit: editHumanEdit, vocals_type: editVocalsType, artist_name: editArtistName, creatorName: editArtistName, credits: editCredits });
       setIsEditing(false);
     }
     setSaving(false);
@@ -312,11 +315,69 @@ export default function SongDetailPage() {
                         value={type}
                         checked={editVocalsType === type}
                         onChange={(e) => setEditVocalsType(e.target.value)}
-                        className="w-4 h-4 text-indigo-500 bg-white/10 border-white/20 focus:ring-indigo-500"
+                        className="w-4 h-4 text-indigo-500 bg-white/10 border-white/20 focus:ring-indigo-500 focus:ring-offset-black"
                       />
                       <span className="text-white/90 text-sm">{type}</span>
                     </label>
                   ))}
+                </div>
+              </div>
+
+              {/* Editable Credits Section */}
+              <div className="pt-4 border-t border-white/10">
+                <div className="flex items-center justify-between mb-4">
+                  <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider">Weitere Credits (Optional)</label>
+                  <button
+                    type="button"
+                    onClick={() => setEditCredits([...editCredits, { role: 'Creator', name: '' }])}
+                    className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium bg-indigo-500/10 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Hinzufügen
+                  </button>
+                </div>
+                
+                <div className="space-y-3">
+                  {editCredits.map((credit, index) => (
+                    <div key={index} className="flex gap-3 items-center">
+                      <select
+                        value={credit.role}
+                        onChange={(e) => {
+                          const newCredits = [...editCredits];
+                          newCredits[index].role = e.target.value;
+                          setEditCredits(newCredits);
+                        }}
+                        className="w-1/3 bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="Creator">Creator</option>
+                        <option value="Producer">Producer</option>
+                        <option value="Mixing Engineer">Mixing Engineer</option>
+                        <option value="Instrumentalist">Instrumentalist</option>
+                        <option value="Vocalist">Vocalist</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={credit.name}
+                        onChange={(e) => {
+                          const newCredits = [...editCredits];
+                          newCredits[index].name = e.target.value;
+                          setEditCredits(newCredits);
+                        }}
+                        placeholder="Name"
+                        className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEditCredits(editCredits.filter((_, i) => i !== index))}
+                        className="text-white/30 hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-white/5"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                  {editCredits.length === 0 && (
+                    <p className="text-sm text-white/40 italic">Keine zusätzlichen Credits vorhanden.</p>
+                  )}
                 </div>
               </div>
 
@@ -338,26 +399,42 @@ export default function SongDetailPage() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div className="bg-black/20 rounded-xl p-4 transition-colors hover:bg-black/30">
-                <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Creator</div>
-                <div className="font-semibold text-white/90">{displayCreator}</div>
-              </div>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="bg-black/20 rounded-xl p-4 transition-colors hover:bg-black/30">
+                  <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Creator</div>
+                  <div className="font-semibold text-white/90">{displayCreator}</div>
+                </div>
 
-              <div className="bg-black/20 rounded-xl p-4 transition-colors hover:bg-black/30">
-                <div className="text-xs text-white/50 uppercase tracking-wider mb-2">Human Edit Anteil</div>
-                <div className="flex items-center gap-3">
-                  <span className="font-semibold text-white/90 w-10">{song.human_edit ?? 0}%</span>
-                  <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: `${song.human_edit ?? 0}%` }} />
+                <div className="bg-black/20 rounded-xl p-4 transition-colors hover:bg-black/30">
+                  <div className="text-xs text-white/50 uppercase tracking-wider mb-2">Human Edit Anteil</div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold text-white/90 w-10">{song.human_edit ?? 0}%</span>
+                    <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: `${song.human_edit ?? 0}%` }} />
+                    </div>
                   </div>
+                </div>
+
+                <div className="bg-black/20 rounded-xl p-4 transition-colors hover:bg-black/30">
+                  <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Vocals</div>
+                  <div className="font-semibold text-white/90 capitalize">{song.vocals_type || 'Unbekannt'}</div>
                 </div>
               </div>
 
-              <div className="bg-black/20 rounded-xl p-4 transition-colors hover:bg-black/30">
-                <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Vocals</div>
-                <div className="font-semibold text-white/90 capitalize">{song.vocals_type || 'Unbekannt'}</div>
-              </div>
+              {song.credits && song.credits.length > 0 && (
+                <div className="bg-black/20 rounded-xl p-4 transition-colors hover:bg-black/30">
+                  <div className="text-xs text-white/50 uppercase tracking-wider mb-3">Weitere Credits</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {song.credits.map((credit, idx) => (
+                      <div key={idx} className="flex flex-col">
+                        <span className="text-xs text-indigo-300 font-medium mb-0.5">{credit.role}</span>
+                        <span className="text-sm font-semibold text-white/90">{credit.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
