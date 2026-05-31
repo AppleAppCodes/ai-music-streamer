@@ -5,6 +5,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import AudioPlayer from "@/components/layout/AudioPlayer";
 import PlayerLayout from "@/components/layout/PlayerLayout";
+import CookieConsent from "@/components/ui/CookieConsent";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,6 +51,7 @@ export default function RootLayout({
             </div>
           </div>
           <AudioPlayer />
+          <CookieConsent />
         </PlayerLayout>
       </body>
     </html>
