@@ -21,6 +21,14 @@
     "newReleases": "Zuletzt gehört",
     "seeAll": "Alle anzeigen"
   },
+  "song": {
+    "single": "Single",
+    "plays": "Wiedergaben",
+    "moreBy": "Mehr von {{artist}}",
+    "title": "Titel",
+    "date": "Datum",
+    "songCount": "1 Song"
+  },
   "upload": {
     "title": "Song hochladen",
     "subtitle": "Teile deine neuesten AI-Kreationen mit der Welt.",

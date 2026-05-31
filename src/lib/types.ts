@@ -25,6 +25,7 @@ export interface Song {
   language: string;
   description: string;
   ai_tool: string;
+  duration?: number;
   plays: number;
   created_at: string;
   creatorName?: string;

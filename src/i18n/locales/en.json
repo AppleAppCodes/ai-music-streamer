@@ -21,6 +21,14 @@
     "newReleases": "Recently Played",
     "seeAll": "Show all"
   },
+  "song": {
+    "single": "Single",
+    "plays": "Plays",
+    "moreBy": "More by {{artist}}",
+    "title": "Title",
+    "date": "Date",
+    "song": "1 Song"
+  },
   "upload": {
     "title": "Upload Song",
     "subtitle": "Share your latest AI creations with the world.",

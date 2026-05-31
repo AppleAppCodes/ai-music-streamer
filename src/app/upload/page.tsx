@@ -19,6 +19,7 @@ export default function UploadPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [isDraggingAudio, setIsDraggingAudio] = useState(false);
   const [isDraggingCover, setIsDraggingCover] = useState(false);
+  const [audioDuration, setAudioDuration] = useState<number | null>(null);
   const [aiTool, setAiTool] = useState('');
   
   const [loading, setLoading] = useState(false);
@@ -43,6 +44,24 @@ export default function UploadPage() {
     };
     getUser();
   }, [router, supabase]);
+
+  // Auto-detect audio duration when file is selected
+  useEffect(() => {
+    if (!audioFile) {
+      setAudioDuration(null);
+      return;
+    }
+    const url = URL.createObjectURL(audioFile);
+    const audio = new Audio(url);
+    audio.addEventListener('loadedmetadata', () => {
+      setAudioDuration(Math.round(audio.duration));
+      URL.revokeObjectURL(url);
+    });
+    audio.addEventListener('error', () => {
+      setAudioDuration(null);
+      URL.revokeObjectURL(url);
+    });
+  }, [audioFile]);
 
   const handleAudioDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -119,6 +138,7 @@ export default function UploadPage() {
           cover_url: coverUrl,
           audio_url: audioUrl,
           ai_tool: aiTool || null,
+          duration: audioDuration || null,
           plays: 0
         });
 
