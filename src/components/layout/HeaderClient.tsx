@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import ProfileDropdown from '@/components/ui/ProfileDropdown';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
+import { useEffect } from 'react';
+
 interface HeaderClientProps {
   user: SupabaseUser | null;
   signOutAction: () => Promise<void>;
@@ -13,6 +15,13 @@ interface HeaderClientProps {
 
 export default function HeaderClient({ user, signOutAction }: HeaderClientProps) {
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (user) {
+      // Background call to track activity and country
+      fetch('/api/user/track', { method: 'POST' }).catch(() => {});
+    }
+  }, [user]);
 
   return (
     <header className="h-16 w-full flex items-center justify-between px-6 sticky top-0 z-50 glass-panel border-b border-white/5">

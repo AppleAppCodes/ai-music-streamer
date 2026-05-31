@@ -11,6 +11,9 @@ type AdminTab = 'users' | 'songs';
 interface ProfileData {
   id: string;
   username: string;
+  email?: string;
+  last_active_at?: string;
+  country?: string;
   created_at: string;
   subscription_tier: string;
   followers_count: number;
@@ -62,7 +65,7 @@ export default function AdminDashboard() {
       // Load Users
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('id, username, created_at, subscription_tier, followers_count')
+        .select('id, username, created_at, subscription_tier, followers_count, email, country, last_active_at')
         .order('created_at', { ascending: false });
         
       if (profilesData) setProfiles(profilesData);
@@ -179,8 +182,10 @@ export default function AdminDashboard() {
                 <thead className="text-xs uppercase bg-black/40 text-white/50">
                   <tr>
                     <th className="px-6 py-4 font-semibold">Nutzername</th>
+                    <th className="px-6 py-4 font-semibold">E-Mail</th>
                     <th className="px-6 py-4 font-semibold">Tarif (Plan)</th>
-                    <th className="px-6 py-4 font-semibold">Followers</th>
+                    <th className="px-6 py-4 font-semibold">Land</th>
+                    <th className="px-6 py-4 font-semibold">Zuletzt aktiv</th>
                     <th className="px-6 py-4 font-semibold">Beigetreten am</th>
                   </tr>
                 </thead>
@@ -193,6 +198,7 @@ export default function AdminDashboard() {
                         </div>
                         {profile.username || 'Unbekannt'}
                       </td>
+                      <td className="px-6 py-4">{profile.email || '-'}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wider ${
                           profile.subscription_tier === 'pro' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' : 
@@ -202,12 +208,13 @@ export default function AdminDashboard() {
                           {(profile.subscription_tier || 'Free').toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-6 py-4 font-mono">{profile.followers_count || 0}</td>
+                      <td className="px-6 py-4">{profile.country || '-'}</td>
+                      <td className="px-6 py-4">{profile.last_active_at ? new Date(profile.last_active_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</td>
                       <td className="px-6 py-4">{new Date(profile.created_at).toLocaleDateString('de-DE')}</td>
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={4} className="px-6 py-12 text-center text-white/40">Keine Nutzer gefunden.</td>
+                      <td colSpan={6} className="px-6 py-12 text-center text-white/40">Keine Nutzer gefunden.</td>
                     </tr>
                   )}
                 </tbody>
