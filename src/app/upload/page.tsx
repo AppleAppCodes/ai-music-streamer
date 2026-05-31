@@ -17,6 +17,8 @@ export default function UploadPage() {
   const [mood, setMood] = useState(MOODS[0]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [isDraggingAudio, setIsDraggingAudio] = useState(false);
+  const [isDraggingCover, setIsDraggingCover] = useState(false);
   const [aiTool, setAiTool] = useState('');
   
   const [loading, setLoading] = useState(false);
@@ -41,6 +43,32 @@ export default function UploadPage() {
     };
     getUser();
   }, [router, supabase]);
+
+  const handleAudioDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingAudio(false);
+    if (e.dataTransfer.files?.[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('audio/')) {
+        setAudioFile(file);
+      } else {
+        setError(t('upload.errorOnlyAudio') || 'Bitte lade nur Audio-Dateien hoch.');
+      }
+    }
+  };
+
+  const handleCoverDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingCover(false);
+    if (e.dataTransfer.files?.[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        setCoverFile(file);
+      } else {
+        setError(t('upload.errorOnlyImage') || 'Bitte lade nur Bild-Dateien hoch.');
+      }
+    }
+  };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,7 +220,10 @@ export default function UploadPage() {
             {/* Audio Upload */}
             <div 
               onClick={() => audioInputRef.current?.click()}
-              className="border-2 border-dashed border-white/10 hover:border-indigo-500/50 bg-white/5 rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors group"
+              onDragOver={(e) => { e.preventDefault(); setIsDraggingAudio(true); }}
+              onDragLeave={(e) => { e.preventDefault(); setIsDraggingAudio(false); }}
+              onDrop={handleAudioDrop}
+              className={`border-2 border-dashed ${isDraggingAudio ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 hover:border-indigo-500/50 bg-white/5'} rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors group`}
             >
               <input 
                 type="file" 
@@ -215,7 +246,10 @@ export default function UploadPage() {
             {/* Cover Upload */}
             <div 
               onClick={() => coverInputRef.current?.click()}
-              className="border-2 border-dashed border-white/10 hover:border-pink-500/50 bg-white/5 rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors group relative overflow-hidden"
+              onDragOver={(e) => { e.preventDefault(); setIsDraggingCover(true); }}
+              onDragLeave={(e) => { e.preventDefault(); setIsDraggingCover(false); }}
+              onDrop={handleCoverDrop}
+              className={`border-2 border-dashed ${isDraggingCover ? 'border-pink-500 bg-pink-500/10' : 'border-white/10 hover:border-pink-500/50 bg-white/5'} rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors group relative overflow-hidden`}
             >
               <input 
                 type="file" 
