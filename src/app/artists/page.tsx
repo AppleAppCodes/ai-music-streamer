@@ -114,7 +114,7 @@ export default function ArtistsPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32 group">
+    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
       {/* Background Gradient Header or Video */}
       <div className="absolute top-0 left-0 right-0 h-[500px] overflow-hidden pointer-events-none z-0">
         {videoUrl ? (
@@ -123,7 +123,9 @@ export default function ArtistsPage() {
             autoPlay 
             loop 
             muted 
-            playsInline 
+            playsInline
+            controlsList="nodownload"
+            onContextMenu={(e) => e.preventDefault()}
             className="w-full h-full object-cover opacity-40"
             style={{ 
               maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
@@ -172,7 +174,7 @@ export default function ArtistsPage() {
             Entdecken
           </span>
           <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-white/70 tracking-tighter drop-shadow-2xl">
-            Künstler
+            Künstler entdecken
           </h1>
           <div className="flex items-center gap-3 text-sm text-white/70 mt-3 font-medium">
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center overflow-hidden shadow-inner">
