@@ -4,6 +4,7 @@ import { Play, Pause, SkipBack, SkipForward, Volume2, Mic2, Shuffle, Repeat } fr
 import { usePlayer } from '@/lib/player-context';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
+import LikeButton from '@/components/ui/LikeButton';
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return '0:00';
@@ -36,6 +37,7 @@ export default function AudioPlayer() {
             {currentSong.artist_name || currentSong.creatorName || t('player.creatorFallback')}
           </Link>
         </div>
+        <LikeButton songId={currentSong.id} className="ml-2" iconClassName="w-5 h-5" />
       </div>
 
       {/* Controls */}

@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, Heart, MoreHorizontal, Clock3, Download } from 'lucide-react';
+import { Play, Pause, MoreHorizontal, Clock3 } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import { useTranslation } from 'react-i18next';
 import SongCard from '@/components/ui/SongCard';
+import LikeButton from '@/components/ui/LikeButton';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -143,13 +144,7 @@ export default function SongDetailPage() {
             )}
           </button>
           
-          <button className="text-white/60 hover:text-white transition-colors">
-            <Heart className="w-8 h-8" />
-          </button>
-          
-          <button className="text-white/60 hover:text-white transition-colors">
-            <Download className="w-8 h-8" />
-          </button>
+          <LikeButton songId={song.id} iconClassName="w-8 h-8" />
 
           <button className="text-white/60 hover:text-white transition-colors">
             <MoreHorizontal className="w-8 h-8" />
