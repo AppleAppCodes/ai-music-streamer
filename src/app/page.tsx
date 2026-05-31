@@ -271,7 +271,7 @@ export default function Home() {
         <SectionHeader title={t('home.popularGenres')} />
         <div className="relative -mx-8">
           <div 
-            className="flex snap-x snap-mandatory gap-3 overflow-x-auto py-14 px-8 no-scrollbar"
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto py-16 px-8 no-scrollbar"
             style={{ 
               maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)', 
               WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)' 
@@ -286,7 +286,7 @@ export default function Home() {
                   style={{ '--genre-glow': genre.glow } as CSSProperties}
                 >
                 <div
-                  className="pointer-events-none absolute -inset-4 -z-10 rounded-[1.75rem] opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
+                  className="pointer-events-none absolute -inset-2 -z-10 rounded-[1.75rem] opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-100"
                   style={{
                     background: `radial-gradient(circle at 50% 58%, ${genre.glow} 0%, ${genre.glow} 25%, transparent 60%)`,
                   }}
