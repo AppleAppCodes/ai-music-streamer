@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { Play } from 'lucide-react';
+import { Play, Pause } from 'lucide-react';
 import { Song } from '@/lib/types';
+import { usePlayer } from '@/lib/player-context';
 
 interface SongCardProps {
   song: Song;
@@ -9,6 +10,9 @@ interface SongCardProps {
 }
 
 export default function SongCard({ song, creatorName = 'Creator', className = '' }: SongCardProps) {
+  const { playSong, currentSong, isPlaying, togglePlayPause } = usePlayer();
+  const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
+
   return (
     <div className={`group relative flex flex-col gap-3 p-4 rounded-xl hover:bg-white/5 transition-colors cursor-pointer ${className}`}>
       {/* Cover Image Container */}
@@ -20,9 +24,24 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
         />
         
         {/* Play Button Overlay */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <button className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-110 hover:bg-primary-hover transition-all">
-            <Play className="w-6 h-6 fill-current ml-1" />
+        <div className={`absolute inset-0 bg-black/40 transition-opacity flex items-center justify-center ${currentSong?.id === song.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (currentSong?.id === song.id) {
+                togglePlayPause();
+              } else {
+                playSong({ ...song, creatorName } as any);
+              }
+            }}
+            className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-110 hover:bg-primary-hover transition-all"
+          >
+            {isThisSongPlaying ? (
+              <Pause className="w-6 h-6 fill-current" />
+            ) : (
+              <Play className="w-6 h-6 fill-current ml-1" />
+            )}
           </button>
         </div>
         

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { UploadCloud, Music, Image as ImageIcon, Loader2, CheckCircle2 } from 'lucide-react';
 
-const GENRES = ['Pop', 'Hip Hop', 'Electronic', 'R&B', 'Rock', 'Ambient', 'AI Generated', 'Other'];
+const GENRES = ['Pop', 'Hip Hop', 'Electronic', 'R&B', 'Rock', 'Ambient', 'Other'];
 const MOODS = ['Happy', 'Sad', 'Energetic', 'Chill', 'Dark', 'Romantic'];
 
 export default function UploadPage() {
@@ -200,7 +200,7 @@ export default function UploadPage() {
                 <Music className={`w-8 h-8 ${audioFile ? 'text-indigo-400' : 'text-white/40'}`} />
               </div>
               <h3 className="text-white font-semibold mb-1">
-                {audioFile ? audioFile.name : 'MP3 / Audio hochladen'}
+                {audioFile ? audioFile.name : 'MP3 / M4A hochladen'}
               </h3>
               <p className="text-white/40 text-sm">
                 {audioFile ? 'Klicke zum Ändern' : 'Max 50MB'}
