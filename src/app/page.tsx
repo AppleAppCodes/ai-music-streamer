@@ -5,6 +5,7 @@ import SongCard from '@/components/ui/SongCard';
 import { Play, Mic2, Sparkles, Heart, Globe, Zap, Guitar, Flame, Star, Skull, Music, TrendingUp, ListMusic, Coffee, Moon, Radio } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useTranslation } from 'react-i18next';
 
 const GENRES = [
   { name: 'Hip-Hop', icon: Mic2, color: 'bg-orange-500' },
@@ -40,6 +41,7 @@ function ImageSlideshow({ images, currentIndex }: { images: string[], currentInd
 }
 
 export default function Home() {
+  const { t } = useTranslation();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
 
@@ -82,43 +84,43 @@ export default function Home() {
     loadMusic();
   }, []);
 
-  const greeting = "Guten Abend";
+  const greeting = t('home.greeting');
 
   const quickAccessItems = useMemo(() => [
     { 
-      title: "Lieblingssongs", 
+      title: t('home.quickAccess.favorites'), 
       icon: Heart, 
       color: "bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500", 
       images: ["linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)"], 
       link: "#" 
     },
     { 
-      title: "Viral Charts", 
+      title: t('home.quickAccess.charts'), 
       icon: TrendingUp, 
       color: "bg-yellow-500", 
       images: ["linear-gradient(135deg, #eab308 0%, #a16207 100%)"], 
       link: "#" 
     },
     { 
-      title: "Künstler Entdecken", 
+      title: t('home.quickAccess.artists'), 
       images: ["/kuenstler.jpeg", "/kuenstler2.jpeg", "/kuenstler3.jpeg", "/kuenstler4.jpeg"], 
       link: "#" 
     },
     { 
-      title: "Playlists", 
+      title: t('home.quickAccess.playlists'), 
       icon: ListMusic, 
       color: "bg-teal-500", 
       images: ["linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)"], 
       link: "#" 
     },
     { 
-      title: "Radio", 
+      title: t('home.quickAccess.radio'), 
       icon: Radio, 
       color: "bg-orange-600", 
       images: ["linear-gradient(135deg, #ea580c 0%, #9a3412 100%)"], 
       link: "#" 
     }
-  ], []);
+  ], [t]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -216,7 +218,7 @@ export default function Home() {
 
       {/* Popular Genres Section */}
       <section className="px-8 relative z-10">
-        <h2 className="text-2xl font-bold text-white mb-6">Beliebte Genres</h2>
+        <h2 className="text-2xl font-bold text-white mb-6">{t('home.popularGenres')}</h2>
         <div className="flex gap-4 overflow-x-auto py-4 px-4 -mx-4 no-scrollbar">
           {GENRES.map((genre) => {
             const Icon = genre.icon;
@@ -238,9 +240,9 @@ export default function Home() {
       {/* Trending Section */}
       <section className="px-8 relative z-10 min-h-[200px]">
         <div className="flex items-end justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white hover:underline cursor-pointer">Für dich ausgewählt</h2>
+          <h2 className="text-2xl font-bold text-white hover:underline cursor-pointer">{t('home.trending')}</h2>
           <span className="text-sm font-bold text-muted hover:text-white transition-colors cursor-pointer">
-            Alle anzeigen
+            {t('home.seeAll')}
           </span>
         </div>
         
@@ -264,9 +266,9 @@ export default function Home() {
       {/* New Releases Section */}
       <section className="px-8 relative z-10 min-h-[200px]">
         <div className="flex items-end justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white hover:underline cursor-pointer">Zuletzt gehört</h2>
+          <h2 className="text-2xl font-bold text-white hover:underline cursor-pointer">{t('home.newReleases')}</h2>
           <span className="text-sm font-bold text-muted hover:text-white transition-colors cursor-pointer">
-            Alle anzeigen
+            {t('home.seeAll')}
           </span>
         </div>
         

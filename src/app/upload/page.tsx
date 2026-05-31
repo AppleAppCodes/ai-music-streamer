@@ -4,11 +4,13 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { UploadCloud, Music, Image as ImageIcon, Loader2, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const GENRES = ['Pop', 'Hip Hop', 'Electronic', 'R&B', 'Rock', 'Ambient', 'Other'];
 const MOODS = ['Happy', 'Sad', 'Energetic', 'Chill', 'Dark', 'Romantic'];
 
 export default function UploadPage() {
+  const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [genre, setGenre] = useState(GENRES[0]);
   const [mood, setMood] = useState(MOODS[0]);
@@ -110,8 +112,8 @@ export default function UploadPage() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-full">
         <CheckCircle2 className="w-24 h-24 text-green-500 mb-6 animate-pulse" />
-        <h1 className="text-3xl font-bold text-white mb-2">Upload erfolgreich!</h1>
-        <p className="text-white/60">Dein Song ist jetzt live. Du wirst weitergeleitet...</p>
+        <h1 className="text-3xl font-bold text-white mb-2">{t('upload.successTitle')}</h1>
+        <p className="text-white/60">{t('upload.successText')}</p>
       </div>
     );
   }
@@ -120,8 +122,8 @@ export default function UploadPage() {
     <div className="flex-1 overflow-y-auto pb-32">
       <div className="max-w-3xl mx-auto px-6 py-12">
         <div className="mb-10">
-          <h1 className="text-4xl font-bold text-white tracking-tight mb-2">Song hochladen</h1>
-          <p className="text-white/50">Teile deine neuesten AI-Kreationen mit der Welt.</p>
+          <h1 className="text-4xl font-bold text-white tracking-tight mb-2">{t('upload.title')}</h1>
+          <p className="text-white/50">{t('upload.subtitle')}</p>
         </div>
 
         <form onSubmit={handleUpload} className="space-y-8">
@@ -135,20 +137,20 @@ export default function UploadPage() {
           <div className="bg-white/5 border border-white/10 rounded-3xl p-8 space-y-6 backdrop-blur-md">
             
             <div>
-              <label className="block text-sm font-semibold text-white/80 mb-2">Song Titel *</label>
+              <label className="block text-sm font-semibold text-white/80 mb-2">{t('upload.songTitle')}</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                placeholder="Name deines Meisterwerks"
+                placeholder={t('upload.songTitlePlaceholder')}
                 required
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-semibold text-white/80 mb-2">Genre *</label>
+                <label className="block text-sm font-semibold text-white/80 mb-2">{t('upload.genre')}</label>
                 <select
                   value={genre}
                   onChange={(e) => setGenre(e.target.value)}
@@ -158,7 +160,7 @@ export default function UploadPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-white/80 mb-2">Mood *</label>
+                <label className="block text-sm font-semibold text-white/80 mb-2">{t('upload.mood')}</label>
                 <select
                   value={mood}
                   onChange={(e) => setMood(e.target.value)}
@@ -170,13 +172,13 @@ export default function UploadPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-white/80 mb-2">Erstellt mit (Optional)</label>
+              <label className="block text-sm font-semibold text-white/80 mb-2">{t('upload.aiTool')}</label>
               <input
                 type="text"
                 value={aiTool}
                 onChange={(e) => setAiTool(e.target.value)}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                placeholder="z.B. Suno, Udio"
+                placeholder={t('upload.aiToolPlaceholder')}
               />
             </div>
           </div>
@@ -200,10 +202,10 @@ export default function UploadPage() {
                 <Music className={`w-8 h-8 ${audioFile ? 'text-indigo-400' : 'text-white/40'}`} />
               </div>
               <h3 className="text-white font-semibold mb-1">
-                {audioFile ? audioFile.name : 'MP3 / M4A hochladen'}
+                {audioFile ? audioFile.name : t('upload.uploadAudio')}
               </h3>
               <p className="text-white/40 text-sm">
-                {audioFile ? 'Klicke zum Ändern' : 'Max 50MB'}
+                {audioFile ? t('upload.changeFile') : t('upload.uploadAudioHint')}
               </p>
             </div>
 
@@ -230,10 +232,10 @@ export default function UploadPage() {
                 <ImageIcon className={`w-8 h-8 ${coverFile ? 'text-pink-400' : 'text-white/40'}`} />
               </div>
               <h3 className="text-white font-semibold mb-1 relative z-10">
-                {coverFile ? coverFile.name : 'Cover Artwork'}
+                {coverFile ? coverFile.name : t('upload.uploadCover')}
               </h3>
               <p className="text-white/40 text-sm relative z-10">
-                {coverFile ? 'Klicke zum Ändern' : 'JPG, PNG (1:1)'}
+                {coverFile ? t('upload.changeFile') : t('upload.uploadCoverHint')}
               </p>
             </div>
 
@@ -248,12 +250,12 @@ export default function UploadPage() {
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Wird hochgeladen...
+                  {t('upload.uploadingButton')}
                 </>
               ) : (
                 <>
                   <UploadCloud className="w-5 h-5" />
-                  Song veröffentlichen
+                  {t('upload.publishButton')}
                 </>
               )}
             </span>

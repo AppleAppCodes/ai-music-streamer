@@ -3,6 +3,7 @@
 import { Play, Pause, SkipBack, SkipForward, Volume2, Mic2, Shuffle, Repeat } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return '0:00';
@@ -13,6 +14,7 @@ function formatTime(seconds: number) {
 
 export default function AudioPlayer() {
   const { currentSong, isPlaying, togglePlayPause, progress, currentTime, duration, volume, setVolume, seekTo } = usePlayer();
+  const { t } = useTranslation();
 
   if (!currentSong) return null;
 
@@ -31,7 +33,7 @@ export default function AudioPlayer() {
             {currentSong.title}
           </Link>
           <Link href={`/creator/${currentSong.creator_id}`} className="text-xs text-muted hover:text-white hover:underline truncate">
-            {currentSong.creatorName || 'Künstler'}
+            {currentSong.creatorName || t('player.creatorFallback')}
           </Link>
         </div>
       </div>

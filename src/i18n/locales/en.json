@@ -1,0 +1,46 @@
+{
+  "nav": {
+    "discover": "Discover",
+    "search": "Search",
+    "library": "Your Library",
+    "upload": "Upload",
+    "login": "Login / Sign up",
+    "logout": "Logout"
+  },
+  "home": {
+    "greeting": "Good evening",
+    "quickAccess": {
+      "favorites": "Favorite Songs",
+      "charts": "Viral Charts",
+      "artists": "Discover Artists",
+      "playlists": "Playlists",
+      "radio": "Radio"
+    },
+    "popularGenres": "Popular Genres",
+    "trending": "Selected for you",
+    "newReleases": "Recently Played",
+    "seeAll": "Show all"
+  },
+  "upload": {
+    "title": "Upload Song",
+    "subtitle": "Share your latest AI creations with the world.",
+    "songTitle": "Song Title *",
+    "songTitlePlaceholder": "Name of your masterpiece",
+    "genre": "Genre *",
+    "mood": "Mood *",
+    "aiTool": "Created with (Optional)",
+    "aiToolPlaceholder": "e.g. Suno, Udio",
+    "uploadAudio": "Upload MP3 / M4A",
+    "uploadAudioHint": "Max 50MB",
+    "uploadCover": "Cover Artwork",
+    "uploadCoverHint": "JPG, PNG (1:1)",
+    "changeFile": "Click to change",
+    "publishButton": "Publish Song",
+    "uploadingButton": "Uploading...",
+    "successTitle": "Upload successful!",
+    "successText": "Your song is now live. Redirecting..."
+  },
+  "player": {
+    "creatorFallback": "Artist"
+  }
+}

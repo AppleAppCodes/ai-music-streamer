@@ -1,0 +1,46 @@
+{
+  "nav": {
+    "discover": "Entdecken",
+    "search": "Suchen",
+    "library": "Deine Bibliothek",
+    "upload": "Hochladen",
+    "login": "Einloggen / Registrieren",
+    "logout": "Abmelden"
+  },
+  "home": {
+    "greeting": "Guten Abend",
+    "quickAccess": {
+      "favorites": "Lieblingssongs",
+      "charts": "Viral Charts",
+      "artists": "Künstler Entdecken",
+      "playlists": "Playlists",
+      "radio": "Radio"
+    },
+    "popularGenres": "Beliebte Genres",
+    "trending": "Für dich ausgewählt",
+    "newReleases": "Zuletzt gehört",
+    "seeAll": "Alle anzeigen"
+  },
+  "upload": {
+    "title": "Song hochladen",
+    "subtitle": "Teile deine neuesten AI-Kreationen mit der Welt.",
+    "songTitle": "Song Titel *",
+    "songTitlePlaceholder": "Name deines Meisterwerks",
+    "genre": "Genre *",
+    "mood": "Mood *",
+    "aiTool": "Erstellt mit (Optional)",
+    "aiToolPlaceholder": "z.B. Suno, Udio",
+    "uploadAudio": "MP3 / M4A hochladen",
+    "uploadAudioHint": "Max 50MB",
+    "uploadCover": "Cover Artwork",
+    "uploadCoverHint": "JPG, PNG (1:1)",
+    "changeFile": "Klicke zum Ändern",
+    "publishButton": "Song veröffentlichen",
+    "uploadingButton": "Wird hochgeladen...",
+    "successTitle": "Upload erfolgreich!",
+    "successText": "Dein Song ist jetzt live. Du wirst weitergeleitet..."
+  },
+  "player": {
+    "creatorFallback": "Künstler"
+  }
+}
