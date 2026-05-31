@@ -28,7 +28,9 @@ export default function AudioPlayer() {
     queue,
     queueIndex,
     playNext,
-    playPrevious
+    playPrevious,
+    isRepeating,
+    toggleRepeat
   } = usePlayer();
   const { t } = useTranslation();
 
@@ -123,7 +125,10 @@ export default function AudioPlayer() {
           >
             <SkipForward className="w-5 h-5 fill-current" />
           </button>
-          <button className="text-muted hover:text-white transition-colors">
+          <button 
+            onClick={toggleRepeat}
+            className={`transition-colors ${isRepeating ? 'text-indigo-500' : 'text-muted hover:text-white'}`}
+          >
             <Repeat className="w-4 h-4" />
           </button>
         </div>

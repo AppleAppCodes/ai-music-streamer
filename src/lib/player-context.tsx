@@ -19,6 +19,8 @@ interface PlayerContextType {
   setQueue: (songs: Song[], startIndex?: number) => void;
   playNext: () => void;
   playPrevious: () => void;
+  isRepeating: boolean;
+  toggleRepeat: () => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -32,6 +34,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [volume, setVolumeState] = useState(1);
   const [queue, setQueueState] = useState<Song[]>([]);
   const [queueIndex, setQueueIndex] = useState(-1);
+  const [isRepeating, setIsRepeating] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -131,14 +134,20 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [playSong, queue, queueIndex]);
 
-  // Handle song ended to play next
+  // Handle song ended to play next or repeat
   useEffect(() => {
     const onSongEnded = () => {
-      playNext();
+      if (isRepeating && audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(console.error);
+        setIsPlaying(true);
+      } else {
+        playNext();
+      }
     };
     window.addEventListener('player-song-ended', onSongEnded);
     return () => window.removeEventListener('player-song-ended', onSongEnded);
-  }, [playNext]);
+  }, [playNext, isRepeating]);
 
   const togglePlayPause = () => {
     if (!currentSong) return;
@@ -176,7 +185,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       seekTo,
       setQueue,
       playNext,
-      playPrevious
+      playPrevious,
+      isRepeating,
+      toggleRepeat: () => setIsRepeating(r => !r),
     }}>
       {children}
     </PlayerContext.Provider>

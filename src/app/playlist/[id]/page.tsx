@@ -361,7 +361,11 @@ export default function PlaylistPage() {
                   <div 
                     key={song.id}
                     onClick={() => {
-                      if (currentSong?.id !== song.id) playSong({ ...song, creatorName: displayArtist });
+                    if (currentSong?.id !== song.id) {
+                      const queueWithNames = songs.map(s => ({ ...s, creatorName: s.artist_name || 'Creator' }));
+                      setQueue(queueWithNames, index);
+                      playSong({ ...song, creatorName: displayArtist });
+                    }
                       else togglePlayPause();
                     }}
                     className="grid grid-cols-[16px_1fr_150px_40px] md:grid-cols-[24px_1fr_200px_80px_40px] gap-4 px-4 py-2.5 rounded-lg hover:bg-white/5 group cursor-pointer items-center transition-colors"

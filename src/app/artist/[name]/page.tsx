@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
 import { Play, Pause, MoreHorizontal, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2 } from 'lucide-react';
@@ -20,6 +20,7 @@ function formatDuration(seconds: number | null | undefined): string {
 
 export default function ArtistPage() {
   const params = useParams();
+  const router = useRouter();
   // Ensure we decode the URL encoded name properly
   const artistName = decodeURIComponent(params.name as string);
   
@@ -109,7 +110,7 @@ export default function ArtistPage() {
   const toggleFollow = async () => {
     if (!user) {
       // Redirect to login if not logged in
-      window.location.href = '/login';
+      router.push('/login');
       return;
     }
     setFollowLoading(true);
@@ -325,7 +326,13 @@ export default function ArtistPage() {
                   <div 
                     key={song.id}
                     onClick={() => {
-                      if (currentSong?.id !== song.id) playSong({ ...song, creatorName: artistName });
+                      if (currentSong?.id !== song.id) {
+                        const queueWithNames = songs.map(s => ({ ...s, creatorName: artistName }));
+                        setQueue(queueWithNames, index);
+                        playSong({ ...song, creatorName: artistName });
+                      } else {
+                        togglePlayPause();
+                      }
                     }}
                     className="grid grid-cols-[16px_1fr_120px_40px] md:grid-cols-[24px_1fr_150px_40px] gap-4 px-4 py-2 rounded-lg hover:bg-white/5 group cursor-pointer items-center transition-colors"
                   >

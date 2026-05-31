@@ -8,10 +8,11 @@ interface SongCardProps {
   song: Song;
   creatorName?: string;
   className?: string;
+  contextQueue?: Song[];
 }
 
-export default function SongCard({ song, creatorName = 'Creator', className = '' }: SongCardProps) {
-  const { playSong, currentSong, isPlaying, togglePlayPause } = usePlayer();
+export default function SongCard({ song, creatorName = 'Creator', className = '', contextQueue }: SongCardProps) {
+  const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
   const displayArtist = song.artist_name || creatorName;
 
@@ -34,6 +35,13 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
               if (currentSong?.id === song.id) {
                 togglePlayPause();
               } else {
+                if (contextQueue && contextQueue.length > 0) {
+                  const idx = contextQueue.findIndex(s => s.id === song.id);
+                  if (idx !== -1) {
+                    const queueWithNames = contextQueue.map(s => ({ ...s, creatorName: s.artist_name || displayArtist }));
+                    setQueue(queueWithNames, idx);
+                  }
+                }
                 playSong({ ...song, creatorName: displayArtist });
               }
             }}

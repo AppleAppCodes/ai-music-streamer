@@ -232,7 +232,13 @@ export default function LikedSongsPage() {
                 <div 
                   key={song.id}
                   onClick={() => {
-                    if (currentSong?.id !== song.id) playSong({ ...song, creatorName: displayArtist });
+                    if (currentSong?.id !== song.id) {
+                      const queueWithNames = sortedSongs.map(s => ({ ...s, creatorName: s.artist_name || t('player.creatorFallback') }));
+                      setQueue(queueWithNames, index);
+                      playSong({ ...song, creatorName: displayArtist });
+                    } else {
+                      togglePlayPause();
+                    }
                   }}
                   className={`grid ${viewMode === 'list' ? 'grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px] py-3' : 'grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px] py-1.5'} gap-4 px-4 rounded-lg hover:bg-white/5 group cursor-pointer items-center transition-colors`}
                 >

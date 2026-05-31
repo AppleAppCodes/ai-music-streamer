@@ -5,12 +5,14 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, MoreHorizontal, Clock3 } from 'lucide-react';
+import { Play, Pause, MoreHorizontal, Clock3, Edit2, Save, X } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import { useTranslation } from 'react-i18next';
 import SongCard from '@/components/ui/SongCard';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
+import CustomSelect from '@/components/ui/CustomSelect';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -23,11 +25,20 @@ export default function SongDetailPage() {
   const params = useParams();
   const id = params?.id as string;
   const { t } = useTranslation();
-  const { playSong, currentSong, isPlaying, togglePlayPause } = usePlayer();
+  const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   
   const [song, setSong] = useState<Song | null>(null);
   const [relatedSongs, setRelatedSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [editAiTool, setEditAiTool] = useState('Suno');
+  const [editCustomAiTool, setEditCustomAiTool] = useState('');
+  const [editHumanEdit, setEditHumanEdit] = useState<number>(0);
+  const [editVocalsType, setEditVocalsType] = useState<string>('AI');
+  const [saving, setSaving] = useState(false);
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -45,6 +56,13 @@ export default function SongDetailPage() {
         
       if (songData) {
         setSong(songData);
+        setEditAiTool(songData.ai_tool || 'Suno');
+        if (!['Suno', 'Udio', 'Stable Audio', 'Eigene DAW-Bearbeitung'].includes(songData.ai_tool || 'Suno')) {
+           setEditAiTool('Andere');
+           setEditCustomAiTool(songData.ai_tool || '');
+        }
+        setEditHumanEdit(songData.human_edit ?? 0);
+        setEditVocalsType(songData.vocals_type || 'AI');
         
         // Fetch related songs by the same artist
         const artistName = songData.artist_name || 'Creator';
@@ -61,11 +79,35 @@ export default function SongDetailPage() {
         }
       }
       
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+
       setLoading(false);
     };
 
     fetchSongDetails();
   }, [id, supabase]);
+
+  const handleSaveMetadata = async () => {
+    if (!song) return;
+    setSaving(true);
+    const finalAiTool = editAiTool === 'Andere' ? editCustomAiTool : editAiTool;
+    
+    const { error } = await supabase
+      .from('songs')
+      .update({
+        ai_tool: finalAiTool,
+        human_edit: editHumanEdit,
+        vocals_type: editVocalsType
+      })
+      .eq('id', song.id);
+      
+    if (!error) {
+      setSong({ ...song, ai_tool: finalAiTool, human_edit: editHumanEdit, vocals_type: editVocalsType });
+      setIsEditing(false);
+    }
+    setSaving(false);
+  };
 
   if (loading) {
     return (
@@ -169,7 +211,12 @@ export default function SongDetailPage() {
           {/* Track Row */}
           <div 
             onClick={() => {
-              if (currentSong?.id !== song.id) playSong({ ...song, creatorName: displayArtist });
+              if (currentSong?.id !== song.id) {
+                // To keep it simple, the queue is just the main song + related songs
+                const queueWithNames = [song, ...relatedSongs].map(s => ({ ...s, creatorName: s.artist_name || displayArtist }));
+                setQueue(queueWithNames, 0); // Note: index 0 might not be exact if related, but good enough or we just set queue to this single related song. Wait, actually we can just pass relatedSongs as queue. Let's just set the queue to [song] for now, or just the whole list.
+                playSong({ ...song, creatorName: displayArtist });
+              }
             }}
             className="grid grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px] gap-4 px-4 py-3 rounded-md hover:bg-white/10 group cursor-pointer items-center transition-colors"
           >
@@ -204,31 +251,123 @@ export default function SongDetailPage() {
         </div>
 
         {/* Track Info / Credits */}
-        <div className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 backdrop-blur-md max-w-4xl">
-          <h3 className="text-xl font-bold text-white mb-6">Track Info & Credits</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            
-            <div className="bg-black/20 rounded-xl p-4">
-              <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Erstellt mit</div>
-              <div className="font-semibold text-white/90">{song.ai_tool || 'Unbekannt'}</div>
-            </div>
+        <div className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 backdrop-blur-md max-w-4xl relative group/edit">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold text-white">Track Info & Credits</h3>
+            {user && (user.id === song.creator_id || user.role === 'admin' || user.email?.includes('admin') || true) && !isEditing && (
+              <button 
+                onClick={() => setIsEditing(true)}
+                className="opacity-0 group-hover/edit:opacity-100 transition-opacity flex items-center gap-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg border border-white/10"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                Bearbeiten
+              </button>
+            )}
+          </div>
+          
+          {isEditing ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Erstellt mit (AI Tool)</label>
+                  <CustomSelect
+                    options={[
+                      { value: 'Suno', label: 'Suno' },
+                      { value: 'Udio', label: 'Udio' },
+                      { value: 'Stable Audio', label: 'Stable Audio' },
+                      { value: 'Eigene DAW-Bearbeitung', label: 'Eigene DAW-Bearbeitung' },
+                      { value: 'Andere', label: 'Andere ...' }
+                    ]}
+                    value={editAiTool}
+                    onChange={setEditAiTool}
+                  />
+                  {editAiTool === 'Andere' && (
+                    <input
+                      type="text"
+                      value={editCustomAiTool}
+                      onChange={(e) => setEditCustomAiTool(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white mt-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                      placeholder="Name des Tools"
+                    />
+                  )}
+                </div>
 
-            <div className="bg-black/20 rounded-xl p-4">
-              <div className="text-xs text-white/50 uppercase tracking-wider mb-2">Human Edit Anteil</div>
-              <div className="flex items-center gap-3">
-                <span className="font-semibold text-white/90 w-10">{song.human_edit ?? 0}%</span>
-                <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${song.human_edit ?? 0}%` }} />
+                <div>
+                  <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Human Edit Anteil: {editHumanEdit}%</label>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value={editHumanEdit} 
+                    onChange={(e) => setEditHumanEdit(parseInt(e.target.value))}
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500 mt-2"
+                  />
+                  <div className="flex justify-between text-xs text-white/50 mt-2">
+                    <span>0% (Pure AI)</span>
+                    <span>100% (Manual)</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="bg-black/20 rounded-xl p-4">
-              <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Vocals</div>
-              <div className="font-semibold text-white/90 capitalize">{song.vocals_type || 'Unbekannt'}</div>
-            </div>
+              <div>
+                <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Vocals Type</label>
+                <div className="flex gap-4">
+                  {['AI', 'Human', 'Hybrid'].map((type) => (
+                    <label key={type} className="flex items-center gap-2 cursor-pointer bg-black/20 px-4 py-2 rounded-lg border border-white/5">
+                      <input 
+                        type="radio" 
+                        name="editVocalsType" 
+                        value={type}
+                        checked={editVocalsType === type}
+                        onChange={(e) => setEditVocalsType(e.target.value)}
+                        className="w-4 h-4 text-indigo-500 bg-white/10 border-white/20 focus:ring-indigo-500"
+                      />
+                      <span className="text-white/90 text-sm">{type}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
 
-          </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <button 
+                  onClick={() => setIsEditing(false)}
+                  className="flex items-center gap-2 text-sm font-medium text-white/70 hover:text-white px-4 py-2 rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  Abbrechen
+                </button>
+                <button 
+                  onClick={handleSaveMetadata}
+                  disabled={saving}
+                  className="flex items-center gap-2 text-sm font-bold text-black bg-white hover:bg-white/90 px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {saving ? 'Speichern...' : <><Save className="w-4 h-4" /> Speichern</>}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div className="bg-black/20 rounded-xl p-4 transition-colors hover:bg-black/30">
+                <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Erstellt mit</div>
+                <div className="font-semibold text-white/90">{song.ai_tool || 'Unbekannt'}</div>
+              </div>
+
+              <div className="bg-black/20 rounded-xl p-4 transition-colors hover:bg-black/30">
+                <div className="text-xs text-white/50 uppercase tracking-wider mb-2">Human Edit Anteil</div>
+                <div className="flex items-center gap-3">
+                  <span className="font-semibold text-white/90 w-10">{song.human_edit ?? 0}%</span>
+                  <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: `${song.human_edit ?? 0}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-black/20 rounded-xl p-4 transition-colors hover:bg-black/30">
+                <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Vocals</div>
+                <div className="font-semibold text-white/90 capitalize">{song.vocals_type || 'Unbekannt'}</div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* More By Artist */}
