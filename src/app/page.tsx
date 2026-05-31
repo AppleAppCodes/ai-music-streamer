@@ -145,7 +145,7 @@ export default function Home() {
     },
     { 
       title: t('home.quickAccess.artists'), 
-      color: "bg-blue-600",
+      color: "bg-white/20 backdrop-blur-md border border-white/30",
       images: ["/kuenstler.jpeg", "/kuenstler2.jpeg", "/kuenstler3.jpeg", "/kuenstler4.jpeg"], 
       link: "/artists" 
     },
