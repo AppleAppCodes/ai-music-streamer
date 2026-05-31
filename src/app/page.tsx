@@ -7,20 +7,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 
-const GENRES = [
-  { name: 'Hip-Hop', icon: Mic2, color: 'bg-orange-500' },
-  { name: 'Pop', icon: Sparkles, color: 'bg-pink-500' },
-  { name: 'RnB', icon: Heart, color: 'bg-purple-500' },
-  { name: 'Afrobeat', icon: Globe, color: 'bg-emerald-500' },
-  { name: 'EDM', icon: Zap, color: 'bg-cyan-500' },
-  { name: 'Chillhop', icon: Coffee, color: 'bg-amber-700' },
-  { name: 'Sleep', icon: Moon, color: 'bg-indigo-800' },
-  { name: 'Country', icon: Guitar, color: 'bg-amber-600' },
-  { name: 'Latin', icon: Flame, color: 'bg-red-500' },
-  { name: 'K-Pop', icon: Star, color: 'bg-rose-400' },
-  { name: 'Metal', icon: Skull, color: 'bg-stone-600' },
-  { name: 'Classic', icon: Music, color: 'bg-blue-600' }
-];
+import { GENRES } from '@/lib/constants';
 
 function ImageSlideshow({ images, currentIndex }: { images: string[], currentIndex: number }) {
   if (!images || images.length === 0) return null;

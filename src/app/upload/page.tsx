@@ -6,15 +6,14 @@ import { createClient } from '@/utils/supabase/client';
 import { UploadCloud, Music, Image as ImageIcon, Loader2, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ArtistAutocomplete from '@/components/ui/ArtistAutocomplete';
-
-const GENRES = ['Pop', 'Hip Hop', 'Electronic', 'R&B', 'Rock', 'Ambient', 'Other'];
-const MOODS = ['Happy', 'Sad', 'Energetic', 'Chill', 'Dark', 'Romantic'];
+import CustomSelect from '@/components/ui/CustomSelect';
+import { GENRES, MOODS } from '@/lib/constants';
 
 export default function UploadPage() {
   const { t } = useTranslation();
   const [artistName, setArtistName] = useState('');
   const [title, setTitle] = useState('');
-  const [genre, setGenre] = useState(GENRES[0]);
+  const [genre, setGenre] = useState(GENRES[0].name);
   const [mood, setMood] = useState(MOODS[0]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -159,23 +158,19 @@ export default function UploadPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-white/80 mb-2">{t('upload.genre')}</label>
-                <select
+                <CustomSelect
+                  options={GENRES.map(g => ({ value: g.name, label: g.name }))}
                   value={genre}
-                  onChange={(e) => setGenre(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none"
-                >
-                  {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
-                </select>
+                  onChange={setGenre}
+                />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-white/80 mb-2">{t('upload.mood')}</label>
-                <select
+                <CustomSelect
+                  options={MOODS.map(m => ({ value: m, label: m }))}
                   value={mood}
-                  onChange={(e) => setMood(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none"
-                >
-                  {MOODS.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
+                  onChange={setMood}
+                />
               </div>
             </div>
 
