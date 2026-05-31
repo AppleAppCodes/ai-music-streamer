@@ -186,7 +186,7 @@ export default function AudioPlayer() {
     <div className="fixed bottom-0 left-0 right-0 h-24 bg-surface border-t border-white/5 px-4 flex items-center justify-between z-50">
       
       {/* Song Info */}
-      <div className="flex items-center gap-4 w-1/3 min-w-[180px]">
+      <div className="flex items-center gap-4 w-[30%] min-w-[180px]">
         {currentSong ? (
           <>
             <img src={currentSong.cover_url} alt={currentSong.title} className="w-14 h-14 rounded-md object-cover shadow-md" />
@@ -211,7 +211,7 @@ export default function AudioPlayer() {
       </div>
 
       {/* Controls */}
-      <div className={`flex flex-col items-center max-w-[40%] w-full ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`}>
+      <div className={`flex flex-col items-center flex-1 max-w-2xl px-4 ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="flex items-center gap-6 mb-2">
           <button className="text-muted hover:text-white transition-colors">
             <Shuffle className="w-4 h-4" />
@@ -245,8 +245,8 @@ export default function AudioPlayer() {
         </div>
         
         {/* Progress Bar */}
-        <div className="flex items-center gap-2 w-full max-w-md">
-          <span className="text-xs text-muted font-medium w-8 text-right">{formatTime(currentTime)}</span>
+        <div className="flex items-center gap-2 w-full">
+          <span className="text-xs text-muted font-medium w-10 text-right">{formatTime(currentTime)}</span>
           <input
             type="range"
             min="0"
@@ -260,12 +260,12 @@ export default function AudioPlayer() {
             }}
             onChange={(e) => seekTo(Number(e.currentTarget.value))}
           />
-          <span className="text-xs text-muted font-medium w-8">{formatTime(duration)}</span>
+          <span className="text-xs text-muted font-medium w-10">{formatTime(duration)}</span>
         </div>
       </div>
 
       {/* Extra Controls */}
-      <div className={`relative flex min-w-0 w-1/3 max-w-[360px] items-center justify-end gap-3 pr-1 ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`} ref={menuRef}>
+      <div className={`relative flex items-center justify-end gap-3 w-[30%] min-w-[180px] ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`} ref={menuRef}>
         <button
           type="button"
           onClick={() => {
