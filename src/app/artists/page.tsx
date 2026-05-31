@@ -141,7 +141,7 @@ export default function ArtistsPage() {
       <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-black/10 via-[#0A0A0A]/60 to-[#0A0A0A] pointer-events-none z-0" />
       
       {/* Header Content */}
-      <div className="relative pt-24 px-6 md:px-10 pb-8 flex flex-col md:flex-row gap-8 items-end z-10">
+      <div className="relative group pt-24 px-6 md:px-10 pb-8 flex flex-col md:flex-row gap-8 items-end z-10">
         
         {/* Admin Editable Overlay */}
         {user && (
