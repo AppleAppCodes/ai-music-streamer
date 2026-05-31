@@ -69,9 +69,13 @@ export default function ArtistPage() {
         });
         
       if (files && files.length > 0) {
-        // Find exact match (e.g. laz1tunes.jpg or laz1tunes.png)
-        const bannerFile = files.find(f => f.name.startsWith(sanitizedName));
-        if (bannerFile) {
+        // Find all matches for this artist
+        const bannerFiles = files.filter(f => f.name.startsWith(sanitizedName));
+        if (bannerFiles.length > 0) {
+          // Sort by newest first, so if they uploaded an mp4 after a jpg, we use the mp4
+          bannerFiles.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+          const bannerFile = bannerFiles[0];
+          
           const { data } = supabase.storage
             .from('covers')
             .getPublicUrl(`banners/${bannerFile.name}`);
