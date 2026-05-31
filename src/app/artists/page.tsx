@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Mic2, Play, Users, Edit2, Loader2 } from 'lucide-react';
+import { Mic2, Play, Users, Edit2, Loader2, Music } from 'lucide-react';
 import Link from 'next/link';
 import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -192,34 +192,38 @@ export default function ArtistsPage() {
       {/* Grid Content */}
       <div className="relative bg-black/40 backdrop-blur-xl px-6 md:px-10 py-10 min-h-screen border-t border-white/5">
         {artists.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {artists.map((artist) => (
               <Link 
                 href={`/artist/${encodeURIComponent(artist.name)}`} 
                 key={artist.name}
-                className="group bg-[#181818] rounded-xl p-5 hover:bg-[#282828] transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-black/50 border border-white/5"
+                className="group relative h-64 md:h-72 rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-[0_0_40px_rgba(168,85,247,0.3)] hover:-translate-y-2 border border-white/10"
               >
-                <div className="relative mb-5 w-full aspect-square rounded-full overflow-hidden shadow-lg bg-black">
-                  <img 
-                    src={artist.coverUrl} 
-                    alt={artist.name} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                  />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors" />
-                  
-                  {/* Play Button Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                    <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-2xl hover:scale-105 transition-transform">
-                      <Play className="w-6 h-6 text-black fill-current ml-1" />
-                    </div>
+                {/* Background Image */}
+                <img 
+                  src={artist.coverUrl} 
+                  alt={artist.name} 
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                />
+                
+                {/* Premium Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500" />
+                <div className="absolute inset-0 bg-indigo-500/10 mix-blend-overlay group-hover:bg-purple-500/20 transition-colors duration-500" />
+                
+                {/* Content */}
+                <div className="absolute inset-0 p-8 flex flex-col justify-end translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                  <h3 className="font-black text-3xl md:text-4xl text-white mb-2 tracking-tight drop-shadow-2xl">{artist.name}</h3>
+                  <div className="flex items-center gap-2 text-white/70 font-medium">
+                    <Music className="w-4 h-4" />
+                    <span>{artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}</span>
                   </div>
                 </div>
-                
-                <h3 className="font-bold text-white text-lg truncate mb-1">{artist.name}</h3>
-                
-                <div className="flex items-center justify-between text-xs font-medium text-white/50">
-                  <span>{artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}</span>
-                  <span>{artist.plays.toLocaleString()} Streams</span>
+
+                {/* Hover Play Button Overlay */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-90 group-hover:scale-100">
+                  <div className="w-20 h-20 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center shadow-2xl hover:bg-white/20 hover:scale-105 transition-all">
+                    <Play className="w-8 h-8 text-white fill-white ml-1" />
+                  </div>
                 </div>
               </Link>
             ))}
