@@ -38,7 +38,7 @@ export default function SettingsPage() {
       // Load metadata
       const meta = session.user.user_metadata || {};
       setUsername(meta.username || session.user.email?.split('@')[0] || 'User');
-      setAvatarUrl(meta.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80');
+      setAvatarUrl(meta.avatar_url || '');
       setSubscription(meta.subscription || 'Free');
       
       setLoading(false);
@@ -74,6 +74,8 @@ export default function SettingsPage() {
       });
       
       if (updateError) throw updateError;
+      
+      router.refresh();
       
     } catch (err: any) {
       console.error('Error uploading avatar:', err);
@@ -141,7 +143,13 @@ export default function SettingsPage() {
               {/* Avatar Upload */}
               <div className="flex flex-col items-center gap-4">
                 <div className="relative w-32 h-32 rounded-full overflow-hidden bg-black border-4 border-[#282828] shadow-xl group">
-                  <img src={avatarUrl} alt="Profilbild" className="w-full h-full object-cover" />
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Profilbild" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-purple-900/20 flex flex-col items-center justify-center text-purple-400">
+                      <User className="w-10 h-10 mb-2 opacity-50" />
+                    </div>
+                  )}
                   
                   <div 
                     onClick={() => fileInputRef.current?.click()}

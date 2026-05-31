@@ -15,8 +15,8 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
-  // Extract avatar and username from user metadata, fallback to defaults
-  const avatarUrl = user?.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80';
+  // Extract avatar and username from user metadata, fallback to empty
+  const avatarUrl = user?.user_metadata?.avatar_url || '';
   const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
 
   useEffect(() => {
@@ -35,7 +35,13 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
         onClick={() => setIsOpen(!isOpen)}
         className="w-8 h-8 rounded-full overflow-hidden border border-purple-500/30 hover:border-purple-500 transition-all focus:outline-none focus:ring-2 focus:ring-purple-500/50"
       >
-        <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-purple-900/40 flex items-center justify-center text-purple-300">
+            <User className="w-4 h-4" />
+          </div>
+        )}
       </button>
 
       {isOpen && (

@@ -14,7 +14,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
   const { t } = useTranslation();
 
   return (
-    <header className="h-16 w-full flex items-center justify-between px-6 sticky top-0 z-10 glass-panel border-b border-white/5">
+    <header className="h-16 w-full flex items-center justify-between px-6 sticky top-0 z-50 glass-panel border-b border-white/5">
       {/* Left side spacer for balance */}
       <div className="w-1/3 flex items-center"></div>
 
