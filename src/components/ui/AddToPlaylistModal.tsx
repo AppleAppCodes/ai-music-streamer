@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { X, Plus, Music, Loader2, Check, Trash2 } from 'lucide-react';
+import { X, Plus, Minus, Music, Loader2, Check } from 'lucide-react';
 
 interface AddToPlaylistModalProps {
   songId: string;
@@ -203,7 +203,7 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
                   className="w-full flex items-center gap-4 p-3 hover:bg-white/5 rounded-lg transition-colors text-left group disabled:opacity-50"
                 >
                   {alreadyIn.has(playlist.id) ? (
-                    <Plus className="w-5 h-5 text-red-400" />
+                    <Minus className="w-5 h-5 text-red-400" />
                   ) : (
                     <Plus className="w-5 h-5 text-white" />
                   )}

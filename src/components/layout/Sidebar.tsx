@@ -30,7 +30,7 @@ export default function Sidebar() {
             <TrendingUp className="w-5 h-5" />
             Viral Charts
           </Link>
-          <Link href="#" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
+          <Link href="/artists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
             <Mic2 className="w-5 h-5" />
             {t('home.quickAccess.artists')}
           </Link>
