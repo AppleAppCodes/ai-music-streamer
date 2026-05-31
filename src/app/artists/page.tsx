@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Mic2, Play, Users, ChevronRight } from 'lucide-react';
+import { Mic2, Play, Users, ChevronRight, Edit2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface ArtistStat {
@@ -16,11 +16,33 @@ export default function ArtistsPage() {
   const [artists, setArtists] = useState<ArtistStat[]>([]);
   const [loading, setLoading] = useState(true);
   
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const supabase = createClient();
 
   useEffect(() => {
     const fetchArtists = async () => {
       setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+
+      // Fetch background video
+      const { data: files } = await supabase.storage
+        .from('covers')
+        .list('discover');
+        
+      if (files && files.length > 0) {
+        const videoFile = files.find(f => f.name.startsWith('background-video'));
+        if (videoFile) {
+          const { data: urlData } = supabase.storage
+            .from('covers')
+            .getPublicUrl(`discover/${videoFile.name}`);
+          setVideoUrl(urlData.publicUrl);
+        }
+      }
       
       const { data, error } = await supabase
         .from('songs')
@@ -55,6 +77,34 @@ export default function ArtistsPage() {
     fetchArtists();
   }, [supabase]);
 
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingVideo(true);
+    const ext = file.name.split('.').pop();
+    const path = `discover/background-video.${ext}`;
+
+    try {
+      const { error } = await supabase.storage
+        .from('covers')
+        .upload(path, file, { upsert: true });
+
+      if (error) throw error;
+
+      const { data } = supabase.storage
+        .from('covers')
+        .getPublicUrl(path);
+        
+      setVideoUrl(`${data.publicUrl}?t=${Date.now()}`);
+    } catch (err: any) {
+      console.error('Error uploading video:', err);
+      alert('Fehler beim Hochladen des Videos: ' + err.message);
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
@@ -64,12 +114,56 @@ export default function ArtistsPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
-      {/* Background Gradient Header */}
-      <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-[#0A0A0A] blur-3xl pointer-events-none" />
+    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32 group">
+      {/* Background Gradient Header or Video */}
+      <div className="absolute top-0 left-0 right-0 h-[500px] overflow-hidden pointer-events-none z-0">
+        {videoUrl ? (
+          <video 
+            src={videoUrl} 
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            className="w-full h-full object-cover opacity-40"
+            style={{ 
+              maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
+            }}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-[#0A0A0A] blur-3xl" />
+        )}
+      </div>
+      <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-black/10 via-[#0A0A0A]/60 to-[#0A0A0A] pointer-events-none z-0" />
       
       {/* Header Content */}
-      <div className="relative pt-24 px-6 md:px-10 pb-8 flex flex-col md:flex-row gap-8 items-end">
+      <div className="relative pt-24 px-6 md:px-10 pb-8 flex flex-col md:flex-row gap-8 items-end z-10">
+        
+        {/* Admin Editable Overlay */}
+        {user && (
+          <div className="absolute top-10 right-10 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+            <input 
+              type="file" 
+              accept="video/*" 
+              ref={fileInputRef} 
+              className="hidden" 
+              onChange={handleVideoUpload}
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingVideo}
+              className="flex items-center gap-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium"
+            >
+              {isUploadingVideo ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Edit2 className="w-4 h-4" />
+              )}
+              Hintergrundvideo ändern
+            </button>
+          </div>
+        )}
+
         <div className="w-40 h-40 md:w-56 md:h-56 flex-shrink-0 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 border border-white/10 backdrop-blur-md flex items-center justify-center">
           <Mic2 className="w-20 h-20 text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
         </div>
@@ -110,8 +204,10 @@ export default function ArtistsPage() {
                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors" />
                   
                   {/* Play Button Overlay */}
-                  <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-xl translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                    <Play className="w-5 h-5 text-black fill-current ml-1" />
+                  <div className="absolute inset-0 flex items-center justify-center translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                    <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-2xl hover:scale-105 transition-transform">
+                      <Play className="w-6 h-6 text-black fill-current ml-1" />
+                    </div>
                   </div>
                 </div>
                 
