@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
-import { Turnstile } from '@marsidev/react-turnstile';
+import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
+import { useRef } from 'react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
   
   const router = useRouter();
   const supabase = createClient();
@@ -58,6 +60,8 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       setError(err.message);
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
     } finally {
       setLoading(false);
     }
@@ -123,6 +127,7 @@ export default function LoginPage() {
 
             <div className="flex justify-center my-4">
               <Turnstile 
+                ref={turnstileRef}
                 siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'} 
                 onSuccess={(token) => setCaptchaToken(token)}
                 options={{ theme: 'dark' }}
