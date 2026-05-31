@@ -1,65 +1,291 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
+import SongCard from '@/components/ui/SongCard';
+import { Play, Mic2, Sparkles, Heart, Globe, Zap, Guitar, Flame, Star, Skull, Music, TrendingUp, ListMusic, Coffee, Moon, Radio } from 'lucide-react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+
+const GENRES = [
+  { name: 'Hip-Hop', icon: Mic2, color: 'bg-orange-500' },
+  { name: 'Pop', icon: Sparkles, color: 'bg-pink-500' },
+  { name: 'RnB', icon: Heart, color: 'bg-purple-500' },
+  { name: 'Afrobeat', icon: Globe, color: 'bg-emerald-500' },
+  { name: 'EDM', icon: Zap, color: 'bg-cyan-500' },
+  { name: 'Chillhop', icon: Coffee, color: 'bg-amber-700' },
+  { name: 'Sleep', icon: Moon, color: 'bg-indigo-800' },
+  { name: 'Country', icon: Guitar, color: 'bg-amber-600' },
+  { name: 'Latin', icon: Flame, color: 'bg-red-500' },
+  { name: 'K-Pop', icon: Star, color: 'bg-rose-400' },
+  { name: 'Metal', icon: Skull, color: 'bg-stone-600' },
+  { name: 'Classic', icon: Music, color: 'bg-blue-600' }
+];
+
+function ImageSlideshow({ images, currentIndex }: { images: string[], currentIndex: number }) {
+  if (!images || images.length === 0) return null;
+  return (
+    <>
+      {images.map((img, idx) => (
+        <img 
+          key={img}
+          src={img}
+          alt={`Slide ${idx}`}
+          className={`w-full h-full object-cover absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+            idx === currentIndex ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+      ))}
+    </>
+  );
+}
 
 export default function Home() {
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [slideIndex, setSlideIndex] = useState(0);
+
+  const [trendingSongs, setTrendingSongs] = useState<any[]>([]);
+  const [newReleases, setNewReleases] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadMusic() {
+      // Fetch trending songs (ordered by plays)
+      const { data: trending } = await supabase
+        .from('songs')
+        .select('*, profiles(username)')
+        .order('plays', { ascending: false })
+        .limit(4);
+        
+      if (trending) {
+        setTrendingSongs(trending.map(song => ({
+          ...song,
+          creatorName: song.profiles?.username || 'Unknown'
+        })));
+      }
+
+      // Fetch new releases (ordered by created_at)
+      const { data: recent } = await supabase
+        .from('songs')
+        .select('*, profiles(username)')
+        .order('created_at', { ascending: false })
+        .limit(4);
+
+      if (recent) {
+        setNewReleases(recent.map(song => ({
+          ...song,
+          creatorName: song.profiles?.username || 'Unknown'
+        })));
+      }
+
+      setIsLoading(false);
+    }
+    loadMusic();
+  }, []);
+
+  const greeting = "Guten Abend";
+
+  const quickAccessItems = useMemo(() => [
+    { 
+      title: "Lieblingssongs", 
+      icon: Heart, 
+      color: "bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500", 
+      images: ["linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)"], 
+      link: "#" 
+    },
+    { 
+      title: "Viral Charts", 
+      icon: TrendingUp, 
+      color: "bg-yellow-500", 
+      images: ["linear-gradient(135deg, #eab308 0%, #a16207 100%)"], 
+      link: "#" 
+    },
+    { 
+      title: "Künstler Entdecken", 
+      images: ["/kuenstler.jpeg", "/kuenstler2.jpeg", "/kuenstler3.jpeg", "/kuenstler4.jpeg"], 
+      link: "#" 
+    },
+    { 
+      title: "Playlists", 
+      icon: ListMusic, 
+      color: "bg-teal-500", 
+      images: ["linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)"], 
+      link: "#" 
+    },
+    { 
+      title: "Radio", 
+      icon: Radio, 
+      color: "bg-orange-600", 
+      images: ["linear-gradient(135deg, #ea580c 0%, #9a3412 100%)"], 
+      link: "#" 
+    }
+  ], []);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (hoveredItem) {
+      const item = quickAccessItems.find(i => i.title === hoveredItem);
+      if (item && item.images && item.images.length > 1) {
+        setSlideIndex(1); // instant first transition
+        interval = setInterval(() => {
+          setSlideIndex((prev) => (prev + 1) % item.images!.length);
+        }, 1500);
+      } else {
+        setSlideIndex(0);
+      }
+    } else {
+      setSlideIndex(0);
+    }
+    return () => clearInterval(interval);
+  }, [hoveredItem, quickAccessItems]);
+
+  const activeItem = quickAccessItems.find(i => i.title === hoveredItem);
+  const hoveredBg = activeItem && activeItem.images ? activeItem.images[activeItem.images.length > 1 ? slideIndex : 0] : null;
+
+  const allBackgroundImages = useMemo(() => {
+    return Array.from(new Set(quickAccessItems.flatMap(item => item.images || [])));
+  }, [quickAccessItems]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="relative flex flex-col gap-10 pb-12 pt-6 min-h-screen">
+      
+      {/* Dynamic Blurred Backgrounds */}
+      <div className="absolute top-0 left-0 w-full h-[500px] pointer-events-none z-0 overflow-hidden">
+        
+        {/* Default Ambient Purple Glow */}
+        <div 
+          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out blur-[60px] z-0 ${hoveredBg ? 'opacity-0' : 'opacity-60'}`}
+          style={{ backgroundImage: "linear-gradient(135deg, #4f46e5 0%, #312e81 100%)" }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black z-10 opacity-50" />
+        
+        {allBackgroundImages.map((img) => {
+          const isUrl = img.startsWith('/') || img.startsWith('http');
+          return (
+            <div 
+              key={img}
+              className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out blur-[60px] z-0 ${
+                img === hoveredBg ? 'opacity-80' : 'opacity-0'
+              }`}
+              style={{ backgroundImage: isUrl ? `url("${img}")` : img }}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          );
+        })}
+
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/80 to-black z-20" />
+      </div>
+
+      {/* Quick Access / Greeting Section */}
+      <section className="px-8 relative z-10">
+        <h1 className="text-3xl font-bold text-white mb-6 drop-shadow-md">{greeting}</h1>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {quickAccessItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.title}
+                href={item.link}
+                className="group flex items-center bg-white/10 hover:bg-white/20 transition-colors rounded-md overflow-hidden cursor-pointer shadow-lg backdrop-blur-sm border border-white/5"
+                onMouseEnter={() => setHoveredItem(item.title)}
+                onMouseLeave={() => setHoveredItem(null)}
+              >
+                <div className={`w-16 h-16 shrink-0 relative shadow-md flex items-center justify-center ${item.color || 'bg-black'}`}>
+                  {Icon ? (
+                    <Icon 
+                      className="w-8 h-8 text-white opacity-90 relative z-10" 
+                      fill={item.title === "Lieblingssongs" ? "currentColor" : "none"}
+                    />
+                  ) : item.images ? (
+                    <ImageSlideshow images={item.images} currentIndex={hoveredItem === item.title && item.images.length > 1 ? slideIndex : 0} />
+                  ) : null}
+                </div>
+                <div className="flex-1 font-semibold text-white px-4 text-sm truncate drop-shadow-sm">
+                  {item.title}
+                </div>
+                <div className="pr-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-105 transition-transform">
+                    <Play className="w-5 h-5 fill-current ml-1" />
+                  </button>
+                </div>
+              </Link>
+            );
+          })}
         </div>
-      </main>
+      </section>
+
+      {/* Popular Genres Section */}
+      <section className="px-8 relative z-10">
+        <h2 className="text-2xl font-bold text-white mb-6">Beliebte Genres</h2>
+        <div className="flex gap-4 overflow-x-auto py-4 px-4 -mx-4 no-scrollbar">
+          {GENRES.map((genre) => {
+            const Icon = genre.icon;
+            return (
+              <div 
+                key={genre.name} 
+                className={`min-w-[160px] h-28 rounded-xl p-4 flex flex-col justify-between shadow-lg cursor-pointer transition-transform hover:scale-105 ${genre.color}`}
+              >
+                <div className="w-full flex justify-end opacity-50">
+                  <Icon className="w-8 h-8 text-white" strokeWidth={1.5} />
+                </div>
+                <span className="font-bold text-white text-lg">{genre.name}</span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Trending Section */}
+      <section className="px-8 relative z-10 min-h-[200px]">
+        <div className="flex items-end justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white hover:underline cursor-pointer">Für dich ausgewählt</h2>
+          <span className="text-sm font-bold text-muted hover:text-white transition-colors cursor-pointer">
+            Alle anzeigen
+          </span>
+        </div>
+        
+        {isLoading ? (
+          <div className="flex justify-center py-10">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {trendingSongs.map((song) => (
+              <SongCard 
+                key={`trending-${song.id}`} 
+                song={song} 
+                creatorName={song.creatorName} 
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* New Releases Section */}
+      <section className="px-8 relative z-10 min-h-[200px]">
+        <div className="flex items-end justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white hover:underline cursor-pointer">Zuletzt gehört</h2>
+          <span className="text-sm font-bold text-muted hover:text-white transition-colors cursor-pointer">
+            Alle anzeigen
+          </span>
+        </div>
+        
+        {isLoading ? (
+          <div className="flex justify-center py-10">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {newReleases.map((song) => (
+              <SongCard 
+                key={`new-${song.id}`} 
+                song={song} 
+                creatorName={song.creatorName} 
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
