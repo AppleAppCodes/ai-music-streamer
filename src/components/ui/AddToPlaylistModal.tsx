@@ -7,6 +7,8 @@ import { X, Plus, Music, Loader2, Check, Trash2 } from 'lucide-react';
 interface AddToPlaylistModalProps {
   songId: string;
   onClose: () => void;
+  currentPlaylistId?: string;
+  onRemoveFromCurrent?: () => void;
 }
 
 interface Playlist {
@@ -15,7 +17,7 @@ interface Playlist {
   cover_url: string | null;
 }
 
-export default function AddToPlaylistModal({ songId, onClose }: AddToPlaylistModalProps) {
+export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId, onRemoveFromCurrent }: AddToPlaylistModalProps) {
   const supabase = createClient();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [alreadyIn, setAlreadyIn] = useState<Set<string>>(new Set());
@@ -66,6 +68,10 @@ export default function AddToPlaylistModal({ songId, onClose }: AddToPlaylistMod
       } else {
         // Update state to show it as already added
         setAlreadyIn(prev => new Set(prev).add(playlistId));
+        // Notify other components (e.g., playlist detail) about the addition
+        if (typeof (window as any).addSongToPlaylistPage === 'function') {
+          (window as any).addSongToPlaylistPage(playlistId, songId);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -91,6 +97,13 @@ export default function AddToPlaylistModal({ songId, onClose }: AddToPlaylistMod
           newSet.delete(playlistId);
           return newSet;
         });
+        // Notify playlist page to remove the song instantly
+        if (currentPlaylistId === playlistId && onRemoveFromCurrent) {
+          onRemoveFromCurrent();
+        }
+        if (typeof (window as any).removeSongFromPlaylistPage === 'function') {
+          (window as any).removeSongFromPlaylistPage(playlistId, songId);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -190,7 +203,7 @@ export default function AddToPlaylistModal({ songId, onClose }: AddToPlaylistMod
                   className="w-full flex items-center gap-4 p-3 hover:bg-white/5 rounded-lg transition-colors text-left group disabled:opacity-50"
                 >
                   {alreadyIn.has(playlist.id) ? (
-                    <Trash2 className="w-5 h-5 text-red-400" />
+                    <Plus className="w-5 h-5 text-red-400" />
                   ) : (
                     <Plus className="w-5 h-5 text-white" />
                   )}

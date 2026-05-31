@@ -98,6 +98,32 @@ export default function PlaylistPage() {
     loadPlaylistData();
   }, [playlistId, supabase, router]);
 
+  useEffect(() => {
+    const handleRemoved = (pid: string, sid: string) => {
+      if (pid === playlistId) {
+        setSongs(prev => prev.filter(s => s.id !== sid));
+      }
+    };
+    
+    const handleAdded = async (pid: string, sid: string) => {
+      if (pid === playlistId) {
+        const { data } = await supabase.from('songs').select('*').eq('id', sid).single();
+        if (data) {
+          setSongs(prev => [data, ...prev]);
+        }
+      }
+    };
+    
+    // Assign to window for direct synchronous calls
+    (window as any).removeSongFromPlaylistPage = handleRemoved;
+    (window as any).addSongToPlaylistPage = handleAdded;
+    
+    return () => {
+      (window as any).removeSongFromPlaylistPage = null;
+      (window as any).addSongToPlaylistPage = null;
+    };
+  }, [playlistId]);
+
   const handlePlayAll = () => {
     if (songs.length === 0) return;
     
@@ -372,7 +398,12 @@ export default function PlaylistPage() {
 
                     <div className="text-right text-sm text-white/50 tracking-wider flex items-center justify-end gap-3 md:col-span-2">
                       <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-4 mr-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <PlaylistAddButton songId={song.id} iconClassName="w-5 h-5" />
+                        <PlaylistAddButton 
+                          songId={song.id} 
+                          iconClassName="w-5 h-5" 
+                          currentPlaylistId={playlistId}
+                          onRemoveFromCurrent={() => setSongs(prev => prev.filter(s => s.id !== song.id))}
+                        />
                         <LikeButton songId={song.id} iconClassName="w-5 h-5" />
                       </div>
                       

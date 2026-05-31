@@ -8,9 +8,17 @@ interface PlaylistAddButtonProps {
   songId: string;
   iconClassName?: string;
   className?: string;
+  currentPlaylistId?: string;
+  onRemoveFromCurrent?: () => void;
 }
 
-export default function PlaylistAddButton({ songId, iconClassName = "w-5 h-5", className = "" }: PlaylistAddButtonProps) {
+export default function PlaylistAddButton({ 
+  songId, 
+  iconClassName = "w-5 h-5", 
+  className = "",
+  currentPlaylistId,
+  onRemoveFromCurrent
+}: PlaylistAddButtonProps) {
   const [showModal, setShowModal] = useState(false);
 
   return (
@@ -31,6 +39,8 @@ export default function PlaylistAddButton({ songId, iconClassName = "w-5 h-5", c
         <AddToPlaylistModal 
           songId={songId} 
           onClose={() => setShowModal(false)} 
+          currentPlaylistId={currentPlaylistId}
+          onRemoveFromCurrent={onRemoveFromCurrent}
         />
       )}
     </>
