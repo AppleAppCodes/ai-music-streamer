@@ -213,7 +213,7 @@ export default function Home() {
       {/* Popular Genres Section */}
       <section className="px-8 relative z-10">
         <h2 className="text-2xl font-bold text-white mb-4">{t('home.popularGenres')}</h2>
-        <div className="flex gap-3 overflow-x-auto py-3 px-3 -mx-3 no-scrollbar">
+        <div className="flex gap-3 overflow-x-auto py-8 px-6 -mx-6 no-scrollbar">
           {GENRES.map((genre) => {
             const Icon = genre.icon;
             return (
