@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, Bell, LogIn, LogOut } from 'lucide-react';
+import { Search, Bell, LogIn } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import ProfileDropdown from '@/components/ui/ProfileDropdown';
 
 interface HeaderClientProps {
   user: any;
@@ -39,15 +40,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
 
         {user ? (
           <div className="flex items-center gap-4 border-l border-white/10 pl-4">
-            <Link href="#" className="w-8 h-8 rounded-full overflow-hidden border border-purple-500/30 hover:border-purple-500 transition-colors">
-              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80" alt="User Avatar" className="w-full h-full object-cover" />
-            </Link>
-            
-            <form action={signOutAction}>
-              <button type="submit" className="text-white/60 hover:text-white transition-colors" title={t('nav.logout')}>
-                <LogOut className="w-4 h-4" />
-              </button>
-            </form>
+            <ProfileDropdown user={user} signOutAction={signOutAction} />
           </div>
         ) : (
           <Link 
