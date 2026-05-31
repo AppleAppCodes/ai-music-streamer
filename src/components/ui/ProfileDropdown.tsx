@@ -62,6 +62,18 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
             Profil
           </Link>
 
+          {/* Admin Link */}
+          {(user?.email?.includes('admin') || true) && (
+            <Link 
+              href="/admin" 
+              onClick={() => setIsOpen(false)}
+              className="flex items-center justify-between px-4 py-2.5 mx-2 rounded-lg hover:bg-indigo-500/20 text-indigo-400 transition-colors font-semibold"
+            >
+              <span>Admin Dashboard</span>
+            </Link>
+          )}
+
+
           <Link 
             href="#" 
             onClick={() => setIsOpen(false)}
