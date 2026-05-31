@@ -203,6 +203,34 @@ export default function SongDetailPage() {
           </div>
         </div>
 
+        {/* Track Info / Credits */}
+        <div className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 backdrop-blur-md max-w-4xl">
+          <h3 className="text-xl font-bold text-white mb-6">Track Info & Credits</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            
+            <div className="bg-black/20 rounded-xl p-4">
+              <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Erstellt mit</div>
+              <div className="font-semibold text-white/90">{song.ai_tool || 'Unbekannt'}</div>
+            </div>
+
+            <div className="bg-black/20 rounded-xl p-4">
+              <div className="text-xs text-white/50 uppercase tracking-wider mb-2">Human Edit Anteil</div>
+              <div className="flex items-center gap-3">
+                <span className="font-semibold text-white/90 w-10">{song.human_edit ?? 0}%</span>
+                <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${song.human_edit ?? 0}%` }} />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-black/20 rounded-xl p-4">
+              <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Vocals</div>
+              <div className="font-semibold text-white/90 capitalize">{song.vocals_type || 'Unbekannt'}</div>
+            </div>
+
+          </div>
+        </div>
+
         {/* More By Artist */}
         {relatedSongs.length > 0 && (
           <div>

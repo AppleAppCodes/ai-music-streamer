@@ -116,6 +116,8 @@ export async function POST(request: NextRequest) {
     const aiTool = formData.get('ai_tool') as string | null;
     const description = formData.get('description') as string | null;
     const language = formData.get('language') as string | null;
+    const humanEditStr = formData.get('human_edit') as string | null;
+    const vocalsType = formData.get('vocals_type') as string | null;
     const audioFile = formData.get('audio') as File | null;
     const coverFile = formData.get('cover') as File | null;
 
@@ -220,6 +222,8 @@ export async function POST(request: NextRequest) {
         genre,
         mood,
         ai_tool: aiTool,
+        human_edit: humanEditStr ? parseInt(humanEditStr, 10) : null,
+        vocals_type: vocalsType || null,
         description,
         language,
         audio_url: audioUrl,

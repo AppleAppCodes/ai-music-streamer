@@ -25,6 +25,8 @@ export interface Song {
   language: string;
   description: string;
   ai_tool: string;
+  human_edit?: number;
+  vocals_type?: string;
   duration?: number;
   plays: number;
   created_at: string;

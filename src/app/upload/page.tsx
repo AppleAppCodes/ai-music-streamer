@@ -22,7 +22,10 @@ export default function UploadPage() {
   const [isDraggingAudio, setIsDraggingAudio] = useState(false);
   const [isDraggingCover, setIsDraggingCover] = useState(false);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
-  const [aiTool, setAiTool] = useState('');
+  const [aiTool, setAiTool] = useState('Suno');
+  const [customAiTool, setCustomAiTool] = useState('');
+  const [humanEdit, setHumanEdit] = useState<number>(0);
+  const [vocalsType, setVocalsType] = useState<string>('AI');
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,8 +115,10 @@ export default function UploadPage() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!audioFile || !coverFile || !title || !artistName) {
-      setError('Bitte fülle alle Pflichtfelder aus (Artist, Titel, Song, Cover).');
+    const finalAiTool = aiTool === 'Andere' ? customAiTool : aiTool;
+
+    if (!audioFile || !coverFile || !title || !artistName || !finalAiTool || !vocalsType) {
+      setError('Bitte fülle alle Pflichtfelder aus (Artist, Titel, Song, Cover, Metadaten).');
       return;
     }
     if (!user) {
@@ -162,7 +167,9 @@ export default function UploadPage() {
           mood,
           cover_url: coverUrl,
           audio_url: audioUrl,
-          ai_tool: aiTool || null,
+          ai_tool: finalAiTool,
+          human_edit: humanEdit,
+          vocals_type: vocalsType,
           duration: audioDuration || null,
           plays: 0
         });
@@ -247,15 +254,70 @@ export default function UploadPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-white/80 mb-2">Erstellt mit (AI Tool) *</label>
+                <CustomSelect
+                  options={[
+                    { value: 'Suno', label: 'Suno' },
+                    { value: 'Udio', label: 'Udio' },
+                    { value: 'Stable Audio', label: 'Stable Audio' },
+                    { value: 'Eigene DAW-Bearbeitung', label: 'Eigene DAW-Bearbeitung' },
+                    { value: 'Andere', label: 'Andere ...' }
+                  ]}
+                  value={aiTool}
+                  onChange={setAiTool}
+                />
+              </div>
+              
+              {aiTool === 'Andere' && (
+                <div>
+                  <label className="block text-sm font-semibold text-white/80 mb-2">Welches Tool?</label>
+                  <input
+                    type="text"
+                    value={customAiTool}
+                    onChange={(e) => setCustomAiTool(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    placeholder="Name des Tools"
+                    required
+                  />
+                </div>
+              )}
+            </div>
+
             <div>
-              <label className="block text-sm font-semibold text-white/80 mb-2">{t('upload.aiTool')}</label>
-              <input
-                type="text"
-                value={aiTool}
-                onChange={(e) => setAiTool(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                placeholder={t('upload.aiToolPlaceholder')}
+              <label className="block text-sm font-semibold text-white/80 mb-2">Human Edit Anteil: {humanEdit}%</label>
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                value={humanEdit} 
+                onChange={(e) => setHumanEdit(parseInt(e.target.value))}
+                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
               />
+              <div className="flex justify-between text-xs text-white/50 mt-2">
+                <span>0% (Pure AI)</span>
+                <span>100% (Manual)</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-white/80 mb-3">Art der Vocals *</label>
+              <div className="flex gap-4">
+                {['AI', 'Human', 'Hybrid'].map((type) => (
+                  <label key={type} className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="vocalsType" 
+                      value={type}
+                      checked={vocalsType === type}
+                      onChange={(e) => setVocalsType(e.target.value)}
+                      className="w-4 h-4 text-indigo-500 bg-white/10 border-white/20 focus:ring-indigo-500 focus:ring-offset-black"
+                    />
+                    <span className="text-white/80 text-sm">{type}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
 
