@@ -15,6 +15,7 @@ export default function LikeButton({ songId, className = '', iconClassName = 'w-
   const [isLiked, setIsLiked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
   
   const supabase = createClient();
   const router = useRouter();
@@ -56,6 +57,9 @@ export default function LikeButton({ songId, className = '', iconClassName = 'w-
     setIsLiked(newStatus);
     
     if (newStatus) {
+      setIsAnimating(true);
+      setTimeout(() => setIsAnimating(false), 300); // Remove animation class after 300ms
+      
       const { error } = await supabase
         .from('liked_songs')
         .insert({ user_id: userId, song_id: songId });
@@ -82,10 +86,10 @@ export default function LikeButton({ songId, className = '', iconClassName = 'w-
     <button 
       onClick={toggleLike}
       disabled={loading}
-      className={`transition-colors ${isLiked ? 'text-primary' : 'text-white/60 hover:text-white'} ${className}`}
+      className={`transition-all duration-300 active:scale-75 ${isLiked ? 'text-primary' : 'text-white/60 hover:text-white'} ${isAnimating ? 'scale-125' : 'scale-100'} ${className}`}
       title={isLiked ? "Remove from Liked Songs" : "Save to Liked Songs"}
     >
-      <Heart className={`${iconClassName} ${isLiked ? 'fill-current' : ''}`} />
+      <Heart className={`${iconClassName} transition-all duration-300 ${isLiked ? 'fill-current drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]' : ''}`} />
     </button>
   );
 }

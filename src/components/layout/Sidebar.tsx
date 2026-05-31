@@ -51,7 +51,7 @@ export default function Sidebar() {
             <Library className="w-5 h-5" />
             {t('nav.library')}
           </Link>
-          <Link href="#" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
+          <Link href="/collection/tracks" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
             <Heart className="w-5 h-5" />
             Liked Songs
           </Link>
