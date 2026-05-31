@@ -7,6 +7,7 @@ import { Play, Pause, Clock3, Heart, Shuffle, List, Check, Menu } from 'lucide-r
 import { usePlayer } from '@/lib/player-context';
 import { useTranslation } from 'react-i18next';
 import LikeButton from '@/components/ui/LikeButton';
+import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import { useRouter } from 'next/navigation';
 
 function formatDuration(seconds: number | null | undefined): string {
@@ -260,6 +261,7 @@ export default function LikedSongsPage() {
                   
                   <div className="text-right text-sm text-white/50 font-mono tracking-wider flex items-center justify-end">
                     <div onClick={(e) => e.stopPropagation()}>
+                      <PlaylistAddButton songId={song.id} iconClassName="w-5 h-5 mr-4" />
                       <LikeButton songId={song.id} iconClassName="w-5 h-5 mr-4" />
                     </div>
                     {song.plays.toLocaleString()}

@@ -10,6 +10,7 @@ import { usePlayer } from '@/lib/player-context';
 import { useTranslation } from 'react-i18next';
 import SongCard from '@/components/ui/SongCard';
 import LikeButton from '@/components/ui/LikeButton';
+import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -147,6 +148,7 @@ export default function SongDetailPage() {
             )}
           </button>
           
+          <PlaylistAddButton songId={song.id} iconClassName="w-8 h-8" />
           <LikeButton songId={song.id} iconClassName="w-8 h-8" />
 
           <button className="text-white/60 hover:text-white transition-colors">

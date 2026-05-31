@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Play, Pause } from 'lucide-react';
 import { Song } from '@/lib/types';
 import { usePlayer } from '@/lib/player-context';
+import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 
 interface SongCardProps {
   song: Song;
@@ -46,6 +47,10 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
           </button>
         </div>
         
+        {/* Playlist Add Button Overlay */}
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+          <PlaylistAddButton songId={song.id} iconClassName="w-4 h-4" className="bg-black/50 p-1.5 rounded-full hover:bg-black/80" />
+        </div>
 
       </div>
 

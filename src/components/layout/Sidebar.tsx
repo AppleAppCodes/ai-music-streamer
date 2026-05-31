@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Home, Compass, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, Radio, UserCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
 
 export default function Sidebar() {
   const { t } = useTranslation();
@@ -47,7 +48,7 @@ export default function Sidebar() {
       <div className="px-3 mb-6">
         <p className="px-3 text-xs font-semibold text-muted tracking-wider uppercase mb-3">{t('nav.library')}</p>
         <nav className="space-y-1">
-          <Link href="#" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
+          <Link href="/playlists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
             <Library className="w-5 h-5" />
             Meine Playlists
           </Link>
@@ -67,10 +68,7 @@ export default function Sidebar() {
           <PlusCircle className="w-5 h-5" />
           {t('nav.upload')}
         </Link>
-        <Link href="#" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
-          <ListMusic className="w-5 h-5" />
-          New Playlist
-        </Link>
+        <CreatePlaylistButton />
       </div>
     </div>
   );

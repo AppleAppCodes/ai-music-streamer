@@ -5,6 +5,7 @@ import { usePlayer } from '@/lib/player-context';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import LikeButton from '@/components/ui/LikeButton';
+import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return '0:00';
@@ -19,25 +20,22 @@ export default function AudioPlayer() {
 
   if (!currentSong) return null;
 
+  const displayArtist = currentSong.artist_name || currentSong.creatorName || t('player.creatorFallback');
+
   return (
     <div className="fixed bottom-0 left-0 right-0 h-24 bg-surface border-t border-white/5 px-4 flex items-center justify-between z-50">
       
       {/* Song Info */}
       <div className="flex items-center gap-4 w-1/3 min-w-[180px]">
-        <img 
-          src={currentSong.cover_url} 
-          alt={currentSong.title} 
-          className="w-14 h-14 rounded-md object-cover shadow-lg"
-        />
+        <img src={currentSong.cover_url} alt={currentSong.title} className="w-14 h-14 rounded-md object-cover shadow-md" />
         <div className="flex flex-col">
-          <Link href={`/song/${currentSong.id}`} className="text-sm font-medium text-white hover:underline truncate">
-            {currentSong.title}
-          </Link>
-          <Link href={`/artist/${encodeURIComponent(currentSong.artist_name || currentSong.creatorName || t('player.creatorFallback'))}`} className="text-xs text-muted hover:text-white hover:underline truncate">
-            {currentSong.artist_name || currentSong.creatorName || t('player.creatorFallback')}
-          </Link>
+          <Link href={`/song/${currentSong.id}`} className="text-sm font-semibold text-white hover:underline cursor-pointer truncate">{currentSong.title}</Link>
+          <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-xs text-muted hover:text-white hover:underline cursor-pointer truncate">{displayArtist}</Link>
         </div>
-        <LikeButton songId={currentSong.id} className="ml-2" iconClassName="w-5 h-5" />
+        <div className="flex items-center">
+          <PlaylistAddButton songId={currentSong.id} className="ml-4" iconClassName="w-5 h-5" />
+          <LikeButton songId={currentSong.id} className="ml-2" iconClassName="w-5 h-5" />
+        </div>
       </div>
 
       {/* Controls */}
