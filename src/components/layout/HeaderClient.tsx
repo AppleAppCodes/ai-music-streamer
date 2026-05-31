@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Search, Bell, LogIn } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ProfileDropdown from '@/components/ui/ProfileDropdown';
@@ -15,6 +16,7 @@ interface HeaderClientProps {
 
 export default function HeaderClient({ user, signOutAction }: HeaderClientProps) {
   const { t } = useTranslation();
+  const router = useRouter();
 
   useEffect(() => {
     if (user) {
@@ -30,16 +32,27 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
 
       {/* Center - Search Bar */}
       <div className="flex-1 flex justify-center items-center">
-        <div className="relative w-full max-w-lg group">
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            const query = formData.get('search');
+            if (query && typeof query === 'string' && query.trim() !== '') {
+              router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+            }
+          }}
+          className="relative w-full max-w-lg group"
+        >
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-white/40 group-hover:text-purple-400 transition-colors" />
           </div>
           <input
+            name="search"
             type="text"
             className="block w-full pl-11 pr-4 py-2.5 border border-purple-500/20 rounded-full leading-5 bg-black/40 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 hover:bg-black/60 hover:border-purple-500/40 sm:text-sm transition-all shadow-[0_0_15px_rgba(168,85,247,0.05)] focus:shadow-[0_0_20px_rgba(168,85,247,0.2)] backdrop-blur-md"
             placeholder={t('nav.search') + "..."}
           />
-        </div>
+        </form>
       </div>
 
       {/* Right side */}
