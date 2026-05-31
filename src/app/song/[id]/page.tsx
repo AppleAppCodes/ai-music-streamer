@@ -327,14 +327,16 @@ export default function SongDetailPage() {
               <div className="pt-4 border-t border-white/10">
                 <div className="flex items-center justify-between mb-4">
                   <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider">Weitere Credits (Optional)</label>
-                  <button
-                    type="button"
-                    onClick={() => setEditCredits([...editCredits, { role: 'Creator', name: '' }])}
-                    className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium bg-indigo-500/10 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Hinzufügen
-                  </button>
+                  {editCredits.length < 20 && (
+                    <button
+                      type="button"
+                      onClick={() => setEditCredits([...editCredits, { role: 'Creator', name: '' }])}
+                      className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium bg-indigo-500/10 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Hinzufügen
+                    </button>
+                  )}
                 </div>
                 
                 <div className="space-y-3">

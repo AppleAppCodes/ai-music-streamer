@@ -292,14 +292,16 @@ export default function UploadPage() {
             <div className="pt-4 border-t border-white/10">
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-sm font-semibold text-white/80">Weitere Credits (Optional)</label>
-                <button
-                  type="button"
-                  onClick={() => setCredits([...credits, { role: 'Creator', name: '' }])}
-                  className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium"
-                >
-                  <Plus className="w-4 h-4" />
-                  Hinzufügen
-                </button>
+                {credits.length < 20 && (
+                  <button
+                    type="button"
+                    onClick={() => setCredits([...credits, { role: 'Creator', name: '' }])}
+                    className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Hinzufügen
+                  </button>
+                )}
               </div>
               
               <div className="space-y-3">
