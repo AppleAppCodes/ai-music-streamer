@@ -54,8 +54,12 @@ export default function Sidebar() {
       </div>
 
       <div className="px-3 mt-auto">
-        <Link href="#" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
+        <Link href="/upload" className="flex items-center gap-4 px-3 py-2.5 mb-2 text-sm font-bold text-white bg-white/10 hover:bg-white/20 rounded-md transition-colors border border-white/10">
           <PlusCircle className="w-5 h-5" />
+          Upload Song
+        </Link>
+        <Link href="#" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
+          <ListMusic className="w-5 h-5" />
           New Playlist
         </Link>
       </div>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   
   const router = useRouter();
   const supabase = createClient();
@@ -30,11 +32,15 @@ export default function LoginPage() {
         router.push('/');
         router.refresh();
       } else {
+        if (!captchaToken) {
+          throw new Error('Bitte bestätige, dass du kein Roboter bist.');
+        }
+
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            // Make sure the user gets a default profile row trigger or we handle it
+            captchaToken: captchaToken
           }
         });
         if (error) throw error;
@@ -105,6 +111,16 @@ export default function LoginPage() {
             {error && (
               <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
                 {error}
+              </div>
+            )}
+
+            {!isLogin && (
+              <div className="flex justify-center my-4">
+                <Turnstile 
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'} 
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  options={{ theme: 'dark' }}
+                />
               </div>
             )}
 
