@@ -222,8 +222,10 @@ export default function Home() {
                 className={`group relative isolate min-w-[128px] h-20 rounded-xl p-3 flex flex-col justify-between shadow-lg cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.03] ${genre.color}`}
               >
                 <div
-                  className="pointer-events-none absolute -inset-2 -z-10 rounded-2xl opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-70"
-                  style={{ background: genre.glow }}
+                  className="pointer-events-none absolute inset-0 -z-10 rounded-xl opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-80"
+                  style={{
+                    background: `radial-gradient(circle at 50% 55%, ${genre.glow} 0%, ${genre.glow} 28%, transparent 68%)`,
+                  }}
                 />
                 <div className="pointer-events-none absolute inset-0 rounded-xl bg-white/0 transition-colors duration-300 group-hover:bg-white/10" />
                 <div className="w-full flex justify-end opacity-55 transition-opacity duration-300 group-hover:opacity-85">
