@@ -212,19 +212,24 @@ export default function Home() {
 
       {/* Popular Genres Section */}
       <section className="px-8 relative z-10">
-        <h2 className="text-2xl font-bold text-white mb-6">{t('home.popularGenres')}</h2>
-        <div className="flex gap-4 overflow-x-auto py-4 px-4 -mx-4 no-scrollbar">
+        <h2 className="text-2xl font-bold text-white mb-4">{t('home.popularGenres')}</h2>
+        <div className="flex gap-3 overflow-x-auto py-3 px-3 -mx-3 no-scrollbar">
           {GENRES.map((genre) => {
             const Icon = genre.icon;
             return (
               <div 
                 key={genre.name} 
-                className={`min-w-[160px] h-28 rounded-xl p-4 flex flex-col justify-between shadow-lg cursor-pointer transition-transform hover:scale-105 ${genre.color}`}
+                className={`group relative isolate min-w-[128px] h-20 rounded-xl p-3 flex flex-col justify-between shadow-lg cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.03] ${genre.color}`}
               >
-                <div className="w-full flex justify-end opacity-50">
-                  <Icon className="w-8 h-8 text-white" strokeWidth={1.5} />
+                <div
+                  className="pointer-events-none absolute -inset-2 -z-10 rounded-2xl opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-70"
+                  style={{ background: genre.glow }}
+                />
+                <div className="pointer-events-none absolute inset-0 rounded-xl bg-white/0 transition-colors duration-300 group-hover:bg-white/10" />
+                <div className="w-full flex justify-end opacity-55 transition-opacity duration-300 group-hover:opacity-85">
+                  <Icon className="w-6 h-6 text-white" strokeWidth={1.7} />
                 </div>
-                <span className="font-bold text-white text-lg">{genre.name}</span>
+                <span className="relative font-bold text-white text-sm tracking-tight">{genre.name}</span>
               </div>
             );
           })}

@@ -4,21 +4,22 @@ export interface GenreDef {
   name: string;
   icon: LucideIcon;
   color: string;
+  glow: string;
 }
 
 export const GENRES: GenreDef[] = [
-  { name: 'Hip-Hop', icon: Mic2, color: 'bg-orange-500' },
-  { name: 'Pop', icon: Sparkles, color: 'bg-pink-500' },
-  { name: 'RnB', icon: Heart, color: 'bg-purple-500' },
-  { name: 'Afrobeat', icon: Globe, color: 'bg-emerald-500' },
-  { name: 'EDM', icon: Zap, color: 'bg-cyan-500' },
-  { name: 'Chillhop', icon: Coffee, color: 'bg-amber-700' },
-  { name: 'Sleep', icon: Moon, color: 'bg-indigo-800' },
-  { name: 'Country', icon: Guitar, color: 'bg-amber-600' },
-  { name: 'Latin', icon: Flame, color: 'bg-red-500' },
-  { name: 'K-Pop', icon: Star, color: 'bg-rose-400' },
-  { name: 'Metal', icon: Skull, color: 'bg-stone-600' },
-  { name: 'Classic', icon: Music, color: 'bg-blue-600' }
+  { name: 'Hip-Hop', icon: Mic2, color: 'bg-orange-500', glow: 'rgba(249, 115, 22, 0.58)' },
+  { name: 'Pop', icon: Sparkles, color: 'bg-pink-500', glow: 'rgba(236, 72, 153, 0.58)' },
+  { name: 'RnB', icon: Heart, color: 'bg-purple-500', glow: 'rgba(168, 85, 247, 0.58)' },
+  { name: 'Afrobeat', icon: Globe, color: 'bg-emerald-500', glow: 'rgba(16, 185, 129, 0.58)' },
+  { name: 'EDM', icon: Zap, color: 'bg-cyan-500', glow: 'rgba(6, 182, 212, 0.58)' },
+  { name: 'Chillhop', icon: Coffee, color: 'bg-amber-700', glow: 'rgba(180, 83, 9, 0.58)' },
+  { name: 'Sleep', icon: Moon, color: 'bg-indigo-800', glow: 'rgba(55, 48, 163, 0.58)' },
+  { name: 'Country', icon: Guitar, color: 'bg-amber-600', glow: 'rgba(217, 119, 6, 0.58)' },
+  { name: 'Latin', icon: Flame, color: 'bg-red-500', glow: 'rgba(239, 68, 68, 0.58)' },
+  { name: 'K-Pop', icon: Star, color: 'bg-rose-400', glow: 'rgba(251, 113, 133, 0.58)' },
+  { name: 'Metal', icon: Skull, color: 'bg-stone-600', glow: 'rgba(87, 83, 78, 0.58)' },
+  { name: 'Classic', icon: Music, color: 'bg-blue-600', glow: 'rgba(37, 99, 235, 0.58)' }
 ];
 
 export const MOODS = ['Happy', 'Sad', 'Energetic', 'Chill', 'Dark', 'Romantic'];
