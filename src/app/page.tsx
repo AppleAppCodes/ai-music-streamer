@@ -282,13 +282,13 @@ export default function Home() {
               return (
                 <div 
                   key={genre.name} 
-                  className={`group relative isolate min-w-[132px] snap-start h-20 rounded-xl p-3 flex flex-col justify-between cursor-pointer overflow-visible shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-[1.04] hover:shadow-[0_0_40px_var(--genre-glow)] ${genre.color}`}
+                  className={`group relative isolate min-w-[132px] snap-start h-20 rounded-xl p-3 flex flex-col justify-between cursor-pointer overflow-visible shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-[1.04] hover:shadow-[0_0_20px_var(--genre-glow)] hover:animate-pulseGlow ${genre.color}`}
                   style={{ '--genre-glow': genre.glow } as CSSProperties}
                 >
                 <div
                   className="pointer-events-none absolute -inset-4 -z-10 rounded-[1.75rem] opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
                   style={{
-                    background: `radial-gradient(circle at 50% 58%, ${genre.glow} 0%, ${genre.glow} 38%, transparent 70%)`,
+                    background: `radial-gradient(circle at 50% 58%, ${genre.glow} 0%, ${genre.glow} 25%, transparent 60%)`,
                   }}
                 />
                 <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-white/18 via-transparent to-black/15 opacity-70 transition-opacity duration-300 group-hover:opacity-100" />

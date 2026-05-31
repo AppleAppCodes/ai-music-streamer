@@ -53,3 +53,16 @@ body {
     display: none;
   }
 }
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px var(--genre-glow);
+  }
+  50% {
+    box-shadow: 0 0 25px var(--genre-glow);
+  }
+}
+
+.animate-pulseGlow {
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
