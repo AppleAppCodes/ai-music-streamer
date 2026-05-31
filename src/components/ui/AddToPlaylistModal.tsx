@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { X, Plus, Music, Loader2 } from 'lucide-react';
+import { X, Plus, Music, Loader2, Check } from 'lucide-react';
 
 interface AddToPlaylistModalProps {
   songId: string;
@@ -18,6 +18,7 @@ interface Playlist {
 export default function AddToPlaylistModal({ songId, onClose }: AddToPlaylistModalProps) {
   const supabase = createClient();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [alreadyIn, setAlreadyIn] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [addingTo, setAddingTo] = useState<string | null>(null);
 
@@ -25,18 +26,29 @@ export default function AddToPlaylistModal({ songId, onClose }: AddToPlaylistMod
     async function loadPlaylists() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        onClose(); // Shouldn't happen if button is only visible when logged in, but just in case
+        onClose();
         return;
       }
 
-      const { data } = await supabase
+      // Fetch playlists of the user
+      const { data: plData, error: plError } = await supabase
         .from('playlists')
         .select('id, title, cover_url')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
-      if (data) {
-        setPlaylists(data);
+      // Fetch which of these playlists already contain the song
+      const { data: songPlData, error: spError } = await supabase
+        .from('playlist_songs')
+        .select('playlist_id')
+        .eq('song_id', songId);
+
+      if (plData) {
+        setPlaylists(plData);
+      }
+      if (songPlData) {
+        const ids = songPlData.map((rec: any) => rec.playlist_id);
+        setAlreadyIn(new Set(ids));
       }
       setLoading(false);
     }
@@ -143,9 +155,14 @@ export default function AddToPlaylistModal({ songId, onClose }: AddToPlaylistMod
                 <button
                   key={playlist.id}
                   onClick={() => handleAddToPlaylist(playlist.id)}
-                  disabled={addingTo !== null}
+                  disabled={addingTo !== null || alreadyIn.has(playlist.id)}
                   className="w-full flex items-center gap-4 p-3 hover:bg-white/5 rounded-lg transition-colors text-left group disabled:opacity-50"
                 >
+                  {alreadyIn.has(playlist.id) ? (
+                    <Check className="w-5 h-5 text-green-400" />
+                  ) : (
+                    <Plus className="w-5 h-5 text-white" />
+                  )}
                   {playlist.cover_url ? (
                     <img src={playlist.cover_url} alt={playlist.title} className="w-12 h-12 rounded object-cover shadow-md bg-[#282828]" />
                   ) : (
