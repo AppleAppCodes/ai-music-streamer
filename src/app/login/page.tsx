@@ -12,7 +12,6 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [debugMsg, setDebugMsg] = useState<string>('');
   const captchaTokenRef = useRef<string | null>(null);
   const turnstileRef = useRef<TurnstileInstance>(null);
   
@@ -30,19 +29,16 @@ export default function LoginPage() {
 
   const handleCaptchaSuccess = useCallback((token: string) => {
     console.log('Turnstile token received (invisible)');
-    setDebugMsg(prev => prev + ' [Success fired]');
     captchaTokenRef.current = token;
   }, []);
 
   const handleCaptchaError = useCallback((errorCode?: string) => {
     console.error('Turnstile error:', errorCode);
-    setDebugMsg(prev => prev + ' [Error: ' + String(errorCode) + ']');
     captchaTokenRef.current = null;
   }, []);
 
   const handleCaptchaExpire = useCallback(() => {
     console.log('Turnstile token expired');
-    setDebugMsg(prev => prev + ' [Expired]');
     captchaTokenRef.current = null;
   }, []);
 
@@ -181,10 +177,6 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-
-            <div className="text-[10px] text-white/30 text-center font-mono break-all mt-2">
-              DEBUG-KEY: {siteKey ? `${siteKey.substring(0, 5)}...` : 'MISSING'} | LOGS: {debugMsg || 'None'}
-            </div>
 
             {/* Turnstile invisible widget – no visible UI, runs in background */}
             {siteKey && (
