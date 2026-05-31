@@ -82,11 +82,11 @@ export default function Home() {
       link: "#" 
     },
     { 
-      title: t('home.quickAccess.charts'), 
+      title: 'Viral Charts', 
       icon: TrendingUp, 
       color: "bg-yellow-500", 
       images: ["linear-gradient(135deg, #eab308 0%, #a16207 100%)"], 
-      link: "#" 
+      link: "/charts/viral" 
     },
     { 
       title: t('home.quickAccess.artists'), 
