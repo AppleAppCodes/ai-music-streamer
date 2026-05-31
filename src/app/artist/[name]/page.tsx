@@ -32,6 +32,7 @@ export default function ArtistPage() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [isVideo, setIsVideo] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
@@ -75,6 +76,8 @@ export default function ArtistPage() {
             .from('covers')
             .getPublicUrl(`banners/${bannerFile.name}`);
           setBannerUrl(data.publicUrl);
+          const isVid = bannerFile.metadata?.mimetype?.startsWith('video/') || !!bannerFile.name.match(/\.(mp4|webm|ogg|mov)$/i);
+          setIsVideo(isVid);
         }
       }
       
@@ -157,6 +160,7 @@ export default function ArtistPage() {
         .getPublicUrl(path);
         
       setBannerUrl(`${data.publicUrl}?t=${Date.now()}`);
+      setIsVideo(file.type.startsWith('video/') || !!file.name.match(/\.(mp4|webm|ogg|mov)$/i));
     } catch (err: unknown) {
       console.error('Error uploading banner:', err);
       alert('Fehler beim Hochladen des Banners: ' + getErrorMessage(err));
@@ -204,15 +208,32 @@ export default function ArtistPage() {
       {/* Background Banner */}
       <div className="absolute top-0 left-0 right-0 h-[600px] overflow-hidden pointer-events-none z-0">
         {bannerUrl ? (
-          <img 
-            src={bannerUrl} 
-            alt="Banner" 
-            className="w-full h-full object-cover opacity-60"
-            style={{ 
-              maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
-            }}
-          />
+          isVideo ? (
+            <video 
+              src={bannerUrl} 
+              autoPlay 
+              loop 
+              muted 
+              playsInline
+              controlsList="nodownload"
+              onContextMenu={(e) => e.preventDefault()}
+              className="w-full h-full object-cover opacity-60"
+              style={{ 
+                maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
+              }}
+            />
+          ) : (
+            <img 
+              src={bannerUrl} 
+              alt="Banner" 
+              className="w-full h-full object-cover opacity-60"
+              style={{ 
+                maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
+              }}
+            />
+          )
         ) : (
           <div 
             className="w-full h-full bg-cover bg-center opacity-30" 
@@ -234,7 +255,7 @@ export default function ArtistPage() {
           <div className="absolute top-10 right-10 opacity-0 group-hover:opacity-100 transition-opacity">
             <input 
               type="file" 
-              accept="image/*" 
+              accept="image/*,video/*" 
               ref={fileInputRef} 
               className="hidden" 
               onChange={handleBannerUpload}
