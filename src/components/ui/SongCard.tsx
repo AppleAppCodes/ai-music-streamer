@@ -12,6 +12,7 @@ interface SongCardProps {
 export default function SongCard({ song, creatorName = 'Creator', className = '' }: SongCardProps) {
   const { playSong, currentSong, isPlaying, togglePlayPause } = usePlayer();
   const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
+  const displayArtist = song.artist_name || creatorName;
 
   return (
     <div className={`group relative flex flex-col gap-3 p-4 rounded-xl hover:bg-white/5 transition-colors cursor-pointer ${className}`}>
@@ -32,7 +33,7 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
               if (currentSong?.id === song.id) {
                 togglePlayPause();
               } else {
-                playSong({ ...song, creatorName } as any);
+                playSong({ ...song, creatorName: displayArtist } as any);
               }
             }}
             className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-110 hover:bg-primary-hover transition-all"
@@ -54,7 +55,7 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
           {song.title}
         </Link>
         <Link href={`/creator/${song.creator_id}`} className="text-sm text-muted truncate hover:text-white hover:underline mt-0.5">
-          {creatorName}
+          {displayArtist}
         </Link>
       </div>
     </div>

@@ -33,7 +33,7 @@ export default function AudioPlayer() {
             {currentSong.title}
           </Link>
           <Link href={`/creator/${currentSong.creator_id}`} className="text-xs text-muted hover:text-white hover:underline truncate">
-            {currentSong.creatorName || t('player.creatorFallback')}
+            {currentSong.artist_name || currentSong.creatorName || t('player.creatorFallback')}
           </Link>
         </div>
       </div>

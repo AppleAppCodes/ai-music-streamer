@@ -24,6 +24,8 @@
   "upload": {
     "title": "Song hochladen",
     "subtitle": "Teile deine neuesten AI-Kreationen mit der Welt.",
+    "artistName": "Künstlername *",
+    "artistPlaceholder": "z.B. Suno Artist X...",
     "songTitle": "Song Titel *",
     "songTitlePlaceholder": "Name deines Meisterwerks",
     "genre": "Genre *",

@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { UploadCloud, Music, Image as ImageIcon, Loader2, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import ArtistAutocomplete from '@/components/ui/ArtistAutocomplete';
 
 const GENRES = ['Pop', 'Hip Hop', 'Electronic', 'R&B', 'Rock', 'Ambient', 'Other'];
 const MOODS = ['Happy', 'Sad', 'Energetic', 'Chill', 'Dark', 'Romantic'];
 
 export default function UploadPage() {
   const { t } = useTranslation();
+  const [artistName, setArtistName] = useState('');
   const [title, setTitle] = useState('');
   const [genre, setGenre] = useState(GENRES[0]);
   const [mood, setMood] = useState(MOODS[0]);
@@ -43,8 +45,8 @@ export default function UploadPage() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!audioFile || !coverFile || !title) {
-      setError('Bitte fülle alle Pflichtfelder aus (Titel, Song, Cover).');
+    if (!audioFile || !coverFile || !title || !artistName) {
+      setError('Bitte fülle alle Pflichtfelder aus (Artist, Titel, Song, Cover).');
       return;
     }
     
@@ -83,6 +85,7 @@ export default function UploadPage() {
         .from('songs')
         .insert({
           creator_id: user.id,
+          artist_name: artistName,
           title,
           genre,
           mood,
@@ -136,6 +139,11 @@ export default function UploadPage() {
           {/* Form Fields Container */}
           <div className="bg-white/5 border border-white/10 rounded-3xl p-8 space-y-6 backdrop-blur-md">
             
+            <ArtistAutocomplete 
+              value={artistName} 
+              onChange={setArtistName} 
+            />
+
             <div>
               <label className="block text-sm font-semibold text-white/80 mb-2">{t('upload.songTitle')}</label>
               <input
@@ -243,7 +251,7 @@ export default function UploadPage() {
 
           <button
             type="submit"
-            disabled={loading || !audioFile || !coverFile || !title}
+            disabled={loading || !audioFile || !coverFile || !title || !artistName}
             className="w-full relative group overflow-hidden rounded-xl bg-white text-black font-bold py-4 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 mt-8"
           >
             <span className="relative z-10 flex items-center justify-center gap-2 text-lg">

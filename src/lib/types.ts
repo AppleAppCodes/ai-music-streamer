@@ -16,6 +16,7 @@ export interface CreatorProfile {
 export interface Song {
   id: string;
   creator_id: string;
+  artist_name?: string;
   title: string;
   cover_url: string;
   audio_url: string;
