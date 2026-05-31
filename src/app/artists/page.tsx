@@ -12,6 +12,7 @@ interface ArtistStat {
   plays: number;
   songsCount: number;
   coverUrl: string;
+  videoUrl?: string;
 }
 
 export default function ArtistsPage() {
@@ -70,7 +71,26 @@ export default function ArtistsPage() {
           artist.songsCount += 1;
         });
         
-        setArtists(Array.from(artistMap.values()).sort((a, b) => b.plays - a.plays));
+        const artistArray = Array.from(artistMap.values());
+        
+        // Fetch all banners to see if there are videos
+        const { data: banners } = await supabase.storage.from('covers').list('banners', { limit: 100 });
+        if (banners) {
+          artistArray.forEach(artist => {
+            const sanitizedName = artist.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const videoFiles = banners.filter(f => f.name.startsWith(sanitizedName + '_video'));
+            if (videoFiles.length > 0) {
+              videoFiles.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+              const videoFile = videoFiles[0];
+              const { data: urlData } = supabase.storage
+                .from('covers')
+                .getPublicUrl(`banners/${videoFile.name}`);
+              artist.videoUrl = urlData.publicUrl;
+            }
+          });
+        }
+        
+        setArtists(artistArray.sort((a, b) => b.plays - a.plays));
       }
       
       setLoading(false);
@@ -199,12 +219,23 @@ export default function ArtistsPage() {
                 key={artist.name}
                 className="group relative h-64 md:h-72 rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-[0_0_40px_rgba(168,85,247,0.3)] hover:-translate-y-2 border border-white/10"
               >
-                {/* Background Image */}
-                <img 
-                  src={artist.coverUrl} 
-                  alt={artist.name} 
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                />
+                {/* Background Image or Video */}
+                {artist.videoUrl ? (
+                  <video 
+                    src={artist.videoUrl} 
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                  />
+                ) : (
+                  <img 
+                    src={artist.coverUrl} 
+                    alt={artist.name} 
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                  />
+                )}
                 
                 {/* Premium Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500" />
