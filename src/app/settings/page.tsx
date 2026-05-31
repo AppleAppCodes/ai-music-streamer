@@ -89,24 +89,47 @@ export default function SettingsPage() {
     }
   };
 
+  const PROFANITY_LIST = ['nazi', 'hitler', 'fuck', 'shit', 'bitch', 'asshole', 'cunt', 'dick', 'pussy', 'whore', 'slut', 'fagot', 'nigger', 'nigga', 'retard'];
+
+  const containsProfanity = (text: string) => {
+    const lower = text.toLowerCase();
+    return PROFANITY_LIST.some(word => lower.includes(word));
+  };
+
   const saveProfile = async () => {
     if (!user) return;
+    
+    if (username.length < 3) {
+      alert('Der Benutzername muss mindestens 3 Zeichen lang sein.');
+      return;
+    }
+    
+    if (containsProfanity(username)) {
+      alert('Dieser Benutzername enthält nicht erlaubte Wörter. Bitte wähle einen anderen.');
+      return;
+    }
+
     setSaving(true);
     
     try {
-      const { error } = await supabase.auth.updateUser({
-        data: { username }
-      });
-      
-      if (error) throw error;
-
       // Update public.profiles
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ username })
         .eq('id', user.id);
         
-      if (profileError) throw profileError;
+      if (profileError) {
+        if (profileError.code === '23505') { // Unique violation code in Postgres
+          throw new Error('Dieser Benutzername ist leider schon vergeben.');
+        }
+        throw profileError;
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        data: { username }
+      });
+      
+      if (error) throw error;
 
       alert('Profil erfolgreich aktualisiert!');
       
@@ -115,7 +138,7 @@ export default function SettingsPage() {
       
     } catch (err: unknown) {
       console.error('Error updating profile:', err);
-      alert('Fehler beim Speichern: ' + getErrorMessage(err));
+      alert(err instanceof Error ? err.message : 'Fehler beim Speichern.');
     } finally {
       setSaving(false);
     }
