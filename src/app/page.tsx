@@ -2,12 +2,19 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import SongCard from '@/components/ui/SongCard';
-import { Play, Mic2, Sparkles, Heart, Globe, Zap, Guitar, Flame, Star, Skull, Music, TrendingUp, ListMusic, Coffee, Moon, Radio } from 'lucide-react';
+import { Play, Heart, TrendingUp, ListMusic, Radio } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 
 import { GENRES } from '@/lib/constants';
+import { Song } from '@/lib/types';
+
+type SongWithProfile = Song & {
+  profiles?: {
+    username?: string | null;
+  } | null;
+};
 
 function ImageSlideshow({ images, currentIndex }: { images: string[], currentIndex: number }) {
   if (!images || images.length === 0) return null;
@@ -32,8 +39,8 @@ export default function Home() {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
 
-  const [trendingSongs, setTrendingSongs] = useState<any[]>([]);
-  const [newReleases, setNewReleases] = useState<any[]>([]);
+  const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
+  const [newReleases, setNewReleases] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -46,7 +53,7 @@ export default function Home() {
         .limit(4);
         
       if (trending) {
-        setTrendingSongs(trending.map(song => ({
+        setTrendingSongs((trending as SongWithProfile[]).map(song => ({
           ...song,
           creatorName: song.profiles?.username || 'Unknown'
         })));
@@ -60,7 +67,7 @@ export default function Home() {
         .limit(4);
 
       if (recent) {
-        setNewReleases(recent.map(song => ({
+        setNewReleases((recent as SongWithProfile[]).map(song => ({
           ...song,
           creatorName: song.profiles?.username || 'Unknown'
         })));
@@ -110,20 +117,14 @@ export default function Home() {
   ], [t]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (hoveredItem) {
-      const item = quickAccessItems.find(i => i.title === hoveredItem);
-      if (item && item.images && item.images.length > 1) {
-        setSlideIndex(1); // instant first transition
-        interval = setInterval(() => {
-          setSlideIndex((prev) => (prev + 1) % item.images!.length);
-        }, 1500);
-      } else {
-        setSlideIndex(0);
-      }
-    } else {
-      setSlideIndex(0);
-    }
+    const item = quickAccessItems.find(i => i.title === hoveredItem);
+    const imageCount = item?.images?.length || 0;
+    if (imageCount <= 1) return;
+
+    const interval = setInterval(() => {
+      setSlideIndex((prev) => (prev + 1) % imageCount);
+    }, 1500);
+
     return () => clearInterval(interval);
   }, [hoveredItem, quickAccessItems]);
 
@@ -176,8 +177,14 @@ export default function Home() {
                 key={item.title}
                 href={item.link}
                 className="group flex items-center bg-white/10 hover:bg-white/20 transition-colors rounded-md overflow-hidden cursor-pointer shadow-lg backdrop-blur-sm border border-white/5"
-                onMouseEnter={() => setHoveredItem(item.title)}
-                onMouseLeave={() => setHoveredItem(null)}
+                onMouseEnter={() => {
+                  setHoveredItem(item.title);
+                  setSlideIndex(item.images && item.images.length > 1 ? 1 : 0);
+                }}
+                onMouseLeave={() => {
+                  setHoveredItem(null);
+                  setSlideIndex(0);
+                }}
               >
                 <div className={`w-16 h-16 shrink-0 relative shadow-md flex items-center justify-center ${item.color || 'bg-black'}`}>
                   {Icon ? (

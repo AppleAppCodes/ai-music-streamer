@@ -2,17 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useTranslation } from 'react-i18next';
 
 export default function CookieConsent() {
-  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     // Check if the user has already made a choice
     const consent = localStorage.getItem('cookie-consent');
     if (!consent) {
-      setIsVisible(true);
+      const timer = window.setTimeout(() => setIsVisible(true), 0);
+      return () => window.clearTimeout(timer);
     }
   }, []);
 
@@ -41,7 +40,7 @@ export default function CookieConsent() {
               Klicke unten auf „Cookie-Einstellungen“, um mehr über die Zwecke zu erfahren, für die wir und unsere Partner Cookies verwenden, oder um die Einstellungen zu ändern. Du kannst deine Einstellungen jederzeit überprüfen oder deine Einwilligung widerrufen, indem du in unserer Cookie-Richtlinie auf den Link zu deinen Cookie-Einstellungen klickst. Diese Entscheidungen werden unseren Partnern mitgeteilt und haben keinen Einfluss auf die Browsingdaten.
             </p>
             <p>
-              Indem Du auf "Cookies akzeptieren" klickst, willigst Du in unsere Nutzung und die Weitergabe Deiner Daten an <Link href="#" className="underline hover:text-black font-medium">unsere Partner</Link> ein.
+              Indem Du auf &quot;Cookies akzeptieren&quot; klickst, willigst Du in unsere Nutzung und die Weitergabe Deiner Daten an <Link href="#" className="underline hover:text-black font-medium">unsere Partner</Link> ein.
             </p>
           </div>
           <div>

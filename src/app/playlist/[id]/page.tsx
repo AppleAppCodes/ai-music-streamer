@@ -9,6 +9,7 @@ import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import Link from 'next/link';
+import { getErrorMessage } from '@/lib/errors';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -115,14 +116,14 @@ export default function PlaylistPage() {
     };
     
     // Assign to window for direct synchronous calls
-    (window as any).removeSongFromPlaylistPage = handleRemoved;
-    (window as any).addSongToPlaylistPage = handleAdded;
+    window.removeSongFromPlaylistPage = handleRemoved;
+    window.addSongToPlaylistPage = handleAdded;
     
     return () => {
-      (window as any).removeSongFromPlaylistPage = null;
-      (window as any).addSongToPlaylistPage = null;
+      delete window.removeSongFromPlaylistPage;
+      delete window.addSongToPlaylistPage;
     };
-  }, [playlistId]);
+  }, [playlistId, supabase]);
 
   const handlePlayAll = () => {
     if (songs.length === 0) return;
@@ -185,9 +186,9 @@ export default function PlaylistPage() {
         .eq('id', playlistId);
         
       setPlaylist({ ...playlist, cover_url: newUrl });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error uploading cover:', err);
-      alert('Fehler beim Hochladen des Covers: ' + err.message);
+      alert('Fehler beim Hochladen des Covers: ' + getErrorMessage(err));
     } finally {
       setIsUploadingCover(false);
     }
@@ -360,7 +361,7 @@ export default function PlaylistPage() {
                   <div 
                     key={song.id}
                     onClick={() => {
-                      if (currentSong?.id !== song.id) playSong({ ...song, creatorName: displayArtist } as any);
+                      if (currentSong?.id !== song.id) playSong({ ...song, creatorName: displayArtist });
                       else togglePlayPause();
                     }}
                     className="grid grid-cols-[16px_1fr_150px_40px] md:grid-cols-[24px_1fr_200px_80px_40px] gap-4 px-4 py-2.5 rounded-lg hover:bg-white/5 group cursor-pointer items-center transition-colors"
@@ -429,7 +430,7 @@ export default function PlaylistPage() {
                 <Music className="w-8 h-8 text-white/20" />
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Lass uns etwas Musik finden für deine Playlist</h3>
-              <p className="text-white/50 text-sm mb-6">Gehe auf Entdecken, um Songs zu finden und sie mit dem "+"-Icon hinzuzufügen.</p>
+              <p className="text-white/50 text-sm mb-6">Gehe auf Entdecken, um Songs zu finden und sie mit dem Plus-Icon hinzuzufügen.</p>
               <Link href="/charts/viral" className="px-6 py-2.5 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform">
                 Charts durchstöbern
               </Link>

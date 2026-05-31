@@ -37,7 +37,7 @@ export default function SongDetailPage() {
       setLoading(true);
       
       // Fetch the main song
-      const { data: songData, error: songError } = await supabase
+      const { data: songData } = await supabase
         .from('songs')
         .select('*')
         .eq('id', id)
@@ -136,7 +136,7 @@ export default function SongDetailPage() {
               if (currentSong?.id === song.id) {
                 togglePlayPause();
               } else {
-                playSong({ ...song, creatorName: displayArtist } as any);
+                playSong({ ...song, creatorName: displayArtist });
               }
             }}
             className="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-black hover:scale-105 hover:bg-primary-hover transition-all shadow-xl"
@@ -169,7 +169,7 @@ export default function SongDetailPage() {
           {/* Track Row */}
           <div 
             onClick={() => {
-              if (currentSong?.id !== song.id) playSong({ ...song, creatorName: displayArtist } as any);
+              if (currentSong?.id !== song.id) playSong({ ...song, creatorName: displayArtist });
             }}
             className="grid grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px] gap-4 px-4 py-3 rounded-md hover:bg-white/10 group cursor-pointer items-center transition-colors"
           >

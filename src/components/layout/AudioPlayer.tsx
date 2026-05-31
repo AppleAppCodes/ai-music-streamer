@@ -15,12 +15,28 @@ function formatTime(seconds: number) {
 }
 
 export default function AudioPlayer() {
-  const { currentSong, isPlaying, togglePlayPause, progress, currentTime, duration, volume, setVolume, seekTo } = usePlayer();
+  const {
+    currentSong,
+    isPlaying,
+    togglePlayPause,
+    progress,
+    currentTime,
+    duration,
+    volume,
+    setVolume,
+    seekTo,
+    queue,
+    queueIndex,
+    playNext,
+    playPrevious
+  } = usePlayer();
   const { t } = useTranslation();
 
   if (!currentSong) return null;
 
   const displayArtist = currentSong.artist_name || currentSong.creatorName || t('player.creatorFallback');
+  const canPlayPrevious = queueIndex > 0;
+  const canPlayNext = queueIndex >= 0 && queueIndex < queue.length - 1;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 h-24 bg-surface border-t border-white/5 px-4 flex items-center justify-between z-50">
@@ -44,7 +60,11 @@ export default function AudioPlayer() {
           <button className="text-muted hover:text-white transition-colors">
             <Shuffle className="w-4 h-4" />
           </button>
-          <button className="text-muted hover:text-white transition-colors">
+          <button
+            onClick={playPrevious}
+            disabled={!canPlayPrevious}
+            className="text-muted hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-muted"
+          >
             <SkipBack className="w-5 h-5 fill-current" />
           </button>
           <button 
@@ -53,7 +73,11 @@ export default function AudioPlayer() {
           >
             {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-1" />}
           </button>
-          <button className="text-muted hover:text-white transition-colors">
+          <button
+            onClick={playNext}
+            disabled={!canPlayNext}
+            className="text-muted hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-muted"
+          >
             <SkipForward className="w-5 h-5 fill-current" />
           </button>
           <button className="text-muted hover:text-white transition-colors">

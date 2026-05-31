@@ -4,11 +4,12 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, Clock3, MoreHorizontal, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2 } from 'lucide-react';
+import { Play, Pause, MoreHorizontal, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2 } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
-import { useTranslation } from 'react-i18next';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
+import { getErrorMessage } from '@/lib/errors';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -18,17 +19,16 @@ function formatDuration(seconds: number | null | undefined): string {
 }
 
 export default function ArtistPage() {
-  const { t } = useTranslation();
   const params = useParams();
   // Ensure we decode the URL encoded name properly
   const artistName = decodeURIComponent(params.name as string);
   
-  const { playSong, currentSong, isPlaying, togglePlayPause } = usePlayer();
+  const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   const supabase = createClient();
   
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
@@ -100,7 +100,8 @@ export default function ArtistPage() {
     if (currentSong?.id === songs[0].id) {
       togglePlayPause();
     } else {
-      const queue = songs.map(s => ({ ...s, creatorName: artistName } as any));
+      const queue = songs.map((s): Song => ({ ...s, creatorName: artistName }));
+      setQueue(queue, 0);
       playSong(queue[0]);
     }
   };
@@ -155,9 +156,9 @@ export default function ArtistPage() {
         .getPublicUrl(path);
         
       setBannerUrl(`${data.publicUrl}?t=${Date.now()}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error uploading banner:', err);
-      alert('Fehler beim Hochladen des Banners: ' + err.message);
+      alert('Fehler beim Hochladen des Banners: ' + getErrorMessage(err));
     } finally {
       setIsUploadingBanner(false);
     }
@@ -324,7 +325,7 @@ export default function ArtistPage() {
                   <div 
                     key={song.id}
                     onClick={() => {
-                      if (currentSong?.id !== song.id) playSong({ ...song, creatorName: artistName } as any);
+                      if (currentSong?.id !== song.id) playSong({ ...song, creatorName: artistName });
                     }}
                     className="grid grid-cols-[16px_1fr_120px_40px] md:grid-cols-[24px_1fr_150px_40px] gap-4 px-4 py-2 rounded-lg hover:bg-white/5 group cursor-pointer items-center transition-colors"
                   >

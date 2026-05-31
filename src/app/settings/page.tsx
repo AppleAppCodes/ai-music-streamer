@@ -5,9 +5,13 @@ import { createClient } from '@/utils/supabase/client';
 import { useTranslation } from 'react-i18next';
 import { User, Settings, Image as ImageIcon, Loader2, Save, CreditCard, Globe } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getErrorMessage } from '@/lib/errors';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+const LANGUAGE_STORAGE_KEY = 'ai-stream-language';
 
 export default function SettingsPage() {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const router = useRouter();
   const supabase = createClient();
 
@@ -15,7 +19,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   
   // Form State
   const [username, setUsername] = useState('');
@@ -77,9 +81,9 @@ export default function SettingsPage() {
       
       router.refresh();
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error uploading avatar:', err);
-      alert('Fehler beim Hochladen des Profilbilds: ' + err.message);
+      alert('Fehler beim Hochladen des Profilbilds: ' + getErrorMessage(err));
     } finally {
       setUploadingAvatar(false);
     }
@@ -100,16 +104,18 @@ export default function SettingsPage() {
       // Refresh router to update components like Header
       router.refresh();
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating profile:', err);
-      alert('Fehler beim Speichern: ' + err.message);
+      alert('Fehler beim Speichern: ' + getErrorMessage(err));
     } finally {
       setSaving(false);
     }
   };
 
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    i18n.changeLanguage(e.target.value);
+    const nextLanguage = e.target.value;
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+    i18n.changeLanguage(nextLanguage);
   };
 
   if (loading) {
@@ -268,7 +274,7 @@ export default function SettingsPage() {
                 Sprache
               </label>
               <select
-                value={i18n.language || 'en'}
+                value={i18n.language || 'de'}
                 onChange={handleLanguageChange}
                 className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all appearance-none cursor-pointer"
               >

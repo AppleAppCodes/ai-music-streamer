@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import { useRouter } from 'next/navigation';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -24,12 +25,12 @@ type LikedSong = Song & { liked_at: string };
 
 export default function LikedSongsPage() {
   const { t } = useTranslation();
-  const { playSong, currentSong, isPlaying, togglePlayPause } = usePlayer();
+  const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   const router = useRouter();
   
   const [songs, setSongs] = useState<LikedSong[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -51,7 +52,7 @@ export default function LikedSongsPage() {
       setUser(session.user);
       
       // Fetch liked songs joined with songs table
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('liked_songs')
         .select(`
           created_at,
@@ -96,7 +97,8 @@ export default function LikedSongsPage() {
       togglePlayPause();
     } else {
       // Create a queue from all liked songs
-      const queue = sortedSongs.map(s => ({ ...s, creatorName: s.artist_name || t('player.creatorFallback') } as any));
+      const queue = sortedSongs.map((s): Song => ({ ...s, creatorName: s.artist_name || t('player.creatorFallback') }));
+      setQueue(queue, 0);
       playSong(queue[0]);
     }
   };
@@ -230,7 +232,7 @@ export default function LikedSongsPage() {
                 <div 
                   key={song.id}
                   onClick={() => {
-                    if (currentSong?.id !== song.id) playSong({ ...song, creatorName: displayArtist } as any);
+                    if (currentSong?.id !== song.id) playSong({ ...song, creatorName: displayArtist });
                   }}
                   className={`grid ${viewMode === 'list' ? 'grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px] py-3' : 'grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px] py-1.5'} gap-4 px-4 rounded-lg hover:bg-white/5 group cursor-pointer items-center transition-colors`}
                 >

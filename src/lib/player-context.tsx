@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Song } from '@/lib/types';
 
 interface PlayerContextType {
@@ -38,7 +38,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // Initialize audio element
   useEffect(() => {
     audioRef.current = new Audio();
-    audioRef.current.volume = volume;
+    audioRef.current.volume = 1;
 
     const audio = audioRef.current;
 
@@ -88,7 +88,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isPlaying, currentSong]); // depend on currentSong to trigger play when song changes
 
-  const playSong = (song: Song) => {
+  const playSong = useCallback((song: Song) => {
     if (!audioRef.current) return;
     
     // If it's the same song, just toggle play
@@ -104,45 +104,41 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setProgress(0);
     setCurrentTime(0);
     setIsPlaying(true);
-  };
+  }, [currentSong?.id]);
 
-  const setQueue = (songs: Song[], startIndex = 0) => {
+  const setQueue = useCallback((songs: Song[], startIndex = 0) => {
     setQueueState(songs);
     if (songs.length > 0 && startIndex >= 0 && startIndex < songs.length) {
       setQueueIndex(startIndex);
-      // If we are setting a new queue, we probably want to let the caller call playSong()
-      // or we could automatically play it here. For now we just set the queue.
     }
-  };
+  }, []);
 
-  const playNext = () => {
+  const playNext = useCallback(() => {
     if (queue.length === 0 || queueIndex === -1) return;
     const nextIndex = queueIndex + 1;
     if (nextIndex < queue.length) {
       setQueueIndex(nextIndex);
       playSong(queue[nextIndex]);
     }
-  };
+  }, [playSong, queue, queueIndex]);
 
-  const playPrevious = () => {
+  const playPrevious = useCallback(() => {
     if (queue.length === 0 || queueIndex === -1) return;
     const prevIndex = queueIndex - 1;
     if (prevIndex >= 0) {
       setQueueIndex(prevIndex);
       playSong(queue[prevIndex]);
     }
-  };
+  }, [playSong, queue, queueIndex]);
 
   // Handle song ended to play next
   useEffect(() => {
     const onSongEnded = () => {
-      if (queue.length > 0 && queueIndex < queue.length - 1) {
-        playNext();
-      }
+      playNext();
     };
     window.addEventListener('player-song-ended', onSongEnded);
     return () => window.removeEventListener('player-song-ended', onSongEnded);
-  }, [queue, queueIndex]);
+  }, [playNext]);
 
   const togglePlayPause = () => {
     if (!currentSong) return;

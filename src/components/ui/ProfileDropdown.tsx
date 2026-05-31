@@ -2,18 +2,17 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { User, LogOut, Settings, ExternalLink, Clock } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { User, ExternalLink } from 'lucide-react';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface ProfileDropdownProps {
-  user: any;
+  user: SupabaseUser;
   signOutAction: () => Promise<void>;
 }
 
 export default function ProfileDropdown({ user, signOutAction }: ProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { t } = useTranslation();
 
   // Extract avatar and username from user metadata, fallback to empty
   const avatarUrl = user?.user_metadata?.avatar_url || '';

@@ -21,7 +21,7 @@ type ViewMode = 'list' | 'compact';
 
 export default function ViralChartsPage() {
   const { t } = useTranslation();
-  const { playSong, currentSong, isPlaying, togglePlayPause } = usePlayer();
+  const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,7 @@ export default function ViralChartsPage() {
     const fetchViralSongs = async () => {
       setLoading(true);
       
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('songs')
         .select('*')
         .order('plays', { ascending: false })
@@ -71,7 +71,8 @@ export default function ViralChartsPage() {
     if (currentSong?.id === sortedSongs[0].id) {
       togglePlayPause();
     } else {
-      const queue = sortedSongs.map(s => ({ ...s, creatorName: s.artist_name || t('player.creatorFallback') } as any));
+      const queue = sortedSongs.map((s): Song => ({ ...s, creatorName: s.artist_name || t('player.creatorFallback') }));
+      setQueue(queue, 0);
       playSong(queue[0]);
     }
   };
@@ -205,7 +206,7 @@ export default function ViralChartsPage() {
                 <div 
                   key={song.id}
                   onClick={() => {
-                    if (currentSong?.id !== song.id) playSong({ ...song, creatorName: displayArtist } as any);
+                    if (currentSong?.id !== song.id) playSong({ ...song, creatorName: displayArtist });
                   }}
                   className={`grid ${viewMode === 'list' ? 'grid-cols-[16px_1fr_120px_40px] md:grid-cols-[24px_1fr_150px_40px] py-3' : 'grid-cols-[16px_1fr_120px_40px] md:grid-cols-[24px_1fr_150px_40px] py-1.5'} gap-4 px-4 rounded-lg hover:bg-white/5 group cursor-pointer items-center transition-colors`}
                 >

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, UserCheck, Music } from 'lucide-react';
+import { Play, Pause, Music } from 'lucide-react';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import { usePlayer } from '@/lib/player-context';
 import { useRouter } from 'next/navigation';
@@ -159,7 +159,7 @@ export default function FollowingPage() {
                                   if (currentSong?.id === song.id) {
                                     togglePlayPause();
                                   } else {
-                                    playSong({ ...song, creatorName: artist.name } as any);
+                                    playSong({ ...song, creatorName: artist.name });
                                   }
                                 }}
                                 className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-110 hover:bg-primary-hover transition-all translate-y-2 group-hover:translate-y-0"

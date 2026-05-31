@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { X, Plus, Minus, Music, Loader2, Check } from 'lucide-react';
+import { X, Plus, Minus, Music, Loader2 } from 'lucide-react';
 
 interface AddToPlaylistModalProps {
   songId: string;
@@ -15,6 +15,10 @@ interface Playlist {
   id: string;
   title: string;
   cover_url: string | null;
+}
+
+interface PlaylistSongRef {
+  playlist_id: string;
 }
 
 export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId, onRemoveFromCurrent }: AddToPlaylistModalProps) {
@@ -33,14 +37,14 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
       }
 
       // Fetch playlists of the user
-      const { data: plData, error: plError } = await supabase
+      const { data: plData } = await supabase
         .from('playlists')
         .select('id, title, cover_url')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
       // Fetch which of these playlists already contain the song
-      const { data: songPlData, error: spError } = await supabase
+      const { data: songPlData } = await supabase
         .from('playlist_songs')
         .select('playlist_id')
         .eq('song_id', songId);
@@ -49,13 +53,13 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
         setPlaylists(plData);
       }
       if (songPlData) {
-        const ids = songPlData.map((rec: any) => rec.playlist_id);
+        const ids = (songPlData as PlaylistSongRef[]).map((rec) => rec.playlist_id);
         setAlreadyIn(new Set(ids));
       }
       setLoading(false);
     }
     loadPlaylists();
-  }, [supabase, onClose]);
+  }, [supabase, onClose, songId]);
 
   const handleAddToPlaylist = async (playlistId: string) => {
     setAddingTo(playlistId);
@@ -69,8 +73,8 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
         // Update state to show it as already added
         setAlreadyIn(prev => new Set(prev).add(playlistId));
         // Notify other components (e.g., playlist detail) about the addition
-        if (typeof (window as any).addSongToPlaylistPage === 'function') {
-          (window as any).addSongToPlaylistPage(playlistId, songId);
+        if (typeof window.addSongToPlaylistPage === 'function') {
+          window.addSongToPlaylistPage(playlistId, songId);
         }
       }
     } catch (err) {
@@ -101,8 +105,8 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
         if (currentPlaylistId === playlistId && onRemoveFromCurrent) {
           onRemoveFromCurrent();
         }
-        if (typeof (window as any).removeSongFromPlaylistPage === 'function') {
-          (window as any).removeSongFromPlaylistPage(playlistId, songId);
+        if (typeof window.removeSongFromPlaylistPage === 'function') {
+          window.removeSongFromPlaylistPage(playlistId, songId);
         }
       }
     } catch (err) {

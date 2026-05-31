@@ -45,3 +45,10 @@ export interface PlaylistSong {
   song_id: string;
   added_at: string;
 }
+
+declare global {
+  interface Window {
+    addSongToPlaylistPage?: (playlistId: string, songId: string) => void | Promise<void>;
+    removeSongFromPlaylistPage?: (playlistId: string, songId: string) => void;
+  }
+}

@@ -34,7 +34,7 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
               if (currentSong?.id === song.id) {
                 togglePlayPause();
               } else {
-                playSong({ ...song, creatorName: displayArtist } as any);
+                playSong({ ...song, creatorName: displayArtist });
               }
             }}
             className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-110 hover:bg-primary-hover transition-all"

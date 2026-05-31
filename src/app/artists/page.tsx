@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Mic2, Play, Users, ChevronRight, Edit2, Loader2 } from 'lucide-react';
+import { Mic2, Play, Users, Edit2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { getErrorMessage } from '@/lib/errors';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface ArtistStat {
   name: string;
@@ -18,7 +20,7 @@ export default function ArtistsPage() {
   
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const supabase = createClient();
@@ -44,7 +46,7 @@ export default function ArtistsPage() {
         }
       }
       
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('songs')
         .select('artist_name, plays, cover_url');
         
@@ -97,9 +99,9 @@ export default function ArtistsPage() {
         .getPublicUrl(path);
         
       setVideoUrl(`${data.publicUrl}?t=${Date.now()}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error uploading video:', err);
-      alert('Fehler beim Hochladen des Videos: ' + err.message);
+      alert('Fehler beim Hochladen des Videos: ' + getErrorMessage(err));
     } finally {
       setIsUploadingVideo(false);
     }
@@ -191,7 +193,7 @@ export default function ArtistsPage() {
       <div className="relative bg-black/40 backdrop-blur-xl px-6 md:px-10 py-10 min-h-screen border-t border-white/5">
         {artists.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {artists.map((artist, idx) => (
+            {artists.map((artist) => (
               <Link 
                 href={`/artist/${encodeURIComponent(artist.name)}`} 
                 key={artist.name}

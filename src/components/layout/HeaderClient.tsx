@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { Search, Bell, LogIn } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ProfileDropdown from '@/components/ui/ProfileDropdown';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface HeaderClientProps {
-  user: any;
+  user: SupabaseUser | null;
   signOutAction: () => Promise<void>;
 }
 

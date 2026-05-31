@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next';
 import ArtistAutocomplete from '@/components/ui/ArtistAutocomplete';
 import CustomSelect from '@/components/ui/CustomSelect';
 import { GENRES, MOODS } from '@/lib/constants';
+import { getErrorMessage } from '@/lib/errors';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export default function UploadPage() {
   const { t } = useTranslation();
@@ -26,7 +28,7 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   
   const router = useRouter();
   const supabase = createClient();
@@ -45,22 +47,41 @@ export default function UploadPage() {
     getUser();
   }, [router, supabase]);
 
+  const handleAudioFileChange = (file: File | null) => {
+    setAudioFile(file);
+    setAudioDuration(null);
+  };
+
   // Auto-detect audio duration when file is selected
   useEffect(() => {
-    if (!audioFile) {
-      setAudioDuration(null);
-      return;
-    }
+    if (!audioFile) return;
+
     const url = URL.createObjectURL(audioFile);
     const audio = new Audio(url);
-    audio.addEventListener('loadedmetadata', () => {
+    let revoked = false;
+    const revokeUrl = () => {
+      if (!revoked) {
+        URL.revokeObjectURL(url);
+        revoked = true;
+      }
+    };
+    const handleLoadedMetadata = () => {
       setAudioDuration(Math.round(audio.duration));
-      URL.revokeObjectURL(url);
-    });
-    audio.addEventListener('error', () => {
+      revokeUrl();
+    };
+    const handleError = () => {
       setAudioDuration(null);
-      URL.revokeObjectURL(url);
-    });
+      revokeUrl();
+    };
+
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('error', handleError);
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('error', handleError);
+      revokeUrl();
+    };
   }, [audioFile]);
 
   const handleAudioDrop = (e: React.DragEvent) => {
@@ -69,7 +90,7 @@ export default function UploadPage() {
     if (e.dataTransfer.files?.[0]) {
       const file = e.dataTransfer.files[0];
       if (file.type.startsWith('audio/')) {
-        setAudioFile(file);
+        handleAudioFileChange(file);
       } else {
         setError(t('upload.errorOnlyAudio') || 'Bitte lade nur Audio-Dateien hoch.');
       }
@@ -95,6 +116,10 @@ export default function UploadPage() {
       setError('Bitte fülle alle Pflichtfelder aus (Artist, Titel, Song, Cover).');
       return;
     }
+    if (!user) {
+      setError('Bitte melde dich erneut an, bevor du einen Song hochlädst.');
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -103,7 +128,7 @@ export default function UploadPage() {
       // 1. Upload Cover Image
       const coverExt = coverFile.name.split('.').pop();
       const coverPath = `${user.id}/${Date.now()}_cover.${coverExt}`;
-      const { error: coverError, data: coverData } = await supabase.storage
+      const { error: coverError } = await supabase.storage
         .from('covers')
         .upload(coverPath, coverFile);
         
@@ -149,8 +174,8 @@ export default function UploadPage() {
         router.push('/');
       }, 2000);
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -250,7 +275,7 @@ export default function UploadPage() {
                 accept="audio/*" 
                 className="hidden" 
                 ref={audioInputRef}
-                onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
+                onChange={(e) => handleAudioFileChange(e.target.files?.[0] || null)}
               />
               <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4 group-hover:bg-indigo-500/20 transition-colors">
                 <Music className={`w-8 h-8 ${audioFile ? 'text-indigo-400' : 'text-white/40'}`} />

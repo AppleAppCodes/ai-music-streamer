@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -110,8 +111,8 @@ export default function LoginPage() {
         router.push('/');
         router.refresh();
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       // Always reset captcha after attempt (tokens are single-use)
       turnstileRef.current?.reset();

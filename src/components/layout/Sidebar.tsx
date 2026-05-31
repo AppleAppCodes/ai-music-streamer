@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Compass, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, Radio, UserCheck } from 'lucide-react';
+import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, Radio, UserCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
 

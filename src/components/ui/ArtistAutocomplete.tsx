@@ -13,7 +13,6 @@ export default function ArtistAutocomplete({ value, onChange }: ArtistAutocomple
   const { t } = useTranslation();
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
@@ -35,8 +34,6 @@ export default function ArtistAutocomplete({ value, onChange }: ArtistAutocomple
         return;
       }
 
-      setIsLoading(true);
-      
       // Get unique artist names matching the input
       const { data, error } = await supabase
         .from('songs')
@@ -44,8 +41,6 @@ export default function ArtistAutocomplete({ value, onChange }: ArtistAutocomple
         .ilike('artist_name', `%${value}%`)
         .not('artist_name', 'is', null)
         .limit(10);
-
-      setIsLoading(false);
 
       if (!error && data) {
         // Extract unique names
