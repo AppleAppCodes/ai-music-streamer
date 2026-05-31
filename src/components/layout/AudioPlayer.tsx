@@ -33,6 +33,20 @@ export default function AudioPlayer() {
   const { t } = useTranslation();
 
   const [hasCountedPlay, setHasCountedPlay] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    import('@/utils/supabase/client').then(({ createClient }) => {
+      const supabase = createClient();
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setIsLoggedIn(!!session);
+      });
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setIsLoggedIn(!!session);
+      });
+      return () => subscription.unsubscribe();
+    });
+  }, []);
 
   // Reset play count flag when song changes
   useEffect(() => {
@@ -49,9 +63,9 @@ export default function AudioPlayer() {
     }
   }, [currentTime, currentSong, duration, hasCountedPlay]);
 
-  if (!currentSong) return null;
+  if (!currentSong && !isLoggedIn) return null;
 
-  const displayArtist = currentSong.artist_name || currentSong.creatorName || t('player.creatorFallback');
+  const displayArtist = currentSong?.artist_name || currentSong?.creatorName || t('player.creatorFallback');
   const canPlayPrevious = queueIndex > 0;
   const canPlayNext = queueIndex >= 0 && queueIndex < queue.length - 1;
 
@@ -60,19 +74,31 @@ export default function AudioPlayer() {
       
       {/* Song Info */}
       <div className="flex items-center gap-4 w-1/3 min-w-[180px]">
-        <img src={currentSong.cover_url} alt={currentSong.title} className="w-14 h-14 rounded-md object-cover shadow-md" />
-        <div className="flex flex-col">
-          <Link href={`/song/${currentSong.id}`} className="text-sm font-semibold text-white hover:underline cursor-pointer truncate">{currentSong.title}</Link>
-          <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-xs text-muted hover:text-white hover:underline cursor-pointer truncate">{displayArtist}</Link>
-        </div>
-        <div className="flex items-center">
-          <PlaylistAddButton songId={currentSong.id} className="ml-4" iconClassName="w-5 h-5" />
-          <LikeButton songId={currentSong.id} className="ml-2" iconClassName="w-5 h-5" />
-        </div>
+        {currentSong ? (
+          <>
+            <img src={currentSong.cover_url} alt={currentSong.title} className="w-14 h-14 rounded-md object-cover shadow-md" />
+            <div className="flex flex-col">
+              <Link href={`/song/${currentSong.id}`} className="text-sm font-semibold text-white hover:underline cursor-pointer truncate">{currentSong.title}</Link>
+              <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-xs text-muted hover:text-white hover:underline cursor-pointer truncate">{displayArtist}</Link>
+            </div>
+            <div className="flex items-center">
+              <PlaylistAddButton songId={currentSong.id} className="ml-4" iconClassName="w-5 h-5" />
+              <LikeButton songId={currentSong.id} className="ml-2" iconClassName="w-5 h-5" />
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-4 opacity-50">
+            <div className="w-14 h-14 rounded-md bg-white/10 animate-pulse" />
+            <div className="flex flex-col gap-2">
+              <div className="h-4 w-24 bg-white/10 rounded animate-pulse" />
+              <div className="h-3 w-16 bg-white/10 rounded animate-pulse" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col items-center max-w-[40%] w-full">
+      <div className={`flex flex-col items-center max-w-[40%] w-full ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="flex items-center gap-6 mb-2">
           <button className="text-muted hover:text-white transition-colors">
             <Shuffle className="w-4 h-4" />
@@ -123,7 +149,7 @@ export default function AudioPlayer() {
       </div>
 
       {/* Extra Controls */}
-      <div className="flex items-center justify-end gap-4 w-1/3 min-w-[180px]">
+      <div className={`flex items-center justify-end gap-4 w-1/3 min-w-[180px] ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`}>
         <button className="text-muted hover:text-white transition-colors" title="AI Tool Info">
           <Mic2 className="w-4 h-4" />
         </button>
