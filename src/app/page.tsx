@@ -145,6 +145,7 @@ export default function Home() {
     },
     { 
       title: t('home.quickAccess.artists'), 
+      color: "bg-blue-600",
       images: ["/kuenstler.jpeg", "/kuenstler2.jpeg", "/kuenstler3.jpeg", "/kuenstler4.jpeg"], 
       link: "/artists" 
     },
@@ -264,7 +265,7 @@ export default function Home() {
                   {item.title}
                 </div>
                 <div className="relative pr-4 opacity-0 translate-x-2 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
-                  <span className="flex w-10 h-10 rounded-full bg-primary items-center justify-center text-white shadow-xl transition-transform group-hover:scale-105">
+                  <span className={`flex w-10 h-10 rounded-full ${item.color || 'bg-primary'} items-center justify-center text-white shadow-xl transition-transform group-hover:scale-105`}>
                     <Play className="w-5 h-5 fill-current ml-1" />
                   </span>
                 </div>
