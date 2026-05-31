@@ -12,8 +12,7 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [captchaStatus, setCaptchaStatus] = useState<'loading' | 'ready' | 'error' | 'expired'>('loading');
+  const captchaTokenRef = useRef<string | null>(null);
   const turnstileRef = useRef<TurnstileInstance>(null);
   
   const router = useRouter();
@@ -21,47 +20,61 @@ export default function LoginPage() {
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
 
-  // Stable options object to prevent re-renders
-  const turnstileOptions = useMemo(() => ({ theme: 'dark' as const }), []);
+  // Stable options object – size must be 'invisible' to match Cloudflare dashboard config
+  const turnstileOptions = useMemo(() => ({ 
+    theme: 'dark' as const,
+    size: 'invisible' as const,
+  }), []);
 
   const handleCaptchaSuccess = useCallback((token: string) => {
-    console.log('Turnstile token received:', token.substring(0, 20) + '...');
-    setCaptchaToken(token);
-    setCaptchaStatus('ready');
+    console.log('Turnstile token received (invisible)');
+    captchaTokenRef.current = token;
   }, []);
 
   const handleCaptchaError = useCallback(() => {
     console.error('Turnstile error');
-    setCaptchaStatus('error');
-    setCaptchaToken(null);
+    captchaTokenRef.current = null;
   }, []);
 
   const handleCaptchaExpire = useCallback(() => {
     console.log('Turnstile token expired');
-    setCaptchaStatus('expired');
-    setCaptchaToken(null);
+    captchaTokenRef.current = null;
   }, []);
+
+  // Helper: get a fresh token, retrying if needed
+  const getCaptchaToken = async (): Promise<string | null> => {
+    // If we already have a token, use it
+    if (captchaTokenRef.current) {
+      return captchaTokenRef.current;
+    }
+
+    // Try to trigger execution for invisible widget
+    turnstileRef.current?.execute();
+
+    // Wait for token with polling (invisible mode generates it automatically)
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (captchaTokenRef.current) {
+        return captchaTokenRef.current;
+      }
+    }
+
+    return null;
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    // If no captcha token yet, wait a moment and try once more
-    let token = captchaToken;
+    const token = await getCaptchaToken();
+
     if (!token) {
-      // Give Turnstile a brief moment to finish
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      // Re-check after wait (the state might not have updated, so we read from ref)
-      // If still no token, proceed without it and let Supabase return the proper error
-      if (!captchaToken) {
-        setError('Die Sicherheitsprüfung lädt noch. Bitte warte einen Moment und versuche es dann erneut.');
-        setLoading(false);
-        // Try to reset and get a fresh token
-        turnstileRef.current?.reset();
-        return;
-      }
-      token = captchaToken;
+      setError('Sicherheitsprüfung fehlgeschlagen. Bitte lade die Seite neu und versuche es erneut.');
+      setLoading(false);
+      turnstileRef.current?.reset();
+      captchaTokenRef.current = null;
+      return;
     }
 
     try {
@@ -93,8 +106,7 @@ export default function LoginPage() {
     } finally {
       // Always reset captcha after attempt (tokens are single-use)
       turnstileRef.current?.reset();
-      setCaptchaToken(null);
-      setCaptchaStatus('loading');
+      captchaTokenRef.current = null;
       setLoading(false);
     }
   };
@@ -157,34 +169,16 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Turnstile widget - rendered but can be hidden for invisible mode */}
+            {/* Turnstile invisible widget – no visible UI, runs in background */}
             {siteKey && (
-              <div className="flex justify-center my-4">
-                <Turnstile 
-                  ref={turnstileRef}
-                  siteKey={siteKey}
-                  onSuccess={handleCaptchaSuccess}
-                  onError={handleCaptchaError}
-                  onExpire={handleCaptchaExpire}
-                  options={turnstileOptions}
-                />
-              </div>
-            )}
-
-            {/* Status indicator */}
-            {captchaStatus === 'error' && (
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    turnstileRef.current?.reset();
-                    setCaptchaStatus('loading');
-                  }}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 underline"
-                >
-                  Sicherheitsprüfung neu laden
-                </button>
-              </div>
+              <Turnstile 
+                ref={turnstileRef}
+                siteKey={siteKey}
+                onSuccess={handleCaptchaSuccess}
+                onError={handleCaptchaError}
+                onExpire={handleCaptchaExpire}
+                options={turnstileOptions}
+              />
             )}
 
             <button
@@ -207,10 +201,8 @@ export default function LoginPage() {
               onClick={() => {
                 setIsLogin(!isLogin);
                 setError(null);
-                // Reset captcha when switching modes
                 turnstileRef.current?.reset();
-                setCaptchaToken(null);
-                setCaptchaStatus('loading');
+                captchaTokenRef.current = null;
               }}
               className="text-sm text-white/50 hover:text-white transition-colors"
             >
