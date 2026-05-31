@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Heart } from 'lucide-react';
+import { Plus, Check } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
@@ -86,10 +86,14 @@ export default function LikeButton({ songId, className = '', iconClassName = 'w-
     <button 
       onClick={toggleLike}
       disabled={loading}
-      className={`transition-all duration-300 active:scale-75 ${isLiked ? 'text-primary' : 'text-white/60 hover:text-white'} ${isAnimating ? 'scale-125' : 'scale-100'} ${className}`}
+      className={`transition-all duration-300 active:scale-75 ${isLiked ? 'text-green-500' : 'text-white/60 hover:text-white'} ${isAnimating ? 'scale-125' : 'scale-100'} ${className}`}
       title={isLiked ? "Remove from Liked Songs" : "Save to Liked Songs"}
     >
-      <Heart className={`${iconClassName} transition-all duration-300 ${isLiked ? 'fill-current drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]' : ''}`} />
+      {isLiked ? (
+        <Check className={`${iconClassName} transition-all duration-300 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]`} strokeWidth={3} />
+      ) : (
+        <Plus className={`${iconClassName} transition-all duration-300`} strokeWidth={2.5} />
+      )}
     </button>
   );
 }
