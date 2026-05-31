@@ -135,7 +135,7 @@ export default function SettingsPage() {
         <div className="space-y-10">
           
           {/* Profile Section */}
-          <section className="bg-[#181818] border border-white/10 rounded-2xl p-6 md:p-8">
+          <section id="profil" className="bg-[#181818] border border-white/10 rounded-2xl p-6 md:p-8 scroll-mt-24">
             <div className="flex flex-col md:flex-row gap-8 items-start">
               
               {/* Avatar Upload */}
@@ -218,7 +218,7 @@ export default function SettingsPage() {
           </section>
 
           {/* Account & Subscription Section */}
-          <section className="bg-[#181818] border border-white/10 rounded-2xl p-6 md:p-8">
+          <section id="konto" className="bg-[#181818] border border-white/10 rounded-2xl p-6 md:p-8 scroll-mt-24">
             <div className="flex items-center gap-3 mb-6">
               <CreditCard className="w-5 h-5 text-purple-400" />
               <h2 className="text-xl font-bold text-white">Abonnement</h2>
@@ -249,7 +249,7 @@ export default function SettingsPage() {
           </section>
 
           {/* Preferences Section */}
-          <section className="bg-[#181818] border border-white/10 rounded-2xl p-6 md:p-8 mb-16">
+          <section id="einstellungen" className="bg-[#181818] border border-white/10 rounded-2xl p-6 md:p-8 mb-16 scroll-mt-24">
             <div className="flex items-center gap-3 mb-6">
               <Globe className="w-5 h-5 text-blue-400" />
               <h2 className="text-xl font-bold text-white">Präferenzen</h2>

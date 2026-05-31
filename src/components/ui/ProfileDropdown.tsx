@@ -39,20 +39,20 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-[#282828] text-white rounded-md shadow-2xl z-50 border border-white/10 py-1 text-sm animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute right-0 mt-3 w-56 bg-black/80 backdrop-blur-xl text-white rounded-2xl shadow-[0_0_30px_rgba(168,85,247,0.15)] z-50 border border-purple-500/20 py-2 text-sm animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden">
           <Link 
-            href="/settings" 
+            href="/settings#konto" 
             onClick={() => setIsOpen(false)}
-            className="flex items-center justify-between px-4 py-3 hover:bg-white/10 transition-colors"
+            className="flex items-center justify-between px-4 py-2.5 mx-2 rounded-lg hover:bg-purple-500/10 hover:text-purple-300 transition-colors"
           >
             <span>Konto</span>
-            <ExternalLink className="w-4 h-4 text-white/50" />
+            <ExternalLink className="w-4 h-4 opacity-50" />
           </Link>
           
           <Link 
-            href="/settings" 
+            href="/settings#profil" 
             onClick={() => setIsOpen(false)}
-            className="block px-4 py-3 hover:bg-white/10 transition-colors"
+            className="block px-4 py-2.5 mx-2 rounded-lg hover:bg-purple-500/10 hover:text-purple-300 transition-colors"
           >
             Profil
           </Link>
@@ -60,7 +60,7 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
           <Link 
             href="#" 
             onClick={() => setIsOpen(false)}
-            className="block px-4 py-3 hover:bg-white/10 transition-colors"
+            className="block px-4 py-2.5 mx-2 rounded-lg hover:bg-purple-500/10 hover:text-purple-300 transition-colors"
           >
             Zuletzt
           </Link>
@@ -68,33 +68,33 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
           <Link 
             href="#" 
             onClick={() => setIsOpen(false)}
-            className="flex items-center justify-between px-4 py-3 hover:bg-white/10 transition-colors"
+            className="flex items-center justify-between px-4 py-2.5 mx-2 rounded-lg hover:bg-purple-500/10 hover:text-purple-300 transition-colors"
           >
             <span>Support</span>
-            <ExternalLink className="w-4 h-4 text-white/50" />
+            <ExternalLink className="w-4 h-4 opacity-50" />
           </Link>
 
           <button 
             onClick={() => setIsOpen(false)}
-            className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors"
+            className="w-[calc(100%-1rem)] text-left px-4 py-2.5 mx-2 rounded-lg hover:bg-purple-500/10 hover:text-purple-300 transition-colors"
           >
             Private Session
           </button>
 
           <Link 
-            href="/settings" 
+            href="/settings#einstellungen" 
             onClick={() => setIsOpen(false)}
-            className="block px-4 py-3 hover:bg-white/10 transition-colors"
+            className="block px-4 py-2.5 mx-2 rounded-lg hover:bg-purple-500/10 hover:text-purple-300 transition-colors"
           >
             Einstellungen
           </Link>
 
-          <div className="h-px bg-white/10 my-1 mx-2" />
+          <div className="h-px bg-purple-500/20 my-2 mx-4" />
 
           <form action={signOutAction}>
             <button 
               type="submit" 
-              className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors"
+              className="w-[calc(100%-1rem)] text-left px-4 py-2.5 mx-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
             >
               Abmelden
             </button>
