@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, Radio, UserCheck } from 'lucide-react';
+import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, Radio, UserCheck, AudioWaveform } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
 
@@ -11,11 +11,13 @@ export default function Sidebar() {
   return (
     <div className="w-64 bg-black h-full flex flex-col pt-6 pb-24 border-r border-white/5">
       <div className="px-6 mb-8">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-primary flex items-center justify-center">
-            <div className="w-3 h-3 bg-black rounded-full" />
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-all duration-300">
+            <AudioWaveform className="w-5 h-5 text-white" strokeWidth={2.5} />
           </div>
-          <span className="text-xl font-bold tracking-tight text-white">AI Stream</span>
+          <span className="text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
+            AI Stream
+          </span>
         </Link>
       </div>
 

@@ -138,6 +138,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // --- Check for duplicates ------------------------------------------
+    const { data: existingSongs, error: searchError } = await supabase
+      .from('songs')
+      .select('id')
+      .ilike('title', title)
+      .ilike('artist_name', artistName)
+      .limit(1);
+
+    if (searchError) {
+      return NextResponse.json(
+        { error: 'Failed to verify duplicate status', details: searchError.message },
+        { status: 500, headers: corsHeaders },
+      );
+    }
+
+    if (existingSongs && existingSongs.length > 0) {
+      return NextResponse.json(
+        { error: `Ein Song mit dem Titel "${title}" von "${artistName}" existiert bereits.` },
+        { status: 409, headers: corsHeaders },
+      );
+    }
+
     const timestamp = Date.now();
 
     // --- Upload audio --------------------------------------------------
