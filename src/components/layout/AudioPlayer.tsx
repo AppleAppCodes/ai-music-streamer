@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, Mic2, Shuffle, Repeat } from 'lucide-react';
+import { Check, ChevronRight, Info, MoreHorizontal, Pause, Play, Repeat, Share2, Shuffle, SkipBack, SkipForward, Timer, Volume2 } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,15 @@ function formatTime(seconds: number) {
   const s = Math.floor(seconds % 60);
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
+
+const SLEEP_TIMER_OPTIONS: Array<[number, string]> = [
+  [5, '5 Minuten'],
+  [10, '10 Minuten'],
+  [15, '15 Minuten'],
+  [30, '30 Minuten'],
+  [45, '45 Minuten'],
+  [60, '1 Stunde'],
+];
 
 export default function AudioPlayer() {
   const {
@@ -35,7 +44,23 @@ export default function AudioPlayer() {
   const { t } = useTranslation();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isTimerMenuOpen, setIsTimerMenuOpen] = useState(false);
+  const [sleepTimerLabel, setSleepTimerLabel] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState('');
+  const isPlayingRef = useRef(isPlaying);
   const countedSongIdRef = useRef<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const sleepTimerRef = useRef<number | null>(null);
+  const displayArtist = currentSong?.artist_name || currentSong?.creatorName || t('player.creatorFallback');
+  const canPlayPrevious = queueIndex > 0;
+  const canPlayNext = queueIndex >= 0 && queueIndex < queue.length - 1;
+  const progressPercent = Math.max(0, Math.min(100, Number.isFinite(progress) ? progress : 0));
+  const volumePercent = Math.max(0, Math.min(100, Number.isFinite(volume) ? volume * 100 : 0));
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   useEffect(() => {
     import('@/utils/supabase/client').then(({ createClient }) => {
@@ -60,13 +85,102 @@ export default function AudioPlayer() {
     }
   }, [currentTime, currentSong, duration]);
 
-  if (!currentSong && !isLoggedIn) return null;
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+        setIsTimerMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMenuOpen(false);
+        setIsTimerMenuOpen(false);
+      }
+    };
 
-  const displayArtist = currentSong?.artist_name || currentSong?.creatorName || t('player.creatorFallback');
-  const canPlayPrevious = queueIndex > 0;
-  const canPlayNext = queueIndex >= 0 && queueIndex < queue.length - 1;
-  const progressPercent = Math.max(0, Math.min(100, Number.isFinite(progress) ? progress : 0));
-  const volumePercent = Math.max(0, Math.min(100, Number.isFinite(volume) ? volume * 100 : 0));
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (sleepTimerRef.current) {
+        window.clearTimeout(sleepTimerRef.current);
+      }
+    };
+  }, []);
+
+  const clearSleepTimer = () => {
+    if (sleepTimerRef.current) {
+      window.clearTimeout(sleepTimerRef.current);
+      sleepTimerRef.current = null;
+    }
+    setSleepTimerLabel(null);
+  };
+
+  const scheduleSleepTimer = (minutes: number, label: string) => {
+    clearSleepTimer();
+    sleepTimerRef.current = window.setTimeout(() => {
+      if (isPlayingRef.current) {
+        togglePlayPause();
+      }
+      sleepTimerRef.current = null;
+      setSleepTimerLabel(null);
+    }, minutes * 60 * 1000);
+    setSleepTimerLabel(label);
+    setIsMenuOpen(false);
+    setIsTimerMenuOpen(false);
+  };
+
+  const scheduleSleepTimerForSongEnd = () => {
+    if (!duration || duration <= currentTime) return;
+
+    clearSleepTimer();
+    const remainingMs = Math.max(0, (duration - currentTime - 0.25) * 1000);
+    sleepTimerRef.current = window.setTimeout(() => {
+      if (isPlayingRef.current) {
+        togglePlayPause();
+      }
+      sleepTimerRef.current = null;
+      setSleepTimerLabel(null);
+    }, remainingMs);
+    setSleepTimerLabel('Nach Ende des Songs');
+    setIsMenuOpen(false);
+    setIsTimerMenuOpen(false);
+  };
+
+  const shareCurrentSong = async () => {
+    if (!currentSong) return;
+
+    const songUrl = `${window.location.origin}/song/${currentSong.id}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: currentSong.title,
+          text: `${currentSong.title} - ${displayArtist}`,
+          url: songUrl,
+        });
+        setShareStatus('Geteilt');
+      } else {
+        await navigator.clipboard.writeText(songUrl);
+        setShareStatus('Link kopiert');
+      }
+    } catch {
+      return;
+    }
+
+    window.setTimeout(() => setShareStatus(''), 1800);
+    setIsMenuOpen(false);
+    setIsTimerMenuOpen(false);
+  };
+
+  if (!currentSong && !isLoggedIn) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 h-24 bg-surface border-t border-white/5 px-4 flex items-center justify-between z-50">
@@ -140,7 +254,7 @@ export default function AudioPlayer() {
             step="any"
             value={progressPercent}
             aria-label="Song position"
-            className="player-slider flex-1"
+            className="player-slider min-w-0 flex-1"
             style={{
               background: `linear-gradient(to right, #ffffff 0%, #ffffff ${progressPercent}%, rgba(255,255,255,0.18) ${progressPercent}%, rgba(255,255,255,0.18) 100%)`,
             }}
@@ -151,11 +265,21 @@ export default function AudioPlayer() {
       </div>
 
       {/* Extra Controls */}
-      <div className={`flex items-center justify-end gap-4 w-1/3 min-w-[180px] ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`}>
-        <button className="text-muted hover:text-white transition-colors" title="Creator Info">
-          <Mic2 className="w-4 h-4" />
+      <div className={`relative flex min-w-0 w-1/3 max-w-[360px] items-center justify-end gap-3 pr-1 ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`} ref={menuRef}>
+        <button
+          type="button"
+          onClick={() => {
+            setIsMenuOpen((open) => !open);
+            setIsTimerMenuOpen(false);
+          }}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-white/10 hover:text-white"
+          title="Song-Menü"
+          aria-label="Song-Menü öffnen"
+          aria-expanded={isMenuOpen}
+        >
+          <MoreHorizontal className="w-5 h-5" />
         </button>
-        <div className="flex items-center gap-2 w-24">
+        <div className="flex w-28 min-w-0 max-w-[22vw] items-center gap-2">
           <Volume2 className="w-4 h-4 text-muted" />
           <input
             type="range"
@@ -164,13 +288,85 @@ export default function AudioPlayer() {
             step="any"
             value={volumePercent}
             aria-label="Volume"
-            className="player-slider flex-1"
+            className="player-slider min-w-0 flex-1"
             style={{
               background: `linear-gradient(to right, #ffffff 0%, #ffffff ${volumePercent}%, rgba(255,255,255,0.18) ${volumePercent}%, rgba(255,255,255,0.18) 100%)`,
             }}
             onChange={(e) => setVolume(Number(e.currentTarget.value) / 100)}
           />
         </div>
+
+        {isMenuOpen && currentSong && (
+          <div className="absolute bottom-14 right-0 w-72 overflow-hidden rounded-xl border border-white/10 bg-[#242424]/95 py-2 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-xl">
+            <Link
+              href={`/song/${currentSong.id}`}
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/10"
+            >
+              <Info className="w-4 h-4 text-white/70" />
+              <span className="flex-1">Song-Details</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setIsTimerMenuOpen((open) => !open)}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/10"
+            >
+              <Timer className="w-4 h-4 text-white/70" />
+              <span className="flex-1">Sleeptimer</span>
+              {sleepTimerLabel ? <span className="text-xs text-primary">{sleepTimerLabel}</span> : null}
+              <ChevronRight className={`w-4 h-4 text-white/60 transition-transform ${isTimerMenuOpen ? 'rotate-90' : ''}`} />
+            </button>
+
+            {isTimerMenuOpen && (
+              <div className="border-y border-white/10 bg-black/20 py-1">
+                {SLEEP_TIMER_OPTIONS.map(([minutes, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => scheduleSleepTimer(minutes, label)}
+                    className="flex w-full items-center gap-3 px-11 py-2.5 text-left text-white/85 transition-colors hover:bg-white/10 hover:text-white"
+                  >
+                    <span className="flex-1">{label}</span>
+                    {sleepTimerLabel === label ? <Check className="w-4 h-4 text-primary" /> : null}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={scheduleSleepTimerForSongEnd}
+                  className="flex w-full items-center gap-3 px-11 py-2.5 text-left text-white/85 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!duration || duration <= currentTime}
+                >
+                  <span className="flex-1">Nach Ende des Songs</span>
+                  {sleepTimerLabel === 'Nach Ende des Songs' ? <Check className="w-4 h-4 text-primary" /> : null}
+                </button>
+                {sleepTimerLabel ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearSleepTimer();
+                      setIsMenuOpen(false);
+                      setIsTimerMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-3 px-11 py-2.5 text-left text-white/55 transition-colors hover:bg-white/10 hover:text-white"
+                  >
+                    Timer ausschalten
+                  </button>
+                ) : null}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={shareCurrentSong}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/10"
+            >
+              <Share2 className="w-4 h-4 text-white/70" />
+              <span className="flex-1">Teilen</span>
+              {shareStatus ? <span className="text-xs text-primary">{shareStatus}</span> : null}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

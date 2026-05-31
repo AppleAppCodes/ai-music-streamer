@@ -68,6 +68,8 @@ body {
 }
 
 .player-slider {
+  width: 100%;
+  min-width: 0;
   height: 16px;
   appearance: none;
   border-radius: 9999px;
