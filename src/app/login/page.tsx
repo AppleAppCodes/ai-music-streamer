@@ -24,6 +24,7 @@ export default function LoginPage() {
   const turnstileOptions = useMemo(() => ({ 
     theme: 'dark' as const,
     size: 'invisible' as const,
+    execution: 'execute' as const,
   }), []);
 
   const handleCaptchaSuccess = useCallback((token: string) => {
@@ -43,17 +44,25 @@ export default function LoginPage() {
 
   // Helper: get a fresh token, retrying if needed
   const getCaptchaToken = async (): Promise<string | null> => {
-    // If we already have a token, use it
+    // Try to get response synchronously first
+    const directResponse = turnstileRef.current?.getResponse();
+    if (directResponse) return directResponse;
+
+    // If we already have a token from callback, use it
     if (captchaTokenRef.current) {
       return captchaTokenRef.current;
     }
 
-    // Try to trigger execution for invisible widget
+    // Try to trigger execution explicitly for invisible widget
     turnstileRef.current?.execute();
 
-    // Wait for token with polling (invisible mode generates it automatically)
-    for (let i = 0; i < 10; i++) {
+    // Wait for token with polling
+    for (let i = 0; i < 15; i++) {
       await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const res = turnstileRef.current?.getResponse();
+      if (res) return res;
+      
       if (captchaTokenRef.current) {
         return captchaTokenRef.current;
       }
