@@ -19,7 +19,9 @@ interface PlayerContextType {
   setQueue: (songs: Song[], startIndex?: number) => void;
   playNext: () => void;
   playPrevious: () => void;
-  isRepeating: boolean;
+  isShuffling: boolean;
+  toggleShuffle: () => void;
+  repeatMode: 'none' | 'all' | 'one';
   toggleRepeat: () => void;
 }
 
@@ -34,9 +36,45 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [volume, setVolumeState] = useState(1);
   const [queue, setQueueState] = useState<Song[]>([]);
   const [queueIndex, setQueueIndex] = useState(-1);
-  const [isRepeating, setIsRepeating] = useState(false);
+  const [isShuffling, setIsShuffling] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<'none' | 'all' | 'one'>('none');
+  const [isMounted, setIsMounted] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Load state from localStorage on mount
+  useEffect(() => {
+    setIsMounted(true);
+    try {
+      const savedSong = localStorage.getItem('player_currentSong');
+      const savedQueue = localStorage.getItem('player_queue');
+      const savedIndex = localStorage.getItem('player_queueIndex');
+      const savedRepeat = localStorage.getItem('player_repeatMode');
+      const savedShuffle = localStorage.getItem('player_isShuffling');
+
+      if (savedSong) setCurrentSong(JSON.parse(savedSong));
+      if (savedQueue) setQueueState(JSON.parse(savedQueue));
+      if (savedIndex) setQueueIndex(Number(savedIndex));
+      if (savedRepeat) setRepeatMode(savedRepeat as 'none' | 'all' | 'one');
+      if (savedShuffle) setIsShuffling(JSON.parse(savedShuffle));
+    } catch (e) {
+      console.error('Failed to load player state', e);
+    }
+  }, []);
+
+  // Save state to localStorage on change
+  useEffect(() => {
+    if (!isMounted) return;
+    try {
+      if (currentSong) localStorage.setItem('player_currentSong', JSON.stringify(currentSong));
+      localStorage.setItem('player_queue', JSON.stringify(queue));
+      localStorage.setItem('player_queueIndex', String(queueIndex));
+      localStorage.setItem('player_repeatMode', repeatMode);
+      localStorage.setItem('player_isShuffling', JSON.stringify(isShuffling));
+    } catch (e) {
+      console.error('Failed to save player state', e);
+    }
+  }, [currentSong, queue, queueIndex, repeatMode, isShuffling, isMounted]);
 
   // Initialize audio element
   useEffect(() => {
@@ -102,6 +140,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     // New song
     setCurrentSong(song);
+    
+    // Set src and load immediately
     audioRef.current.src = song.audio_url;
     audioRef.current.load();
     setProgress(0);
@@ -117,27 +157,50 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const playNext = useCallback(() => {
-    if (queue.length === 0 || queueIndex === -1) return;
+    if (queue.length === 0) return;
+    
+    if (isShuffling && queue.length > 1) {
+      let nextIndex = Math.floor(Math.random() * queue.length);
+      while (nextIndex === queueIndex) {
+        nextIndex = Math.floor(Math.random() * queue.length);
+      }
+      setQueueIndex(nextIndex);
+      playSong(queue[nextIndex]);
+      return;
+    }
+
     const nextIndex = queueIndex + 1;
     if (nextIndex < queue.length) {
       setQueueIndex(nextIndex);
       playSong(queue[nextIndex]);
+    } else if (repeatMode === 'all') {
+      setQueueIndex(0);
+      playSong(queue[0]);
+    } else {
+      setIsPlaying(false);
     }
-  }, [playSong, queue, queueIndex]);
+  }, [playSong, queue, queueIndex, isShuffling, repeatMode]);
 
   const playPrevious = useCallback(() => {
-    if (queue.length === 0 || queueIndex === -1) return;
+    if (queue.length === 0) return;
+    if (currentTime > 3 && audioRef.current) {
+      audioRef.current.currentTime = 0;
+      return;
+    }
     const prevIndex = queueIndex - 1;
     if (prevIndex >= 0) {
       setQueueIndex(prevIndex);
       playSong(queue[prevIndex]);
+    } else if (repeatMode === 'all') {
+      setQueueIndex(queue.length - 1);
+      playSong(queue[queue.length - 1]);
     }
-  }, [playSong, queue, queueIndex]);
+  }, [playSong, queue, queueIndex, currentTime, repeatMode]);
 
   // Handle song ended to play next or repeat
   useEffect(() => {
     const onSongEnded = () => {
-      if (isRepeating && audioRef.current) {
+      if (repeatMode === 'one' && audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(console.error);
         setIsPlaying(true);
@@ -147,7 +210,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener('player-song-ended', onSongEnded);
     return () => window.removeEventListener('player-song-ended', onSongEnded);
-  }, [playNext, isRepeating]);
+  }, [playNext, repeatMode]);
 
   const togglePlayPause = () => {
     if (!currentSong) return;
@@ -186,8 +249,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setQueue,
       playNext,
       playPrevious,
-      isRepeating,
-      toggleRepeat: () => setIsRepeating(r => !r),
+      isShuffling,
+      toggleShuffle: () => setIsShuffling(s => !s),
+      repeatMode,
+      toggleRepeat: () => {
+        setRepeatMode(r => r === 'none' ? 'all' : r === 'all' ? 'one' : 'none');
+      },
     }}>
       {children}
     </PlayerContext.Provider>

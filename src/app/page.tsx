@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import SongCard from '@/components/ui/SongCard';
-import { ChevronRight, Heart, ListMusic, Play, Radio, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, ListMusic, Play, Radio, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -78,10 +78,18 @@ export default function Home() {
   const { t } = useTranslation();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
+  const genresScrollRef = useRef<HTMLDivElement>(null);
 
   const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
   const [newReleases, setNewReleases] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const scrollGenres = (direction: 'left' | 'right') => {
+    if (genresScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -400 : 400;
+      genresScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     async function loadMusic() {
@@ -268,10 +276,27 @@ export default function Home() {
 
       {/* Popular Genres Section */}
       <section className="px-4 sm:px-8 relative z-10">
-        <SectionHeader title={t('home.popularGenres')} />
-        <div className="relative -mx-8">
+        <div className="flex justify-between items-end mb-4">
+          <SectionHeader title={t('home.popularGenres')} />
+          <div className="flex gap-2 mr-8">
+            <button 
+              onClick={() => scrollGenres('left')}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => scrollGenres('right')}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+        <div className="relative -mx-8 group/slider">
           <div 
-            className="flex snap-x snap-mandatory gap-3 overflow-x-auto py-16 px-8 no-scrollbar"
+            ref={genresScrollRef}
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto py-16 px-8 no-scrollbar scroll-smooth"
             style={{ 
               maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)', 
               WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)' 

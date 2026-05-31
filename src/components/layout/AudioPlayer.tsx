@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Check, ChevronRight, Info, MoreHorizontal, Pause, Play, Repeat, Share2, Shuffle, SkipBack, SkipForward, Timer, Volume2 } from 'lucide-react';
+import { Check, ChevronRight, Info, MoreHorizontal, Pause, Play, Repeat, Share2, Shuffle, SkipBack, SkipForward, Timer, Volume2, Repeat1 } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
@@ -38,8 +38,10 @@ export default function AudioPlayer() {
     queueIndex,
     playNext,
     playPrevious,
-    isRepeating,
-    toggleRepeat
+    isShuffling,
+    toggleShuffle,
+    repeatMode,
+    toggleRepeat,
   } = usePlayer();
   const { t } = useTranslation();
 
@@ -213,7 +215,10 @@ export default function AudioPlayer() {
       {/* Controls */}
       <div className={`flex flex-col items-center flex-1 max-w-2xl px-4 ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="flex items-center gap-6 mb-2">
-          <button className="text-muted hover:text-white transition-colors">
+          <button 
+            onClick={toggleShuffle}
+            className={`transition-colors ${isShuffling ? 'text-indigo-500' : 'text-muted hover:text-white'}`}
+          >
             <Shuffle className="w-4 h-4" />
           </button>
           <button
@@ -238,9 +243,9 @@ export default function AudioPlayer() {
           </button>
           <button 
             onClick={toggleRepeat}
-            className={`transition-colors ${isRepeating ? 'text-indigo-500' : 'text-muted hover:text-white'}`}
+            className={`transition-colors ${repeatMode !== 'none' ? 'text-indigo-500' : 'text-muted hover:text-white'}`}
           >
-            <Repeat className="w-4 h-4" />
+            {repeatMode === 'one' ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
           </button>
         </div>
         
