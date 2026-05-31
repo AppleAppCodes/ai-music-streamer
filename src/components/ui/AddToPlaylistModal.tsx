@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { X, Plus, Music, Loader2, Check } from 'lucide-react';
+import { X, Plus, Music, Loader2, Check, Trash2 } from 'lucide-react';
 
 interface AddToPlaylistModalProps {
   songId: string;
@@ -58,15 +58,40 @@ export default function AddToPlaylistModal({ songId, onClose }: AddToPlaylistMod
   const handleAddToPlaylist = async (playlistId: string) => {
     setAddingTo(playlistId);
     try {
-      // Check if already in playlist to avoid unique constraint error if we add one later, or just insert
       const { error } = await supabase
         .from('playlist_songs')
         .insert({ playlist_id: playlistId, song_id: songId });
-      
-      if (error && error.code !== '23505') { // 23505 is unique violation, ignore if already exists
+      if (error && error.code !== '23505') {
         console.error('Error adding to playlist:', error);
+      } else {
+        // Update state to show it as already added
+        setAlreadyIn(prev => new Set(prev).add(playlistId));
       }
-      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAddingTo(null);
+    }
+  };
+
+  const handleRemoveFromPlaylist = async (playlistId: string) => {
+    setAddingTo(playlistId);
+    try {
+      const { error } = await supabase
+        .from('playlist_songs')
+        .delete()
+        .eq('playlist_id', playlistId)
+        .eq('song_id', songId);
+      if (error) {
+        console.error('Error removing from playlist:', error);
+      } else {
+        // Update state to remove from alreadyIn set
+        setAlreadyIn(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(playlistId);
+          return newSet;
+        });
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -154,12 +179,18 @@ export default function AddToPlaylistModal({ songId, onClose }: AddToPlaylistMod
               {playlists.map(playlist => (
                 <button
                   key={playlist.id}
-                  onClick={() => handleAddToPlaylist(playlist.id)}
-                  disabled={addingTo !== null || alreadyIn.has(playlist.id)}
+                  onClick={() => {
+                    if (alreadyIn.has(playlist.id)) {
+                      handleRemoveFromPlaylist(playlist.id);
+                    } else {
+                      handleAddToPlaylist(playlist.id);
+                    }
+                  }}
+                  disabled={addingTo !== null}
                   className="w-full flex items-center gap-4 p-3 hover:bg-white/5 rounded-lg transition-colors text-left group disabled:opacity-50"
                 >
                   {alreadyIn.has(playlist.id) ? (
-                    <Check className="w-5 h-5 text-green-400" />
+                    <Trash2 className="w-5 h-5 text-red-400" />
                   ) : (
                     <Plus className="w-5 h-5 text-white" />
                   )}
