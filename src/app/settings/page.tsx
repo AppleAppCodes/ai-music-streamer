@@ -99,6 +99,15 @@ export default function SettingsPage() {
       });
       
       if (error) throw error;
+
+      // Update public.profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ username })
+        .eq('id', user.id);
+        
+      if (profileError) throw profileError;
+
       alert('Profil erfolgreich aktualisiert!');
       
       // Refresh router to update components like Header

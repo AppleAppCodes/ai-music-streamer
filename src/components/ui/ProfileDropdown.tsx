@@ -73,15 +73,6 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
             </Link>
           )}
 
-
-          <Link 
-            href="#" 
-            onClick={() => setIsOpen(false)}
-            className="block px-4 py-2.5 mx-2 rounded-lg hover:bg-purple-500/10 hover:text-purple-300 transition-colors"
-          >
-            Zuletzt
-          </Link>
-
           <Link 
             href="#" 
             onClick={() => setIsOpen(false)}
@@ -91,12 +82,6 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
             <ExternalLink className="w-4 h-4 opacity-50" />
           </Link>
 
-          <button 
-            onClick={() => setIsOpen(false)}
-            className="w-[calc(100%-1rem)] text-left px-4 py-2.5 mx-2 rounded-lg hover:bg-purple-500/10 hover:text-purple-300 transition-colors"
-          >
-            Private Session
-          </button>
 
           <Link 
             href="/settings#einstellungen" 

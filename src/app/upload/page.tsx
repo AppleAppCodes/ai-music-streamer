@@ -251,19 +251,6 @@ export default function UploadPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 md:col-span-2">
-                <label className="block text-sm font-semibold text-white/80 mb-2">Creator</label>
-                <div className="flex items-center gap-3">
-                  <UserCircle className="w-5 h-5 text-indigo-300" />
-                  <div>
-                    <div className="font-semibold text-white">{creatorDisplayName}</div>
-                    <div className="text-xs text-white/45">Wird automatisch deinem Account zugeordnet.</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div>
               <label className="block text-sm font-semibold text-white/80 mb-2">Human Edit Anteil: {humanEdit}%</label>
               <input 
@@ -283,7 +270,7 @@ export default function UploadPage() {
             <div>
               <label className="block text-sm font-semibold text-white/80 mb-3">Art der Vocals *</label>
               <div className="flex gap-4">
-                {['AI', 'Human', 'Hybrid'].map((type) => (
+                {['AI', 'Human', 'Hybrid', 'Instrumental'].map((type) => (
                   <label key={type} className="flex items-center gap-2 cursor-pointer">
                     <input 
                       type="radio" 

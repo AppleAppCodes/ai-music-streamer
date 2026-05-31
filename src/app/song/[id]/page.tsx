@@ -40,6 +40,7 @@ export default function SongDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editHumanEdit, setEditHumanEdit] = useState<number>(0);
   const [editVocalsType, setEditVocalsType] = useState<string>('AI');
+  const [editArtistName, setEditArtistName] = useState<string>('');
   const [saving, setSaving] = useState(false);
 
   const supabase = createClient();
@@ -59,13 +60,14 @@ export default function SongDetailPage() {
         
       if (songData) {
         const songWithProfile = songData as SongWithProfile;
-        const creatorName = songWithProfile.profiles?.username || songWithProfile.artist_name || 'Creator';
+        const creatorName = songWithProfile.artist_name || 'Creator';
         const songForState: SongWithProfile = { ...songWithProfile, creatorName };
         delete songForState.profiles;
 
         setSong(songForState);
         setEditHumanEdit(songData.human_edit ?? 0);
         setEditVocalsType(songData.vocals_type || 'AI');
+        setEditArtistName(songData.artist_name || '');
         
         // Fetch related songs by the same artist
         const artistName = songData.artist_name || 'Creator';
@@ -99,12 +101,13 @@ export default function SongDetailPage() {
       .from('songs')
       .update({
         human_edit: editHumanEdit,
-        vocals_type: editVocalsType
+        vocals_type: editVocalsType,
+        artist_name: editArtistName
       })
       .eq('id', song.id);
       
     if (!error) {
-      setSong({ ...song, human_edit: editHumanEdit, vocals_type: editVocalsType });
+      setSong({ ...song, human_edit: editHumanEdit, vocals_type: editVocalsType, artist_name: editArtistName, creatorName: editArtistName });
       setIsEditing(false);
     }
     setSaving(false);
@@ -271,8 +274,14 @@ export default function SongDetailPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-                  <div className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Creator</div>
-                  <div className="font-semibold text-white/90">{displayCreator}</div>
+                  <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Creator / Artist</label>
+                  <input
+                    type="text"
+                    value={editArtistName}
+                    onChange={(e) => setEditArtistName(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                    placeholder="Creator Name"
+                  />
                 </div>
 
                 <div>
@@ -295,7 +304,7 @@ export default function SongDetailPage() {
               <div>
                 <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Vocals Type</label>
                 <div className="flex gap-4">
-                  {['AI', 'Human', 'Hybrid'].map((type) => (
+                  {['AI', 'Human', 'Hybrid', 'Instrumental'].map((type) => (
                     <label key={type} className="flex items-center gap-2 cursor-pointer bg-black/20 px-4 py-2 rounded-lg border border-white/5">
                       <input 
                         type="radio" 
