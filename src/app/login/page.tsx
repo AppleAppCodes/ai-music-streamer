@@ -30,6 +30,8 @@ export default function LoginPage() {
           throw new Error('Bitte warte kurz auf die Sicherheitsprüfung (Bot-Schutz).');
         }
         
+        console.log('Sending login request with captchaToken:', captchaToken);
+        
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -143,7 +145,7 @@ export default function LoginPage() {
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
                 ) : (
-                  isLogin ? 'Einloggen' : 'Registrieren'
+                  isLogin ? 'Einloggen (Secured)' : 'Registrieren (Secured)'
                 )}
               </span>
             </button>
