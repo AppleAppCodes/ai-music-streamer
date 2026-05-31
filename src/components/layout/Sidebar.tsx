@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Compass, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, Radio } from 'lucide-react';
+import { Home, Compass, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, Radio, UserCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export default function Sidebar() {
@@ -54,6 +54,10 @@ export default function Sidebar() {
           <Link href="/collection/tracks" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
             <Heart className="w-5 h-5" />
             Liked Songs
+          </Link>
+          <Link href="/following" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
+            <UserCheck className="w-5 h-5" />
+            Folge ich
           </Link>
         </nav>
       </div>

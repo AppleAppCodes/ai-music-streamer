@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, Clock3, MoreHorizontal, UserPlus, BadgeCheck, Shuffle, Edit2, Loader2 } from 'lucide-react';
+import { Play, Pause, Clock3, MoreHorizontal, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2 } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import { useTranslation } from 'react-i18next';
 import LikeButton from '@/components/ui/LikeButton';
@@ -31,6 +31,8 @@ export default function ArtistPage() {
   
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -74,6 +76,17 @@ export default function ArtistPage() {
         }
       }
       
+      // 3. Check if user follows this artist
+      if (session?.user) {
+        const { data: followData } = await supabase
+          .from('follows')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .eq('artist_name', artistName)
+          .maybeSingle();
+        setIsFollowing(!!followData);
+      }
+      
       setLoading(false);
     }
     
@@ -88,6 +101,34 @@ export default function ArtistPage() {
     } else {
       const queue = songs.map(s => ({ ...s, creatorName: artistName } as any));
       playSong(queue[0]);
+    }
+  };
+
+  const toggleFollow = async () => {
+    if (!user) {
+      // Redirect to login if not logged in
+      window.location.href = '/login';
+      return;
+    }
+    setFollowLoading(true);
+    try {
+      if (isFollowing) {
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('artist_name', artistName);
+        setIsFollowing(false);
+      } else {
+        await supabase
+          .from('follows')
+          .insert({ user_id: user.id, artist_name: artistName });
+        setIsFollowing(true);
+      }
+    } catch (err) {
+      console.error('Follow error:', err);
+    } finally {
+      setFollowLoading(false);
     }
   };
 
@@ -245,8 +286,23 @@ export default function ArtistPage() {
             <Shuffle className="w-7 h-7" />
           </button>
           
-          <button className="flex items-center gap-2 px-4 py-1.5 border border-white/30 rounded-full text-white hover:border-white transition-colors text-sm font-bold uppercase tracking-wider">
-            Folgen
+          <button 
+            onClick={toggleFollow}
+            disabled={followLoading}
+            className={`flex items-center gap-2 px-5 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider transition-all ${
+              isFollowing 
+                ? 'bg-white/10 border border-white/40 text-white hover:border-white hover:bg-white/20' 
+                : 'border border-white/30 text-white hover:border-white hover:scale-105'
+            }`}
+          >
+            {followLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isFollowing ? (
+              <UserCheck className="w-4 h-4" />
+            ) : (
+              <UserPlus className="w-4 h-4" />
+            )}
+            {isFollowing ? 'Folge ich' : 'Folgen'}
           </button>
           
           <button className="text-white/40 hover:text-white transition-colors">
