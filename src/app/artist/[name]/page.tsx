@@ -32,11 +32,13 @@ export default function ArtistPage() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
-  const [isVideo, setIsVideo] = useState(false);
+  const [artistVideoUrl, setArtistVideoUrl] = useState<string | null>(null);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [isUploadingArtistVideo, setIsUploadingArtistVideo] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function loadArtistData() {
@@ -69,10 +71,9 @@ export default function ArtistPage() {
         });
         
       if (files && files.length > 0) {
-        // Find all matches for this artist
-        const bannerFiles = files.filter(f => f.name.startsWith(sanitizedName));
+        // Find background banner matches (not video)
+        const bannerFiles = files.filter(f => f.name.startsWith(sanitizedName) && !f.name.includes('_video'));
         if (bannerFiles.length > 0) {
-          // Sort by newest first, so if they uploaded an mp4 after a jpg, we use the mp4
           bannerFiles.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
           const bannerFile = bannerFiles[0];
           
@@ -80,8 +81,18 @@ export default function ArtistPage() {
             .from('covers')
             .getPublicUrl(`banners/${bannerFile.name}`);
           setBannerUrl(data.publicUrl);
-          const isVid = bannerFile.metadata?.mimetype?.startsWith('video/') || !!bannerFile.name.match(/\.(mp4|webm|ogg|mov)$/i);
-          setIsVideo(isVid);
+        }
+
+        // Find artist video matches
+        const videoFiles = files.filter(f => f.name.startsWith(sanitizedName + '_video'));
+        if (videoFiles.length > 0) {
+          videoFiles.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+          const videoFile = videoFiles[0];
+          
+          const { data } = supabase.storage
+            .from('covers')
+            .getPublicUrl(`banners/${videoFile.name}`);
+          setArtistVideoUrl(data.publicUrl);
         }
       }
       
@@ -164,12 +175,40 @@ export default function ArtistPage() {
         .getPublicUrl(path);
         
       setBannerUrl(`${data.publicUrl}?t=${Date.now()}`);
-      setIsVideo(file.type.startsWith('video/') || !!file.name.match(/\.(mp4|webm|ogg|mov)$/i));
     } catch (err: unknown) {
       console.error('Error uploading banner:', err);
       alert('Fehler beim Hochladen des Banners: ' + getErrorMessage(err));
     } finally {
       setIsUploadingBanner(false);
+    }
+  };
+
+  const handleArtistVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingArtistVideo(true);
+    const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const ext = file.name.split('.').pop();
+    const path = `banners/${sanitizedName}_video.${ext}`;
+
+    try {
+      const { error } = await supabase.storage
+        .from('covers')
+        .upload(path, file, { upsert: true });
+
+      if (error) throw error;
+
+      const { data } = supabase.storage
+        .from('covers')
+        .getPublicUrl(path);
+        
+      setArtistVideoUrl(`${data.publicUrl}?t=${Date.now()}`);
+    } catch (err: unknown) {
+      console.error('Error uploading video:', err);
+      alert('Fehler beim Hochladen des Videos: ' + getErrorMessage(err));
+    } finally {
+      setIsUploadingArtistVideo(false);
     }
   };
 
@@ -212,32 +251,15 @@ export default function ArtistPage() {
       {/* Background Banner */}
       <div className="absolute top-0 left-0 right-0 h-[600px] overflow-hidden pointer-events-none z-0">
         {bannerUrl ? (
-          isVideo ? (
-            <video 
-              src={bannerUrl} 
-              autoPlay 
-              loop 
-              muted 
-              playsInline
-              controlsList="nodownload"
-              onContextMenu={(e) => e.preventDefault()}
-              className="w-full h-full object-cover opacity-60"
-              style={{ 
-                maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
-              }}
-            />
-          ) : (
-            <img 
-              src={bannerUrl} 
-              alt="Banner" 
-              className="w-full h-full object-cover opacity-60"
-              style={{ 
-                maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
-              }}
-            />
-          )
+          <img 
+            src={bannerUrl} 
+            alt="Banner" 
+            className="w-full h-full object-cover opacity-60"
+            style={{ 
+              maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
+            }}
+          />
         ) : (
           <div 
             className="w-full h-full bg-cover bg-center opacity-30" 
@@ -252,46 +274,90 @@ export default function ArtistPage() {
       <div className="absolute top-0 left-0 right-0 h-[600px] bg-gradient-to-b from-black/10 via-[#0A0A0A]/70 to-[#0A0A0A] pointer-events-none z-0" />
       
       {/* Hero Content */}
-      <div className="relative pt-32 px-6 md:px-10 pb-8 flex flex-col justify-end min-h-[380px] z-10 group">
+      <div className="relative pt-32 px-6 md:px-10 pb-8 flex flex-col md:flex-row justify-between items-end min-h-[380px] z-10 group">
         
-        {/* Admin Editable Overlay */}
-        {user && (
-          <div className="absolute top-10 right-10 opacity-0 group-hover:opacity-100 transition-opacity">
-            <input 
-              type="file" 
-              accept="image/*,video/*" 
-              ref={fileInputRef} 
-              className="hidden" 
-              onChange={handleBannerUpload}
-            />
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploadingBanner}
-              className="flex items-center gap-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium"
-            >
-              {isUploadingBanner ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Edit2 className="w-4 h-4" />
-              )}
-              Banner bearbeiten
-            </button>
+        <div className="flex flex-col justify-end w-full">
+          {/* Admin Editable Overlay for Background */}
+          {user && (
+            <div className="absolute top-10 right-10 md:right-auto md:left-10 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+              <input 
+                type="file" 
+                accept="image/*" 
+                ref={fileInputRef} 
+                className="hidden" 
+                onChange={handleBannerUpload}
+              />
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingBanner}
+                className="flex items-center gap-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium"
+              >
+                {isUploadingBanner ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Edit2 className="w-4 h-4" />
+                )}
+                Hintergrundbild bearbeiten
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 mb-2 text-sm text-white/90">
+            <BadgeCheck className="w-5 h-5 text-blue-400 fill-blue-400/20" />
+            <span>Verifizierter Künstler</span>
+          </div>
+          
+          <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter drop-shadow-2xl mb-4 truncate w-full max-w-5xl">
+            {artistName}
+          </h1>
+          
+          <div className="text-base text-white/70 font-medium">
+            {monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen
+          </div>
+        </div>
+
+        {/* Artist Profile Video (Canvas) */}
+        {(artistVideoUrl || user) && (
+          <div className="relative w-40 h-60 md:w-56 md:h-80 rounded-2xl overflow-hidden shadow-2xl border border-white/10 mt-8 md:mt-0 flex-shrink-0 group/video bg-black/20 backdrop-blur-sm">
+            {artistVideoUrl ? (
+              <video 
+                src={artistVideoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-white/30 text-xs p-4 text-center border-dashed border-2 border-white/10 rounded-2xl">
+                Kein Video vorhanden
+              </div>
+            )}
+            
+            {/* Admin Upload Video Overlay */}
+            {user && (
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/video:opacity-100 transition-opacity flex flex-col items-center justify-center z-30">
+                <input 
+                  type="file" 
+                  accept="video/*" 
+                  ref={videoInputRef} 
+                  className="hidden" 
+                  onChange={handleArtistVideoUpload}
+                />
+                <button 
+                  onClick={(e) => { e.preventDefault(); videoInputRef.current?.click(); }}
+                  disabled={isUploadingArtistVideo}
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full border border-white/30 backdrop-blur-md transition-all text-sm font-medium"
+                >
+                  {isUploadingArtistVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit2 className="w-4 h-4" />}
+                  Video ändern
+                </button>
+              </div>
+            )}
           </div>
         )}
-
-        <div className="flex items-center gap-2 mb-2 text-sm text-white/90">
-          <BadgeCheck className="w-5 h-5 text-blue-400 fill-blue-400/20" />
-          <span>Verifizierter Künstler</span>
-        </div>
-        
-        <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter drop-shadow-2xl mb-4 truncate w-full max-w-5xl">
-          {artistName}
-        </h1>
-        
-        <div className="text-base text-white/70 font-medium">
-          {monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen
-        </div>
       </div>
+
 
       {/* Main Content Area */}
       <div className="relative bg-[#0A0A0A] px-6 md:px-10 py-6 min-h-screen z-10">
