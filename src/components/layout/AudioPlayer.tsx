@@ -33,7 +33,7 @@ export default function AudioPlayer() {
           <Link href={`/song/${currentSong.id}`} className="text-sm font-medium text-white hover:underline truncate">
             {currentSong.title}
           </Link>
-          <Link href={`/creator/${currentSong.creator_id}`} className="text-xs text-muted hover:text-white hover:underline truncate">
+          <Link href={`/artist/${encodeURIComponent(currentSong.artist_name || currentSong.creatorName || t('player.creatorFallback'))}`} className="text-xs text-muted hover:text-white hover:underline truncate">
             {currentSong.artist_name || currentSong.creatorName || t('player.creatorFallback')}
           </Link>
         </div>

@@ -54,7 +54,7 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
         <Link href={`/song/${song.id}`} className="text-base font-semibold text-white truncate hover:underline">
           {song.title}
         </Link>
-        <Link href={`/creator/${song.creator_id}`} className="text-sm text-muted truncate hover:text-white hover:underline mt-0.5">
+        <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-sm text-muted truncate hover:text-white hover:underline mt-0.5">
           {displayArtist}
         </Link>
       </div>

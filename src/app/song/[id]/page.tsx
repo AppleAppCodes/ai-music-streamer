@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
 import { Play, Pause, MoreHorizontal, Clock3 } from 'lucide-react';
@@ -104,10 +105,12 @@ export default function SongDetailPage() {
             {song.title}
           </h1>
           <div className="flex items-center gap-2 text-sm text-white/90 mt-2 font-medium">
-            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+            <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden hover:scale-105 transition-transform">
               <span className="text-xs">{displayArtist.charAt(0)}</span>
-            </div>
-            <span className="hover:underline cursor-pointer font-bold">{displayArtist}</span>
+            </Link>
+            <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="hover:underline cursor-pointer font-bold">
+              {displayArtist}
+            </Link>
             <span>•</span>
             <span>{releaseYear}</span>
             <span>•</span>
