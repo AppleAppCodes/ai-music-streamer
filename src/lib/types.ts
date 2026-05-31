@@ -26,6 +26,7 @@ export interface Song {
   ai_tool: string;
   plays: number;
   created_at: string;
+  creatorName?: string;
 }
 
 export interface Playlist {
