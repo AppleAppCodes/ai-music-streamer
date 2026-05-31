@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
-import { useRef } from 'react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -14,57 +13,88 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaStatus, setCaptchaStatus] = useState<'loading' | 'ready' | 'error' | 'expired'>('loading');
   const turnstileRef = useRef<TurnstileInstance>(null);
   
   const router = useRouter();
   const supabase = createClient();
+
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
+
+  // Stable options object to prevent re-renders
+  const turnstileOptions = useMemo(() => ({ theme: 'dark' as const }), []);
+
+  const handleCaptchaSuccess = useCallback((token: string) => {
+    console.log('Turnstile token received:', token.substring(0, 20) + '...');
+    setCaptchaToken(token);
+    setCaptchaStatus('ready');
+  }, []);
+
+  const handleCaptchaError = useCallback(() => {
+    console.error('Turnstile error');
+    setCaptchaStatus('error');
+    setCaptchaToken(null);
+  }, []);
+
+  const handleCaptchaExpire = useCallback(() => {
+    console.log('Turnstile token expired');
+    setCaptchaStatus('expired');
+    setCaptchaToken(null);
+  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    // If no captcha token yet, wait a moment and try once more
+    let token = captchaToken;
+    if (!token) {
+      // Give Turnstile a brief moment to finish
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Re-check after wait (the state might not have updated, so we read from ref)
+      // If still no token, proceed without it and let Supabase return the proper error
+      if (!captchaToken) {
+        setError('Die Sicherheitsprüfung lädt noch. Bitte warte einen Moment und versuche es dann erneut.');
+        setLoading(false);
+        // Try to reset and get a fresh token
+        turnstileRef.current?.reset();
+        return;
+      }
+      token = captchaToken;
+    }
+
     try {
       if (isLogin) {
-        if (!captchaToken) {
-          throw new Error('Bitte warte kurz auf die Sicherheitsprüfung (Bot-Schutz).');
-        }
-        
-        console.log('Sending login request with captchaToken:', captchaToken);
-        
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
           options: {
-            captchaToken: captchaToken
+            captchaToken: token
           }
         });
         if (error) throw error;
         router.push('/');
         router.refresh();
       } else {
-        if (!captchaToken) {
-          throw new Error('Bitte bestätige, dass du kein Roboter bist.');
-        }
-
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            captchaToken: captchaToken
+            captchaToken: token
           }
         });
         if (error) throw error;
-        // Auto-login or ask to verify email depending on Supabase settings. 
-        // We assume auto-login for now.
         router.push('/');
         router.refresh();
       }
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      // Always reset captcha after attempt (tokens are single-use)
       turnstileRef.current?.reset();
       setCaptchaToken(null);
-    } finally {
+      setCaptchaStatus('loading');
       setLoading(false);
     }
   };
@@ -127,14 +157,35 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div className="flex justify-center my-4">
-              <Turnstile 
-                ref={turnstileRef}
-                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'} 
-                onSuccess={(token) => setCaptchaToken(token)}
-                options={{ theme: 'dark' }}
-              />
-            </div>
+            {/* Turnstile widget - rendered but can be hidden for invisible mode */}
+            {siteKey && (
+              <div className="flex justify-center my-4">
+                <Turnstile 
+                  ref={turnstileRef}
+                  siteKey={siteKey}
+                  onSuccess={handleCaptchaSuccess}
+                  onError={handleCaptchaError}
+                  onExpire={handleCaptchaExpire}
+                  options={turnstileOptions}
+                />
+              </div>
+            )}
+
+            {/* Status indicator */}
+            {captchaStatus === 'error' && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    turnstileRef.current?.reset();
+                    setCaptchaStatus('loading');
+                  }}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 underline"
+                >
+                  Sicherheitsprüfung neu laden
+                </button>
+              </div>
+            )}
 
             <button
               type="submit"
@@ -145,7 +196,7 @@ export default function LoginPage() {
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
                 ) : (
-                  isLogin ? 'Einloggen (Secured)' : 'Registrieren (Secured)'
+                  isLogin ? 'Einloggen' : 'Registrieren'
                 )}
               </span>
             </button>
@@ -156,6 +207,10 @@ export default function LoginPage() {
               onClick={() => {
                 setIsLogin(!isLogin);
                 setError(null);
+                // Reset captcha when switching modes
+                turnstileRef.current?.reset();
+                setCaptchaToken(null);
+                setCaptchaStatus('loading');
               }}
               className="text-sm text-white/50 hover:text-white transition-colors"
             >
