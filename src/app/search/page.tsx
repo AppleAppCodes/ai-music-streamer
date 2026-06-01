@@ -4,10 +4,8 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import SongCard from '@/components/ui/SongCard';
 import Link from 'next/link';
-import { Library, Mic2, Music, Search } from 'lucide-react';
-import { usePlayer } from '@/lib/player-context';
+import { Mic2, Music, Search } from 'lucide-react';
 
 interface PlaylistResult {
   id: string;
@@ -25,7 +23,6 @@ function SearchResults() {
   const query = searchParams.get('q') || '';
   const router = useRouter();
   const supabase = createClient();
-  const { setQueue } = usePlayer();
 
   const [loading, setLoading] = useState(true);
   const [songs, setSongs] = useState<Song[]>([]);
@@ -33,8 +30,14 @@ function SearchResults() {
   const [artists, setArtists] = useState<ArtistResult[]>([]);
 
   useEffect(() => {
+    let isActive = true;
+
     async function performSearch() {
-      if (!query.trim()) {
+      const trimmedQuery = query.trim();
+      if (!trimmedQuery) {
+        setSongs([]);
+        setPlaylists([]);
+        setArtists([]);
         setLoading(false);
         return;
       }
@@ -45,7 +48,7 @@ function SearchResults() {
       const { data: songsData } = await supabase
         .from('songs')
         .select('*, profiles(username)')
-        .or(`title.ilike.%${query}%,artist_name.ilike.%${query}%`)
+        .or(`title.ilike.%${trimmedQuery}%,artist_name.ilike.%${trimmedQuery}%`)
         .order('plays', { ascending: false })
         .limit(20);
 
@@ -54,23 +57,28 @@ function SearchResults() {
         .from('playlists')
         .select('*, profiles(username)')
         .eq('is_public', true)
-        .ilike('title', `%${query}%`)
+        .ilike('title', `%${trimmedQuery}%`)
         .limit(10);
+
+      if (!isActive) return;
 
       // Extract unique artists from the searched songs (simple simulation for artist search)
       const uniqueArtists = Array.from(new Set(
         (songsData || [])
-          .filter(s => s.artist_name && s.artist_name.toLowerCase().includes(query.toLowerCase()))
+          .filter(s => s.artist_name && s.artist_name.toLowerCase().includes(trimmedQuery.toLowerCase()))
           .map(s => s.artist_name)
       )).map(name => ({ artist_name: name }));
 
-      setSongs(songsData as any[] || []);
-      setPlaylists(playlistsData as any[] || []);
+      setSongs((songsData || []) as Song[]);
+      setPlaylists((playlistsData || []) as PlaylistResult[]);
       setArtists(uniqueArtists);
       setLoading(false);
     }
 
     performSearch();
+    return () => {
+      isActive = false;
+    };
   }, [query, supabase]);
 
   if (loading) {
@@ -125,14 +133,14 @@ function SearchResults() {
       <div className="relative pt-6 md:pt-10 px-6 md:px-10 pb-6 z-10">
         {searchInput}
         <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-8">
-          Ergebnisse für "{query}"
+          Ergebnisse für &quot;{query}&quot;
         </h1>
 
         {hasNoResults ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <Search className="w-16 h-16 text-white/10 mb-4" />
             <h2 className="text-2xl font-bold text-white mb-2">Nichts gefunden</h2>
-            <p className="text-white/50">Für deine Suche nach "{query}" gibt es leider keine Treffer.</p>
+            <p className="text-white/50">Für deine Suche nach &quot;{query}&quot; gibt es leider keine Treffer.</p>
           </div>
         ) : (
           <div className="space-y-12">
@@ -162,7 +170,7 @@ function SearchResults() {
                   ) : (
                     <Link href={`/song/${songs[0].id}`} className="group flex flex-col gap-4 p-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all duration-300 relative overflow-hidden h-[240px] justify-end">
                       <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shadow-lg overflow-hidden mb-2">
-                        <img src={songs[0].cover_url} className="w-full h-full object-cover" />
+                        <img src={songs[0].cover_url} alt={songs[0].title} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex flex-col">
                         <span className="text-3xl font-black text-white truncate">{songs[0].title}</span>
@@ -181,7 +189,7 @@ function SearchResults() {
                 <section className="flex-1">
                   <h2 className="text-2xl font-bold text-white mb-6">Songs</h2>
                   <div className="flex flex-col gap-1">
-                    {songs.slice(0, 4).map((song, index) => {
+                    {songs.slice(0, 4).map((song) => {
                       return (
                         <Link 
                           href={`/song/${song.id}`}

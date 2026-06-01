@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AudioWaveform, Bell, LogIn, Search } from 'lucide-react';
+import { Bell, LogIn, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ProfileDropdown from '@/components/ui/ProfileDropdown';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -17,7 +17,7 @@ interface HeaderClientProps {
 export default function HeaderClient({ user, signOutAction }: HeaderClientProps) {
   const { t } = useTranslation();
   const router = useRouter();
-  const searchAutoNav = useRef(false);
+  const searchReturnPath = useRef<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -48,9 +48,14 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
             onChange={(e) => {
               const query = e.target.value;
               if (query.trim()) {
+                if (!window.location.pathname.includes('/search')) {
+                  searchReturnPath.current = `${window.location.pathname}${window.location.search}`;
+                }
                 router.replace(`/search?q=${encodeURIComponent(query.trim())}`);
               } else if (window.location.pathname.includes('/search')) {
-                router.replace(`/search`);
+                const returnPath = searchReturnPath.current;
+                searchReturnPath.current = null;
+                router.replace(returnPath || `/search`);
               }
             }}
             className="block w-full rounded-full border border-white/20 bg-white/10 py-2 pl-10 pr-3 text-sm leading-5 text-white shadow-lg backdrop-blur-md transition-all placeholder-white/60 hover:border-purple-500/40 hover:bg-white/15 hover:shadow-[0_0_15px_rgba(168,85,247,0.15)] focus:border-purple-500/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:shadow-[0_0_20px_rgba(168,85,247,0.3)] sm:py-2.5 sm:pl-11 sm:pr-4"

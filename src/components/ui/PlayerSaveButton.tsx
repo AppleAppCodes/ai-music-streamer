@@ -13,6 +13,13 @@ interface PlayerSaveButtonProps {
   openUpwards?: boolean;
 }
 
+interface MenuPosition {
+  bottom?: number;
+  left: number;
+  top?: number;
+  width: number;
+}
+
 export default function PlayerSaveButton({
   songId,
   className = '',
@@ -22,6 +29,7 @@ export default function PlayerSaveButton({
   const supabase = createClient();
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLiked, setIsLiked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,10 +37,33 @@ export default function PlayerSaveButton({
   const [loadedSongId, setLoadedSongId] = useState<string | null>(null);
   const [openSongId, setOpenSongId] = useState<string | null>(null);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const isStatusReady = loadedSongId === songId && !isLoading;
   const isOpen = openSongId === songId;
 
   const closePlaylistModal = useCallback(() => setShowPlaylistModal(false), []);
+  const updateMenuPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const viewportPadding = 8;
+    const menuGap = 12;
+    const estimatedMenuHeight = 132;
+    const triggerRect = trigger.getBoundingClientRect();
+    const width = Math.min(288, window.innerWidth - viewportPadding * 2);
+    const left = Math.min(
+      Math.max(viewportPadding, triggerRect.right - width),
+      window.innerWidth - width - viewportPadding
+    );
+    const shouldOpenUpwards =
+      openUpwards || triggerRect.bottom + menuGap + estimatedMenuHeight > window.innerHeight - viewportPadding;
+
+    setMenuPosition(
+      shouldOpenUpwards
+        ? { bottom: window.innerHeight - triggerRect.top + menuGap, left, width }
+        : { left, top: triggerRect.bottom + menuGap, width }
+    );
+  }, [openUpwards]);
 
   useEffect(() => {
     let isActive = true;
@@ -87,6 +118,17 @@ export default function PlayerSaveButton({
     };
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+    };
+  }, [isOpen, updateMenuPosition]);
+
   const addToLikedSongs = async () => {
     if (!userId) {
       router.push('/login');
@@ -140,6 +182,7 @@ export default function PlayerSaveButton({
     <>
       <div ref={menuRef} className="relative flex items-center justify-center">
         <button
+          ref={triggerRef}
           type="button"
           disabled={!isStatusReady || isSaving}
           onClick={async (event) => {
@@ -155,6 +198,7 @@ export default function PlayerSaveButton({
               return;
             }
             if (!isLiked && !(await addToLikedSongs())) return;
+            updateMenuPosition();
             setOpenSongId(songId);
           }}
           className={`transition-all duration-300 active:scale-75 ${isLiked ? 'text-green-500' : 'text-white/60 hover:text-white'} ${className}`}
@@ -171,8 +215,11 @@ export default function PlayerSaveButton({
           )}
         </button>
 
-        {isOpen && isStatusReady && (
-          <div className={`absolute right-0 z-[110] w-72 overflow-hidden rounded-xl border border-white/10 bg-[#242424]/95 py-2 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-xl ${openUpwards ? 'bottom-full mb-3' : 'top-full mt-3'}`}>
+        {isOpen && isStatusReady && menuPosition && (
+          <div
+            className="fixed z-[110] overflow-hidden rounded-xl border border-white/10 bg-[#242424]/95 py-2 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-xl"
+            style={menuPosition}
+          >
             <button
               type="button"
               onClick={(event) => {
