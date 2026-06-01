@@ -6,6 +6,7 @@ import Header from "@/components/layout/Header";
 import AudioPlayer from "@/components/layout/AudioPlayer";
 import PlayerLayout from "@/components/layout/PlayerLayout";
 import CookieConsent from "@/components/ui/CookieConsent";
+import ListeningPresenceSync from "@/components/social/ListeningPresenceSync";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,6 +51,7 @@ export default function RootLayout({
               </main>
             </div>
           </div>
+          <ListeningPresenceSync />
           <AudioPlayer />
           <CookieConsent />
         </PlayerLayout>

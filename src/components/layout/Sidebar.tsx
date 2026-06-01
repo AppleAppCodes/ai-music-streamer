@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, Radio, UserCheck, AudioWaveform } from 'lucide-react';
+import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, Radio, UserCheck, AudioWaveform, UsersRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
 
@@ -39,6 +39,10 @@ export default function Sidebar() {
           <Link href="/discover/playlists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
             <ListMusic className="w-5 h-5" />
             Playlists Entdecken
+          </Link>
+          <Link href="/friends" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
+            <UsersRound className="w-5 h-5" />
+            Friend Feed
           </Link>
           <Link href="#" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
             <Radio className="w-5 h-5" />
