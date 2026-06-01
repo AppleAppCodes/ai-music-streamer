@@ -6,7 +6,6 @@ import type { CSSProperties } from 'react';
 import SongCard from '@/components/ui/SongCard';
 import { ChevronLeft, ChevronRight, Heart, ListMusic, Play, Radio, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { usePlayer } from '@/lib/player-context';
@@ -81,7 +80,6 @@ function ImageSlideshow({ images, currentIndex }: { images: string[], currentInd
 
 export default function Home() {
   const { t } = useTranslation();
-  const router = useRouter();
   const { playSong, setQueue, currentSong, togglePlayPause } = usePlayer();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -420,17 +418,7 @@ export default function Home() {
             return (
               <div
                 key={item.title}
-                role="link"
-                tabIndex={0}
-                className="group relative flex h-[72px] items-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] shadow-[0_14px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.12] hover:shadow-[0_20px_54px_rgba(0,0,0,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                onClick={() => {
-                  if (item.link !== '#') router.push(item.link);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key !== 'Enter' && event.key !== ' ') return;
-                  event.preventDefault();
-                  if (item.link !== '#') router.push(item.link);
-                }}
+                className="group relative flex h-[72px] items-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] shadow-[0_14px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.12] hover:shadow-[0_20px_54px_rgba(0,0,0,0.38)] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent"
                 onMouseEnter={() => {
                   setHoveredItem(item.title);
                   setSlideIndex(item.images && item.images.length > 1 ? 1 : 0);
@@ -440,6 +428,13 @@ export default function Home() {
                   setSlideIndex(0);
                 }}
               >
+                {item.link !== '#' ? (
+                  <Link
+                    href={item.link}
+                    aria-label={item.title}
+                    className="absolute inset-0 z-10 rounded-2xl"
+                  />
+                ) : null}
                 <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className={`w-[72px] h-full shrink-0 relative shadow-md flex items-center justify-center ${item.color || 'bg-black'}`}>
                   {Icon ? (
@@ -455,7 +450,7 @@ export default function Home() {
                   {item.title}
                 </div>
                 {canQuickPlay ? (
-                  <div className="relative pr-4 opacity-0 translate-x-2 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
+                  <div className="relative z-20 pr-4 opacity-0 translate-x-2 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={(event) => handleQuickAccessPlay(event, item.title)}
