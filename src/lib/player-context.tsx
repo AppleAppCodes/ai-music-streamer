@@ -2,6 +2,9 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Song } from '@/lib/types';
+import Link from 'next/link';
+import { createClient } from '@/utils/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface PlayerContextType {
   currentSong: Song | null;
@@ -39,8 +42,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [isShuffling, setIsShuffling] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'none' | 'all' | 'one'>('none');
   const [isMounted, setIsMounted] = useState(false);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Fetch auth state
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -130,6 +146,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [isPlaying, currentSong]); // depend on currentSong to trigger play when song changes
 
   const playSong = useCallback((song: Song) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    
     if (!audioRef.current) return;
     
     // If it's the same song, just toggle play
@@ -147,7 +168,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setProgress(0);
     setCurrentTime(0);
     setIsPlaying(true);
-  }, [currentSong?.id]);
+  }, [currentSong?.id, user]);
 
   const setQueue = useCallback((songs: Song[], startIndex = 0) => {
     setQueueState(songs);
@@ -257,6 +278,24 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       },
     }}>
       {children}
+      
+      {showAuthModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#181818] rounded-xl p-8 max-w-md w-full text-center shadow-2xl border border-white/10 relative">
+            <h2 className="text-2xl font-black text-white mb-4 tracking-tight">Jetzt mit einem kostenlosen YORIAX Konto hören</h2>
+            <p className="text-white/70 mb-8 text-sm">Registriere dich kostenlos, um unbegrenzt KI-Musik zu streamen und eigene Playlists zu erstellen.</p>
+            <Link href="/login" onClick={() => setShowAuthModal(false)} className="block w-full bg-primary hover:bg-primary/90 text-white font-bold py-3.5 px-4 rounded-full transition-colors mb-4 text-sm">
+              Kostenlos registrieren
+            </Link>
+            <div className="text-sm text-white/50 mb-6">
+              Du hast schon ein Konto? <Link href="/login" onClick={() => setShowAuthModal(false)} className="text-white hover:underline font-semibold ml-1">Anmelden</Link>
+            </div>
+            <button onClick={() => setShowAuthModal(false)} className="text-white/40 hover:text-white text-xs font-medium uppercase tracking-wider transition-colors">
+              Schließen
+            </button>
+          </div>
+        </div>
+      )}
     </PlayerContext.Provider>
   );
 }

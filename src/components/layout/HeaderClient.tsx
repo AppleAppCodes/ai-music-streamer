@@ -53,18 +53,6 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
                 router.replace(`/search`);
               }
             }}
-            onFocus={() => {
-              if (!window.location.pathname.includes('/search')) {
-                searchAutoNav.current = true;
-                router.push('/search');
-              }
-            }}
-            onBlur={(e) => {
-              if (!e.target.value.trim() && searchAutoNav.current) {
-                searchAutoNav.current = false;
-                router.back();
-              }
-            }}
             className="block w-full rounded-full border border-white/20 bg-white/10 py-2 pl-10 pr-3 text-sm leading-5 text-white shadow-lg backdrop-blur-md transition-all placeholder-white/60 hover:border-purple-500/40 hover:bg-white/15 hover:shadow-[0_0_15px_rgba(168,85,247,0.15)] focus:border-purple-500/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:shadow-[0_0_20px_rgba(168,85,247,0.3)] sm:py-2.5 sm:pl-11 sm:pr-4"
             placeholder={t('nav.search') + "..."}
           />
