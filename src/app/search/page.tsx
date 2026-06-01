@@ -108,12 +108,78 @@ function SearchResults() {
         ) : (
           <div className="space-y-12">
             
-            {/* Top Artists Result */}
-            {artists.length > 0 && (
+            {/* Top Result & Songs Split Layout */}
+            <div className="flex flex-col lg:flex-row gap-8 mb-12">
+              
+              {/* Left Side: Top Result */}
+              {(artists.length > 0 || songs.length > 0) && (
+                <section className="lg:w-2/5">
+                  <h2 className="text-2xl font-bold text-white mb-6">Top-Ergebnis</h2>
+                  {artists.length > 0 ? (
+                    <Link
+                      href={`/artist/${encodeURIComponent(artists[0].artist_name)}`}
+                      className="group flex flex-col gap-4 p-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all duration-300 relative overflow-hidden h-[240px] justify-end"
+                    >
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shadow-lg mb-2">
+                        <Mic2 className="w-12 h-12 text-white/50" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-3xl font-black text-white truncate">{artists[0].artist_name}</span>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="bg-white/10 text-white text-sm font-bold px-3 py-1 rounded-full">Künstler</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ) : (
+                    <Link href={`/song/${songs[0].id}`} className="group flex flex-col gap-4 p-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all duration-300 relative overflow-hidden h-[240px] justify-end">
+                      <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shadow-lg overflow-hidden mb-2">
+                        <img src={songs[0].cover_url} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-3xl font-black text-white truncate">{songs[0].title}</span>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-white/60 text-sm font-semibold">{songs[0].artist_name}</span>
+                          <span className="bg-white/10 text-white text-xs font-bold px-3 py-1 rounded-full">Song</span>
+                        </div>
+                      </div>
+                    </Link>
+                  )}
+                </section>
+              )}
+
+              {/* Right Side: Songs List */}
+              {songs.length > 0 && (
+                <section className="flex-1">
+                  <h2 className="text-2xl font-bold text-white mb-6">Songs</h2>
+                  <div className="flex flex-col gap-1">
+                    {songs.slice(0, 4).map((song, index) => {
+                      return (
+                        <Link 
+                          href={`/song/${song.id}`}
+                          key={song.id}
+                          className="flex items-center gap-4 p-2 rounded-md hover:bg-white/10 group cursor-pointer transition-colors"
+                        >
+                          <div className="relative w-12 h-12 shrink-0 rounded overflow-hidden">
+                            <img src={song.cover_url} alt={song.title} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex flex-col flex-1 min-w-0">
+                            <span className="text-base font-semibold truncate text-white">{song.title}</span>
+                            <span className="text-sm text-white/60 truncate">{song.artist_name}</span>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+            </div>
+
+            {/* Other Artists Row (if more than 1) */}
+            {artists.length > 1 && (
               <section>
-                <h2 className="text-2xl font-bold text-white mb-6">Künstler</h2>
+                <h2 className="text-2xl font-bold text-white mb-6">Weitere Künstler</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
-                  {artists.slice(0, 5).map((artist, i) => (
+                  {artists.slice(1, 7).map((artist, i) => (
                     <Link
                       key={i}
                       href={`/artist/${encodeURIComponent(artist.artist_name)}`}
@@ -125,22 +191,6 @@ function SearchResults() {
                       <span className="font-bold text-white truncate w-full">{artist.artist_name}</span>
                       <span className="text-xs text-white/50">Künstler</span>
                     </Link>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Songs Result */}
-            {songs.length > 0 && (
-              <section>
-                <h2 className="text-2xl font-bold text-white mb-6">Songs</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                  {songs.map((song) => (
-                    <SongCard 
-                      key={song.id} 
-                      song={song} 
-                      contextQueue={songs}
-                    />
                   ))}
                 </div>
               </section>
