@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, MoreHorizontal, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2 } from 'lucide-react';
+import { Play, Pause, MoreHorizontal, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2, Music, Save, X } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
@@ -17,6 +17,27 @@ function formatDuration(seconds: number | null | undefined): string {
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
+
+const InstagramIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+  </svg>
+);
+
+const YoutubeIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path>
+    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+  </svg>
+);
+
+const TiktokIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path>
+  </svg>
+);
 
 export default function ArtistPage() {
   const params = useParams();
@@ -39,6 +60,11 @@ export default function ArtistPage() {
   const [followLoading, setFollowLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+
+  const [socials, setSocials] = useState<{instagram_url?: string, tiktok_url?: string, youtube_url?: string} | null>(null);
+  const [isEditingSocials, setIsEditingSocials] = useState(false);
+  const [editSocials, setEditSocials] = useState({instagram_url: '', tiktok_url: '', youtube_url: ''});
+  const [isSavingSocials, setIsSavingSocials] = useState(false);
 
   useEffect(() => {
     async function loadArtistData() {
@@ -106,6 +132,20 @@ export default function ArtistPage() {
           .maybeSingle();
         setIsFollowing(!!followData);
       }
+      // 4. Fetch artist socials
+      const { data: socialsData } = await supabase
+        .from('artist_profiles')
+        .select('*')
+        .eq('artist_name', artistName)
+        .maybeSingle();
+      if (socialsData) {
+        setSocials(socialsData);
+        setEditSocials({
+          instagram_url: socialsData.instagram_url || '',
+          tiktok_url: socialsData.tiktok_url || '',
+          youtube_url: socialsData.youtube_url || ''
+        });
+      }
       
       setLoading(false);
     }
@@ -150,6 +190,29 @@ export default function ArtistPage() {
       console.error('Follow error:', err);
     } finally {
       setFollowLoading(false);
+    }
+  };
+
+  const handleSaveSocials = async () => {
+    setIsSavingSocials(true);
+    try {
+      const { error } = await supabase
+        .from('artist_profiles')
+        .upsert({ 
+          artist_name: artistName,
+          instagram_url: editSocials.instagram_url,
+          tiktok_url: editSocials.tiktok_url,
+          youtube_url: editSocials.youtube_url
+        }, { onConflict: 'artist_name' });
+        
+      if (error) throw error;
+      setSocials(editSocials);
+      setIsEditingSocials(false);
+    } catch (err) {
+      console.error('Error saving socials', err);
+      alert('Fehler beim Speichern der Socials');
+    } finally {
+      setIsSavingSocials(false);
     }
   };
 
@@ -313,6 +376,72 @@ export default function ArtistPage() {
           
           <div className="text-base text-white/70 font-medium">
             {monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen
+          </div>
+
+          {/* Socials */}
+          <div className="mt-4 flex items-center gap-3">
+            {isEditingSocials ? (
+              <div className="flex flex-col gap-2 bg-black/50 p-3 rounded-lg backdrop-blur-md border border-white/10">
+                <input 
+                  type="text" 
+                  placeholder="Instagram URL" 
+                  value={editSocials.instagram_url} 
+                  onChange={e => setEditSocials({...editSocials, instagram_url: e.target.value})}
+                  className="bg-white/10 text-xs px-2 py-1.5 rounded text-white"
+                />
+                <input 
+                  type="text" 
+                  placeholder="TikTok URL" 
+                  value={editSocials.tiktok_url} 
+                  onChange={e => setEditSocials({...editSocials, tiktok_url: e.target.value})}
+                  className="bg-white/10 text-xs px-2 py-1.5 rounded text-white"
+                />
+                <input 
+                  type="text" 
+                  placeholder="YouTube URL" 
+                  value={editSocials.youtube_url} 
+                  onChange={e => setEditSocials({...editSocials, youtube_url: e.target.value})}
+                  className="bg-white/10 text-xs px-2 py-1.5 rounded text-white"
+                />
+                <div className="flex justify-end gap-2 mt-1">
+                  <button onClick={() => setIsEditingSocials(false)} className="text-white/50 hover:text-white p-1">
+                    <X className="w-4 h-4" />
+                  </button>
+                  <button onClick={handleSaveSocials} disabled={isSavingSocials} className="bg-primary text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                    {isSavingSocials ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                    Speichern
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {socials?.instagram_url && (
+                  <a href={socials.instagram_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-white/80 hover:text-white">
+                    <InstagramIcon className="w-5 h-5" />
+                  </a>
+                )}
+                {socials?.tiktok_url && (
+                  <a href={socials.tiktok_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-white/80 hover:text-white">
+                    <TiktokIcon className="w-5 h-5" />
+                  </a>
+                )}
+                {socials?.youtube_url && (
+                  <a href={socials.youtube_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-white/80 hover:text-white">
+                    <YoutubeIcon className="w-5 h-5" />
+                  </a>
+                )}
+                
+                {user?.email === 'david.hein94@gmail.com' && (
+                  <button 
+                    onClick={() => setIsEditingSocials(true)}
+                    className="ml-2 flex items-center gap-1 text-xs text-white/50 hover:text-white bg-white/5 px-2 py-1 rounded"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                    Socials {(!socials?.instagram_url && !socials?.tiktok_url && !socials?.youtube_url) ? 'hinzufügen' : 'bearbeiten'}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
 

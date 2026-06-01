@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Heart, ListMusic, Play, Radio, TrendingUp } 
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
+import Marquee from 'react-fast-marquee';
 
 import { GENRES } from '@/lib/constants';
 import { Song } from '@/lib/types';
@@ -78,17 +79,14 @@ export default function Home() {
   const { t } = useTranslation();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
-  const genresScrollRef = useRef<HTMLDivElement>(null);
+  const [marqueeDirection, setMarqueeDirection] = useState<'left' | 'right'>('left');
 
   const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
   const [newReleases, setNewReleases] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const scrollGenres = (direction: 'left' | 'right') => {
-    if (genresScrollRef.current) {
-      const scrollAmount = direction === 'left' ? -400 : 400;
-      genresScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
+    setMarqueeDirection(direction);
   };
 
   useEffect(() => {
@@ -294,10 +292,13 @@ export default function Home() {
             </button>
           </div>
         </div>
-        <div className="relative -mx-8 group/slider">
-          <div 
-            ref={genresScrollRef}
-            className="flex snap-x snap-mandatory gap-3 overflow-x-auto py-16 px-8 no-scrollbar scroll-smooth"
+        <div className="relative -mx-8 overflow-hidden">
+          <Marquee 
+            direction={marqueeDirection}
+            speed={30}
+            pauseOnHover={true}
+            gradient={false}
+            className="py-16 overflow-visible"
             style={{ 
               maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)', 
               WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)' 
@@ -308,7 +309,7 @@ export default function Home() {
               return (
                 <div 
                   key={genre.name} 
-                  className={`group relative isolate min-w-[132px] snap-start h-20 rounded-xl p-3 flex flex-col justify-between cursor-pointer overflow-visible shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-[1.04] hover:shadow-[0_0_20px_var(--genre-glow)] hover:animate-pulseGlow ${genre.color}`}
+                  className={`mx-1.5 group relative isolate w-[132px] shrink-0 h-20 rounded-xl p-3 flex flex-col justify-between cursor-pointer shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-[1.04] hover:shadow-[0_0_20px_var(--genre-glow)] hover:animate-pulseGlow ${genre.color}`}
                   style={{ '--genre-glow': genre.glow } as CSSProperties}
                 >
                 <div
@@ -325,7 +326,7 @@ export default function Home() {
               </div>
             );
           })}
-          </div>
+          </Marquee>
         </div>
       </section>
 
