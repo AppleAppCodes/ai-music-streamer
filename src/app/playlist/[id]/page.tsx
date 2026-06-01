@@ -282,20 +282,7 @@ export default function PlaylistPage() {
     }
   };
 
-  const handleDeletePlaylist = async () => {
-    if (!confirm('Möchtest du diese Playlist wirklich löschen?')) return;
-    
-    try {
-      await supabase
-        .from('playlists')
-        .delete()
-        .eq('id', playlistId);
-        
-      router.push('/playlists');
-    } catch (err) {
-      console.error(err);
-    }
-  };
+
 
   if (loading) {
     return (
