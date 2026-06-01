@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music } from 'lucide-react';
+import { Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
@@ -22,7 +22,9 @@ interface PlaylistData {
   id: string;
   user_id: string;
   title: string;
+  description: string | null;
   cover_url: string | null;
+  is_public: boolean;
   created_at: string;
 }
 
@@ -39,11 +41,27 @@ export default function PlaylistPage() {
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   
+  // Menu state
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   // Editing state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     async function loadPlaylistData() {
@@ -66,6 +84,7 @@ export default function PlaylistPage() {
       
       setPlaylist(playlistData);
       setEditTitle(playlistData.title);
+      setEditDescription(playlistData.description || '');
       
       const owner = session?.user?.id === playlistData.user_id;
       setIsOwner(owner);
@@ -127,65 +146,117 @@ export default function PlaylistPage() {
 
   const handlePlayAll = () => {
     if (songs.length === 0) return;
-    
-    if (songs.some(s => s.id === currentSong?.id)) {
-      togglePlayPause();
-    } else {
-      setQueue(songs);
-      playSong(songs[0]);
-    }
+    const queueWithNames = songs.map(s => ({ ...s, creatorName: s.artist_name || 'Creator' }));
+    setQueue(queueWithNames, 0);
+    playSong({ ...songs[0], creatorName: songs[0].artist_name || 'Creator' });
   };
 
   const handleSaveTitle = async () => {
-    if (!editTitle.trim() || editTitle === playlist?.title) {
+    if (!playlist || !isOwner || editTitle.trim() === playlist.title) {
       setIsEditingTitle(false);
       setEditTitle(playlist?.title || '');
       return;
     }
     
+    const newTitle = editTitle.trim() || 'Unbenannte Playlist';
     try {
       const { error } = await supabase
         .from('playlists')
-        .update({ title: editTitle.trim() })
+        .update({ title: newTitle })
         .eq('id', playlistId);
         
-      if (!error && playlist) {
-        setPlaylist({ ...playlist, title: editTitle.trim() });
-      }
-    } catch (err) {
-      console.error(err);
+      if (error) throw error;
+      setPlaylist({ ...playlist, title: newTitle });
+    } catch (err: unknown) {
+      console.error('Error updating title:', err);
+      alert('Fehler beim Aktualisieren: ' + getErrorMessage(err));
+      setEditTitle(playlist.title);
     } finally {
       setIsEditingTitle(false);
     }
   };
 
+  const handleSaveDetails = async () => {
+    if (!playlist || !isOwner) return;
+    const newTitle = editTitle.trim() || 'Unbenannte Playlist';
+    try {
+      const { error } = await supabase
+        .from('playlists')
+        .update({ title: newTitle, description: editDescription.trim() })
+        .eq('id', playlistId);
+        
+      if (error) throw error;
+      setPlaylist({ ...playlist, title: newTitle, description: editDescription.trim() });
+      setIsEditModalOpen(false);
+    } catch (err: unknown) {
+      console.error('Error updating details:', err);
+      alert('Fehler beim Aktualisieren: ' + getErrorMessage(err));
+    }
+  };
+
+  const handleTogglePublic = async () => {
+    if (!playlist || !isOwner) return;
+    const newPublicState = !playlist.is_public;
+    try {
+      const { error } = await supabase
+        .from('playlists')
+        .update({ is_public: newPublicState })
+        .eq('id', playlistId);
+        
+      if (error) throw error;
+      setPlaylist({ ...playlist, is_public: newPublicState });
+    } catch (err: unknown) {
+      console.error('Error updating visibility:', err);
+      alert('Fehler beim Aktualisieren der Sichtbarkeit: ' + getErrorMessage(err));
+    }
+  };
+
+  const handleDeletePlaylist = async () => {
+    if (!playlist || !isOwner) return;
+    const confirmed = window.confirm("Möchtest du diese Playlist wirklich löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.");
+    if (!confirmed) return;
+    
+    try {
+      const { error } = await supabase
+        .from('playlists')
+        .delete()
+        .eq('id', playlistId);
+        
+      if (error) throw error;
+      router.push('/library');
+    } catch (err: unknown) {
+      console.error('Error deleting playlist:', err);
+      alert('Fehler beim Löschen: ' + getErrorMessage(err));
+    }
+  };
+
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !playlist) return;
+    if (!file || !isOwner || !playlist) return;
 
     setIsUploadingCover(true);
     const ext = file.name.split('.').pop();
-    const path = `playlists/${playlistId}.${ext}`;
+    const path = `covers/playlist_${playlist.id}_${Date.now()}.${ext}`;
 
     try {
-      const { error } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('covers')
-        .upload(path, file, { upsert: true });
+        .upload(path, file);
 
-      if (error) throw error;
+      if (uploadError) throw uploadError;
 
       const { data } = supabase.storage
         .from('covers')
         .getPublicUrl(path);
-        
-      const newUrl = `${data.publicUrl}?t=${Date.now()}`;
-      
-      await supabase
+
+      const { error: updateError } = await supabase
         .from('playlists')
-        .update({ cover_url: newUrl })
-        .eq('id', playlistId);
-        
-      setPlaylist({ ...playlist, cover_url: newUrl });
+        .update({ cover_url: data.publicUrl })
+        .eq('id', playlist.id);
+
+      if (updateError) throw updateError;
+
+      setPlaylist({ ...playlist, cover_url: data.publicUrl });
     } catch (err: unknown) {
       console.error('Error uploading cover:', err);
       alert('Fehler beim Hochladen des Covers: ' + getErrorMessage(err));
@@ -319,27 +390,55 @@ export default function PlaylistPage() {
             disabled={songs.length === 0}
             className="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-white hover:scale-105 transition-transform shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] disabled:opacity-50 disabled:hover:scale-100"
           >
-            {isAnyPlaying ? (
-              <Pause className="w-7 h-7 fill-current" />
+            {isPlaying && songs.some(s => s.id === currentSong?.id) ? (
+              <Pause className="w-6 h-6 fill-current" />
             ) : (
-              <Play className="w-7 h-7 fill-current ml-1" />
+              <Play className="w-6 h-6 fill-current ml-1" />
             )}
           </button>
           
-          <button className="text-white/40 hover:text-white transition-colors">
-            <MoreHorizontal className="w-8 h-8" />
-          </button>
-
           {isOwner && (
-            <button 
-              onClick={handleDeletePlaylist}
-              className="ml-auto text-white/30 hover:text-red-500 transition-colors flex items-center gap-2 text-sm font-medium"
-            >
-              <Trash2 className="w-4 h-4" />
-              Playlist löschen
-            </button>
+            <div className="relative" ref={menuRef}>
+              <button 
+                className="text-white/50 hover:text-white transition-colors p-2"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              >
+                <MoreHorizontal className="w-8 h-8" />
+              </button>
+              
+              {isMenuOpen && (
+                <div className="absolute left-0 mt-2 w-56 bg-[#282828] rounded-md shadow-lg border border-white/10 overflow-hidden z-50 py-1">
+                  <button 
+                    className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
+                    onClick={() => { setIsMenuOpen(false); setIsEditModalOpen(true); }}
+                  >
+                    <Edit2 className="w-4 h-4 text-white/70" />
+                    Details bearbeiten
+                  </button>
+                  <button 
+                    className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
+                    onClick={() => { setIsMenuOpen(false); handleTogglePublic(); }}
+                  >
+                    {playlist.is_public ? (
+                      <><Lock className="w-4 h-4 text-white/70" /> Als privat markieren</>
+                    ) : (
+                      <><Globe className="w-4 h-4 text-white/70" /> Als öffentlich markieren</>
+                    )}
+                  </button>
+                  <div className="h-px w-full bg-white/10 my-1"></div>
+                  <button 
+                    className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-white/10 flex items-center gap-3 transition-colors"
+                    onClick={() => { setIsMenuOpen(false); handleDeletePlaylist(); }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Playlist löschen
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
+
 
         {/* Songs List */}
         <div className="mb-12">
@@ -443,6 +542,84 @@ export default function PlaylistPage() {
         </div>
         
       </div>
+
+      {/* Edit Details Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center backdrop-blur-sm p-4" onClick={() => setIsEditModalOpen(false)}>
+          <div className="bg-[#282828] rounded-xl w-full max-w-[520px] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-6 flex flex-col h-full">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white">Details bearbeiten</h2>
+                <button 
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="text-white/50 hover:text-white transition-colors p-1"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex gap-4 mb-4">
+                {/* Left: Image Upload */}
+                <div 
+                  className="relative w-44 h-44 shrink-0 bg-[#333] rounded shadow-md group cursor-pointer flex items-center justify-center overflow-hidden"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {playlist.cover_url ? (
+                    <img src={playlist.cover_url} alt="Cover" className="w-full h-full object-cover" />
+                  ) : (
+                    <Music className="w-16 h-16 text-white/20" />
+                  )}
+                  
+                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {isUploadingCover ? (
+                      <Loader2 className="w-8 h-8 animate-spin text-white" />
+                    ) : (
+                      <>
+                        <Edit2 className="w-8 h-8 text-white mb-2" />
+                        <span className="text-sm font-medium text-white text-center px-2">Foto auswählen</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Inputs */}
+                <div className="flex flex-col gap-3 flex-1">
+                  <input 
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full bg-[#3E3E3E] text-white text-sm rounded p-3 outline-none focus:bg-[#4a4a4a] transition-colors"
+                    placeholder="Name hinzufügen"
+                  />
+                  <textarea 
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    className="w-full bg-[#3E3E3E] text-white text-sm rounded p-3 outline-none focus:bg-[#4a4a4a] transition-colors resize-none flex-1 min-h-[100px]"
+                    placeholder="Optionale Beschreibung hinzufügen"
+                  />
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="flex justify-end mb-4">
+                <button 
+                  onClick={handleSaveDetails}
+                  className="bg-white text-black font-bold px-8 py-3 rounded-full hover:scale-105 transition-transform"
+                >
+                  Speichern
+                </button>
+              </div>
+
+              {/* Disclaimer */}
+              <p className="text-[11px] font-bold text-white/90">
+                Wenn du fortfährst, stimmst du zu, dass die Plattform auf dein hochgeladenes Bild zugreift. Stell bitte sicher, dass du berechtigt bist, dieses Bild hochzuladen.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
