@@ -28,7 +28,7 @@ export default function AudioPlayer() {
   const {
     currentSong, isPlaying, progress, currentTime, duration, volume,
     playNext, playPrevious, togglePlayPause, setVolume, seekTo, queue,
-    isShuffling, toggleShuffle, repeatMode, toggleRepeat, user
+    queueIndex, isShuffling, toggleShuffle, repeatMode, toggleRepeat, user
   } = usePlayer();
   const { t } = useTranslation();
 
