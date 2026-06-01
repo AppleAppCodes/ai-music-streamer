@@ -26,6 +26,7 @@ interface PlayerContextType {
   toggleShuffle: () => void;
   repeatMode: 'none' | 'all' | 'one';
   toggleRepeat: () => void;
+  user: SupabaseUser | null;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -276,6 +277,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       toggleRepeat: () => {
         setRepeatMode(r => r === 'none' ? 'all' : r === 'all' ? 'one' : 'none');
       },
+      user,
     }}>
       {children}
       
@@ -283,7 +285,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-[#181818] rounded-xl p-8 max-w-md w-full text-center shadow-2xl border border-white/10 relative">
             <h2 className="text-2xl font-black text-white mb-4 tracking-tight">Jetzt mit einem kostenlosen YORIAX Konto hören</h2>
-            <p className="text-white/70 mb-8 text-sm">Registriere dich kostenlos, um unbegrenzt KI-Musik zu streamen und eigene Playlists zu erstellen.</p>
+            <p className="text-white/70 mb-8 text-sm">Registriere dich kostenlos, um unbegrenzt Musik zu streamen und eigene Playlists zu erstellen.</p>
             <Link href="/login" onClick={() => setShowAuthModal(false)} className="block w-full bg-primary hover:bg-primary/90 text-white font-bold py-3.5 px-4 rounded-full transition-colors mb-4 text-sm">
               Kostenlos registrieren
             </Link>

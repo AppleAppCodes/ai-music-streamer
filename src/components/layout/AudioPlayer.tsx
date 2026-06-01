@@ -26,25 +26,33 @@ const SLEEP_TIMER_OPTIONS: Array<[number, string]> = [
 
 export default function AudioPlayer() {
   const {
-    currentSong,
-    isPlaying,
-    togglePlayPause,
-    progress,
-    currentTime,
-    duration,
-    volume,
-    setVolume,
-    seekTo,
-    queue,
-    queueIndex,
-    playNext,
-    playPrevious,
-    isShuffling,
-    toggleShuffle,
-    repeatMode,
-    toggleRepeat,
+    currentSong, isPlaying, progress, currentTime, duration, volume,
+    playNext, playPrevious, togglePlayPause, setVolume, seekTo, queue,
+    isShuffling, toggleShuffle, repeatMode, toggleRepeat, user
   } = usePlayer();
   const { t } = useTranslation();
+
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
+  const [showVolume, setShowVolume] = useState(false);
+  const [showSleepTimer, setShowSleepTimer] = useState(false);
+  const [sleepTimerRemaining, setSleepTimerRemaining] = useState<number | null>(null);
+
+  // Keyboard controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlayPause();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [togglePlayPause]);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -184,7 +192,8 @@ export default function AudioPlayer() {
     setIsTimerMenuOpen(false);
   };
 
-  if (!currentSong && !isLoggedIn) return null;
+  if (!user) return null;
+  if (!currentSong && queue.length === 0) return null;
 
   return (
     <>
