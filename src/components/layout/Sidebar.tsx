@@ -9,7 +9,7 @@ export default function Sidebar() {
   const { t } = useTranslation();
 
   return (
-    <div className="w-64 bg-black h-full flex flex-col pt-6 pb-24 border-r border-white/5">
+    <div className="hidden w-64 bg-black h-full md:flex flex-col pt-6 pb-24 border-r border-white/5">
       <div className="px-6 mb-8">
         <Link href="/" className="flex items-center gap-3 group">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-all duration-300">

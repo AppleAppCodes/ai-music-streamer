@@ -27,7 +27,7 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
         />
         
         {/* Play Button Overlay */}
-        <div className={`absolute inset-0 bg-black/40 transition-opacity flex items-center justify-center ${currentSong?.id === song.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+        <div className={`absolute inset-0 flex items-center justify-center bg-black/15 transition-opacity md:bg-black/40 ${currentSong?.id === song.id ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
           <button 
             onClick={(e) => {
               e.preventDefault();
@@ -56,7 +56,7 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
         </div>
         
         {/* Playlist Add Button Overlay */}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+        <div className="absolute top-2 right-2 hidden items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100 md:flex">
           <PlaylistAddButton songId={song.id} iconClassName="w-4 h-4" className="bg-black/50 p-1.5 rounded-full hover:bg-black/80" />
         </div>
 

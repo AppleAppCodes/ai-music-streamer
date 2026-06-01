@@ -98,7 +98,7 @@ export default function Home() {
       lastTime = time;
 
       // Target speed depends on hover state
-      let target = isHoveredRef.current ? 0 : targetSpeed;
+      const target = isHoveredRef.current ? 0 : targetSpeed;
       
       // Interpolate current speed (0.05 is the smoothing factor)
       speedRef.current += (target - speedRef.current) * 0.05;
@@ -227,7 +227,7 @@ export default function Home() {
   }, [quickAccessItems]);
 
   return (
-    <div className="relative flex flex-col gap-12 pb-12 pt-6 min-h-screen overflow-hidden">
+    <div className="relative flex flex-col gap-10 pb-12 pt-5 min-h-screen overflow-hidden sm:gap-12 sm:pt-6">
       
       {/* Dynamic Blurred Backgrounds */}
       <div className="absolute top-0 left-0 w-full h-[500px] pointer-events-none z-0 overflow-hidden">
@@ -321,7 +321,7 @@ export default function Home() {
       <section className="px-4 sm:px-8 relative z-10">
         <div className="flex justify-between items-end mb-4">
           <SectionHeader title={t('home.popularGenres')} />
-          <div className="flex gap-2 mr-8">
+          <div className="flex gap-2 sm:mr-8">
             <button 
               onClick={() => scrollGenres('left')}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors"
@@ -337,7 +337,7 @@ export default function Home() {
           </div>
         </div>
         <div 
-          className="relative -mx-8 group/slider overflow-hidden px-8 py-16"
+          className="relative -mx-4 group/slider overflow-hidden px-4 py-12 sm:-mx-8 sm:px-8 sm:py-16"
           style={{ 
             maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)', 
             WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)' 
@@ -382,7 +382,7 @@ export default function Home() {
         {isLoading ? (
           <SongGridSkeleton />
         ) : trendingSongs.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5">
             {trendingSongs.map((song) => (
               <SongCard 
                 key={`trending-${song.id}`} 
@@ -403,7 +403,7 @@ export default function Home() {
         {isLoading ? (
           <SongGridSkeleton />
         ) : newReleases.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5">
             {newReleases.map((song) => (
               <SongCard 
                 key={`new-${song.id}`} 

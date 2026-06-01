@@ -7,6 +7,7 @@ import AudioPlayer from "@/components/layout/AudioPlayer";
 import PlayerLayout from "@/components/layout/PlayerLayout";
 import CookieConsent from "@/components/ui/CookieConsent";
 import ListeningPresenceSync from "@/components/social/ListeningPresenceSync";
+import MobileNavigation from "@/components/layout/MobileNavigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,13 +47,14 @@ export default function RootLayout({
             <Sidebar />
             <div className="flex-1 flex flex-col relative min-w-0">
               <Header />
-              <main className="flex-1 overflow-y-auto pb-28 no-scrollbar bg-gradient-to-b from-surface to-background">
+              <main className="flex-1 overflow-y-auto pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-28 no-scrollbar bg-gradient-to-b from-surface to-background">
                 {children}
               </main>
             </div>
           </div>
           <ListeningPresenceSync />
           <AudioPlayer />
+          <MobileNavigation />
           <CookieConsent />
         </PlayerLayout>
       </body>

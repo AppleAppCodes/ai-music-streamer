@@ -185,18 +185,33 @@ export default function AudioPlayer() {
   if (!currentSong && !isLoggedIn) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-24 bg-surface border-t border-white/5 px-4 flex items-center justify-between z-50">
+    <div className={`fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-50 h-16 items-center justify-between border-t border-white/10 bg-surface/95 px-2 backdrop-blur-xl md:bottom-0 md:flex md:h-24 md:border-white/5 md:bg-surface md:px-4 ${currentSong ? 'flex' : 'hidden'}`}>
+      {currentSong ? (
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="any"
+          value={progressPercent}
+          aria-label="Song position"
+          className="player-slider absolute inset-x-0 top-0 h-1 w-full md:hidden"
+          style={{
+            background: `linear-gradient(to right, #ffffff 0%, #ffffff ${progressPercent}%, rgba(255,255,255,0.18) ${progressPercent}%, rgba(255,255,255,0.18) 100%)`,
+          }}
+          onChange={(e) => seekTo(Number(e.currentTarget.value))}
+        />
+      ) : null}
       
       {/* Song Info */}
-      <div className="flex items-center gap-4 w-[30%] min-w-[180px]">
+      <div className="flex min-w-0 flex-1 items-center gap-2 md:w-[30%] md:min-w-[180px] md:flex-none md:gap-4">
         {currentSong ? (
           <>
-            <img src={currentSong.cover_url} alt={currentSong.title} className="w-14 h-14 rounded-md object-cover shadow-md" />
-            <div className="flex flex-col">
+            <img src={currentSong.cover_url} alt={currentSong.title} className="h-11 w-11 shrink-0 rounded-md object-cover shadow-md md:h-14 md:w-14" />
+            <div className="flex min-w-0 flex-col">
               <Link href={`/song/${currentSong.id}`} className="text-sm font-semibold text-white hover:underline cursor-pointer truncate">{currentSong.title}</Link>
               <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-xs text-muted hover:text-white hover:underline cursor-pointer truncate">{displayArtist}</Link>
             </div>
-            <div className="flex items-center">
+            <div className="hidden items-center md:flex">
               <PlaylistAddButton songId={currentSong.id} className="ml-4" iconClassName="w-5 h-5" />
               <LikeButton songId={currentSong.id} className="ml-2" iconClassName="w-5 h-5" />
             </div>
@@ -213,7 +228,7 @@ export default function AudioPlayer() {
       </div>
 
       {/* Controls */}
-      <div className={`flex flex-col items-center flex-1 max-w-2xl px-4 ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`}>
+      <div className={`hidden flex-1 flex-col items-center px-4 md:flex md:max-w-2xl ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="flex items-center gap-6 mb-2">
           <button 
             onClick={toggleShuffle}
@@ -270,7 +285,7 @@ export default function AudioPlayer() {
       </div>
 
       {/* Extra Controls */}
-      <div className={`relative flex items-center justify-end gap-3 w-[30%] min-w-[180px] ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`} ref={menuRef}>
+      <div className={`relative flex shrink-0 items-center justify-end gap-1 md:w-[30%] md:min-w-[180px] md:gap-3 ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`} ref={menuRef}>
         <button
           type="button"
           onClick={() => {
@@ -284,7 +299,24 @@ export default function AudioPlayer() {
         >
           <MoreHorizontal className="w-5 h-5" />
         </button>
-        <div className="flex w-28 min-w-0 max-w-[22vw] items-center gap-2">
+        <button
+          type="button"
+          onClick={togglePlayPause}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-black md:hidden"
+          aria-label={isPlaying ? 'Pausieren' : 'Abspielen'}
+        >
+          {isPlaying ? <Pause className="h-4 w-4 fill-current" /> : <Play className="ml-0.5 h-4 w-4 fill-current" />}
+        </button>
+        <button
+          type="button"
+          onClick={playNext}
+          disabled={!canPlayNext}
+          className="flex h-9 w-9 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white disabled:opacity-30 md:hidden"
+          aria-label="Nächster Song"
+        >
+          <SkipForward className="h-4 w-4 fill-current" />
+        </button>
+        <div className="hidden w-28 min-w-0 max-w-[22vw] items-center gap-2 md:flex">
           <Volume2 className="w-4 h-4 text-muted" />
           <input
             type="range"
@@ -302,7 +334,7 @@ export default function AudioPlayer() {
         </div>
 
         {isMenuOpen && currentSong && (
-          <div className="absolute bottom-14 right-0 w-72 overflow-hidden rounded-xl border border-white/10 bg-[#242424]/95 py-2 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-xl">
+          <div className="absolute bottom-14 right-0 w-[min(18rem,calc(100vw-1rem))] overflow-hidden rounded-xl border border-white/10 bg-[#242424]/95 py-2 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-xl md:w-72">
             <Link
               href={`/song/${currentSong.id}`}
               onClick={() => setIsMenuOpen(false)}
