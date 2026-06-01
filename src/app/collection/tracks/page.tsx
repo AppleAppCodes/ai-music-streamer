@@ -163,7 +163,7 @@ export default function LikedSongsPage() {
               {isAnyPlaying ? (
                 <Pause className="w-7 h-7 fill-current" />
               ) : (
-                <Play className="w-7 h-7 fill-current ml-1" />
+                <Play className="w-7 h-7 fill-current" />
               )}
             </button>
             <button className="text-white/40 hover:text-white transition-all hover:scale-110" title="Shuffle (Coming soon)">

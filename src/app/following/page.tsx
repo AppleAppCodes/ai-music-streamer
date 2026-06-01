@@ -168,7 +168,7 @@ export default function FollowingPage() {
                                 {isThisSongPlaying ? (
                                   <Pause className="w-5 h-5 fill-current" />
                                 ) : (
-                                  <Play className="w-5 h-5 fill-current ml-0.5" />
+                                  <Play className="w-5 h-5 fill-current" />
                                 )}
                               </button>
                             </div>

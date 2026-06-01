@@ -179,7 +179,7 @@ export default function MobilePlayerFullscreen({ isOpen, onClose }: MobilePlayer
                 onClick={togglePlayPause}
                 className="w-20 h-20 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform"
               >
-                {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1.5" />}
+                {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current" />}
               </button>
               
               <button

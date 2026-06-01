@@ -390,7 +390,7 @@ export default function FriendsPage() {
                           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-black transition-transform hover:scale-105"
                           aria-label={playingThisSong ? 'Pausieren' : 'Song abspielen'}
                         >
-                          {playingThisSong ? <Pause className="h-4 w-4 fill-current" /> : <Play className="ml-0.5 h-4 w-4 fill-current" />}
+                          {playingThisSong ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
                         </button>
                       </div>
                     ) : (

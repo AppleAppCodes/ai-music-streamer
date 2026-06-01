@@ -411,7 +411,7 @@ export default function AudioPlayer() {
             onClick={togglePlayPause}
             className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform"
           >
-            {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-1" />}
+            {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
           </button>
           <button
             onClick={playNext}
@@ -473,7 +473,7 @@ export default function AudioPlayer() {
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-black md:hidden"
           aria-label={isPlaying ? 'Pausieren' : 'Abspielen'}
         >
-          {isPlaying ? <Pause className="h-4 w-4 fill-current" /> : <Play className="ml-0.5 h-4 w-4 fill-current" />}
+          {isPlaying ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
         </button>
         <button
           type="button"

@@ -280,8 +280,7 @@ export default function PlaylistPage() {
     }
   };
 
-  const handleRemoveSong = async (songId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const removeSongFromPlaylist = async (songId: string) => {
     if (!confirm('Song aus der Playlist entfernen?')) return;
     
     try {
@@ -296,8 +295,6 @@ export default function PlaylistPage() {
       console.error(err);
     }
   };
-
-
 
   if (loading) {
     return (
@@ -395,7 +392,7 @@ export default function PlaylistPage() {
             {isPlaying && songs.some(s => s.id === currentSong?.id) ? (
               <Pause className="w-6 h-6 fill-current" />
             ) : (
-              <Play className="w-6 h-6 fill-current ml-1" />
+              <Play className="w-6 h-6 fill-current" />
             )}
           </button>
           
@@ -516,7 +513,7 @@ export default function PlaylistPage() {
                           songId={song.id} 
                           iconClassName="w-5 h-5" 
                           currentPlaylistId={playlistId}
-                          onRemoveFromCurrent={isOwner ? () => handleRemoveSong(song.id, { stopPropagation: () => {} } as any) : undefined}
+                          onRemoveFromCurrent={isOwner ? () => removeSongFromPlaylist(song.id) : undefined}
                         />
                       </div>
                       

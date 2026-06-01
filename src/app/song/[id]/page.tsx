@@ -196,7 +196,7 @@ export default function SongDetailPage() {
             {isThisSongPlaying ? (
               <Pause className="w-7 h-7 fill-current" />
             ) : (
-              <Play className="w-7 h-7 fill-current ml-1" />
+              <Play className="w-7 h-7 fill-current" />
             )}
           </button>
           

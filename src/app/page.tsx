@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import type { MouseEvent } from 'react';
 import type { CSSProperties } from 'react';
 import SongCard from '@/components/ui/SongCard';
 import { ChevronLeft, ChevronRight, Heart, ListMusic, Play, Radio, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
+import { usePlayer } from '@/lib/player-context';
 
 import { GENRES } from '@/lib/constants';
 import { Song } from '@/lib/types';
@@ -78,8 +81,11 @@ function ImageSlideshow({ images, currentIndex }: { images: string[], currentInd
 
 export default function Home() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { playSong, setQueue, currentSong, togglePlayPause } = usePlayer();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [quickPlayLoading, setQuickPlayLoading] = useState<string | null>(null);
 
   const genresScrollRef = useRef<HTMLDivElement>(null);
   const [targetSpeed, setTargetSpeed] = useState(0.3);
@@ -304,6 +310,65 @@ export default function Home() {
     return Array.from(new Set(quickAccessItems.flatMap(item => item.images || [])));
   }, [quickAccessItems]);
 
+  const startSongQueue = (songs: Song[]) => {
+    if (songs.length === 0) return;
+
+    const queue = songs.map((song): Song => ({
+      ...song,
+      creatorName: song.artist_name || song.creatorName || t('player.creatorFallback'),
+    }));
+
+    if (currentSong?.id === queue[0].id) {
+      togglePlayPause();
+      return;
+    }
+
+    setQueue(queue, 0);
+    playSong(queue[0]);
+  };
+
+  const handleQuickAccessPlay = async (event: MouseEvent<HTMLButtonElement>, itemTitle: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (quickPlayLoading) return;
+    setQuickPlayLoading(itemTitle);
+
+    try {
+      if (itemTitle === t('home.quickAccess.favorites')) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const { data } = await supabase
+          .from('liked_songs')
+          .select(`
+            created_at,
+            songs (*)
+          `)
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false });
+
+        const likedSongs = (data || [])
+          .map((item) => item.songs as unknown as Song | null)
+          .filter((song): song is Song => Boolean(song));
+        startSongQueue(likedSongs);
+        return;
+      }
+
+      if (itemTitle === t('home.quickAccess.charts')) {
+        const { data } = await supabase
+          .from('songs')
+          .select('*')
+          .order('plays', { ascending: false })
+          .limit(100);
+
+        startSongQueue((data || []) as Song[]);
+      }
+    } finally {
+      setQuickPlayLoading(null);
+    }
+  };
+
   return (
     <div className="relative flex flex-col gap-10 pb-12 pt-5 min-h-screen overflow-hidden sm:gap-12 sm:pt-6">
       
@@ -349,11 +414,23 @@ export default function Home() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           {quickAccessItems.map((item) => {
             const Icon = item.icon;
+            const canQuickPlay =
+              item.title === t('home.quickAccess.favorites') ||
+              item.title === t('home.quickAccess.charts');
             return (
-              <Link
+              <div
                 key={item.title}
-                href={item.link}
+                role="link"
+                tabIndex={0}
                 className="group relative flex h-[72px] items-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] shadow-[0_14px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.12] hover:shadow-[0_20px_54px_rgba(0,0,0,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                onClick={() => {
+                  if (item.link !== '#') router.push(item.link);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  event.preventDefault();
+                  if (item.link !== '#') router.push(item.link);
+                }}
                 onMouseEnter={() => {
                   setHoveredItem(item.title);
                   setSlideIndex(item.images && item.images.length > 1 ? 1 : 0);
@@ -377,12 +454,20 @@ export default function Home() {
                 <div className="relative flex-1 px-4 text-sm font-bold text-white truncate drop-shadow-sm">
                   {item.title}
                 </div>
-                <div className="relative pr-4 opacity-0 translate-x-2 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
-                  <span className={`flex w-10 h-10 rounded-full ${item.color || 'bg-primary'} items-center justify-center text-white shadow-xl transition-transform group-hover:scale-105`}>
-                    <Play className="w-5 h-5 fill-current ml-1" />
-                  </span>
-                </div>
-              </Link>
+                {canQuickPlay ? (
+                  <div className="relative pr-4 opacity-0 translate-x-2 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={(event) => handleQuickAccessPlay(event, item.title)}
+                      disabled={quickPlayLoading === item.title}
+                      className={`flex w-10 h-10 rounded-full ${item.color || 'bg-primary'} items-center justify-center text-white shadow-xl transition-transform hover:scale-105 disabled:cursor-wait disabled:opacity-70`}
+                      aria-label={`${item.title} abspielen`}
+                    >
+                      <Play className="w-5 h-5 fill-current" />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             );
           })}
         </div>

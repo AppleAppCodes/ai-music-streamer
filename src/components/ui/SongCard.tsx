@@ -52,7 +52,7 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
             {isThisSongPlaying ? (
               <Pause className={`${compact ? 'h-5 w-5' : 'h-6 w-6'} fill-current`} />
             ) : (
-              <Play className={`${compact ? 'h-5 w-5' : 'h-6 w-6'} fill-current ml-1`} />
+              <Play className={`${compact ? 'h-5 w-5' : 'h-6 w-6'} fill-current`} />
             )}
           </button>
         </div>

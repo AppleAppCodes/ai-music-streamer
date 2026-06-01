@@ -317,7 +317,7 @@ export default function AlbumPage() {
             {isPlaying && songs.some(s => s.id === currentSong?.id) ? (
               <Pause className="w-6 h-6 fill-current" />
             ) : (
-              <Play className="w-6 h-6 fill-current ml-1" />
+              <Play className="w-6 h-6 fill-current" />
             )}
           </button>
           

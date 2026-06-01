@@ -276,7 +276,7 @@ export default function ArtistsPage() {
                 {/* Hover Play Button Overlay */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-90 group-hover:scale-100">
                   <div className="w-20 h-20 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center shadow-2xl hover:bg-white/20 hover:scale-105 transition-all">
-                    <Play className="w-8 h-8 text-white fill-white ml-1" />
+                    <Play className="w-8 h-8 text-white fill-white" />
                   </div>
                 </div>
               </Link>
