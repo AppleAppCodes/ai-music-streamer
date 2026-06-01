@@ -7,7 +7,6 @@ import { ChevronLeft, ChevronRight, Heart, ListMusic, Play, Radio, TrendingUp } 
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
-import Marquee from 'react-fast-marquee';
 
 import { GENRES } from '@/lib/constants';
 import { Song } from '@/lib/types';
@@ -79,14 +78,59 @@ export default function Home() {
   const { t } = useTranslation();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [marqueeDirection, setMarqueeDirection] = useState<'left' | 'right'>('left');
+
+  const genresScrollRef = useRef<HTMLDivElement>(null);
+  const [targetSpeed, setTargetSpeed] = useState(0.5);
+  const speedRef = useRef(0.5);
+  const positionRef = useRef(0);
+  const isHoveredRef = useRef(false);
 
   const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
   const [newReleases, setNewReleases] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  useEffect(() => {
+    let animationId: number;
+    let lastTime = performance.now();
+
+    const animate = (time: number) => {
+      const dt = time - lastTime;
+      lastTime = time;
+
+      // Target speed depends on hover state
+      let target = isHoveredRef.current ? 0 : targetSpeed;
+      
+      // Interpolate current speed (0.05 is the smoothing factor)
+      speedRef.current += (target - speedRef.current) * 0.05;
+
+      if (genresScrollRef.current && Math.abs(speedRef.current) > 0.01) {
+        // Apply speed to position
+        positionRef.current += speedRef.current * (dt / 16);
+        
+        const scrollWidth = genresScrollRef.current.scrollWidth;
+        const maxScroll = scrollWidth / 3;
+        
+        // Loop seamlessly
+        if (positionRef.current >= maxScroll) {
+          positionRef.current -= maxScroll;
+        } else if (positionRef.current <= 0) {
+          positionRef.current += maxScroll;
+        }
+        
+        genresScrollRef.current.scrollLeft = positionRef.current;
+      }
+      
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animationId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationId);
+  }, [targetSpeed]);
+
   const scrollGenres = (direction: 'left' | 'right') => {
-    setMarqueeDirection(direction);
+    // Boost speed temporarily for a smooth "push"
+    speedRef.current = direction === 'right' ? 10 : -10;
+    setTargetSpeed(direction === 'right' ? 0.5 : -0.5);
   };
 
   useEffect(() => {
@@ -292,23 +336,22 @@ export default function Home() {
             </button>
           </div>
         </div>
-        <div className="relative -mx-8 overflow-hidden">
-          <Marquee 
-            direction={marqueeDirection}
-            speed={30}
-            pauseOnHover={true}
-            gradient={false}
-            className="py-16 overflow-visible"
+        <div className="relative -mx-8 group/slider overflow-hidden">
+          <div 
+            ref={genresScrollRef}
+            onMouseEnter={() => isHoveredRef.current = true}
+            onMouseLeave={() => isHoveredRef.current = false}
+            className="flex gap-3 overflow-x-hidden py-16 px-8 no-scrollbar touch-pan-x"
             style={{ 
               maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)', 
               WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)' 
             }}
           >
-            {GENRES.map((genre) => {
+            {[...GENRES, ...GENRES, ...GENRES].map((genre, i) => {
               const Icon = genre.icon;
               return (
                 <div 
-                  key={genre.name} 
+                  key={`${genre.name}-${i}`} 
                   className={`mx-1.5 group relative isolate w-[132px] shrink-0 h-20 rounded-xl p-3 flex flex-col justify-between cursor-pointer shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-[1.04] hover:shadow-[0_0_20px_var(--genre-glow)] hover:animate-pulseGlow ${genre.color}`}
                   style={{ '--genre-glow': genre.glow } as CSSProperties}
                 >
@@ -326,7 +369,7 @@ export default function Home() {
               </div>
             );
           })}
-          </Marquee>
+          </div>
         </div>
       </section>
 
