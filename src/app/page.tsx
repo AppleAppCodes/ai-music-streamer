@@ -17,6 +17,8 @@ type SongWithProfile = Song & {
   } | null;
 };
 
+const HOME_SONG_GRID_CLASSES = 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-[repeat(auto-fill,minmax(160px,200px))]';
+
 function SectionHeader({ title, actionLabel, href }: { title: string; actionLabel?: string; href?: string }) {
   return (
     <div className="flex items-end justify-between gap-4 mb-5">
@@ -36,9 +38,9 @@ function SectionHeader({ title, actionLabel, href }: { title: string; actionLabe
 
 function SongGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+    <div className={HOME_SONG_GRID_CLASSES}>
       {Array.from({ length: 5 }).map((_, index) => (
-        <div key={index} className="rounded-2xl border border-white/5 bg-white/[0.03] p-3 animate-pulse">
+        <div key={index} className="rounded-2xl border border-white/5 bg-white/[0.03] p-2.5 animate-pulse">
           <div className="aspect-square rounded-xl bg-white/10" />
           <div className="mt-4 h-4 w-4/5 rounded-full bg-white/10" />
           <div className="mt-2 h-3 w-1/2 rounded-full bg-white/5" />
@@ -459,12 +461,13 @@ export default function Home() {
         {isLoading ? (
           <SongGridSkeleton />
         ) : trendingSongs.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5">
+          <div className={HOME_SONG_GRID_CLASSES}>
             {trendingSongs.map((song) => (
               <SongCard 
                 key={`trending-${song.id}`} 
                 song={song} 
                 creatorName={song.creatorName} 
+                compact
               />
             ))}
           </div>
@@ -480,12 +483,13 @@ export default function Home() {
         {isLoading ? (
           <SongGridSkeleton />
         ) : newReleases.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5">
+          <div className={HOME_SONG_GRID_CLASSES}>
             {newReleases.map((song) => (
               <SongCard 
                 key={`new-${song.id}`} 
                 song={song} 
                 creatorName={song.creatorName} 
+                compact
               />
             ))}
           </div>

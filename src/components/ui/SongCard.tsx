@@ -10,15 +10,16 @@ interface SongCardProps {
   creatorName?: string;
   className?: string;
   contextQueue?: Song[];
+  compact?: boolean;
 }
 
-export default function SongCard({ song, creatorName = 'Creator', className = '', contextQueue }: SongCardProps) {
+export default function SongCard({ song, creatorName = 'Creator', className = '', contextQueue, compact = false }: SongCardProps) {
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
   const displayArtist = song.artist_name || creatorName;
 
   return (
-    <div className={`group relative flex flex-col gap-3 p-4 rounded-xl hover:bg-white/5 transition-colors cursor-pointer ${className}`}>
+    <div className={`group relative flex flex-col rounded-xl hover:bg-white/5 transition-colors cursor-pointer ${compact ? 'gap-2 p-2.5' : 'gap-3 p-4'} ${className}`}>
       {/* Cover Image Container */}
       <div className="relative aspect-square w-full rounded-md overflow-hidden shadow-lg mb-2">
         <img 
@@ -46,12 +47,12 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
                 playSong({ ...song, creatorName: displayArtist });
               }
             }}
-            className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-110 hover:bg-primary-hover transition-all"
+            className={`${compact ? 'h-10 w-10' : 'h-12 w-12'} rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-110 hover:bg-primary-hover transition-all`}
           >
             {isThisSongPlaying ? (
-              <Pause className="w-6 h-6 fill-current" />
+              <Pause className={`${compact ? 'h-5 w-5' : 'h-6 w-6'} fill-current`} />
             ) : (
-              <Play className="w-6 h-6 fill-current ml-1" />
+              <Play className={`${compact ? 'h-5 w-5' : 'h-6 w-6'} fill-current ml-1`} />
             )}
           </button>
         </div>
@@ -66,10 +67,10 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
       {/* Song Details */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col min-w-0 flex-1">
-          <Link href={`/song/${song.id}`} className="text-base font-semibold text-white truncate hover:underline">
+          <Link href={`/song/${song.id}`} className={`${compact ? 'text-sm' : 'text-base'} font-semibold text-white truncate hover:underline`}>
             {song.title}
           </Link>
-          <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-sm text-muted truncate hover:text-white hover:underline mt-0.5">
+          <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className={`${compact ? 'text-xs' : 'text-sm'} text-muted truncate hover:text-white hover:underline mt-0.5`}>
             {displayArtist}
           </Link>
         </div>
