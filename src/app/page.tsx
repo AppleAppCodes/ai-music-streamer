@@ -85,6 +85,53 @@ export default function Home() {
   const positionRef = useRef(0);
   const isHoveredRef = useRef(false);
 
+  // Drag state
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartPosRef = useRef(0);
+  const lastDragXRef = useRef(0);
+  const dragTimeRef = useRef(0);
+
+  const handleDragStart = (clientX: number) => {
+    isDraggingRef.current = true;
+    isHoveredRef.current = true;
+    dragStartXRef.current = clientX;
+    dragStartPosRef.current = positionRef.current;
+    lastDragXRef.current = clientX;
+    dragTimeRef.current = performance.now();
+  };
+
+  const handleDragMove = (clientX: number) => {
+    if (!isDraggingRef.current) return;
+    const delta = dragStartXRef.current - clientX;
+    let newPos = dragStartPosRef.current + delta;
+    
+    const timeNow = performance.now();
+    const dt = timeNow - dragTimeRef.current;
+    if (dt > 0) {
+      const dx = lastDragXRef.current - clientX;
+      speedRef.current = (dx / dt) * 16;
+    }
+    lastDragXRef.current = clientX;
+    dragTimeRef.current = timeNow;
+
+    if (genresScrollRef.current) {
+      const maxScroll = genresScrollRef.current.scrollWidth / 3;
+      if (newPos >= maxScroll) newPos -= maxScroll;
+      else if (newPos <= 0) newPos += maxScroll;
+    }
+    
+    positionRef.current = newPos;
+    if (genresScrollRef.current) {
+      genresScrollRef.current.style.transform = `translate3d(-${positionRef.current}px, 0, 0)`;
+    }
+  };
+
+  const handleDragEnd = () => {
+    isDraggingRef.current = false;
+    isHoveredRef.current = false;
+  };
+
   const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
   const [newReleases, setNewReleases] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -346,8 +393,17 @@ export default function Home() {
           <div 
             ref={genresScrollRef}
             onMouseEnter={() => isHoveredRef.current = true}
-            onMouseLeave={() => isHoveredRef.current = false}
-            className="flex w-max"
+            onMouseLeave={() => {
+              isHoveredRef.current = false;
+              handleDragEnd();
+            }}
+            onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
+            onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
+            onTouchEnd={handleDragEnd}
+            onMouseDown={(e) => handleDragStart(e.clientX)}
+            onMouseMove={(e) => handleDragMove(e.clientX)}
+            onMouseUp={handleDragEnd}
+            className="flex w-max cursor-grab active:cursor-grabbing"
           >
             {[...GENRES, ...GENRES, ...GENRES].map((genre, i) => {
               const Icon = genre.icon;
