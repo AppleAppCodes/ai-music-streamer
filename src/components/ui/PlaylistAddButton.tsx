@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, ListPlus, Trash2 } from 'lucide-react';
+import { MoreHorizontal, ListPlus, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
 import AddToPlaylistModal from './AddToPlaylistModal';
+import { createClient } from '@/utils/supabase/client';
+import { getErrorMessage } from '@/lib/errors';
 
 interface PlaylistAddButtonProps {
   songId: string;
@@ -21,7 +23,17 @@ export default function PlaylistAddButton({
 }: PlaylistAddButtonProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAdmin(!!data.session?.user);
+    });
+  }, [supabase]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -62,6 +74,25 @@ export default function PlaylistAddButton({
             Zur Playlist hinzufügen
           </button>
           
+          {isAdmin && (
+            <>
+              <div className="h-px w-full bg-white/10 my-1"></div>
+              <button 
+                className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowMenu(false);
+                  fileInputRef.current?.click();
+                }}
+                disabled={isUploading}
+              >
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4 text-white/70" />}
+                Cover ändern
+              </button>
+            </>
+          )}
+
           {onRemoveFromCurrent && (
             <>
               <div className="h-px w-full bg-white/10 my-1"></div>
@@ -80,6 +111,35 @@ export default function PlaylistAddButton({
             </>
           )}
         </div>
+      )}
+
+      {isAdmin && (
+        <input 
+          type="file" 
+          accept="image/*" 
+          ref={fileInputRef} 
+          className="hidden" 
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setIsUploading(true);
+            try {
+              const ext = file.name.split('.').pop();
+              const path = `songs/cover_${songId}_${Date.now()}.${ext}`;
+              const { error: uploadError } = await supabase.storage.from('covers').upload(path, file);
+              if (uploadError) throw uploadError;
+              const { data: urlData } = supabase.storage.from('covers').getPublicUrl(path);
+              const { error: dbError } = await supabase.from('songs').update({ cover_url: urlData.publicUrl }).eq('id', songId);
+              if (dbError) throw dbError;
+              window.location.reload();
+            } catch (err) {
+              console.error(err);
+              alert('Fehler beim Hochladen: ' + getErrorMessage(err));
+            } finally {
+              setIsUploading(false);
+            }
+          }}
+        />
       )}
 
       {showModal && (

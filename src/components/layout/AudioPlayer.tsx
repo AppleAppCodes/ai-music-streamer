@@ -346,7 +346,7 @@ export default function AudioPlayer() {
         </div>
 
         {isMenuOpen && currentSong && (
-          <div className="absolute bottom-14 right-0 w-[min(18rem,calc(100vw-1rem))] overflow-hidden rounded-xl border border-white/10 bg-[#242424]/95 py-2 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-xl md:w-72">
+          <div className="absolute bottom-full mb-4 right-0 w-[min(18rem,calc(100vw-1rem))] overflow-hidden rounded-xl border border-white/10 bg-[#242424]/95 py-2 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-xl md:w-72">
             <Link
               href={`/song/${currentSong.id}`}
               onClick={() => setIsMenuOpen(false)}

@@ -1,15 +1,27 @@
 'use client';
 
-import { useState } from 'react';
-import { MoreVertical, Share2, User2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { MoreVertical, Share2, User2, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Song } from '@/lib/types';
 import LikeButton from './LikeButton';
 import PlaylistAddButton from './PlaylistAddButton';
 import Link from 'next/link';
+import { createClient } from '@/utils/supabase/client';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function MobileSongMenu({ song }: { song: Song }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAdmin(!!data.session?.user);
+    });
+  }, [supabase]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -101,11 +113,51 @@ export default function MobileSongMenu({ song }: { song: Song }) {
                   <Share2 className="w-6 h-6 text-white/70" />
                   <span className="text-base font-medium text-white">Teilen</span>
                 </button>
+                
+                {isAdmin && (
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="flex items-center gap-4 px-4 py-3 hover:bg-white/5 rounded-xl transition-colors text-left text-white"
+                  >
+                    {isUploading ? <Loader2 className="w-6 h-6 animate-spin text-white/70" /> : <ImageIcon className="w-6 h-6 text-white/70" />}
+                    <span className="text-base font-medium text-white">Cover ändern</span>
+                  </button>
+                )}
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
+      
+      {isAdmin && (
+        <input 
+          type="file" 
+          accept="image/*" 
+          ref={fileInputRef} 
+          className="hidden" 
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setIsUploading(true);
+            try {
+              const ext = file.name.split('.').pop();
+              const path = `songs/cover_${song.id}_${Date.now()}.${ext}`;
+              const { error: uploadError } = await supabase.storage.from('covers').upload(path, file);
+              if (uploadError) throw uploadError;
+              const { data: urlData } = supabase.storage.from('covers').getPublicUrl(path);
+              const { error: dbError } = await supabase.from('songs').update({ cover_url: urlData.publicUrl }).eq('id', song.id);
+              if (dbError) throw dbError;
+              window.location.reload();
+            } catch (err) {
+              console.error(err);
+              alert('Fehler beim Hochladen: ' + getErrorMessage(err));
+            } finally {
+              setIsUploading(false);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
