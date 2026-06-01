@@ -13,11 +13,11 @@ export default function Sidebar() {
       <div className="px-6 mb-8">
         <Link href="/" className="flex items-center gap-4 group">
           <div className="flex items-end justify-center gap-[3px] w-8 h-8 pb-1">
-            <div className="w-[5px] h-[14px] bg-white rounded-full group-hover:h-[24px] transition-all duration-300 ease-out" />
-            <div className="w-[5px] h-[26px] bg-white rounded-full group-hover:h-[16px] transition-all duration-300 ease-out" />
-            <div className="w-[5px] h-[18px] bg-white rounded-full group-hover:h-[28px] transition-all duration-300 ease-out" />
+            <div className="w-[5px] h-[14px] bg-white rounded-full group-hover:h-[24px] group-hover:bg-primary transition-all duration-300 ease-out" />
+            <div className="w-[5px] h-[26px] bg-white rounded-full group-hover:h-[16px] group-hover:bg-[#a855f7] transition-all duration-300 ease-out" />
+            <div className="w-[5px] h-[18px] bg-white rounded-full group-hover:h-[28px] group-hover:bg-primary transition-all duration-300 ease-out" />
           </div>
-          <span className="text-2xl font-bold tracking-tight text-white uppercase" style={{ fontFamily: 'var(--font-syncopate), sans-serif' }}>
+          <span className="text-2xl font-bold tracking-tight text-white uppercase group-hover:text-[#e9d5ff] transition-colors duration-300" style={{ fontFamily: 'var(--font-syncopate), sans-serif' }}>
             Yoriax
           </span>
         </Link>
@@ -26,28 +26,28 @@ export default function Sidebar() {
       <div className="px-3 mb-6">
         <p className="px-3 text-xs font-semibold text-muted tracking-wider uppercase mb-3">{t('nav.discover')}</p>
         <nav className="space-y-1">
-          <Link href="/" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
-            <Home className="w-5 h-5" />
+          <Link href="/" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
+            <Home className="w-5 h-5 group-hover:text-primary transition-colors" />
             Home
           </Link>
-          <Link href="/charts/viral" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
-            <TrendingUp className="w-5 h-5" />
+          <Link href="/charts/viral" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
+            <TrendingUp className="w-5 h-5 group-hover:text-primary transition-colors" />
             Viral Charts
           </Link>
-          <Link href="/artists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
-            <Mic2 className="w-5 h-5" />
+          <Link href="/artists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
+            <Mic2 className="w-5 h-5 group-hover:text-primary transition-colors" />
             {t('home.quickAccess.artists')}
           </Link>
-          <Link href="/discover/playlists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
-            <ListMusic className="w-5 h-5" />
+          <Link href="/discover/playlists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
+            <ListMusic className="w-5 h-5 group-hover:text-primary transition-colors" />
             Playlists Entdecken
           </Link>
-          <Link href="/friends" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
-            <UsersRound className="w-5 h-5" />
+          <Link href="/friends" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
+            <UsersRound className="w-5 h-5 group-hover:text-primary transition-colors" />
             Friend Feed
           </Link>
-          <Link href="#" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
-            <Radio className="w-5 h-5" />
+          <Link href="#" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
+            <Radio className="w-5 h-5 group-hover:text-primary transition-colors" />
             {t('home.quickAccess.radio')}
           </Link>
         </nav>
@@ -56,16 +56,16 @@ export default function Sidebar() {
       <div className="px-3 mb-6">
         <p className="px-3 text-xs font-semibold text-muted tracking-wider uppercase mb-3">{t('nav.library')}</p>
         <nav className="space-y-1">
-          <Link href="/playlists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
-            <Library className="w-5 h-5" />
+          <Link href="/playlists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
+            <Library className="w-5 h-5 group-hover:text-primary transition-colors" />
             Meine Playlists
           </Link>
-          <Link href="/collection/tracks" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
-            <Heart className="w-5 h-5" />
+          <Link href="/collection/tracks" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
+            <Heart className="w-5 h-5 group-hover:text-primary transition-colors" />
             Liked Songs
           </Link>
-          <Link href="/following" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-md transition-colors">
-            <UserCheck className="w-5 h-5" />
+          <Link href="/following" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
+            <UserCheck className="w-5 h-5 group-hover:text-primary transition-colors" />
             Folge ich
           </Link>
         </nav>

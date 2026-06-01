@@ -208,7 +208,7 @@ export default function ArtistsPage() {
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center overflow-hidden shadow-inner">
               <Users className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-bold text-white">AI Stream</span>
+            <span className="font-bold text-white">YORIAX</span>
             <span className="w-1 h-1 rounded-full bg-white/30" />
             <span>{artists.length} Künstler*innen</span>
           </div>

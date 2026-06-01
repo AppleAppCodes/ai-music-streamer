@@ -117,7 +117,7 @@ export default function ViralChartsPage() {
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center overflow-hidden shadow-inner">
               <span className="text-xs text-black font-bold">AI</span>
             </div>
-            <span className="font-bold text-white">AI Stream</span>
+            <span className="font-bold text-white">YORIAX</span>
             <span className="w-1 h-1 rounded-full bg-white/30" />
             <span>{songs.length} {songs.length === 1 ? 'Song' : 'Songs'}</span>
           </div>

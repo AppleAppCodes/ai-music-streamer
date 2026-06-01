@@ -62,6 +62,15 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
             Profil
           </Link>
 
+          <Link 
+            href="mailto:apply@yoriax.com?subject=Bewerbung%20als%20KI-Künstler%20bei%20Yoriax" 
+            onClick={() => setIsOpen(false)}
+            className="flex items-center justify-between mt-1 px-4 py-2.5 mx-2 rounded-lg bg-gradient-to-r from-purple-500/20 to-indigo-500/20 hover:from-purple-500/30 hover:to-indigo-500/30 text-purple-200 transition-all font-bold border border-purple-500/20"
+          >
+            <span>Als Künstler bewerben</span>
+            <ExternalLink className="w-4 h-4 opacity-70" />
+          </Link>
+
           {/* Admin Link */}
           {(user?.email?.includes('admin') || true) && (
             <Link 
