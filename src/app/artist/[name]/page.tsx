@@ -381,78 +381,14 @@ export default function ArtistPage() {
           <div className="text-base text-white/70 font-medium">
             {monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen
           </div>
-
-          {/* Socials */}
-          <div className="mt-4 flex items-center gap-3">
-            {isEditingSocials ? (
-              <div className="flex flex-col gap-2 bg-black/50 p-3 rounded-lg backdrop-blur-md border border-white/10">
-                <input 
-                  type="text" 
-                  placeholder="Instagram URL" 
-                  value={editSocials.instagram_url} 
-                  onChange={e => setEditSocials({...editSocials, instagram_url: e.target.value})}
-                  className="bg-white/10 text-xs px-2 py-1.5 rounded text-white"
-                />
-                <input 
-                  type="text" 
-                  placeholder="TikTok URL" 
-                  value={editSocials.tiktok_url} 
-                  onChange={e => setEditSocials({...editSocials, tiktok_url: e.target.value})}
-                  className="bg-white/10 text-xs px-2 py-1.5 rounded text-white"
-                />
-                <input 
-                  type="text" 
-                  placeholder="YouTube URL" 
-                  value={editSocials.youtube_url} 
-                  onChange={e => setEditSocials({...editSocials, youtube_url: e.target.value})}
-                  className="bg-white/10 text-xs px-2 py-1.5 rounded text-white"
-                />
-                <div className="flex justify-end gap-2 mt-1">
-                  <button onClick={() => setIsEditingSocials(false)} className="text-white/50 hover:text-white p-1">
-                    <X className="w-4 h-4" />
-                  </button>
-                  <button onClick={handleSaveSocials} disabled={isSavingSocials} className="bg-primary text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-                    {isSavingSocials ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                    Speichern
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {socials?.instagram_url && (
-                  <a href={socials.instagram_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-white/80 hover:text-white">
-                    <InstagramIcon className="w-5 h-5" />
-                  </a>
-                )}
-                {socials?.tiktok_url && (
-                  <a href={socials.tiktok_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-white/80 hover:text-white">
-                    <TiktokIcon className="w-5 h-5" />
-                  </a>
-                )}
-                {socials?.youtube_url && (
-                  <a href={socials.youtube_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-white/80 hover:text-white">
-                    <YoutubeIcon className="w-5 h-5" />
-                  </a>
-                )}
-                
-                {user?.email === 'david.hein94@gmail.com' && (
-                  <button 
-                    onClick={() => setIsEditingSocials(true)}
-                    className="ml-2 flex items-center gap-1 text-xs text-white/50 hover:text-white bg-white/5 px-2 py-1 rounded"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                    Socials {(!socials?.instagram_url && !socials?.tiktok_url && !socials?.youtube_url) ? 'hinzufügen' : 'bearbeiten'}
-                  </button>
-                )}
-              </>
-            )}
-          </div>
         </div>
 
-        {/* Artist Profile Video (Canvas) */}
-        {(artistVideoUrl || user) && (
-          <div className="flex-1 flex w-full justify-center md:justify-center lg:pl-10">
-            <div className="relative w-full max-w-[320px] md:max-w-[480px] lg:max-w-[540px] aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 mt-4 md:mt-0 flex-shrink-0 group/video bg-black/20 backdrop-blur-sm">
+        {/* Artist Profile Video & Socials */}
+        <div className="flex-1 flex flex-col md:flex-row w-full justify-center md:justify-end items-center gap-6 lg:pl-10 mt-6 md:mt-0">
+          
+          {/* Artist Profile Video (Canvas) */}
+          {(artistVideoUrl || user) && (
+            <div className="relative w-full max-w-[320px] md:max-w-[480px] lg:max-w-[540px] aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex-shrink-0 group/video bg-black/20 backdrop-blur-sm">
               {artistVideoUrl ? (
               <>
                 <video 
@@ -495,8 +431,78 @@ export default function ArtistPage() {
               </div>
             )}
             </div>
+          )}
+
+          {/* Socials */}
+          <div className="flex flex-row md:flex-col items-center gap-3">
+            {isEditingSocials ? (
+              <div className="flex flex-col gap-2 bg-black/50 p-3 rounded-lg backdrop-blur-md border border-white/10 w-48 shadow-xl">
+                <input 
+                  type="text" 
+                  placeholder="Instagram URL" 
+                  value={editSocials.instagram_url} 
+                  onChange={e => setEditSocials({...editSocials, instagram_url: e.target.value})}
+                  className="bg-white/10 text-xs px-2 py-1.5 rounded text-white w-full border border-white/10 outline-none focus:border-primary"
+                />
+                <input 
+                  type="text" 
+                  placeholder="TikTok URL" 
+                  value={editSocials.tiktok_url} 
+                  onChange={e => setEditSocials({...editSocials, tiktok_url: e.target.value})}
+                  className="bg-white/10 text-xs px-2 py-1.5 rounded text-white w-full border border-white/10 outline-none focus:border-primary"
+                />
+                <input 
+                  type="text" 
+                  placeholder="YouTube URL" 
+                  value={editSocials.youtube_url} 
+                  onChange={e => setEditSocials({...editSocials, youtube_url: e.target.value})}
+                  className="bg-white/10 text-xs px-2 py-1.5 rounded text-white w-full border border-white/10 outline-none focus:border-primary"
+                />
+                <div className="flex justify-end gap-2 mt-1">
+                  <button onClick={() => setIsEditingSocials(false)} className="text-white/50 hover:text-white p-1 rounded-full hover:bg-white/10">
+                    <X className="w-4 h-4" />
+                  </button>
+                  <button onClick={handleSaveSocials} disabled={isSavingSocials} className="bg-primary hover:bg-primary/80 text-white px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors">
+                    {isSavingSocials ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                    Speichern
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {socials?.instagram_url && (
+                  <a href={socials.instagram_url} target="_blank" rel="noopener noreferrer" className="p-3 md:p-2.5 bg-white/5 hover:bg-white/10 hover:scale-110 rounded-full transition-all text-white/80 hover:text-[#E1306C] shadow-lg border border-white/5">
+                    <InstagramIcon className="w-5 h-5 md:w-6 md:h-6" />
+                  </a>
+                )}
+                {socials?.tiktok_url && (
+                  <a href={socials.tiktok_url} target="_blank" rel="noopener noreferrer" className="p-3 md:p-2.5 bg-white/5 hover:bg-white/10 hover:scale-110 rounded-full transition-all text-white/80 hover:text-[#00f2fe] shadow-lg border border-white/5">
+                    <TiktokIcon className="w-5 h-5 md:w-6 md:h-6" />
+                  </a>
+                )}
+                {socials?.youtube_url && (
+                  <a href={socials.youtube_url} target="_blank" rel="noopener noreferrer" className="p-3 md:p-2.5 bg-white/5 hover:bg-white/10 hover:scale-110 rounded-full transition-all text-white/80 hover:text-[#FF0000] shadow-lg border border-white/5">
+                    <YoutubeIcon className="w-5 h-5 md:w-6 md:h-6" />
+                  </a>
+                )}
+                
+                {user && (
+                  <button 
+                    onClick={() => setIsEditingSocials(true)}
+                    className="flex items-center justify-center p-3 md:p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all text-white/50 hover:text-white shadow-lg border border-white/5 border-dashed"
+                    title={(!socials?.instagram_url && !socials?.tiktok_url && !socials?.youtube_url) ? 'Socials hinzufügen' : 'Socials bearbeiten'}
+                  >
+                    {(!socials?.instagram_url && !socials?.tiktok_url && !socials?.youtube_url) ? (
+                      <span className="text-xs font-medium px-2">+ Socials</span>
+                    ) : (
+                      <Edit2 className="w-4 h-4 md:w-4 md:h-4" />
+                    )}
+                  </button>
+                )}
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
 
