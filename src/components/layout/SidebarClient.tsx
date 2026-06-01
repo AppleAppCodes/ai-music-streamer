@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, Radio, UserCheck, AudioWaveform, UsersRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
+import { isAdminUser } from '@/lib/admin';
 
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
   const { t } = useTranslation();
   
-  const isAdmin = user?.email === 'david.hein94@gmail.com' || user?.email?.includes('admin');
+  const isAdmin = isAdminUser(user);
 
   return (
     <div className="hidden w-64 bg-black h-full md:flex flex-col pt-6 pb-24 border-r border-white/5">

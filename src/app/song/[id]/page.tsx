@@ -12,6 +12,7 @@ import SongCard from '@/components/ui/SongCard';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { isAdminUser } from '@/lib/admin';
 
 type SongWithProfile = Song & {
   profiles?: {
@@ -137,6 +138,7 @@ export default function SongDetailPage() {
   const displayCreator = song.creatorName || displayArtist;
   const releaseYear = new Date(song.created_at).getFullYear();
   const durationText = formatDuration(song.duration);
+  const canEditSong = Boolean(user && (user.id === song.creator_id || isAdminUser(user)));
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#121212] relative pb-32">
@@ -262,7 +264,7 @@ export default function SongDetailPage() {
         <div className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 backdrop-blur-md max-w-4xl relative group/edit">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-white">Track Info & Credits</h3>
-            {user && (user.id === song.creator_id || user.role === 'admin' || user.email?.includes('admin') || true) && !isEditing && (
+            {canEditSong && !isEditing && (
               <button 
                 onClick={() => setIsEditing(true)}
                 className="opacity-0 group-hover/edit:opacity-100 transition-opacity flex items-center gap-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg border border-white/10"

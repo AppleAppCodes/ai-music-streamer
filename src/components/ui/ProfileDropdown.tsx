@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { User, ExternalLink } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { isAdminUser } from '@/lib/admin';
 
 interface ProfileDropdownProps {
   user: SupabaseUser;
@@ -13,6 +14,7 @@ interface ProfileDropdownProps {
 export default function ProfileDropdown({ user, signOutAction }: ProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const isAdmin = isAdminUser(user);
 
   // Extract avatar and username from user metadata, fallback to empty
   const avatarUrl = user?.user_metadata?.avatar_url || '';
@@ -72,7 +74,7 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
           </Link>
 
           {/* Admin Link */}
-          {(user?.email?.includes('admin') || true) && (
+          {isAdmin && (
             <Link 
               href="/admin" 
               onClick={() => setIsOpen(false)}

@@ -11,6 +11,7 @@ import { GENRES, MOODS } from '@/lib/constants';
 import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { compressImage } from '@/lib/imageCompression';
+import { isAdminUser } from '@/lib/admin';
 
 export default function UploadPage() {
   const { t } = useTranslation();
@@ -47,6 +48,8 @@ export default function UploadPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/login');
+      } else if (!isAdminUser(session.user)) {
+        router.push('/');
       } else {
         setUser(session.user);
       }

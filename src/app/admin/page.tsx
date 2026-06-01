@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { isAdminUser } from '@/lib/admin';
 
 type AdminTab = 'users' | 'songs';
 
@@ -50,12 +51,7 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Very simple admin check: If email matches David's or has 'admin', or for now, we just let the logged in user see it so you can test it!
-      // To tighten security later, uncomment the strict check below:
-      const adminEmails = [process.env.NEXT_PUBLIC_ADMIN_EMAIL, 'heindavid91@gmail.com', 'admin@ai-music.com'];
-      const isUserAdmin = adminEmails.includes(user.email) || user.email?.includes('admin') || true; // <-- Remove "|| true" to enforce strict security
-
-      if (!isUserAdmin) {
+      if (!isAdminUser(user)) {
         router.push('/');
         return;
       }

@@ -6,6 +6,7 @@ import AddToPlaylistModal from './AddToPlaylistModal';
 import { createClient } from '@/utils/supabase/client';
 import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
+import { isAdminUser } from '@/lib/admin';
 
 interface PlaylistAddButtonProps {
   songId: string;
@@ -34,7 +35,7 @@ export default function PlaylistAddButton({
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setIsAdmin(!!data.session?.user);
+      setIsAdmin(isAdminUser(data.session?.user));
     });
   }, [supabase]);
 

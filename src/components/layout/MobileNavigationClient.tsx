@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Library, Search, Upload, UsersRound } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { isAdminUser } from '@/lib/admin';
 
 const BASE_NAV_ITEMS = [
   { href: '/', label: 'Home', icon: Home },
@@ -15,7 +16,7 @@ const BASE_NAV_ITEMS = [
 export default function MobileNavigationClient({ user }: { user: SupabaseUser | null }) {
   const pathname = usePathname();
   
-  const isAdmin = user?.email === 'david.hein94@gmail.com' || user?.email?.includes('admin');
+  const isAdmin = isAdminUser(user);
   
   const navItems = [
     ...BASE_NAV_ITEMS,

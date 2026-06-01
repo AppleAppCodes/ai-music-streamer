@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
+import { isAdminUser } from '@/lib/admin';
 
 export default function MobileSongMenu({ song }: { song: Song }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,7 +21,7 @@ export default function MobileSongMenu({ song }: { song: Song }) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setIsAdmin(!!data.session?.user);
+      setIsAdmin(isAdminUser(data.session?.user));
     });
   }, [supabase]);
 
