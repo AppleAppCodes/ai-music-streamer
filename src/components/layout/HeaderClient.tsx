@@ -30,8 +30,10 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
     <header className="sticky top-0 z-50 flex h-14 w-full items-center justify-between gap-2 border-b border-white/5 px-3 glass-panel sm:gap-3 md:h-16 md:px-6">
       {/* Left side spacer for balance */}
       <div className="hidden w-1/3 items-center md:flex"></div>
-      <Link href="/" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 shadow-lg shadow-purple-500/20 md:hidden" aria-label="AI Stream Home">
-        <AudioWaveform className="h-5 w-5 text-white" strokeWidth={2.5} />
+      <Link href="/" className="flex shrink-0 items-end justify-center gap-[2.5px] w-8 h-8 pb-1 group md:hidden" aria-label="Yoriax Home">
+        <div className="w-[4px] h-[12px] bg-white rounded-full group-hover:h-[20px] transition-all duration-300 ease-out" />
+        <div className="w-[4px] h-[22px] bg-white rounded-full group-hover:h-[14px] transition-all duration-300 ease-out" />
+        <div className="w-[4px] h-[16px] bg-white rounded-full group-hover:h-[24px] transition-all duration-300 ease-out" />
       </Link>
 
       {/* Center - Search Bar */}

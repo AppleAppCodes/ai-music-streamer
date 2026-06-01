@@ -11,11 +11,13 @@ export default function Sidebar() {
   return (
     <div className="hidden w-64 bg-black h-full md:flex flex-col pt-6 pb-24 border-r border-white/5">
       <div className="px-6 mb-8">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-all duration-300">
-            <AudioWaveform className="w-5 h-5 text-white" strokeWidth={2.5} />
+        <Link href="/" className="flex items-center gap-4 group">
+          <div className="flex items-end justify-center gap-[3px] w-8 h-8 pb-1">
+            <div className="w-[5px] h-[14px] bg-white rounded-full group-hover:h-[24px] transition-all duration-300 ease-out" />
+            <div className="w-[5px] h-[26px] bg-white rounded-full group-hover:h-[16px] transition-all duration-300 ease-out" />
+            <div className="w-[5px] h-[18px] bg-white rounded-full group-hover:h-[28px] transition-all duration-300 ease-out" />
           </div>
-          <span className="text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
+          <span className="text-2xl font-bold tracking-tight text-white uppercase" style={{ fontFamily: 'var(--font-syncopate), sans-serif' }}>
             Yoriax
           </span>
         </Link>
