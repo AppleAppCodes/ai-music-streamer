@@ -489,26 +489,16 @@ export default function PlaylistPage() {
 
                     <div className="text-right text-sm text-white/50 tracking-wider flex items-center justify-end gap-3 md:col-span-2">
                       <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-4 mr-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <LikeButton songId={song.id} iconClassName="w-5 h-5" />
                         <PlaylistAddButton 
                           songId={song.id} 
                           iconClassName="w-5 h-5" 
                           currentPlaylistId={playlistId}
-                          onRemoveFromCurrent={() => setSongs(prev => prev.filter(s => s.id !== song.id))}
+                          onRemoveFromCurrent={isOwner ? () => handleRemoveSong(song.id, { stopPropagation: () => {} } as any) : undefined}
                         />
-                        <LikeButton songId={song.id} iconClassName="w-5 h-5" />
                       </div>
                       
                       <span className="w-12 text-right">{formatDuration(song.duration)}</span>
-                      
-                      {isOwner && (
-                        <button 
-                          onClick={(e) => handleRemoveSong(song.id, e)}
-                          className="w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded-full transition-all text-white/40 hover:text-white ml-2"
-                          title="Aus Playlist entfernen"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
                     </div>
                   </div>
                 );
