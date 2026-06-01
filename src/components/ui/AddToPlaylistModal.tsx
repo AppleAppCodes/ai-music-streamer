@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { X, Plus, Minus, Music, Loader2 } from 'lucide-react';
+import { X, Plus, Minus, Music, Loader2, Search } from 'lucide-react';
 
 interface AddToPlaylistModalProps {
   songId: string;
@@ -27,6 +27,7 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
   const [alreadyIn, setAlreadyIn] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     async function loadPlaylists() {
@@ -149,20 +150,43 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
     }
   };
 
+  const filteredPlaylists = playlists.filter((playlist) =>
+    playlist.title.toLowerCase().includes(searchTerm.trim().toLowerCase())
+  );
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/80 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
       <div 
-        className="bg-[#181818] rounded-xl w-full max-w-md shadow-2xl border border-white/10 overflow-hidden flex flex-col max-h-[80vh]"
+        className="flex max-h-[82vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#181818] shadow-2xl sm:rounded-xl"
         onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-to-playlist-title"
       >
         <div className="p-5 border-b border-white/10 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-white">Zur Playlist hinzufügen</h2>
+          <h2 id="add-to-playlist-title" className="text-xl font-bold text-white">Zur Playlist hinzufügen</h2>
           <button 
+            type="button"
             onClick={onClose}
             className="text-white/50 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
+            aria-label="Playlist-Auswahl schließen"
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        <div className="border-b border-white/10 px-4 py-3">
+          <label className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Playlist suchen"
+              aria-label="Playlist suchen"
+              className="w-full rounded-md border border-white/10 bg-white/10 py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/45 focus:border-white/25 focus:bg-white/15"
+            />
+          </label>
         </div>
 
         <div className="p-2 overflow-y-auto flex-1">
@@ -191,9 +215,13 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
             <div className="text-center p-8 text-white/50 text-sm">
               Du hast noch keine Playlists.
             </div>
+          ) : filteredPlaylists.length === 0 ? (
+            <div className="p-8 text-center text-sm text-white/50">
+              Keine passende Playlist gefunden.
+            </div>
           ) : (
             <div className="flex flex-col gap-1">
-              {playlists.map(playlist => (
+              {filteredPlaylists.map(playlist => (
                 <button
                   key={playlist.id}
                   onClick={() => {

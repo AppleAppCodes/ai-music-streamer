@@ -1,12 +1,15 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Check, ChevronRight, Info, MoreHorizontal, Pause, Play, Repeat, Share2, Shuffle, SkipBack, SkipForward, Timer, Volume2, Repeat1 } from 'lucide-react';
+import { Check, ChevronRight, Image as ImageIcon, Info, Loader2, MoreHorizontal, Pause, Play, Repeat, Share2, Shuffle, SkipBack, SkipForward, Timer, Volume2, Repeat1 } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import LikeButton from '@/components/ui/LikeButton';
-import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
+import PlayerSaveButton from '@/components/ui/PlayerSaveButton';
 import MobilePlayerFullscreen from './MobilePlayerFullscreen';
+import { createClient } from '@/utils/supabase/client';
+import { compressImage } from '@/lib/imageCompression';
+import { getErrorMessage } from '@/lib/errors';
+import { isAdminUser } from '@/lib/admin';
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return '0:00';
@@ -32,12 +35,6 @@ export default function AudioPlayer() {
   } = usePlayer();
   const { t } = useTranslation();
 
-  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
-  const [showVolume, setShowVolume] = useState(false);
-  const [showSleepTimer, setShowSleepTimer] = useState(false);
-  const [sleepTimerRemaining, setSleepTimerRemaining] = useState<number | null>(null);
-
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -54,16 +51,19 @@ export default function AudioPlayer() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [togglePlayPause]);
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isTimerMenuOpen, setIsTimerMenuOpen] = useState(false);
   const [isMobilePlayerOpen, setIsMobilePlayerOpen] = useState(false);
   const [sleepTimerLabel, setSleepTimerLabel] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState('');
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const isPlayingRef = useRef(isPlaying);
   const countedSongIdRef = useRef<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const sleepTimerRef = useRef<number | null>(null);
+  const supabase = createClient();
   const displayArtist = currentSong?.artist_name || currentSong?.creatorName || t('player.creatorFallback');
   const canPlayPrevious = queueIndex > 0;
   const canPlayNext = queueIndex >= 0 && queueIndex < queue.length - 1;
@@ -73,19 +73,6 @@ export default function AudioPlayer() {
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
-
-  useEffect(() => {
-    import('@/utils/supabase/client').then(({ createClient }) => {
-      const supabase = createClient();
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setIsLoggedIn(!!session);
-      });
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setIsLoggedIn(!!session);
-      });
-      return () => subscription.unsubscribe();
-    });
-  }, []);
 
   // Count play when song has played for 30 seconds
   useEffect(() => {
@@ -99,7 +86,10 @@ export default function AudioPlayer() {
 
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) {
+      if (
+        !desktopMenuRef.current?.contains(event.target as Node) &&
+        !mobileMenuRef.current?.contains(event.target as Node)
+      ) {
         setIsMenuOpen(false);
         setIsTimerMenuOpen(false);
       }
@@ -192,6 +182,151 @@ export default function AudioPlayer() {
     setIsTimerMenuOpen(false);
   };
 
+  const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    let file = event.target.files?.[0];
+    if (!file || !currentSong) return;
+
+    setIsUploadingCover(true);
+    try {
+      file = await compressImage(file);
+      const ext = file.name.split('.').pop();
+      const path = `songs/cover_${currentSong.id}_${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('covers').upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('covers').getPublicUrl(path);
+      const { error: dbError } = await supabase
+        .from('songs')
+        .update({ cover_url: urlData.publicUrl })
+        .eq('id', currentSong.id);
+      if (dbError) throw dbError;
+
+      try {
+        const cachedSong = localStorage.getItem('player_currentSong');
+        if (cachedSong) {
+          const parsedSong = JSON.parse(cachedSong);
+          if (parsedSong.id === currentSong.id) {
+            localStorage.setItem('player_currentSong', JSON.stringify({ ...parsedSong, cover_url: urlData.publicUrl }));
+          }
+        }
+        const cachedQueue = localStorage.getItem('player_queue');
+        if (cachedQueue) {
+          const parsedQueue = JSON.parse(cachedQueue);
+          localStorage.setItem('player_queue', JSON.stringify(
+            parsedQueue.map((song: { id: string }) => song.id === currentSong.id ? { ...song, cover_url: urlData.publicUrl } : song)
+          ));
+        }
+      } catch (cacheError) {
+        console.error('Failed to refresh cached cover:', cacheError);
+      }
+
+      window.location.reload();
+    } catch (error) {
+      console.error(error);
+      alert('Fehler beim Hochladen: ' + getErrorMessage(error));
+    } finally {
+      setIsUploadingCover(false);
+      event.target.value = '';
+    }
+  };
+
+  const renderSongMenu = (positionClassName: string) => {
+    if (!isMenuOpen || !currentSong) return null;
+
+    return (
+      <div
+        className={`absolute bottom-full mb-4 w-[min(18rem,calc(100vw-1rem))] overflow-hidden rounded-xl border border-white/10 bg-[#242424]/95 py-2 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-xl md:w-72 ${positionClassName}`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <Link
+          href={`/song/${currentSong.id}`}
+          onClick={() => setIsMenuOpen(false)}
+          className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/10"
+        >
+          <Info className="w-4 h-4 text-white/70" />
+          <span className="flex-1">Song-Details</span>
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setIsTimerMenuOpen((open) => !open)}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/10"
+        >
+          <Timer className="w-4 h-4 text-white/70" />
+          <span className="flex-1">Sleeptimer</span>
+          {sleepTimerLabel ? <span className="text-xs text-primary">{sleepTimerLabel}</span> : null}
+          <ChevronRight className={`w-4 h-4 text-white/60 transition-transform ${isTimerMenuOpen ? 'rotate-90' : ''}`} />
+        </button>
+
+        {isTimerMenuOpen && (
+          <div className="border-y border-white/10 bg-black/20 py-1">
+            {SLEEP_TIMER_OPTIONS.map(([minutes, label]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => scheduleSleepTimer(minutes, label)}
+                className="flex w-full items-center gap-3 px-11 py-2.5 text-left text-white/85 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <span className="flex-1">{label}</span>
+                {sleepTimerLabel === label ? <Check className="w-4 h-4 text-primary" /> : null}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={scheduleSleepTimerForSongEnd}
+              className="flex w-full items-center gap-3 px-11 py-2.5 text-left text-white/85 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!duration || duration <= currentTime}
+            >
+              <span className="flex-1">Nach Ende des Songs</span>
+              {sleepTimerLabel === 'Nach Ende des Songs' ? <Check className="w-4 h-4 text-primary" /> : null}
+            </button>
+            {sleepTimerLabel ? (
+              <button
+                type="button"
+                onClick={() => {
+                  clearSleepTimer();
+                  setIsMenuOpen(false);
+                  setIsTimerMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-3 px-11 py-2.5 text-left text-white/55 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                Timer ausschalten
+              </button>
+            ) : null}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={shareCurrentSong}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/10"
+        >
+          <Share2 className="w-4 h-4 text-white/70" />
+          <span className="flex-1">Teilen</span>
+          {shareStatus ? <span className="text-xs text-primary">{shareStatus}</span> : null}
+        </button>
+
+        {isAdminUser(user) ? (
+          <>
+            <div className="mx-3 h-px bg-white/10" />
+            <button
+              type="button"
+              onClick={() => {
+                setIsMenuOpen(false);
+                coverInputRef.current?.click();
+              }}
+              disabled={isUploadingCover}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/10 disabled:opacity-50"
+            >
+              {isUploadingCover ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4 text-white/70" />}
+              Cover ändern
+            </button>
+          </>
+        ) : null}
+      </div>
+    );
+  };
+
   if (!user) return null;
   if (!currentSong && queue.length === 0) return null;
 
@@ -226,9 +361,23 @@ export default function AudioPlayer() {
               <Link href={`/song/${currentSong.id}`} onClick={(e) => e.stopPropagation()} className="text-sm font-semibold text-white hover:underline cursor-pointer truncate">{currentSong.title}</Link>
               <Link href={`/artist/${encodeURIComponent(displayArtist)}`} onClick={(e) => e.stopPropagation()} className="text-xs text-muted hover:text-white hover:underline cursor-pointer truncate">{displayArtist}</Link>
             </div>
-            <div className="hidden items-center md:flex" onClick={(e) => e.stopPropagation()}>
-              <PlaylistAddButton songId={currentSong.id} className="ml-4" iconClassName="w-5 h-5" openUpwards={true} />
-              <LikeButton songId={currentSong.id} className="ml-2" iconClassName="w-5 h-5" />
+            <div ref={desktopMenuRef} className="relative ml-4 hidden items-center gap-2 md:flex" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIsMenuOpen((open) => !open);
+                  setIsTimerMenuOpen(false);
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors hover:bg-white/10 hover:text-white"
+                title="Song-Menü"
+                aria-label="Song-Menü öffnen"
+                aria-expanded={isMenuOpen}
+              >
+                <MoreHorizontal className="w-5 h-5" />
+              </button>
+              <PlayerSaveButton songId={currentSong.id} iconClassName="w-5 h-5" openUpwards />
+              {renderSongMenu('left-0')}
             </div>
           </>
         ) : (
@@ -300,14 +449,15 @@ export default function AudioPlayer() {
       </div>
 
       {/* Extra Controls */}
-      <div className={`relative flex shrink-0 items-center justify-end gap-1 md:w-[30%] md:min-w-[180px] md:gap-3 ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`} ref={menuRef}>
+      <div className={`relative flex shrink-0 items-center justify-end gap-1 md:w-[30%] md:min-w-[180px] md:gap-3 ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`} ref={mobileMenuRef}>
         <button
           type="button"
-          onClick={() => {
+          onClick={(event) => {
+            event.stopPropagation();
             setIsMenuOpen((open) => !open);
             setIsTimerMenuOpen(false);
           }}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-white/10 hover:text-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-white/10 hover:text-white md:hidden"
           title="Song-Menü"
           aria-label="Song-Menü öffnen"
           aria-expanded={isMenuOpen}
@@ -354,78 +504,11 @@ export default function AudioPlayer() {
           />
         </div>
 
-        {isMenuOpen && currentSong && (
-          <div className="absolute bottom-full mb-4 right-0 w-[min(18rem,calc(100vw-1rem))] overflow-hidden rounded-xl border border-white/10 bg-[#242424]/95 py-2 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-xl md:w-72">
-            <Link
-              href={`/song/${currentSong.id}`}
-              onClick={() => setIsMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/10"
-            >
-              <Info className="w-4 h-4 text-white/70" />
-              <span className="flex-1">Song-Details</span>
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => setIsTimerMenuOpen((open) => !open)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/10"
-            >
-              <Timer className="w-4 h-4 text-white/70" />
-              <span className="flex-1">Sleeptimer</span>
-              {sleepTimerLabel ? <span className="text-xs text-primary">{sleepTimerLabel}</span> : null}
-              <ChevronRight className={`w-4 h-4 text-white/60 transition-transform ${isTimerMenuOpen ? 'rotate-90' : ''}`} />
-            </button>
-
-            {isTimerMenuOpen && (
-              <div className="border-y border-white/10 bg-black/20 py-1">
-                {SLEEP_TIMER_OPTIONS.map(([minutes, label]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => scheduleSleepTimer(minutes, label)}
-                    className="flex w-full items-center gap-3 px-11 py-2.5 text-left text-white/85 transition-colors hover:bg-white/10 hover:text-white"
-                  >
-                    <span className="flex-1">{label}</span>
-                    {sleepTimerLabel === label ? <Check className="w-4 h-4 text-primary" /> : null}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={scheduleSleepTimerForSongEnd}
-                  className="flex w-full items-center gap-3 px-11 py-2.5 text-left text-white/85 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                  disabled={!duration || duration <= currentTime}
-                >
-                  <span className="flex-1">Nach Ende des Songs</span>
-                  {sleepTimerLabel === 'Nach Ende des Songs' ? <Check className="w-4 h-4 text-primary" /> : null}
-                </button>
-                {sleepTimerLabel ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clearSleepTimer();
-                      setIsMenuOpen(false);
-                      setIsTimerMenuOpen(false);
-                    }}
-                    className="flex w-full items-center gap-3 px-11 py-2.5 text-left text-white/55 transition-colors hover:bg-white/10 hover:text-white"
-                  >
-                    Timer ausschalten
-                  </button>
-                ) : null}
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={shareCurrentSong}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/10"
-            >
-              <Share2 className="w-4 h-4 text-white/70" />
-              <span className="flex-1">Teilen</span>
-              {shareStatus ? <span className="text-xs text-primary">{shareStatus}</span> : null}
-            </button>
-          </div>
-        )}
+        {renderSongMenu('right-0 md:hidden')}
       </div>
+      {isAdminUser(user) ? (
+        <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+      ) : null}
     </div>
     <MobilePlayerFullscreen isOpen={isMobilePlayerOpen} onClose={() => setIsMobilePlayerOpen(false)} />
     </>

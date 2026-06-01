@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
-import { ChevronDown, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Volume2, Share2, Timer } from 'lucide-react';
+import { ChevronDown, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Share2, Timer } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
-import LikeButton from '@/components/ui/LikeButton';
-import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
+import PlayerSaveButton from '@/components/ui/PlayerSaveButton';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 
@@ -134,8 +133,7 @@ export default function MobilePlayerFullscreen({ isOpen, onClose }: MobilePlayer
                 </Link>
               </div>
               <div className="flex items-center gap-4 shrink-0">
-                <LikeButton songId={currentSong.id} iconClassName="w-7 h-7" className="p-0 hover:bg-transparent" />
-                <PlaylistAddButton songId={currentSong.id} iconClassName="w-7 h-7" className="p-0 bg-transparent hover:bg-transparent" />
+                <PlayerSaveButton songId={currentSong.id} iconClassName="w-7 h-7" className="p-0 hover:bg-transparent" openUpwards />
               </div>
             </div>
 
