@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, MoreHorizontal, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2, Music, Save, X } from 'lucide-react';
+import { Play, Pause, MoreHorizontal, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2, Save, X } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
@@ -384,7 +384,7 @@ export default function ArtistPage() {
         </div>
 
         {/* Artist Profile Video & Socials */}
-        <div className="flex-1 flex flex-col md:flex-row w-full justify-center md:justify-end items-center gap-6 lg:pl-10 mt-6 md:mt-0">
+        <div className="flex-1 flex flex-col md:flex-row w-full justify-center items-center gap-6 mt-6 md:mt-0">
           
           {/* Artist Profile Video (Canvas) */}
           {(artistVideoUrl || user) && (
