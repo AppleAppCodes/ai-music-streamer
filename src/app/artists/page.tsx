@@ -218,12 +218,23 @@ export default function ArtistsPage() {
                 href={`/artist/${encodeURIComponent(artist.name)}`} 
                 key={artist.name}
                 className="group relative h-64 md:h-72 rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-[0_0_40px_rgba(168,85,247,0.3)] hover:-translate-y-2 border border-white/10"
+                onMouseEnter={(e) => {
+                  const vid = e.currentTarget.querySelector('video');
+                  if (vid) vid.play().catch(() => {});
+                }}
+                onMouseLeave={(e) => {
+                  const vid = e.currentTarget.querySelector('video');
+                  if (vid) {
+                    vid.pause();
+                    vid.currentTime = 0;
+                  }
+                }}
               >
                 {/* Background Image or Video */}
                 {artist.videoUrl ? (
                   <video 
                     src={artist.videoUrl} 
-                    autoPlay
+                    preload="auto"
                     loop
                     muted
                     playsInline
