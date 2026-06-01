@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import ProfileDropdown from '@/components/ui/ProfileDropdown';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface HeaderClientProps {
   user: SupabaseUser | null;
@@ -17,6 +17,7 @@ interface HeaderClientProps {
 export default function HeaderClient({ user, signOutAction }: HeaderClientProps) {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchAutoNav = useRef(false);
 
   useEffect(() => {
     if (user) {
@@ -49,10 +50,17 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
             }}
             onFocus={() => {
               if (!window.location.pathname.includes('/search')) {
+                searchAutoNav.current = true;
                 router.push('/search');
               }
             }}
-            className="block w-full pl-11 pr-4 py-2.5 border border-white/20 rounded-full leading-5 bg-white/10 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 hover:bg-white/15 hover:border-white/30 sm:text-sm transition-all shadow-lg focus:shadow-[0_0_20px_rgba(168,85,247,0.2)] backdrop-blur-md"
+            onBlur={(e) => {
+              if (!e.target.value.trim() && searchAutoNav.current) {
+                searchAutoNav.current = false;
+                router.back();
+              }
+            }}
+            className="block w-full pl-11 pr-4 py-2.5 border border-white/20 rounded-full leading-5 bg-white/10 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 hover:bg-white/15 hover:border-purple-500/40 hover:shadow-[0_0_15px_rgba(168,85,247,0.15)] sm:text-sm transition-all shadow-lg focus:shadow-[0_0_20px_rgba(168,85,247,0.3)] backdrop-blur-md"
             placeholder={t('nav.search') + "..."}
           />
         </div>
