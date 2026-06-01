@@ -80,8 +80,8 @@ export default function Home() {
   const [slideIndex, setSlideIndex] = useState(0);
 
   const genresScrollRef = useRef<HTMLDivElement>(null);
-  const [targetSpeed, setTargetSpeed] = useState(0.5);
-  const speedRef = useRef(0.5);
+  const [targetSpeed, setTargetSpeed] = useState(0.3);
+  const speedRef = useRef(0.3);
   const positionRef = useRef(0);
   const isHoveredRef = useRef(false);
 
@@ -117,7 +117,7 @@ export default function Home() {
           positionRef.current += maxScroll;
         }
         
-        genresScrollRef.current.scrollLeft = positionRef.current;
+        genresScrollRef.current.style.transform = `translate3d(-${positionRef.current}px, 0, 0)`;
       }
       
       animationId = requestAnimationFrame(animate);
@@ -130,7 +130,7 @@ export default function Home() {
   const scrollGenres = (direction: 'left' | 'right') => {
     // Boost speed temporarily for a smooth "push"
     speedRef.current = direction === 'right' ? 10 : -10;
-    setTargetSpeed(direction === 'right' ? 0.5 : -0.5);
+    setTargetSpeed(direction === 'right' ? 0.3 : -0.3);
   };
 
   useEffect(() => {
@@ -336,16 +336,18 @@ export default function Home() {
             </button>
           </div>
         </div>
-        <div className="relative -mx-8 group/slider overflow-hidden">
+        <div 
+          className="relative -mx-8 group/slider overflow-hidden px-8 py-16"
+          style={{ 
+            maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)', 
+            WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)' 
+          }}
+        >
           <div 
             ref={genresScrollRef}
             onMouseEnter={() => isHoveredRef.current = true}
             onMouseLeave={() => isHoveredRef.current = false}
-            className="flex gap-3 overflow-x-hidden py-16 px-8 no-scrollbar touch-pan-x"
-            style={{ 
-              maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)', 
-              WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)' 
-            }}
+            className="flex w-max"
           >
             {[...GENRES, ...GENRES, ...GENRES].map((genre, i) => {
               const Icon = genre.icon;
