@@ -448,7 +448,7 @@ export default function ArtistPage() {
 
         {/* Artist Profile Video (Canvas) */}
         {(artistVideoUrl || user) && (
-          <div className="relative w-full max-w-[320px] md:max-w-[480px] aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 mt-4 md:mt-0 lg:mr-3 flex-shrink-0 group/video bg-black/20 backdrop-blur-sm">
+          <div className="relative w-full max-w-[320px] md:max-w-[480px] aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 mt-4 md:mt-0 lg:translate-x-6 flex-shrink-0 group/video bg-black/20 backdrop-blur-sm">
             {artistVideoUrl ? (
               <>
                 <video 
@@ -460,7 +460,7 @@ export default function ArtistPage() {
                   controlsList="nodownload"
                   onContextMenu={(e) => e.preventDefault()}
                   onDragStart={(e) => e.preventDefault()}
-                  className="w-full h-full object-cover pointer-events-none select-none scale-[1.16] origin-center"
+                  className="w-full h-full object-cover pointer-events-none select-none scale-[1.20] origin-center"
                 />
                 <div className="absolute inset-0 z-10" onContextMenu={(e) => e.preventDefault()} />
               </>
