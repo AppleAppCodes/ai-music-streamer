@@ -318,7 +318,7 @@ export default function ArtistPage() {
           <img 
             src={bannerUrl} 
             alt="Banner" 
-            className="w-full h-full object-cover opacity-60"
+            className="w-full h-full object-cover opacity-60 scale-110 origin-center"
             style={{ 
               maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
               WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
