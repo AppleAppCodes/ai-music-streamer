@@ -318,7 +318,7 @@ export default function ArtistPage() {
           <img 
             src={bannerUrl} 
             alt="Banner" 
-            className="w-full h-full object-cover opacity-60 scale-110 origin-center"
+            className="w-full h-full object-cover opacity-60"
             style={{ 
               maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
               WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
@@ -460,7 +460,7 @@ export default function ArtistPage() {
                   controlsList="nodownload"
                   onContextMenu={(e) => e.preventDefault()}
                   onDragStart={(e) => e.preventDefault()}
-                  className="w-full h-full object-cover pointer-events-none select-none"
+                  className="w-full h-full object-cover pointer-events-none select-none scale-110 origin-center"
                 />
                 <div className="absolute inset-0 z-10" onContextMenu={(e) => e.preventDefault()} />
               </>
