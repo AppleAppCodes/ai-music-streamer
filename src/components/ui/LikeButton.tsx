@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Check } from 'lucide-react';
+import { PlusCircle, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
@@ -90,9 +90,9 @@ export default function LikeButton({ songId, className = '', iconClassName = 'w-
       title={isLiked ? "Remove from Liked Songs" : "Save to Liked Songs"}
     >
       {isLiked ? (
-        <Check className={`${iconClassName} transition-all duration-300 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]`} strokeWidth={3} />
+        <CheckCircle2 className={`${iconClassName} transition-all duration-300 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]`} strokeWidth={2.5} />
       ) : (
-        <Plus className={`${iconClassName} transition-all duration-300`} strokeWidth={2.5} />
+        <PlusCircle className={`${iconClassName} transition-all duration-300`} strokeWidth={2} />
       )}
     </button>
   );
