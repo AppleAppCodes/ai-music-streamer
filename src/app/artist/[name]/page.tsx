@@ -392,7 +392,7 @@ export default function ArtistPage() {
               {artistVideoUrl ? (
               <>
                 <video 
-                  src={artistVideoUrl}
+                  src={`${artistVideoUrl}#t=0.001`}
                   autoPlay
                   loop
                   muted

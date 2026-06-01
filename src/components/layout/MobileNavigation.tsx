@@ -1,38 +1,9 @@
-'use client';
+import { createClient } from '@/utils/supabase/server';
+import MobileNavigationClient from './MobileNavigationClient';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Home, Library, Search, Upload, UsersRound } from 'lucide-react';
+export default async function MobileNavigation() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-const NAV_ITEMS = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/search', label: 'Suche', icon: Search },
-  { href: '/friends', label: 'Feed', icon: UsersRound },
-  { href: '/playlists', label: 'Bibliothek', icon: Library },
-  { href: '/upload', label: 'Upload', icon: Upload },
-] as const;
-
-export default function MobileNavigation() {
-  const pathname = usePathname();
-
-  return (
-    <nav className="fixed inset-x-0 bottom-0 z-[60] flex h-[calc(4rem+env(safe-area-inset-bottom))] items-center justify-around border-t border-white/10 bg-black/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden" aria-label="Mobile Navigation">
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-        const isActive = href === '/' ? pathname === href : pathname.startsWith(href);
-
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={`flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[10px] font-semibold transition-colors ${
-              isActive ? 'text-white' : 'text-white/45 hover:text-white/80'
-            }`}
-          >
-            <Icon className={`h-5 w-5 ${isActive ? 'text-violet-400' : ''}`} strokeWidth={isActive ? 2.5 : 2} />
-            <span className="truncate">{label}</span>
-          </Link>
-        );
-      })}
-    </nav>
-  );
+  return <MobileNavigationClient user={user} />;
 }

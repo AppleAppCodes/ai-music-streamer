@@ -239,7 +239,8 @@ export default function ArtistsPage() {
                 {/* Background Image or Video */}
                 {artist.videoUrl ? (
                   <video 
-                    src={artist.videoUrl} 
+                    src={`${artist.videoUrl}#t=0.001`}
+                    poster={artist.coverUrl}
                     preload="auto"
                     loop
                     muted
