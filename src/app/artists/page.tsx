@@ -13,6 +13,7 @@ interface ArtistStat {
   songsCount: number;
   coverUrl: string;
   videoUrl?: string;
+  createdAt: string;
 }
 
 export default function ArtistsPage() {
@@ -49,7 +50,7 @@ export default function ArtistsPage() {
       
       const { data } = await supabase
         .from('songs')
-        .select('artist_name, plays, cover_url');
+        .select('artist_name, plays, cover_url, created_at');
         
       if (data) {
         const artistMap = new Map<string, ArtistStat>();
@@ -63,12 +64,17 @@ export default function ArtistsPage() {
               name, 
               plays: 0, 
               songsCount: 0, 
-              coverUrl: song.cover_url 
+              coverUrl: song.cover_url,
+              createdAt: song.created_at || new Date(0).toISOString()
             });
           }
           const artist = artistMap.get(name)!;
           artist.plays += (song.plays || 0);
           artist.songsCount += 1;
+          
+          if (song.created_at && new Date(song.created_at).getTime() > new Date(artist.createdAt).getTime()) {
+            artist.createdAt = song.created_at;
+          }
         });
         
         const artistArray = Array.from(artistMap.values());
@@ -90,7 +96,7 @@ export default function ArtistsPage() {
           });
         }
         
-        setArtists(artistArray.sort((a, b) => b.plays - a.plays));
+        setArtists(artistArray.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }
       
       setLoading(false);
