@@ -415,6 +415,23 @@ export default function Home() {
             const canQuickPlay =
               item.title === t('home.quickAccess.favorites') ||
               item.title === t('home.quickAccess.charts');
+            const cardContent = (
+              <>
+                <div className={`w-[72px] h-full shrink-0 relative shadow-md flex items-center justify-center ${item.color || 'bg-black'}`}>
+                  {Icon ? (
+                    <Icon
+                      className="w-8 h-8 text-white opacity-90 relative z-10"
+                      fill={item.title === "Lieblingssongs" ? "currentColor" : "none"}
+                    />
+                  ) : item.images ? (
+                    <ImageSlideshow images={item.images} currentIndex={hoveredItem === item.title && item.images.length > 1 ? slideIndex : 0} />
+                  ) : null}
+                </div>
+                <div className="relative min-w-0 flex-1 px-4 text-sm font-bold text-white truncate drop-shadow-sm">
+                  {item.title}
+                </div>
+              </>
+            );
             return (
               <div
                 key={item.title}
@@ -428,27 +445,19 @@ export default function Home() {
                   setSlideIndex(0);
                 }}
               >
+                <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 {item.link !== '#' ? (
                   <Link
                     href={item.link}
-                    aria-label={item.title}
-                    className="absolute inset-0 z-10 rounded-2xl"
-                  />
-                ) : null}
-                <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                <div className={`w-[72px] h-full shrink-0 relative shadow-md flex items-center justify-center ${item.color || 'bg-black'}`}>
-                  {Icon ? (
-                    <Icon 
-                      className="w-8 h-8 text-white opacity-90 relative z-10" 
-                      fill={item.title === "Lieblingssongs" ? "currentColor" : "none"}
-                    />
-                  ) : item.images ? (
-                    <ImageSlideshow images={item.images} currentIndex={hoveredItem === item.title && item.images.length > 1 ? slideIndex : 0} />
-                  ) : null}
-                </div>
-                <div className="relative flex-1 px-4 text-sm font-bold text-white truncate drop-shadow-sm">
-                  {item.title}
-                </div>
+                    className="relative z-10 flex h-full min-w-0 flex-1 items-center rounded-2xl"
+                  >
+                    {cardContent}
+                  </Link>
+                ) : (
+                  <div className="relative z-10 flex h-full min-w-0 flex-1 items-center">
+                    {cardContent}
+                  </div>
+                )}
                 {canQuickPlay ? (
                   <div className="relative z-20 pr-4 opacity-0 translate-x-2 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
                     <button
