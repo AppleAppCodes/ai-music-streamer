@@ -338,7 +338,7 @@ export default function ArtistPage() {
       <div className="absolute top-0 left-0 right-0 h-[600px] bg-gradient-to-b from-black/10 via-[#0A0A0A]/70 to-[#0A0A0A] pointer-events-none z-0" />
       
       {/* Hero Content */}
-      <div className="relative pt-32 px-6 md:px-10 pb-8 flex flex-col md:flex-row justify-between items-end gap-10 min-h-[380px] z-10 group">
+      <div className="relative pt-32 px-6 md:px-10 pb-8 flex flex-col md:flex-row w-full items-end gap-10 min-h-[380px] z-10 group">
         
         <div className="flex flex-col justify-end flex-shrink-0 max-w-3xl">
           {/* Admin Editable Overlay for Background */}
@@ -448,8 +448,9 @@ export default function ArtistPage() {
 
         {/* Artist Profile Video (Canvas) */}
         {(artistVideoUrl || user) && (
-          <div className="relative w-full max-w-[320px] md:max-w-[480px] aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 mt-4 md:mt-0 lg:mr-12 xl:mr-24 flex-shrink-0 group/video bg-black/20 backdrop-blur-sm">
-            {artistVideoUrl ? (
+          <div className="flex-1 flex w-full justify-center md:justify-center lg:pl-10">
+            <div className="relative w-full max-w-[320px] md:max-w-[480px] lg:max-w-[540px] aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 mt-4 md:mt-0 flex-shrink-0 group/video bg-black/20 backdrop-blur-sm">
+              {artistVideoUrl ? (
               <>
                 <video 
                   src={artistVideoUrl}
@@ -490,6 +491,7 @@ export default function ArtistPage() {
                 </button>
               </div>
             )}
+            </div>
           </div>
         )}
       </div>
