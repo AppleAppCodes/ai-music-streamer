@@ -18,6 +18,13 @@ function formatDuration(seconds: number | null | undefined): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function formatDate(dateString?: string): string {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const formatter = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
+  return formatter.format(date);
+}
+
 interface PlaylistData {
   id: string;
   user_id: string;
@@ -37,7 +44,7 @@ export default function PlaylistPage() {
   const supabase = createClient();
   
   const [playlist, setPlaylist] = useState<PlaylistData | null>(null);
-  const [songs, setSongs] = useState<Song[]>([]);
+  const [songs, setSongs] = useState<(Song & { added_at?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   
@@ -105,9 +112,13 @@ export default function PlaylistPage() {
           
         if (songsData) {
           // Reorder songs based on added_at mapping
-          const orderedSongs = mappingData.map(m => 
-            songsData.find(s => s.id === m.song_id)
-          ).filter(Boolean) as Song[];
+          const orderedSongs = mappingData.map(m => {
+            const s = songsData.find(s => s.id === m.song_id);
+            if (s) {
+              return { ...s, added_at: m.added_at };
+            }
+            return null;
+          }).filter(Boolean) as (Song & { added_at?: string })[];
           setSongs(orderedSongs);
         }
       }
@@ -432,11 +443,12 @@ export default function PlaylistPage() {
           {songs.length > 0 ? (
             <div className="flex flex-col">
               {/* Table Header */}
-              <div className="grid grid-cols-[16px_1fr_150px_40px] md:grid-cols-[24px_1fr_200px_80px_40px] gap-4 px-4 py-2 border-b border-white/10 text-xs text-white/40 uppercase tracking-wider mb-2">
+              <div className="grid grid-cols-[16px_1fr_50px] md:grid-cols-[24px_2fr_1.5fr_1fr_120px] gap-4 px-4 py-2 border-b border-white/10 text-xs text-white/40 uppercase tracking-wider mb-2">
                 <div>#</div>
                 <div>Titel</div>
-                <div className="hidden md:block">Künstler</div>
-                <div className="text-right flex items-center justify-end md:col-span-2"><Clock3 className="w-4 h-4" /></div>
+                <div className="hidden md:block">Album</div>
+                <div className="hidden md:block">Hinzugefügt am</div>
+                <div className="text-right flex items-center justify-end"><Clock3 className="w-4 h-4" /></div>
               </div>
 
               {songs.map((song, index) => {
@@ -454,7 +466,7 @@ export default function PlaylistPage() {
                     }
                       else togglePlayPause();
                     }}
-                    className="grid grid-cols-[16px_1fr_150px_40px] md:grid-cols-[24px_1fr_200px_80px_40px] gap-4 px-4 py-2.5 rounded-lg hover:bg-white/5 group cursor-pointer items-center transition-colors"
+                    className="grid grid-cols-[16px_1fr_50px] md:grid-cols-[24px_2fr_1.5fr_1fr_120px] gap-4 px-4 py-2.5 rounded-lg hover:bg-white/5 group cursor-pointer items-center transition-colors"
                   >
                     <div className="text-white/50 group-hover:text-white text-base font-mono">
                       {isThisSongPlaying ? (
@@ -475,19 +487,21 @@ export default function PlaylistPage() {
                         <span className={`text-base font-medium truncate ${currentSong?.id === song.id ? 'text-primary' : 'text-white/90'}`}>
                           {song.title}
                         </span>
-                        <Link href={`/artist/${encodeURIComponent(displayArtist)}`} onClick={e => e.stopPropagation()} className="text-sm text-white/50 hover:underline hover:text-white truncate md:hidden">
+                        <Link href={`/artist/${encodeURIComponent(displayArtist)}`} onClick={e => e.stopPropagation()} className="text-sm text-white/50 hover:underline hover:text-white truncate">
                           {displayArtist}
                         </Link>
                       </div>
                     </div>
                     
-                    <div className="hidden md:flex items-center">
-                      <Link href={`/artist/${encodeURIComponent(displayArtist)}`} onClick={e => e.stopPropagation()} className="text-sm text-white/50 hover:underline hover:text-white truncate">
-                        {displayArtist}
-                      </Link>
+                    <div className="hidden md:flex items-center text-sm text-white/50 truncate">
+                      {song.title} {/* using title as fallback for album */}
                     </div>
 
-                    <div className="text-right text-sm text-white/50 tracking-wider flex items-center justify-end gap-3 md:col-span-2">
+                    <div className="hidden md:flex items-center text-sm text-white/50 truncate">
+                      {formatDate(song.added_at)}
+                    </div>
+
+                    <div className="text-right text-sm text-white/50 tracking-wider flex items-center justify-end gap-3">
                       <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-4 mr-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         <LikeButton songId={song.id} iconClassName="w-5 h-5" />
                         <PlaylistAddButton 
