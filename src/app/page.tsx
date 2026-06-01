@@ -137,7 +137,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let animationId: number;
+    const mediaQuery = window.matchMedia('(min-width: 640px)');
+    let animationId: number | null = null;
     let lastTime = performance.now();
 
     const animate = (time: number) => {
@@ -170,8 +171,36 @@ export default function Home() {
       animationId = requestAnimationFrame(animate);
     };
 
-    animationId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationId);
+    const stopAnimation = () => {
+      if (animationId !== null) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+      if (genresScrollRef.current) {
+        genresScrollRef.current.style.transform = '';
+      }
+    };
+
+    const startAnimation = () => {
+      if (animationId !== null) return;
+      lastTime = performance.now();
+      animationId = requestAnimationFrame(animate);
+    };
+
+    const updateAnimation = () => {
+      if (mediaQuery.matches) {
+        startAnimation();
+      } else {
+        stopAnimation();
+      }
+    };
+
+    mediaQuery.addEventListener('change', updateAnimation);
+    updateAnimation();
+    return () => {
+      mediaQuery.removeEventListener('change', updateAnimation);
+      stopAnimation();
+    };
   }, [targetSpeed]);
 
   const scrollGenres = (direction: 'left' | 'right') => {
@@ -313,13 +342,6 @@ export default function Home() {
             <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight drop-shadow-md">{greeting}</h1>
             <p className="mt-3 max-w-2xl text-sm text-white/55">{t('home.subtitle')}</p>
           </div>
-          <Link
-            href="/upload"
-            className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-black shadow-[0_18px_45px_rgba(255,255,255,0.16)] transition-transform hover:scale-[1.03] active:scale-[0.98]"
-          >
-            {t('nav.upload')}
-            <ChevronRight className="w-4 h-4" />
-          </Link>
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
@@ -368,7 +390,7 @@ export default function Home() {
       <section className="px-4 sm:px-8 relative z-10">
         <div className="flex justify-between items-end mb-4">
           <SectionHeader title={t('home.popularGenres')} />
-          <div className="flex gap-2 sm:mr-8">
+          <div className="hidden gap-2 sm:mr-8 sm:flex">
             <button 
               onClick={() => scrollGenres('left')}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors"
@@ -384,7 +406,8 @@ export default function Home() {
           </div>
         </div>
         <div 
-          className="relative -mx-4 group/slider overflow-hidden px-4 py-12 sm:-mx-8 sm:px-8 sm:py-16"
+          data-testid="genre-scroller"
+          className="relative -mx-4 group/slider snap-x snap-mandatory overflow-x-auto overscroll-x-contain px-4 py-12 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:snap-none sm:overflow-hidden sm:px-8 sm:py-16"
           style={{ 
             maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)', 
             WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)' 
@@ -392,14 +415,12 @@ export default function Home() {
         >
           <div 
             ref={genresScrollRef}
+            data-testid="genre-track"
             onMouseEnter={() => isHoveredRef.current = true}
             onMouseLeave={() => {
               isHoveredRef.current = false;
               handleDragEnd();
             }}
-            onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
-            onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
-            onTouchEnd={handleDragEnd}
             onMouseDown={(e) => handleDragStart(e.clientX)}
             onMouseMove={(e) => handleDragMove(e.clientX)}
             onMouseUp={handleDragEnd}
@@ -410,7 +431,7 @@ export default function Home() {
               return (
                 <div 
                   key={`${genre.name}-${i}`} 
-                  className={`mx-1.5 group relative isolate w-[132px] shrink-0 h-20 rounded-xl p-3 flex flex-col justify-between cursor-pointer shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-[1.04] hover:shadow-[0_0_20px_var(--genre-glow)] hover:animate-pulseGlow ${genre.color}`}
+                  className={`mx-1.5 group relative isolate w-[132px] shrink-0 h-20 snap-start rounded-xl p-3 ${i >= GENRES.length ? 'hidden sm:flex' : 'flex'} flex-col justify-between cursor-pointer shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-[1.04] hover:shadow-[0_0_20px_var(--genre-glow)] hover:animate-pulseGlow ${genre.color}`}
                   style={{ '--genre-glow': genre.glow } as CSSProperties}
                 >
                 <div
