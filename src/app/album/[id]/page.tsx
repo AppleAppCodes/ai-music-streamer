@@ -11,6 +11,7 @@ import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import MobileSongMenu from '@/components/ui/MobileSongMenu';
 import Link from 'next/link';
 import { getErrorMessage } from '@/lib/errors';
+import { compressImage } from '@/lib/imageCompression';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -184,14 +185,16 @@ export default function AlbumPage() {
   };
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file || !isOwner || !album) return;
 
     setIsUploadingCover(true);
-    const ext = file.name.split('.').pop();
-    const path = `covers/album_${album.id}_${Date.now()}.${ext}`;
-
+    
     try {
+      file = await compressImage(file);
+      const ext = file.name.split('.').pop();
+      const path = `covers/album_${album.id}_${Date.now()}.${ext}`;
+
       const { error: uploadError } = await supabase.storage
         .from('covers')
         .upload(path, file);

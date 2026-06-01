@@ -9,6 +9,7 @@ import PlaylistAddButton from './PlaylistAddButton';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { getErrorMessage } from '@/lib/errors';
+import { compressImage } from '@/lib/imageCompression';
 
 export default function MobileSongMenu({ song }: { song: Song }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -137,10 +138,11 @@ export default function MobileSongMenu({ song }: { song: Song }) {
           ref={fileInputRef} 
           className="hidden" 
           onChange={async (e) => {
-            const file = e.target.files?.[0];
+            let file = e.target.files?.[0];
             if (!file) return;
             setIsUploading(true);
             try {
+              file = await compressImage(file);
               const ext = file.name.split('.').pop();
               const path = `songs/cover_${song.id}_${Date.now()}.${ext}`;
               const { error: uploadError } = await supabase.storage.from('covers').upload(path, file);

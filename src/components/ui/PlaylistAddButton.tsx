@@ -5,6 +5,7 @@ import { MoreHorizontal, ListPlus, Trash2, Image as ImageIcon, Loader2 } from 'l
 import AddToPlaylistModal from './AddToPlaylistModal';
 import { createClient } from '@/utils/supabase/client';
 import { getErrorMessage } from '@/lib/errors';
+import { compressImage } from '@/lib/imageCompression';
 
 interface PlaylistAddButtonProps {
   songId: string;
@@ -122,10 +123,11 @@ export default function PlaylistAddButton({
           ref={fileInputRef} 
           className="hidden" 
           onChange={async (e) => {
-            const file = e.target.files?.[0];
+            let file = e.target.files?.[0];
             if (!file) return;
             setIsUploading(true);
             try {
+              file = await compressImage(file);
               const ext = file.name.split('.').pop();
               const path = `songs/cover_${songId}_${Date.now()}.${ext}`;
               const { error: uploadError } = await supabase.storage.from('covers').upload(path, file);

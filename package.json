@@ -12,6 +12,7 @@
     "@marsidev/react-turnstile": "^1.5.2",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
+    "browser-image-compression": "^2.0.2",
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
     "i18next": "^26.3.0",

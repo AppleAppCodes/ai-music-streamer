@@ -7,6 +7,7 @@ import { User, Settings, Image as ImageIcon, Loader2, Save, CreditCard, Globe } 
 import { useRouter } from 'next/navigation';
 import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { compressImage } from '@/lib/imageCompression';
 
 const LANGUAGE_STORAGE_KEY = 'ai-stream-language';
 
@@ -52,14 +53,16 @@ export default function SettingsPage() {
   }, [supabase, router]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file || !user) return;
 
     setUploadingAvatar(true);
-    const ext = file.name.split('.').pop();
-    const path = `avatars/${user.id}-${Date.now()}.${ext}`;
-
+    
     try {
+      file = await compressImage(file);
+      const ext = file.name.split('.').pop();
+      const path = `avatars/${user.id}-${Date.now()}.${ext}`;
+
       const { error: uploadError } = await supabase.storage
         .from('covers')
         .upload(path, file, { upsert: true });

@@ -10,6 +10,7 @@ import CustomSelect from '@/components/ui/CustomSelect';
 import { GENRES, MOODS } from '@/lib/constants';
 import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { compressImage } from '@/lib/imageCompression';
 
 export default function UploadPage() {
   const { t } = useTranslation();
@@ -153,11 +154,12 @@ export default function UploadPage() {
 
     try {
       // 1. Upload Cover Image
-      const coverExt = coverFile.name.split('.').pop();
+      const compressedCover = await compressImage(coverFile);
+      const coverExt = compressedCover.name.split('.').pop();
       const coverPath = `${user.id}/${Date.now()}_cover.${coverExt}`;
       const { error: coverError } = await supabase.storage
         .from('covers')
-        .upload(coverPath, coverFile);
+        .upload(coverPath, compressedCover);
         
       if (coverError) throw new Error('Cover-Upload fehlgeschlagen: ' + coverError.message);
       

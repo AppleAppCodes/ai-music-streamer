@@ -10,6 +10,7 @@ import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import MobileSongMenu from '@/components/ui/MobileSongMenu';
 import { getErrorMessage } from '@/lib/errors';
+import { compressImage } from '@/lib/imageCompression';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 function formatDuration(seconds: number | null | undefined): string {
@@ -218,15 +219,17 @@ export default function ArtistPage() {
   };
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploadingBanner(true);
-    const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const ext = file.name.split('.').pop();
-    const path = `banners/${sanitizedName}.${ext}`;
-
+    
     try {
+      file = await compressImage(file);
+      const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const ext = file.name.split('.').pop();
+      const path = `banners/${sanitizedName}.${ext}`;
+
       const { error } = await supabase.storage
         .from('covers')
         .upload(path, file, { upsert: true });
