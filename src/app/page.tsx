@@ -309,7 +309,7 @@ export default function Home() {
       <section className="px-4 sm:px-8 relative z-10">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-accent/80">AI Music Streamer</p>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-accent/80">Yoriax</p>
             <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight drop-shadow-md">{greeting}</h1>
             <p className="mt-3 max-w-2xl text-sm text-white/55">{t('home.subtitle')}</p>
           </div>

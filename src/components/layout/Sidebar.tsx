@@ -16,7 +16,7 @@ export default function Sidebar() {
             <AudioWaveform className="w-5 h-5 text-white" strokeWidth={2.5} />
           </div>
           <span className="text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
-            AI Stream
+            Yoriax
           </span>
         </Link>
       </div>

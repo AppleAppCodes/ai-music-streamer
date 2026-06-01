@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Stream | The first streaming platform for AI-native music",
+  title: "Yoriax | The first streaming platform for AI-native music",
   description: "Stream, discover, and publish the best AI-generated music.",
 };
 
