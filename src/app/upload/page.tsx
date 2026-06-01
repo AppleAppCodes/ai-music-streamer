@@ -13,8 +13,12 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export default function UploadPage() {
   const { t } = useTranslation();
+  const [uploadMode, setUploadMode] = useState<'single' | 'album'>('single');
+  const [albumType, setAlbumType] = useState<'album' | 'ep'>('album');
+  const [albumFiles, setAlbumFiles] = useState<{file: File, title: string, duration?: number}[]>([]);
+
   const [artistName, setArtistName] = useState('');
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(''); // Single title OR Album title
   const [genre, setGenre] = useState(GENRES[0].name);
   const [mood, setMood] = useState(MOODS[0]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -89,12 +93,26 @@ export default function UploadPage() {
   const handleAudioDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingAudio(false);
-    if (e.dataTransfer.files?.[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.startsWith('audio/')) {
-        handleAudioFileChange(file);
+    if (e.dataTransfer.files?.length) {
+      if (uploadMode === 'single') {
+        const file = e.dataTransfer.files[0];
+        if (file.type.startsWith('audio/')) {
+          handleAudioFileChange(file);
+        } else {
+          setError(t('upload.errorOnlyAudio') || 'Bitte lade nur Audio-Dateien hoch.');
+        }
       } else {
-        setError(t('upload.errorOnlyAudio') || 'Bitte lade nur Audio-Dateien hoch.');
+        const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio/'));
+        if (files.length === 0) {
+          setError('Keine gültigen Audio-Dateien gefunden.');
+          return;
+        }
+        const newAlbumFiles = files.map(f => ({
+          file: f,
+          title: f.name.replace(/\.[^/.]+$/, ""),
+          duration: undefined
+        }));
+        setAlbumFiles(prev => [...prev, ...newAlbumFiles]);
       }
     }
   };
@@ -115,12 +133,18 @@ export default function UploadPage() {
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!audioFile || !coverFile || !title || !artistName || !vocalsType) {
-      setError('Bitte fülle alle Pflichtfelder aus (Artist, Titel, Song, Cover, Metadaten).');
+    if (uploadMode === 'single' && !audioFile) {
+      setError('Bitte lade eine Audio-Datei hoch.'); return;
+    }
+    if (uploadMode === 'album' && albumFiles.length === 0) {
+      setError('Bitte lade mindestens eine Audio-Datei für das Album hoch.'); return;
+    }
+    if (!coverFile || !title || !artistName || !vocalsType) {
+      setError('Bitte fülle alle Pflichtfelder aus.');
       return;
     }
     if (!user) {
-      setError('Bitte melde dich erneut an, bevor du einen Song hochlädst.');
+      setError('Bitte melde dich erneut an, bevor du etwas hochlädst.');
       return;
     }
     
@@ -141,38 +165,88 @@ export default function UploadPage() {
         .from('covers')
         .getPublicUrl(coverPath);
 
-      // 2. Upload Audio File
-      const audioExt = audioFile.name.split('.').pop();
-      const audioPath = `${user.id}/${Date.now()}_song.${audioExt}`;
-      const { error: audioError } = await supabase.storage
-        .from('songs')
-        .upload(audioPath, audioFile);
+      if (uploadMode === 'single' && audioFile) {
+        // --- SINGLE UPLOAD ---
+        const audioExt = audioFile.name.split('.').pop();
+        const audioPath = `${user.id}/${Date.now()}_song.${audioExt}`;
+        const { error: audioError } = await supabase.storage
+          .from('songs')
+          .upload(audioPath, audioFile);
+          
+        if (audioError) throw new Error('Song-Upload fehlgeschlagen: ' + audioError.message);
         
-      if (audioError) throw new Error('Song-Upload fehlgeschlagen: ' + audioError.message);
-      
-      const { data: { publicUrl: audioUrl } } = supabase.storage
-        .from('songs')
-        .getPublicUrl(audioPath);
+        const { data: { publicUrl: audioUrl } } = supabase.storage
+          .from('songs')
+          .getPublicUrl(audioPath);
 
-      // 3. Save to Database
-      const { error: dbError } = await supabase
-        .from('songs')
-        .insert({
-          creator_id: user.id,
-          artist_name: artistName,
-          title,
-          genre,
-          mood,
-          cover_url: coverUrl,
-          audio_url: audioUrl,
-          human_edit: humanEdit,
-          vocals_type: vocalsType,
-          credits,
-          duration: audioDuration || null,
-          plays: 0
-        });
+        const { error: dbError } = await supabase
+          .from('songs')
+          .insert({
+            creator_id: user.id,
+            artist_name: artistName,
+            title,
+            genre,
+            mood,
+            cover_url: coverUrl,
+            audio_url: audioUrl,
+            human_edit: humanEdit,
+            vocals_type: vocalsType,
+            credits,
+            duration: audioDuration || null,
+            plays: 0
+          });
+        if (dbError) throw new Error('Datenbank-Fehler: ' + dbError.message);
 
-      if (dbError) throw new Error('Datenbank-Fehler: ' + dbError.message);
+      } else {
+        // --- ALBUM UPLOAD ---
+        const { data: albumData, error: albumError } = await supabase
+          .from('albums')
+          .insert({
+            creator_id: user.id,
+            title,
+            cover_url: coverUrl,
+            type: albumType
+          }).select().single();
+          
+        if (albumError || !albumData) throw new Error('Fehler beim Erstellen des Albums.');
+
+        // Upload all songs
+        for (let i = 0; i < albumFiles.length; i++) {
+          const item = albumFiles[i];
+          const audioExt = item.file.name.split('.').pop();
+          const audioPath = `${user.id}/${Date.now()}_albumsong_${i}.${audioExt}`;
+          const { error: audioError } = await supabase.storage
+            .from('songs')
+            .upload(audioPath, item.file);
+            
+          if (audioError) throw new Error(`Upload fehlgeschlagen für ${item.title}`);
+          
+          const { data: { publicUrl: audioUrl } } = supabase.storage
+            .from('songs')
+            .getPublicUrl(audioPath);
+
+          const { error: dbError } = await supabase
+            .from('songs')
+            .insert({
+              creator_id: user.id,
+              artist_name: artistName,
+              title: item.title,
+              genre,
+              mood,
+              cover_url: coverUrl,
+              audio_url: audioUrl,
+              human_edit: humanEdit,
+              vocals_type: vocalsType,
+              credits,
+              duration: item.duration || null,
+              plays: 0,
+              album_id: albumData.id,
+              track_number: i + 1
+            });
+            
+          if (dbError) throw new Error(`Fehler beim Speichern von ${item.title}`);
+        }
+      }
 
       setSuccess(true);
       setTimeout(() => {
@@ -207,6 +281,24 @@ export default function UploadPage() {
           <p className="text-white/50">{t('upload.subtitle')}</p>
         </div>
 
+        {/* Mode Toggle */}
+        <div className="flex bg-white/5 border border-white/10 rounded-full p-1 mb-8 w-fit">
+          <button
+            type="button"
+            onClick={() => setUploadMode('single')}
+            className={`px-6 py-2 rounded-full text-sm font-bold transition-colors ${uploadMode === 'single' ? 'bg-white text-black' : 'text-white/60 hover:text-white'}`}
+          >
+            Single
+          </button>
+          <button
+            type="button"
+            onClick={() => setUploadMode('album')}
+            className={`px-6 py-2 rounded-full text-sm font-bold transition-colors ${uploadMode === 'album' ? 'bg-white text-black' : 'text-white/60 hover:text-white'}`}
+          >
+            Album / EP
+          </button>
+        </div>
+
         <form onSubmit={handleUpload} className="space-y-8">
           {error && (
             <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
@@ -222,14 +314,46 @@ export default function UploadPage() {
               onChange={setArtistName} 
             />
 
+            {uploadMode === 'album' && (
+              <div>
+                <label className="block text-sm font-semibold text-white/80 mb-2">Release Typ *</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="albumType" 
+                      value="album"
+                      checked={albumType === 'album'}
+                      onChange={() => setAlbumType('album')}
+                      className="text-indigo-500 bg-white/10 border-white/20"
+                    />
+                    <span className="text-white/80 text-sm">Album</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="albumType" 
+                      value="ep"
+                      checked={albumType === 'ep'}
+                      onChange={() => setAlbumType('ep')}
+                      className="text-indigo-500 bg-white/10 border-white/20"
+                    />
+                    <span className="text-white/80 text-sm">EP</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
             <div>
-              <label className="block text-sm font-semibold text-white/80 mb-2">{t('upload.songTitle')}</label>
+              <label className="block text-sm font-semibold text-white/80 mb-2">
+                {uploadMode === 'single' ? t('upload.songTitle') : 'Album Titel *'}
+              </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                placeholder={t('upload.songTitlePlaceholder')}
+                placeholder={uploadMode === 'single' ? t('upload.songTitlePlaceholder') : 'Name des Albums'}
                 required
               />
             </div>
@@ -360,18 +484,31 @@ export default function UploadPage() {
               <input 
                 type="file" 
                 accept="audio/*" 
+                multiple={uploadMode === 'album'}
                 className="hidden" 
                 ref={audioInputRef}
-                onChange={(e) => handleAudioFileChange(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  if (uploadMode === 'single') {
+                    handleAudioFileChange(e.target.files?.[0] || null);
+                  } else {
+                    const files = Array.from(e.target.files || []);
+                    const newAlbumFiles = files.map(f => ({
+                      file: f,
+                      title: f.name.replace(/\.[^/.]+$/, ""),
+                      duration: undefined
+                    }));
+                    setAlbumFiles(prev => [...prev, ...newAlbumFiles]);
+                  }
+                }}
               />
               <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4 group-hover:bg-indigo-500/20 transition-colors">
-                <Music className={`w-8 h-8 ${audioFile ? 'text-indigo-400' : 'text-white/40'}`} />
+                <Music className={`w-8 h-8 ${audioFile || albumFiles.length > 0 ? 'text-indigo-400' : 'text-white/40'}`} />
               </div>
               <h3 className="text-white font-semibold mb-1">
-                {audioFile ? audioFile.name : t('upload.uploadAudio')}
+                {uploadMode === 'single' ? (audioFile ? audioFile.name : t('upload.uploadAudio')) : (albumFiles.length > 0 ? `${albumFiles.length} Tracks ausgewählt` : 'Audios hochladen')}
               </h3>
               <p className="text-white/40 text-sm">
-                {audioFile ? t('upload.changeFile') : t('upload.uploadAudioHint')}
+                {uploadMode === 'single' ? (audioFile ? t('upload.changeFile') : t('upload.uploadAudioHint')) : (albumFiles.length > 0 ? 'Klicken, um weitere hinzuzufügen' : 'Ziehe mehrere Audio-Dateien hierhin')}
               </p>
             </div>
 
@@ -410,9 +547,39 @@ export default function UploadPage() {
 
           </div>
 
+          {uploadMode === 'album' && albumFiles.length > 0 && (
+            <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
+              <h3 className="text-white font-bold mb-4">Tracks ({albumFiles.length})</h3>
+              <div className="space-y-3">
+                {albumFiles.map((af, i) => (
+                  <div key={i} className="flex gap-4 items-center bg-black/40 p-3 rounded-xl border border-white/5">
+                    <span className="text-white/50 w-6 text-center">{i+1}</span>
+                    <input 
+                      type="text" 
+                      value={af.title} 
+                      onChange={e => {
+                        const newFiles = [...albumFiles];
+                        newFiles[i].title = e.target.value;
+                        setAlbumFiles(newFiles);
+                      }}
+                      className="flex-1 bg-transparent text-white focus:outline-none"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setAlbumFiles(albumFiles.filter((_, idx) => idx !== i))}
+                      className="text-white/30 hover:text-red-400"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={loading || !audioFile || !coverFile || !title || !artistName}
+            disabled={loading || (uploadMode === 'single' && !audioFile) || (uploadMode === 'album' && albumFiles.length === 0) || !coverFile || !title || !artistName}
             className="w-full relative group overflow-hidden rounded-xl bg-white text-black font-bold py-4 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 mt-8"
           >
             <span className="relative z-10 flex items-center justify-center gap-2 text-lg">

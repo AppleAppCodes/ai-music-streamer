@@ -1,0 +1,21 @@
+--- src/index.ts
++++ src/index.ts
+@@ -53,7 +53,7 @@
+ 
+ const server = new McpServer({
+   name: 'music-streamer',
+   version: '1.0.0',
+-  description: 'MCP Server für die AI Music Streamer Plattform. Lade Songs hoch, verwalte Playlists und mehr.',
++  description: 'Das ist das Backend für Davids eigene Musik-Streaming-Plattform "AI Music Streamer" (eine Art Spotify-Klon für KI-Musik). Du bist sein Admin-Assistent. Nutze diese Werkzeuge (Tools) IMMER, wenn der Nutzer nach "meiner Plattform", "meinem Streamingdienst" oder "Songs" fragt. Du hast vollen Zugriff auf die Datenbank (Supabase) und kannst alles steuern.',
+ });
+ 
+ // ── Tool: upload_song ───────────────────────────────────────────────────────
+@@ -62,7 +62,7 @@
+ 
+ server.tool(
+   'upload_song',
+-  'Upload a new song to the music streaming platform. Requires local file paths for audio and cover image.',
++  'Lädt einen neuen Song auf Davids Streaming-Plattform hoch. Führe dieses Tool aus, wenn der Nutzer einen Song hochladen will.',
+   {
+     title: z.string().describe('Song title'),
+     artist_name: z.string().describe('Artist name'),

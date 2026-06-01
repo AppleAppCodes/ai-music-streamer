@@ -1,0 +1,23 @@
+{
+  "name": "music-streamer-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server for the AI Music Streamer platform – upload songs, manage playlists, and more via any MCP-compatible AI agent.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "music-streamer-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@supabase/supabase-js": "^2.106.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

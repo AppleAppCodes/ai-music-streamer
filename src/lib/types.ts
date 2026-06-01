@@ -32,6 +32,19 @@ export interface Song {
   plays: number;
   created_at: string;
   creatorName?: string;
+  album_id?: string | null;
+  track_number?: number | null;
+  album?: Album; // for joined queries
+}
+
+export interface Album {
+  id: string;
+  title: string;
+  cover_url: string;
+  creator_id: string;
+  type: 'album' | 'ep' | 'single';
+  created_at: string;
+  creatorName?: string; // joined
 }
 
 export interface Playlist {

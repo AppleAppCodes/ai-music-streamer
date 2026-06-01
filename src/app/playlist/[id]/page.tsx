@@ -107,7 +107,7 @@ export default function PlaylistPage() {
         const songIds = mappingData.map(m => m.song_id);
         const { data: songsData } = await supabase
           .from('songs')
-          .select('*')
+          .select('*, album:albums(id, title)')
           .in('id', songIds);
           
         if (songsData) {
@@ -493,9 +493,13 @@ export default function PlaylistPage() {
                       </div>
                     </div>
                     
-                    <div className="hidden md:flex items-center text-sm text-white/50 truncate">
-                      {song.title} {/* using title as fallback for album */}
-                    </div>
+                    <Link 
+                      href={song.album_id ? `/album/${song.album_id}` : `/song/${song.id}`} 
+                      onClick={e => e.stopPropagation()} 
+                      className="hidden md:flex items-center text-sm text-white/50 hover:text-white hover:underline truncate"
+                    >
+                      {song.album?.title || song.title}
+                    </Link>
 
                     <div className="hidden md:flex items-center text-sm text-white/50 truncate">
                       {formatDate(song.added_at)}
