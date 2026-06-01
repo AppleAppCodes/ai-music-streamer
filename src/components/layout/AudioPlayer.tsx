@@ -218,7 +218,7 @@ export default function AudioPlayer() {
               <Link href={`/artist/${encodeURIComponent(displayArtist)}`} onClick={(e) => e.stopPropagation()} className="text-xs text-muted hover:text-white hover:underline cursor-pointer truncate">{displayArtist}</Link>
             </div>
             <div className="hidden items-center md:flex" onClick={(e) => e.stopPropagation()}>
-              <PlaylistAddButton songId={currentSong.id} className="ml-4" iconClassName="w-5 h-5" />
+              <PlaylistAddButton songId={currentSong.id} className="ml-4" iconClassName="w-5 h-5" openUpwards={true} />
               <LikeButton songId={currentSong.id} className="ml-2" iconClassName="w-5 h-5" />
             </div>
           </>
