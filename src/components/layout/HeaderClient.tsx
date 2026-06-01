@@ -57,7 +57,13 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
             onBlur={(e) => {
               if (!e.target.value.trim() && searchAutoNav.current) {
                 searchAutoNav.current = false;
-                router.back();
+                const searchContainer = document.getElementById('search-page-container');
+                if (searchContainer) {
+                  searchContainer.style.opacity = '0';
+                  setTimeout(() => router.back(), 200);
+                } else {
+                  router.back();
+                }
               }
             }}
             className="block w-full pl-11 pr-4 py-2.5 border border-white/20 rounded-full leading-5 bg-white/10 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 hover:bg-white/15 hover:border-purple-500/40 hover:shadow-[0_0_15px_rgba(168,85,247,0.15)] sm:text-sm transition-all shadow-lg focus:shadow-[0_0_20px_rgba(168,85,247,0.3)] backdrop-blur-md"

@@ -8,6 +8,7 @@ import SongCard from '@/components/ui/SongCard';
 import Link from 'next/link';
 import { Library, Mic2, Music, Search } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
+import { motion } from 'framer-motion';
 
 interface PlaylistResult {
   id: string;
@@ -74,26 +75,44 @@ function SearchResults() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
+      <motion.div 
+        id="search-page-container"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
+        className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]"
+      >
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
+      </motion.div>
     );
   }
 
   if (!query) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-[#0A0A0A] p-6 text-center">
+      <motion.div 
+        id="search-page-container"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
+        className="flex-1 flex flex-col items-center justify-center min-h-screen bg-[#0A0A0A] p-6 text-center"
+      >
         <Search className="w-16 h-16 text-white/20 mb-4" />
         <h1 className="text-2xl font-bold text-white mb-2">Suche nach Inhalten</h1>
         <p className="text-white/50 max-w-md">Tippe etwas in die Suchleiste im Header ein, um nach Songs, Künstlern oder Playlists zu suchen.</p>
-      </div>
+      </motion.div>
     );
   }
 
   const hasNoResults = songs.length === 0 && playlists.length === 0 && artists.length === 0;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
+    <motion.div 
+      id="search-page-container"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+      className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32 transition-opacity duration-200"
+    >
       <div className="relative pt-10 px-6 md:px-10 pb-6 z-10">
         <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-8">
           Ergebnisse für "{query}"
@@ -233,7 +252,7 @@ function SearchResults() {
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
