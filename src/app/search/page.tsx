@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
 import SongCard from '@/components/ui/SongCard';
@@ -23,6 +23,7 @@ interface ArtistResult {
 function SearchResults() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
+  const router = useRouter();
   const supabase = createClient();
   const { setQueue } = usePlayer();
 
@@ -80,12 +81,39 @@ function SearchResults() {
     );
   }
 
+  const searchInput = (
+    <div className="md:hidden relative w-full mb-8">
+      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+        <Search className="h-5 w-5 text-white/60" />
+      </div>
+      <input
+        type="text"
+        defaultValue={query}
+        autoFocus
+        onChange={(e) => {
+          const q = e.target.value;
+          if (q.trim()) {
+            router.replace(`/search?q=${encodeURIComponent(q.trim())}`);
+          } else {
+            router.replace(`/search`);
+          }
+        }}
+        className="block w-full rounded-full border border-white/10 bg-white/10 py-3 pl-12 pr-4 text-base text-white placeholder-white/50 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30 transition-all"
+        placeholder="Was möchtest du hören?"
+      />
+    </div>
+  );
+
   if (!query) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-[#0A0A0A] p-6 text-center">
-        <Search className="w-16 h-16 text-white/20 mb-4" />
-        <h1 className="text-2xl font-bold text-white mb-2">Suche nach Inhalten</h1>
-        <p className="text-white/50 max-w-md">Tippe etwas in die Suchleiste im Header ein, um nach Songs, Künstlern oder Playlists zu suchen.</p>
+      <div className="flex-1 flex flex-col items-center min-h-screen bg-[#0A0A0A] p-6 pt-10 text-center">
+        {searchInput}
+        <div className="flex-1 flex flex-col items-center justify-center -mt-20">
+          <Search className="w-16 h-16 text-white/20 mb-4" />
+          <h1 className="text-2xl font-bold text-white mb-2">Suche nach Inhalten</h1>
+          <p className="text-white/50 max-w-md hidden md:block">Tippe etwas in die Suchleiste im Header ein, um nach Songs, Künstlern oder Playlists zu suchen.</p>
+          <p className="text-white/50 max-w-md md:hidden">Benutze die Suchleiste oben, um nach Songs, Künstlern oder Playlists zu suchen.</p>
+        </div>
       </div>
     );
   }
@@ -94,7 +122,8 @@ function SearchResults() {
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
-      <div className="relative pt-10 px-6 md:px-10 pb-6 z-10">
+      <div className="relative pt-6 md:pt-10 px-6 md:px-10 pb-6 z-10">
+        {searchInput}
         <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-8">
           Ergebnisse für "{query}"
         </h1>

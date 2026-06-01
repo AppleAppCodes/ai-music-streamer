@@ -3,6 +3,7 @@ import { Play, Pause } from 'lucide-react';
 import { Song } from '@/lib/types';
 import { usePlayer } from '@/lib/player-context';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
+import MobileSongMenu from '@/components/ui/MobileSongMenu';
 
 interface SongCardProps {
   song: Song;
@@ -63,13 +64,18 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
       </div>
 
       {/* Song Details */}
-      <div className="flex flex-col">
-        <Link href={`/song/${song.id}`} className="text-base font-semibold text-white truncate hover:underline">
-          {song.title}
-        </Link>
-        <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-sm text-muted truncate hover:text-white hover:underline mt-0.5">
-          {displayArtist}
-        </Link>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-col min-w-0 flex-1">
+          <Link href={`/song/${song.id}`} className="text-base font-semibold text-white truncate hover:underline">
+            {song.title}
+          </Link>
+          <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-sm text-muted truncate hover:text-white hover:underline mt-0.5">
+            {displayArtist}
+          </Link>
+        </div>
+        <div className="-mt-1 -mr-2">
+          <MobileSongMenu song={song} />
+        </div>
       </div>
     </div>
   );

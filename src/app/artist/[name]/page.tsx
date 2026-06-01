@@ -8,6 +8,7 @@ import { Play, Pause, MoreHorizontal, UserPlus, UserCheck, BadgeCheck, Shuffle, 
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
+import MobileSongMenu from '@/components/ui/MobileSongMenu';
 import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -583,11 +584,14 @@ export default function ArtistPage() {
                     </div>
                     
                     <div className="text-right text-sm text-white/50 tracking-wider flex items-center justify-end">
-                      <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-4 mr-4">
+                      <div onClick={(e) => e.stopPropagation()} className="hidden md:flex items-center gap-4 mr-4">
                         <PlaylistAddButton songId={song.id} iconClassName="w-5 h-5" />
                         <LikeButton songId={song.id} iconClassName="w-5 h-5" />
                       </div>
-                      {song.plays.toLocaleString('de-DE')}
+                      <span className="hidden sm:inline-block mr-2 md:mr-0">{song.plays.toLocaleString('de-DE')}</span>
+                      <div className="-mr-2 md:hidden" onClick={(e) => e.stopPropagation()}>
+                        <MobileSongMenu song={song} />
+                      </div>
                     </div>
                     
                     <div className="text-right text-sm text-white/50">

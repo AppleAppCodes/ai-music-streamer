@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
+import MobilePlayerFullscreen from './MobilePlayerFullscreen';
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return '0:00';
@@ -48,6 +49,7 @@ export default function AudioPlayer() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isTimerMenuOpen, setIsTimerMenuOpen] = useState(false);
+  const [isMobilePlayerOpen, setIsMobilePlayerOpen] = useState(false);
   const [sleepTimerLabel, setSleepTimerLabel] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState('');
   const isPlayingRef = useRef(isPlaying);
@@ -185,8 +187,12 @@ export default function AudioPlayer() {
   if (!currentSong && !isLoggedIn) return null;
 
   return (
-    <div className={`fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-50 h-16 items-center justify-between border-t border-white/10 bg-surface/95 px-2 backdrop-blur-xl md:bottom-0 md:flex md:h-24 md:border-white/5 md:bg-surface md:px-4 ${currentSong ? 'flex' : 'hidden'}`}>
-      {currentSong ? (
+    <>
+      <div 
+        className={`fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-50 h-16 items-center justify-between border-t border-white/10 bg-surface/95 px-2 backdrop-blur-xl md:bottom-0 md:flex md:h-24 md:border-white/5 md:bg-surface md:px-4 ${currentSong ? 'flex' : 'hidden'}`}
+        onClick={() => setIsMobilePlayerOpen(true)}
+      >
+        {currentSong ? (
         <input
           type="range"
           min="0"
@@ -208,10 +214,10 @@ export default function AudioPlayer() {
           <>
             <img src={currentSong.cover_url} alt={currentSong.title} className="h-11 w-11 shrink-0 rounded-md object-cover shadow-md md:h-14 md:w-14" />
             <div className="flex min-w-0 flex-col">
-              <Link href={`/song/${currentSong.id}`} className="text-sm font-semibold text-white hover:underline cursor-pointer truncate">{currentSong.title}</Link>
-              <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-xs text-muted hover:text-white hover:underline cursor-pointer truncate">{displayArtist}</Link>
+              <Link href={`/song/${currentSong.id}`} onClick={(e) => e.stopPropagation()} className="text-sm font-semibold text-white hover:underline cursor-pointer truncate">{currentSong.title}</Link>
+              <Link href={`/artist/${encodeURIComponent(displayArtist)}`} onClick={(e) => e.stopPropagation()} className="text-xs text-muted hover:text-white hover:underline cursor-pointer truncate">{displayArtist}</Link>
             </div>
-            <div className="hidden items-center md:flex">
+            <div className="hidden items-center md:flex" onClick={(e) => e.stopPropagation()}>
               <PlaylistAddButton songId={currentSong.id} className="ml-4" iconClassName="w-5 h-5" />
               <LikeButton songId={currentSong.id} className="ml-2" iconClassName="w-5 h-5" />
             </div>
@@ -301,7 +307,10 @@ export default function AudioPlayer() {
         </button>
         <button
           type="button"
-          onClick={togglePlayPause}
+          onClick={(e) => {
+            e.stopPropagation();
+            togglePlayPause();
+          }}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-black md:hidden"
           aria-label={isPlaying ? 'Pausieren' : 'Abspielen'}
         >
@@ -309,14 +318,17 @@ export default function AudioPlayer() {
         </button>
         <button
           type="button"
-          onClick={playNext}
+          onClick={(e) => {
+            e.stopPropagation();
+            playNext();
+          }}
           disabled={!canPlayNext}
           className="flex h-9 w-9 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white disabled:opacity-30 md:hidden"
           aria-label="Nächster Song"
         >
           <SkipForward className="h-4 w-4 fill-current" />
         </button>
-        <div className="hidden w-28 min-w-0 max-w-[22vw] items-center gap-2 md:flex">
+        <div className="hidden w-28 min-w-0 max-w-[22vw] items-center gap-2 md:flex" onClick={(e) => e.stopPropagation()}>
           <Volume2 className="w-4 h-4 text-muted" />
           <input
             type="range"
@@ -406,5 +418,7 @@ export default function AudioPlayer() {
         )}
       </div>
     </div>
+    <MobilePlayerFullscreen isOpen={isMobilePlayerOpen} onClose={() => setIsMobilePlayerOpen(false)} />
+    </>
   );
 }

@@ -8,6 +8,7 @@ import { Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Glo
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
+import MobileSongMenu from '@/components/ui/MobileSongMenu';
 import Link from 'next/link';
 import { getErrorMessage } from '@/lib/errors';
 
@@ -506,7 +507,7 @@ export default function PlaylistPage() {
                     </div>
 
                     <div className="text-right text-sm text-white/50 tracking-wider flex items-center justify-end gap-3">
-                      <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-4 mr-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div onClick={(e) => e.stopPropagation()} className="hidden md:flex items-center gap-4 mr-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         <LikeButton songId={song.id} iconClassName="w-5 h-5" />
                         <PlaylistAddButton 
                           songId={song.id} 
@@ -516,7 +517,10 @@ export default function PlaylistPage() {
                         />
                       </div>
                       
-                      <span className="w-12 text-right">{formatDuration(song.duration)}</span>
+                      <span className="w-12 text-right hidden sm:block">{formatDuration(song.duration)}</span>
+                      <div className="-mr-2 md:hidden" onClick={(e) => e.stopPropagation()}>
+                        <MobileSongMenu song={song} />
+                      </div>
                     </div>
                   </div>
                 );

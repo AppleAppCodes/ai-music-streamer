@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
 import { Play, Pause, Music } from 'lucide-react';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
+import MobileSongMenu from '@/components/ui/MobileSongMenu';
 import { usePlayer } from '@/lib/player-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -174,18 +175,23 @@ export default function FollowingPage() {
                           </div>
 
                           {/* Info */}
-                          <div className="flex flex-col min-w-0">
-                            <Link
-                              href={`/song/${song.id}`}
-                              className="text-sm font-semibold text-white truncate hover:underline"
-                            >
-                              {song.title}
-                            </Link>
-                            <span className="text-xs text-white/40 truncate mt-0.5">
-                              {song.genre || 'Single'}
-                            </span>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <Link
+                                href={`/song/${song.id}`}
+                                className="text-sm font-semibold text-white truncate hover:underline"
+                              >
+                                {song.title}
+                              </Link>
+                              <span className="text-xs text-white/40 truncate mt-0.5">
+                                {song.genre || 'Single'}
+                              </span>
+                            </div>
+                            <div className="-mt-1 -mr-2">
+                              <MobileSongMenu song={song} />
+                            </div>
                           </div>
-                          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                          <div className="absolute top-3 right-3 hidden opacity-0 group-hover:opacity-100 transition-opacity md:flex items-center gap-2">
                             <PlaylistAddButton songId={song.id} iconClassName="w-4 h-4" className="bg-black/50 p-1.5 rounded-full hover:bg-black/80" />
                           </div>
                         </div>
