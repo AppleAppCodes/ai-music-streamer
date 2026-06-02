@@ -385,7 +385,7 @@ export default function AuthenticatedHome() {
   };
 
   return (
-    <div className="relative flex flex-col gap-10 pb-12 pt-5 min-h-screen overflow-hidden sm:gap-12 sm:pt-6">
+    <div className="relative flex min-h-screen flex-col gap-8 overflow-hidden pb-12 pt-4 sm:gap-12 sm:pt-6">
 
       {/* Dynamic Blurred Backgrounds */}
       <div className="absolute top-0 left-0 w-full h-[500px] pointer-events-none z-0 overflow-hidden">
@@ -418,15 +418,15 @@ export default function AuthenticatedHome() {
 
       {/* Quick Access / Greeting Section */}
       <section className="px-4 sm:px-8 relative z-10">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-accent/80">Yoriax</p>
-            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight drop-shadow-md">{greeting}</h1>
-            <p className="mt-3 max-w-2xl text-sm text-white/55">{t('home.subtitle')}</p>
+            <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-md sm:text-5xl">{greeting}</h1>
+            <p className="mt-3 hidden max-w-2xl text-sm text-white/55 sm:block">{t('home.subtitle')}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           {quickAccessItems.map((item) => {
             const Icon = item.icon;
             const canQuickPlay =
@@ -439,17 +439,17 @@ export default function AuthenticatedHome() {
               isPlaying;
             const cardContent = (
               <>
-                <div className={`w-[72px] h-full shrink-0 relative shadow-md flex items-center justify-center ${item.color || 'bg-black'}`}>
+                <div className={`relative flex h-full w-14 shrink-0 items-center justify-center shadow-md sm:w-[72px] ${item.color || 'bg-black'}`}>
                   {Icon ? (
                     <Icon
-                      className="w-8 h-8 text-white opacity-90 relative z-10"
+                      className="relative z-10 h-6 w-6 text-white opacity-90 sm:h-8 sm:w-8"
                       fill={item.title === "Lieblingssongs" ? "currentColor" : "none"}
                     />
                   ) : item.images ? (
                     <ImageSlideshow images={item.images} currentIndex={hoveredItem === item.title && item.images.length > 1 ? slideIndex : 0} />
                   ) : null}
                 </div>
-                <div className="relative min-w-0 flex-1 px-4 text-sm font-bold text-white truncate drop-shadow-sm">
+                <div className="relative min-w-0 flex-1 truncate px-2 text-xs font-bold text-white drop-shadow-sm sm:px-4 sm:text-sm">
                   {item.title}
                 </div>
               </>
@@ -457,7 +457,7 @@ export default function AuthenticatedHome() {
             return (
               <div
                 key={item.title}
-                className="group relative flex h-[72px] items-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] shadow-[0_14px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.12] hover:shadow-[0_20px_54px_rgba(0,0,0,0.38)] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent"
+                className="group relative flex h-14 items-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.07] shadow-[0_14px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.12] hover:shadow-[0_20px_54px_rgba(0,0,0,0.38)] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent sm:h-[72px] sm:rounded-2xl"
                 onMouseEnter={() => {
                   setHoveredItem(item.title);
                   setSlideIndex(item.images && item.images.length > 1 ? 1 : 0);
@@ -475,7 +475,7 @@ export default function AuthenticatedHome() {
                   {cardContent}
                 </Link>
                 {canQuickPlay ? (
-                  <div className="relative z-20 pr-4 opacity-0 translate-x-2 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
+                  <div className="relative z-20 hidden translate-x-2 pr-4 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100 sm:block">
                     <button
                       type="button"
                       onClick={(event) => handleQuickAccessPlay(event, item.title)}
@@ -518,7 +518,7 @@ export default function AuthenticatedHome() {
         </div>
         <div
           data-testid="genre-scroller"
-          className="relative -mx-4 group/slider snap-x snap-mandatory overflow-x-auto overscroll-x-contain px-4 py-12 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:snap-none sm:overflow-hidden sm:px-8 sm:py-16"
+          className="relative -mx-4 group/slider snap-x snap-mandatory overflow-x-auto overscroll-x-contain px-4 py-7 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:snap-none sm:overflow-hidden sm:px-8 sm:py-16"
           style={{
             maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
             WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)'

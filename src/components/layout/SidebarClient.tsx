@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserCheck, UsersRound, Clapperboard } from 'lucide-react';
+import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserCheck, UsersRound, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
 import { isAdminUser } from '@/lib/admin';
@@ -16,8 +16,8 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
   if (!user) return null;
 
   return (
-    <div className="hidden w-56 bg-black h-full md:flex flex-col pt-6 pb-24 border-r border-white/5">
-      <div className="px-6 mb-8">
+    <div className="hidden w-52 bg-black h-full md:flex flex-col pt-6 pb-24 border-r border-white/5">
+      <div className="px-5 mb-8">
         <Link href="/" className="flex items-center gap-4 group">
           <div className="flex items-end justify-center gap-[3px] w-8 h-8 pb-1">
             <div className="w-[5px] h-[14px] bg-white rounded-full group-hover:h-[24px] group-hover:bg-primary transition-all duration-300 ease-out" />
@@ -38,8 +38,8 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
             Home
           </Link>
           <Link href="/feed" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
-            <Clapperboard className="w-5 h-5 group-hover:text-primary transition-colors" />
-            Feed
+            <Sparkles className="w-5 h-5 group-hover:text-primary transition-colors" />
+            Für dich
           </Link>
           <Link href="/charts/viral" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
             <TrendingUp className="w-5 h-5 group-hover:text-primary transition-colors" />

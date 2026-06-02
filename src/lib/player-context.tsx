@@ -17,6 +17,7 @@ interface PlayerContextType {
   queueIndex: number;
   playSong: (song: Song) => void;
   togglePlayPause: () => void;
+  pausePlayback: () => void;
   setVolume: (val: number) => void;
   seekTo: (percentage: number) => void;
   setQueue: (songs: Song[], startIndex?: number) => void;
@@ -295,6 +296,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     startPlayback();
   }, [currentSong, isPlaying, loadSongIntoAudio, startPlayback, user]);
 
+  const pausePlayback = useCallback(() => {
+    audioRef.current?.pause();
+    setIsPlaying(false);
+  }, []);
+
   useEffect(() => {
     if (!audioRef.current || isPlaying) return;
     audioRef.current.pause();
@@ -327,6 +333,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       queueIndex,
       playSong,
       togglePlayPause,
+      pausePlayback,
       setVolume,
       seekTo,
       setQueue,

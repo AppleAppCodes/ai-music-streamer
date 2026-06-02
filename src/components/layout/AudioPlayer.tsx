@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Check, ChevronRight, Image as ImageIcon, Info, Loader2, MoreHorizontal, Pause, Play, Repeat, Share2, Shuffle, SkipBack, SkipForward, Timer, Volume2, Repeat1 } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import PlayerSaveButton from '@/components/ui/PlayerSaveButton';
@@ -28,6 +29,7 @@ const SLEEP_TIMER_OPTIONS: Array<[number, string]> = [
 ];
 
 export default function AudioPlayer() {
+  const pathname = usePathname();
   const {
     currentSong, isPlaying, progress, currentTime, duration, volume,
     playNext, playPrevious, togglePlayPause, setVolume, seekTo, queue,
@@ -37,6 +39,8 @@ export default function AudioPlayer() {
 
   // Keyboard controls
   useEffect(() => {
+    if (pathname.startsWith('/feed')) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger if user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -49,7 +53,7 @@ export default function AudioPlayer() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePlayPause]);
+  }, [pathname, togglePlayPause]);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isTimerMenuOpen, setIsTimerMenuOpen] = useState(false);
@@ -327,6 +331,7 @@ export default function AudioPlayer() {
     );
   };
 
+  if (pathname.startsWith('/feed')) return null;
   if (!user) return null;
   if (!currentSong && queue.length === 0) return null;
 
