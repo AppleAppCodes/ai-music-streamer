@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileSize, setTurnstileSize] = useState<'compact' | 'flexible'>('compact');
   const captchaTokenRef = useRef<string | null>(null);
   const turnstileRef = useRef<TurnstileInstance>(null);
   
@@ -21,14 +22,26 @@ export default function LoginPage() {
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
 
-  // Use Cloudflare's managed widget so visitors can complete an interactive check if needed.
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 480px)');
+    const updateTurnstileSize = () => {
+      setTurnstileSize(mediaQuery.matches ? 'flexible' : 'compact');
+    };
+
+    updateTurnstileSize();
+    mediaQuery.addEventListener('change', updateTurnstileSize);
+
+    return () => mediaQuery.removeEventListener('change', updateTurnstileSize);
+  }, []);
+
+  // Keep Cloudflare's managed check usable inside the narrower mobile login card.
   const turnstileOptions = useMemo(() => ({ 
     theme: 'dark' as const,
-    size: 'flexible' as const,
-  }), []);
+    size: turnstileSize,
+  }), [turnstileSize]);
 
   const handleCaptchaSuccess = useCallback((token: string) => {
-    console.log('Turnstile token received (invisible)');
+    console.log('Turnstile token received');
     captchaTokenRef.current = token;
   }, []);
 
