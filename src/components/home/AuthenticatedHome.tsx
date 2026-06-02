@@ -12,6 +12,7 @@ import { usePlayer } from '@/lib/player-context';
 
 import { GENRES } from '@/lib/constants';
 import { Song } from '@/lib/types';
+import { getDailyTrendingSongs, getPersonalizedSongs } from '@/lib/homeRecommendations';
 
 type SongWithProfile = Song & {
   profiles?: {
@@ -151,8 +152,8 @@ export default function AuthenticatedHome() {
     isHoveredRef.current = false;
   };
 
-  const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
-  const [newReleases, setNewReleases] = useState<Song[]>([]);
+  const [dailyTrendingSongs, setDailyTrendingSongs] = useState<Song[]>([]);
+  const [recommendedSongs, setRecommendedSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -230,34 +231,68 @@ export default function AuthenticatedHome() {
 
   useEffect(() => {
     async function loadMusic() {
-      // Fetch trending songs (ordered by plays)
-      const { data: trending } = await supabase
-        .from('songs')
-        .select('*, profiles!songs_creator_id_fkey(username)')
-        .order('plays', { ascending: false })
-        .limit(4);
+      const [{ data: allSongs }, { data: { session } }] = await Promise.all([
+        supabase
+          .from('songs')
+          .select('*, profiles!songs_creator_id_fkey(username)')
+          .limit(200),
+        supabase.auth.getSession(),
+      ]);
 
-      if (trending) {
-        setTrendingSongs((trending as SongWithProfile[]).map(song => ({
-          ...song,
-          creatorName: song.profiles?.username || 'Unknown'
-        })));
+      const songs = ((allSongs || []) as SongWithProfile[]).map(song => ({
+        ...song,
+        creatorName: song.profiles?.username || song.artist_name || 'Unknown'
+      }));
+      const dailySongs = getDailyTrendingSongs(songs);
+      setDailyTrendingSongs(dailySongs);
+
+      if (!session) {
+        setRecommendedSongs(getPersonalizedSongs(songs, {
+          likedSongs: [],
+          playlistSongs: [],
+          savedSongs: [],
+          playbackHistory: [],
+        }));
+        setIsLoading(false);
+        return;
       }
 
-      // Fetch new releases (ordered by created_at)
-      const { data: recent } = await supabase
-        .from('songs')
-        .select('*, profiles!songs_creator_id_fkey(username)')
-        .order('created_at', { ascending: false })
-        .limit(4);
+      const [{ data: likedSongs }, { data: playlists }, { data: savedSongs }, { data: playbackHistory }] = await Promise.all([
+        supabase
+          .from('liked_songs')
+          .select('song_id')
+          .eq('user_id', session.user.id),
+        supabase
+          .from('playlists')
+          .select('id')
+          .eq('user_id', session.user.id),
+        supabase
+          .from('feed_saves')
+          .select('song_id')
+          .eq('user_id', session.user.id),
+        supabase
+          .from('user_song_plays')
+          .select('song_id, play_count, last_played_at')
+          .eq('user_id', session.user.id),
+      ]);
+      const playlistIds = (playlists || []).map(({ id }) => id);
+      const { data: playlistSongs } = playlistIds.length > 0
+        ? await supabase
+          .from('playlist_songs')
+          .select('song_id')
+          .in('playlist_id', playlistIds)
+        : { data: [] };
 
-      if (recent) {
-        setNewReleases((recent as SongWithProfile[]).map(song => ({
-          ...song,
-          creatorName: song.profiles?.username || 'Unknown'
-        })));
-      }
+      const rankedRecommendations = getPersonalizedSongs(songs, {
+        likedSongs: likedSongs || [],
+        playlistSongs: playlistSongs || [],
+        savedSongs: savedSongs || [],
+        playbackHistory: playbackHistory || [],
+      }, songs.length);
+      const trendingIds = new Set(dailySongs.map(({ id }) => id));
+      const distinctRecommendations = rankedRecommendations.filter(({ id }) => !trendingIds.has(id));
 
+      setRecommendedSongs((distinctRecommendations.length >= 4 ? distinctRecommendations : rankedRecommendations).slice(0, 4));
       setIsLoading(false);
     }
     loadMusic();
@@ -499,21 +534,30 @@ export default function AuthenticatedHome() {
 
       {/* Popular Genres Section */}
       <section className="px-4 sm:px-8 relative z-10">
-        <div className="flex justify-between items-end mb-4">
-          <SectionHeader title={t('home.popularGenres')} />
-          <div className="hidden gap-2 sm:mr-8 sm:flex">
-            <button
-              onClick={() => scrollGenres('left')}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors"
+        <div className="mb-4 flex items-end justify-between gap-4">
+          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">{t('home.popularGenres')}</h2>
+          <div className="flex items-center gap-2 sm:mr-8">
+            <Link
+              href="/genres"
+              className="group inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-white/70 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
             >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => scrollGenres('right')}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
+              {t('home.seeAll')}
+              <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+            <div className="hidden gap-2 sm:flex">
+              <button
+                onClick={() => scrollGenres('left')}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => scrollGenres('right')}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
         <div
@@ -540,8 +584,9 @@ export default function AuthenticatedHome() {
             {[...GENRES, ...GENRES, ...GENRES].map((genre, i) => {
               const Icon = genre.icon;
               return (
-                <div
+                <Link
                   key={`${genre.name}-${i}`}
+                  href={`/genre/${encodeURIComponent(genre.name)}`}
                   className={`mx-1.5 group relative isolate w-[132px] shrink-0 h-20 snap-start rounded-xl p-3 ${i >= GENRES.length ? 'hidden sm:flex' : 'flex'} flex-col justify-between cursor-pointer shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-[1.04] hover:shadow-[0_0_20px_var(--genre-glow)] hover:animate-pulseGlow ${genre.color}`}
                   style={{ '--genre-glow': genre.glow } as CSSProperties}
                 >
@@ -556,7 +601,7 @@ export default function AuthenticatedHome() {
                   <Icon className="w-6 h-6 text-white" strokeWidth={1.7} />
                 </div>
                 <span className="relative font-bold text-white text-sm tracking-tight">{genre.name}</span>
-              </div>
+              </Link>
             );
           })}
           </div>
@@ -565,13 +610,13 @@ export default function AuthenticatedHome() {
 
       {/* Trending Section */}
       <section className="px-4 sm:px-8 relative z-10 min-h-[200px]">
-        <SectionHeader title={t('home.trending')} actionLabel={t('home.seeAll')} href="/collection/tracks" />
+        <SectionHeader title={t('home.newReleases')} />
 
         {isLoading ? (
           <SongGridSkeleton />
-        ) : trendingSongs.length > 0 ? (
+        ) : dailyTrendingSongs.length > 0 ? (
           <div className={HOME_SONG_GRID_CLASSES}>
-            {trendingSongs.map((song) => (
+            {dailyTrendingSongs.map((song) => (
               <SongCard
                 key={`trending-${song.id}`}
                 song={song}
@@ -585,17 +630,17 @@ export default function AuthenticatedHome() {
         )}
       </section>
 
-      {/* New Releases Section */}
+      {/* Personalized Section */}
       <section className="px-4 sm:px-8 relative z-10 min-h-[200px]">
-        <SectionHeader title={t('home.newReleases')} actionLabel={t('home.seeAll')} href="/collection/tracks" />
+        <SectionHeader title={t('home.trending')} />
 
         {isLoading ? (
           <SongGridSkeleton />
-        ) : newReleases.length > 0 ? (
+        ) : recommendedSongs.length > 0 ? (
           <div className={HOME_SONG_GRID_CLASSES}>
-            {newReleases.map((song) => (
+            {recommendedSongs.map((song) => (
               <SongCard
-                key={`new-${song.id}`}
+                key={`recommended-${song.id}`}
                 song={song}
                 creatorName={song.creatorName}
                 compact

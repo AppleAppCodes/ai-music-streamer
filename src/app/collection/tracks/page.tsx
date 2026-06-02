@@ -124,21 +124,21 @@ export default function LikedSongsPage() {
     <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
       {/* Background Gradient Header - Premium Glassmorphism (Not Spotify) */}
       <div className="absolute top-0 left-0 right-0 h-[600px] bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-[#0A0A0A] blur-3xl pointer-events-none" />
-      <div className="absolute top-20 right-20 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute left-1/2 top-16 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-[120px] pointer-events-none md:left-auto md:right-20 md:top-20 md:h-96 md:w-96 md:translate-x-0" />
       
       {/* Header Content */}
-      <div className="relative pt-24 px-6 md:px-10 pb-8 flex flex-col md:flex-row gap-8 md:gap-10 items-end">
-        <div className="w-48 h-48 md:w-60 md:h-60 flex-shrink-0 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center">
-          <Heart className="w-24 h-24 text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] fill-white" />
+      <div className="relative flex flex-col items-center gap-5 px-5 pb-7 pt-10 text-center md:flex-row md:items-end md:gap-10 md:px-10 md:pb-8 md:pt-24 md:text-left">
+        <div className="flex h-36 w-36 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md sm:h-44 sm:w-44 md:h-60 md:w-60">
+          <Heart className="h-16 w-16 fill-white text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] sm:h-20 sm:w-20 md:h-24 md:w-24" />
         </div>
-        <div className="flex flex-col gap-2 md:gap-3 mt-4 md:mt-0">
+        <div className="flex max-w-full flex-col items-center gap-2 md:mt-0 md:items-start md:gap-3">
           <span className="text-xs font-bold text-white/50 tracking-[0.2em] uppercase">
             Playlist
           </span>
-          <h1 className="text-5xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-white/70 tracking-tighter drop-shadow-2xl">
+          <h1 className="max-w-full break-words bg-gradient-to-b from-white to-white/70 bg-clip-text text-center text-4xl font-black tracking-tighter text-transparent drop-shadow-2xl sm:text-5xl md:text-left md:text-8xl">
             Lieblingssongs
           </h1>
-          <div className="flex items-center gap-3 text-sm text-white/70 mt-3 font-medium">
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm font-medium text-white/70 md:mt-3 md:justify-start md:gap-3">
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center overflow-hidden shadow-inner">
               <span className="text-xs text-black font-bold">{user?.email?.charAt(0).toUpperCase()}</span>
             </div>
@@ -150,11 +150,11 @@ export default function LikedSongsPage() {
       </div>
 
       {/* Background overlay for lower section */}
-      <div className="relative bg-black/40 backdrop-blur-xl px-6 md:px-10 py-8 min-h-screen border-t border-white/5">
+      <div className="relative min-h-screen border-t border-white/5 bg-black/40 px-4 py-6 backdrop-blur-xl md:px-10 md:py-8">
         
         {/* Action Bar */}
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
-          <div className="flex items-center gap-6">
+        <div className="mb-8 flex items-center justify-between gap-4 border-b border-white/5 pb-4">
+          <div className="flex shrink-0 items-center gap-4 sm:gap-6">
             <button 
               onClick={handlePlayAll}
               disabled={songs.length === 0}
@@ -174,10 +174,10 @@ export default function LikedSongsPage() {
           <div className="relative" ref={dropdownRef}>
             <button 
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-2 text-sm text-white/70 hover:text-white font-medium transition-colors"
+              className="flex items-center gap-1 text-right text-xs font-medium text-white/70 transition-colors hover:text-white sm:gap-2 sm:text-sm"
             >
               {sortBy === 'date' ? 'Kürzlich hinzugefügt' : sortBy === 'title' ? 'Titel' : 'Künstler*in'}
-              {viewMode === 'list' ? <List className="w-4 h-4 ml-2" /> : <Menu className="w-4 h-4 ml-2" />}
+              {viewMode === 'list' ? <List className="ml-1 h-4 w-4 sm:ml-2" /> : <Menu className="ml-1 h-4 w-4 sm:ml-2" />}
             </button>
             
             {dropdownOpen && (
@@ -216,11 +216,11 @@ export default function LikedSongsPage() {
         {sortedSongs.length > 0 ? (
           <div>
             {/* Table Header */}
-            <div className={`grid ${viewMode === 'list' ? 'grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px]' : 'grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px]'} gap-4 px-4 py-2 border-b border-white/5 text-sm text-white/50 mb-2`}>
+            <div className={`grid ${viewMode === 'list' ? 'grid-cols-[16px_minmax(0,1fr)] sm:grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px]' : 'grid-cols-[16px_minmax(0,1fr)] sm:grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px]'} mb-2 gap-3 border-b border-white/5 px-2 py-2 text-sm text-white/50 sm:gap-4 sm:px-4`}>
               <div>#</div>
               <div>{t('song.title')}</div>
-              <div className="text-right">{t('song.plays')}</div>
-              <div className="flex justify-end"><Clock3 className="w-4 h-4" /></div>
+              <div className="hidden text-right sm:block">{t('song.plays')}</div>
+              <div className="hidden justify-end sm:flex"><Clock3 className="w-4 h-4" /></div>
             </div>
             
             {/* Track Rows */}
@@ -240,7 +240,7 @@ export default function LikedSongsPage() {
                       togglePlayPause();
                     }
                   }}
-                  className={`grid ${viewMode === 'list' ? 'grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px] py-3' : 'grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px] py-1.5'} gap-4 px-4 rounded-lg hover:bg-white/5 group cursor-pointer items-center transition-colors`}
+                  className={`grid ${viewMode === 'list' ? 'grid-cols-[16px_minmax(0,1fr)] py-2.5 sm:grid-cols-[16px_1fr_120px_40px] sm:py-3 md:grid-cols-[16px_1fr_150px_40px]' : 'grid-cols-[16px_minmax(0,1fr)] py-1.5 sm:grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px]'} group cursor-pointer items-center gap-3 rounded-lg px-2 transition-colors hover:bg-white/5 sm:gap-4 sm:px-4`}
                 >
                   <div className="text-white/50 group-hover:text-white text-base">
                     {isThisSongPlaying ? (
@@ -267,7 +267,7 @@ export default function LikedSongsPage() {
                     </div>
                   </div>
                   
-                  <div className="text-right text-sm text-white/50 font-mono tracking-wider flex items-center justify-end">
+                  <div className="hidden items-center justify-end text-right font-mono text-sm tracking-wider text-white/50 sm:flex">
                     <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-4 mr-4">
                       <PlaylistAddButton songId={song.id} iconClassName="w-5 h-5" />
                       <LikeButton songId={song.id} iconClassName="w-5 h-5" />
@@ -275,7 +275,7 @@ export default function LikedSongsPage() {
                     {song.plays.toLocaleString()}
                   </div>
                   
-                  <div className="text-right text-sm text-white/50">
+                  <div className="hidden text-right text-sm text-white/50 sm:block">
                     {formatDuration(song.duration)}
                   </div>
                 </div>
