@@ -21,10 +21,10 @@ export default function LoginPage() {
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
 
-  // The Cloudflare widget is configured as Invisible and issues a token on render.
+  // Use Cloudflare's managed widget so visitors can complete an interactive check if needed.
   const turnstileOptions = useMemo(() => ({ 
     theme: 'dark' as const,
-    size: 'invisible' as const,
+    size: 'flexible' as const,
   }), []);
 
   const handleCaptchaSuccess = useCallback((token: string) => {
@@ -76,7 +76,7 @@ export default function LoginPage() {
     const token = await getCaptchaToken();
 
     if (!token) {
-      setError('Sicherheitsprüfung fehlgeschlagen. Bitte lade die Seite neu und versuche es erneut.');
+      setError('Bitte schließe die Sicherheitsprüfung ab und versuche es erneut.');
       setLoading(false);
       turnstileRef.current?.reset();
       captchaTokenRef.current = null;
@@ -175,16 +175,18 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Turnstile invisible widget – no visible UI, runs in background */}
+            {/* Cloudflare may request an interactive check depending on the visitor risk. */}
             {siteKey && (
-              <Turnstile 
-                ref={turnstileRef}
-                siteKey={siteKey}
-                onSuccess={handleCaptchaSuccess}
-                onError={handleCaptchaError}
-                onExpire={handleCaptchaExpire}
-                options={turnstileOptions}
-              />
+              <div className="flex justify-center">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={siteKey}
+                  onSuccess={handleCaptchaSuccess}
+                  onError={handleCaptchaError}
+                  onExpire={handleCaptchaExpire}
+                  options={turnstileOptions}
+                />
+              </div>
             )}
 
             <button
