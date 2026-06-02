@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import type { MouseEvent } from 'react';
 import type { CSSProperties } from 'react';
 import SongCard from '@/components/ui/SongCard';
-import { ChevronLeft, ChevronRight, Heart, ListMusic, Play, Radio, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, ListMusic, Pause, Play, Radio, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -80,10 +80,12 @@ function ImageSlideshow({ images, currentIndex }: { images: string[], currentInd
 
 export default function Home() {
   const { t } = useTranslation();
-  const { playSong, setQueue, currentSong, togglePlayPause } = usePlayer();
+  const { playSong, setQueue, currentSong, isPlaying, togglePlayPause } = usePlayer();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
   const [quickPlayLoading, setQuickPlayLoading] = useState<string | null>(null);
+  const [activeQuickAccessTitle, setActiveQuickAccessTitle] = useState<string | null>(null);
+  const [activeQuickAccessSongIds, setActiveQuickAccessSongIds] = useState<string[]>([]);
 
   const genresScrollRef = useRef<HTMLDivElement>(null);
   const [targetSpeed, setTargetSpeed] = useState(0.3);
@@ -308,19 +310,23 @@ export default function Home() {
     return Array.from(new Set(quickAccessItems.flatMap(item => item.images || [])));
   }, [quickAccessItems]);
 
-  const startSongQueue = (songs: Song[]) => {
+  const startSongQueue = (songs: Song[], itemTitle: string) => {
     if (songs.length === 0) return;
 
     const queue = songs.map((song): Song => ({
       ...song,
       creatorName: song.artist_name || song.creatorName || t('player.creatorFallback'),
     }));
+    const songIds = queue.map(song => song.id);
 
-    if (currentSong?.id === queue[0].id) {
+    if (currentSong && activeQuickAccessTitle === itemTitle && songIds.includes(currentSong.id)) {
+      setActiveQuickAccessSongIds(songIds);
       togglePlayPause();
       return;
     }
 
+    setActiveQuickAccessTitle(itemTitle);
+    setActiveQuickAccessSongIds(songIds);
     setQueue(queue, 0);
     playSong(queue[0]);
   };
@@ -349,7 +355,7 @@ export default function Home() {
         const likedSongs = (data || [])
           .map((item) => item.songs as unknown as Song | null)
           .filter((song): song is Song => Boolean(song));
-        startSongQueue(likedSongs);
+        startSongQueue(likedSongs, itemTitle);
         return;
       }
 
@@ -360,7 +366,7 @@ export default function Home() {
           .order('plays', { ascending: false })
           .limit(100);
 
-        startSongQueue((data || []) as Song[]);
+        startSongQueue((data || []) as Song[], itemTitle);
       }
     } finally {
       setQuickPlayLoading(null);
@@ -415,6 +421,11 @@ export default function Home() {
             const canQuickPlay =
               item.title === t('home.quickAccess.favorites') ||
               item.title === t('home.quickAccess.charts');
+            const isQuickAccessPlaying =
+              Boolean(currentSong) &&
+              activeQuickAccessTitle === item.title &&
+              activeQuickAccessSongIds.includes(currentSong?.id || '') &&
+              isPlaying;
             const cardContent = (
               <>
                 <div className={`w-[72px] h-full shrink-0 relative shadow-md flex items-center justify-center ${item.color || 'bg-black'}`}>
@@ -465,9 +476,13 @@ export default function Home() {
                       onClick={(event) => handleQuickAccessPlay(event, item.title)}
                       disabled={quickPlayLoading === item.title}
                       className={`flex w-10 h-10 rounded-full ${item.color || 'bg-primary'} items-center justify-center text-white shadow-xl transition-transform hover:scale-105 disabled:cursor-wait disabled:opacity-70`}
-                      aria-label={`${item.title} abspielen`}
+                      aria-label={isQuickAccessPlaying ? `${item.title} pausieren` : `${item.title} abspielen`}
                     >
-                      <Play className="w-5 h-5 fill-current" />
+                      {isQuickAccessPlaying ? (
+                        <Pause className="w-5 h-5 fill-current" />
+                      ) : (
+                        <Play className="w-5 h-5 fill-current" />
+                      )}
                     </button>
                   </div>
                 ) : null}
