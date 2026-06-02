@@ -25,6 +25,7 @@ export default function LoginPage() {
   const turnstileOptions = useMemo(() => ({ 
     theme: 'dark' as const,
     size: 'invisible' as const,
+    appearance: 'execute' as const,
     execution: 'execute' as const,
   }), []);
 
