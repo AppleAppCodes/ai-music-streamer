@@ -28,8 +28,20 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
 
   return (
     <header className="sticky top-0 z-50 flex h-14 w-full items-center justify-between gap-2 border-b border-white/5 px-3 glass-panel sm:gap-3 md:h-16 md:px-6">
-      {/* Left side spacer for balance */}
-      <div className="hidden w-1/3 items-center md:flex"></div>
+      <div className="hidden w-1/3 items-center md:flex">
+        {!user ? (
+          <Link href="/" className="group flex items-center gap-3" aria-label="Yoriax Home">
+            <div className="flex h-8 w-8 items-end justify-center gap-[3px] pb-1">
+              <div className="h-[14px] w-[5px] rounded-full bg-white transition-all duration-300 group-hover:h-[24px] group-hover:bg-primary" />
+              <div className="h-[26px] w-[5px] rounded-full bg-white transition-all duration-300 group-hover:h-[16px] group-hover:bg-[#a855f7]" />
+              <div className="h-[18px] w-[5px] rounded-full bg-white transition-all duration-300 group-hover:h-[28px] group-hover:bg-primary" />
+            </div>
+            <span className="text-xl font-bold uppercase tracking-tight text-white" style={{ fontFamily: 'var(--font-syncopate), sans-serif' }}>
+              Yoriax
+            </span>
+          </Link>
+        ) : null}
+      </div>
       <Link href="/" className="flex shrink-0 items-end justify-center gap-[2.5px] w-8 h-8 pb-1 group md:hidden" aria-label="Yoriax Home">
         <div className="w-[4px] h-[12px] bg-white rounded-full group-hover:h-[20px] transition-all duration-300 ease-out" />
         <div className="w-[4px] h-[22px] bg-white rounded-full group-hover:h-[14px] transition-all duration-300 ease-out" />
@@ -66,9 +78,11 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
 
       {/* Right side */}
       <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 md:w-1/3 md:gap-4">
-        <button className="hidden rounded-full p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white sm:block" aria-label="Benachrichtigungen">
-          <Bell className="w-5 h-5" />
-        </button>
+        {user ? (
+          <button className="hidden rounded-full p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white sm:block" aria-label="Benachrichtigungen">
+            <Bell className="w-5 h-5" />
+          </button>
+        ) : null}
 
         {user ? (
           <div className="flex items-center gap-2 sm:border-l sm:border-white/10 sm:pl-3 md:gap-4 md:pl-4">

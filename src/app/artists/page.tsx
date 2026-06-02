@@ -6,6 +6,7 @@ import { Mic2, Play, Users, Edit2, Loader2, Music } from 'lucide-react';
 import Link from 'next/link';
 import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { isAdminUser } from '@/lib/admin';
 
 interface ArtistStat {
   name: string;
@@ -26,6 +27,7 @@ export default function ArtistsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const supabase = createClient();
+  const isAdmin = isAdminUser(user);
 
   useEffect(() => {
     const fetchArtists = async () => {
@@ -106,6 +108,7 @@ export default function ArtistsPage() {
   }, [supabase]);
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -170,7 +173,7 @@ export default function ArtistsPage() {
       <div className="relative group pt-24 px-6 md:px-10 pb-8 flex flex-col md:flex-row gap-8 items-end z-10">
         
         {/* Admin Editable Overlay */}
-        {user && (
+        {isAdmin && (
           <div className="absolute top-10 right-10 opacity-0 group-hover:opacity-100 transition-opacity z-20">
             <input 
               type="file" 

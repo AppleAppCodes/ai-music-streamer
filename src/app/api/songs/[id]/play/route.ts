@@ -9,32 +9,15 @@ export async function POST(
     const { id } = await params;
     const supabase = await createClient();
 
-    // Call Supabase RPC or just fetch, increment, and update
-    // Since Supabase REST API doesn't have a direct "increment" without RPC unless we read and write
-    // Let's read the current plays, then update.
-    // (In a production environment, an RPC function like 'increment_plays' is better to avoid race conditions,
-    // but for now we'll do a read-modify-write, or we can use RPC if it exists. 
-    // We'll just read and update for simplicity since it's a mock/small app)
-    
-    const { data: song, error: fetchError } = await supabase
-      .from('songs')
-      .select('plays')
-      .eq('id', id)
-      .single();
+    const { data: newPlays, error } = await supabase
+      .rpc('increment_song_plays', { target_song_id: id });
 
-    if (fetchError || !song) {
-      return NextResponse.json({ error: 'Song not found' }, { status: 404 });
+    if (error) {
+      return NextResponse.json({ error: 'Failed to update plays' }, { status: 500 });
     }
 
-    const newPlays = (song.plays || 0) + 1;
-
-    const { error: updateError } = await supabase
-      .from('songs')
-      .update({ plays: newPlays })
-      .eq('id', id);
-
-    if (updateError) {
-      return NextResponse.json({ error: 'Failed to update plays' }, { status: 500 });
+    if (newPlays === null) {
+      return NextResponse.json({ error: 'Song not found' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true, plays: newPlays });

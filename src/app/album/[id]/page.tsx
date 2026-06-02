@@ -12,6 +12,7 @@ import MobileSongMenu from '@/components/ui/MobileSongMenu';
 import Link from 'next/link';
 import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
+import { isAdminUser } from '@/lib/admin';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -93,7 +94,7 @@ export default function AlbumPage() {
       setAlbum(albumData);
       setEditTitle(albumData.title);
       
-      const owner = session?.user?.id === albumData.creator_id;
+      const owner = isAdminUser(session?.user);
       setIsOwner(owner);
       
       // 2. Fetch Songs in album

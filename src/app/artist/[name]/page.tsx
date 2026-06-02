@@ -12,6 +12,7 @@ import MobileSongMenu from '@/components/ui/MobileSongMenu';
 import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { isAdminUser } from '@/lib/admin';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -67,6 +68,7 @@ export default function ArtistPage() {
   const [isEditingSocials, setIsEditingSocials] = useState(false);
   const [editSocials, setEditSocials] = useState({instagram_url: '', tiktok_url: '', youtube_url: ''});
   const [isSavingSocials, setIsSavingSocials] = useState(false);
+  const isAdmin = isAdminUser(user);
 
   useEffect(() => {
     async function loadArtistData() {
@@ -196,6 +198,7 @@ export default function ArtistPage() {
   };
 
   const handleSaveSocials = async () => {
+    if (!isAdmin) return;
     setIsSavingSocials(true);
     try {
       const { error } = await supabase
@@ -219,6 +222,7 @@ export default function ArtistPage() {
   };
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) return;
     let file = e.target.files?.[0];
     if (!file) return;
 
@@ -251,6 +255,7 @@ export default function ArtistPage() {
   };
 
   const handleArtistVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -345,7 +350,7 @@ export default function ArtistPage() {
         
         <div className="flex flex-col justify-end items-center md:items-start flex-shrink-0 max-w-3xl text-center md:text-left">
           {/* Admin Editable Overlay for Background */}
-          {user && (
+          {isAdmin && (
             <div className="absolute top-10 right-10 md:right-auto md:left-10 opacity-0 group-hover:opacity-100 transition-opacity z-20">
               <input 
                 type="file" 
@@ -387,7 +392,7 @@ export default function ArtistPage() {
         <div className="flex-1 flex flex-col md:flex-row w-full justify-center items-center gap-6 mt-6 md:mt-0">
           
           {/* Artist Profile Video (Canvas) */}
-          {(artistVideoUrl || user) && (
+          {(artistVideoUrl || isAdmin) && (
             <div className="relative w-full max-w-[320px] md:max-w-[480px] lg:max-w-[540px] aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex-shrink-0 group/video bg-black/20 backdrop-blur-sm">
               {artistVideoUrl ? (
               <>
@@ -411,7 +416,7 @@ export default function ArtistPage() {
             )}
             
             {/* Admin Upload Video Overlay */}
-            {user && (
+            {isAdmin && (
               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/video:opacity-100 transition-opacity flex flex-col items-center justify-center z-30">
                 <input 
                   type="file" 
@@ -486,7 +491,7 @@ export default function ArtistPage() {
                   </a>
                 )}
                 
-                {user && (
+                {isAdmin && (
                   <button 
                     onClick={() => setIsEditingSocials(true)}
                     className="flex items-center justify-center p-3 md:p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all text-white/50 hover:text-white shadow-lg border border-white/5 border-dashed"

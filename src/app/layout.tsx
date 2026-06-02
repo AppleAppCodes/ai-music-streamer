@@ -8,6 +8,8 @@ import PlayerLayout from "@/components/layout/PlayerLayout";
 import CookieConsent from "@/components/ui/CookieConsent";
 import ListeningPresenceSync from "@/components/social/ListeningPresenceSync";
 import MobileNavigation from "@/components/layout/MobileNavigation";
+import GuestPreviewBanner from "@/components/layout/GuestPreviewBanner";
+import { createClient } from "@/utils/supabase/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,11 +32,14 @@ export const metadata: Metadata = {
   description: "Stream, discover, and publish the best AI-generated music.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <html
       lang="en"
@@ -50,17 +55,27 @@ export default function RootLayout({
             }}
           />
           <div className="flex h-full w-full relative z-0">
-            <Sidebar />
+            {user ? <Sidebar /> : null}
             <div className="flex-1 flex flex-col relative min-w-0">
               <Header />
-              <main className="flex-1 overflow-y-auto pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-28 no-scrollbar bg-gradient-to-b from-surface to-background">
+              <main className={`flex-1 overflow-y-auto no-scrollbar bg-gradient-to-b from-surface to-background ${
+                user
+                  ? 'pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-28'
+                  : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
+              }`}>
                 {children}
               </main>
             </div>
           </div>
-          <ListeningPresenceSync />
-          <AudioPlayer />
-          <MobileNavigation />
+          {user ? (
+            <>
+              <ListeningPresenceSync />
+              <AudioPlayer />
+              <MobileNavigation />
+            </>
+          ) : (
+            <GuestPreviewBanner />
+          )}
           <CookieConsent />
         </PlayerLayout>
       </body>

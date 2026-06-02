@@ -280,6 +280,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const togglePlayPause = useCallback(() => {
     if (!currentSong || !audioRef.current) return;
 
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
@@ -288,7 +293,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     loadSongIntoAudio(currentSong, false);
     startPlayback();
-  }, [currentSong, isPlaying, loadSongIntoAudio, startPlayback]);
+  }, [currentSong, isPlaying, loadSongIntoAudio, startPlayback, user]);
 
   useEffect(() => {
     if (!audioRef.current || isPlaying) return;

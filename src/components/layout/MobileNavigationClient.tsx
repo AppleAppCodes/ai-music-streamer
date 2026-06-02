@@ -17,6 +17,8 @@ export default function MobileNavigationClient({ user }: { user: SupabaseUser | 
   const pathname = usePathname();
   
   const isAdmin = isAdminUser(user);
+
+  if (!user) return null;
   
   const navItems = [
     ...BASE_NAV_ITEMS,

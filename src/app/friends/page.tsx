@@ -10,7 +10,7 @@ import {
   Music2,
   Pause,
   Play,
-  Radio,
+  Activity,
   Search,
   UserMinus,
   UserPlus,
@@ -259,7 +259,7 @@ export default function FriendsPage() {
       <div className="relative mx-auto max-w-6xl">
         <header className="mb-10">
           <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.24em] text-cyan-300/70">
-            <Radio className="h-4 w-4" />
+            <Activity className="h-4 w-4" />
             Social Listening
           </p>
           <h1 className="text-4xl font-black tracking-tight text-white md:text-6xl">Friend Feed</h1>

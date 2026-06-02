@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { isAdminUser } from '@/lib/admin';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 /** CORS headers applied to every response from this route. */
 const corsHeaders = {
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
 
     // --- Authenticate --------------------------------------------------
-    let userId: string | null = null;
+    let authenticatedUser: SupabaseUser | null = null;
 
     // 1. Try cookie-based session first
     const {
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (user) {
-      userId = user.id;
+      authenticatedUser = user;
     } else {
       // 2. Fall back to Bearer token
       const authHeader = request.headers.get('Authorization');
@@ -95,16 +97,25 @@ export async function POST(request: NextRequest) {
             { status: 401, headers: corsHeaders },
           );
         }
-        userId = tokenUser.id;
+        authenticatedUser = tokenUser;
       }
     }
 
-    if (!userId) {
+    if (!authenticatedUser) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401, headers: corsHeaders },
       );
     }
+
+    if (!isAdminUser(authenticatedUser)) {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403, headers: corsHeaders },
+      );
+    }
+
+    const userId = authenticatedUser.id;
 
     // --- Parse form data -----------------------------------------------
     const formData = await request.formData();

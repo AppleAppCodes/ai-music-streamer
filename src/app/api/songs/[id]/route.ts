@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { isAdminUser } from '@/lib/admin';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 /** CORS headers applied to every response from this route. */
 const corsHeaders = {
@@ -59,14 +61,14 @@ export async function DELETE(
     const supabase = await createClient();
 
     // --- Authenticate --------------------------------------------------
-    let userId: string | null = null;
+    let authenticatedUser: SupabaseUser | null = null;
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (user) {
-      userId = user.id;
+      authenticatedUser = user;
     } else {
       const authHeader = request.headers.get('Authorization');
       if (authHeader?.startsWith('Bearer ')) {
@@ -82,18 +84,25 @@ export async function DELETE(
             { status: 401, headers: corsHeaders },
           );
         }
-        userId = tokenUser.id;
+        authenticatedUser = tokenUser;
       }
     }
 
-    if (!userId) {
+    if (!authenticatedUser) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401, headers: corsHeaders },
       );
     }
 
-    // --- Fetch the song to verify ownership ----------------------------
+    if (!isAdminUser(authenticatedUser)) {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403, headers: corsHeaders },
+      );
+    }
+
+    // --- Fetch the song ------------------------------------------------
     const { data: song, error: fetchError } = await supabase
       .from('songs')
       .select('*')
@@ -104,13 +113,6 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'Song not found' },
         { status: 404, headers: corsHeaders },
-      );
-    }
-
-    if (song.creator_id !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden: you can only delete your own songs' },
-        { status: 403, headers: corsHeaders },
       );
     }
 

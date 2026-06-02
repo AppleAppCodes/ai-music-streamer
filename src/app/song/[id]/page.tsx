@@ -97,7 +97,7 @@ export default function SongDetailPage() {
   }, [id, supabase]);
 
   const handleSaveMetadata = async () => {
-    if (!song) return;
+    if (!song || !isAdminUser(user)) return;
     setSaving(true);
     
     const { error } = await supabase
@@ -138,7 +138,7 @@ export default function SongDetailPage() {
   const displayCreator = song.creatorName || displayArtist;
   const releaseYear = new Date(song.created_at).getFullYear();
   const durationText = formatDuration(song.duration);
-  const canEditSong = Boolean(user && (user.id === song.creator_id || isAdminUser(user)));
+  const canEditSong = isAdminUser(user);
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#121212] relative pb-32">

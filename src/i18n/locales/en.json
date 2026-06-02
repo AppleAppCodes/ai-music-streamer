@@ -8,14 +8,18 @@
     "logout": "Logout"
   },
   "home": {
-    "greeting": "Good evening",
+    "greetings": {
+      "morning": "Good morning",
+      "day": "Good afternoon",
+      "evening": "Good evening",
+      "night": "Good night"
+    },
     "subtitle": "Discover new tracks, genres, and charts in one place.",
     "quickAccess": {
       "favorites": "Favorite Songs",
       "charts": "Viral Charts",
       "artists": "Discover Artists",
-      "playlists": "Playlists",
-      "radio": "Radio"
+      "playlists": "Playlists"
     },
     "popularGenres": "Popular Genres",
     "trending": "Selected for you",

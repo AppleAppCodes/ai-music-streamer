@@ -8,14 +8,18 @@
     "logout": "Abmelden"
   },
   "home": {
-    "greeting": "Guten Abend",
+    "greetings": {
+      "morning": "Guten Morgen",
+      "day": "Guten Tag",
+      "evening": "Guten Abend",
+      "night": "Gute Nacht"
+    },
     "subtitle": "Entdecke neue Tracks, Genres und Charts an einem Ort.",
     "quickAccess": {
       "favorites": "Lieblingssongs",
       "charts": "Viral Charts",
       "artists": "Künstler Entdecken",
-      "playlists": "Playlists",
-      "radio": "Radio"
+      "playlists": "Playlists"
     },
     "popularGenres": "Beliebte Genres",
     "trending": "Für dich ausgewählt",

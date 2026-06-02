@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, Radio, UserCheck, AudioWaveform, UsersRound } from 'lucide-react';
+import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserCheck, UsersRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
 import { isAdminUser } from '@/lib/admin';
@@ -12,6 +12,8 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
   const { t } = useTranslation();
   
   const isAdmin = isAdminUser(user);
+
+  if (!user) return null;
 
   return (
     <div className="hidden w-64 bg-black h-full md:flex flex-col pt-6 pb-24 border-r border-white/5">
@@ -50,10 +52,6 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
           <Link href="/friends" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
             <UsersRound className="w-5 h-5 group-hover:text-primary transition-colors" />
             Friend Feed
-          </Link>
-          <Link href="#" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
-            <Radio className="w-5 h-5 group-hover:text-primary transition-colors" />
-            {t('home.quickAccess.radio')}
           </Link>
         </nav>
       </div>
