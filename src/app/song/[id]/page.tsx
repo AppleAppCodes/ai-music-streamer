@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, MoreHorizontal, Clock3, Edit2, Save, X, Plus } from 'lucide-react';
+import { Play, Pause, Clock3, Edit2, Save, X, Plus } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import { useTranslation } from 'react-i18next';
 import SongCard from '@/components/ui/SongCard';
@@ -200,22 +200,18 @@ export default function SongDetailPage() {
             )}
           </button>
           
-          <PlaylistAddButton songId={song.id} iconClassName="w-8 h-8" />
           <LikeButton songId={song.id} iconClassName="w-8 h-8" />
-
-          <button className="text-white/60 hover:text-white transition-colors">
-            <MoreHorizontal className="w-8 h-8" />
-          </button>
         </div>
 
         {/* Tracklist Table */}
         <div className="mb-16">
           {/* Table Header */}
-          <div className="grid grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px] gap-4 px-4 py-2 border-b border-white/10 text-sm text-white/60 mb-2">
+          <div className="grid grid-cols-[16px_1fr_80px_40px_36px] md:grid-cols-[16px_1fr_150px_40px_36px] gap-4 px-4 py-2 border-b border-white/10 text-sm text-white/60 mb-2">
             <div>#</div>
             <div>{t('song.title')}</div>
             <div className="text-right">{t('song.plays')}</div>
             <div className="flex justify-end"><Clock3 className="w-4 h-4" /></div>
+            <div />
           </div>
           
           {/* Track Row */}
@@ -228,7 +224,7 @@ export default function SongDetailPage() {
                 playSong({ ...song, creatorName: displayArtist });
               }
             }}
-            className="grid grid-cols-[16px_1fr_120px_40px] md:grid-cols-[16px_1fr_150px_40px] gap-4 px-4 py-3 rounded-md hover:bg-white/10 group cursor-pointer items-center transition-colors"
+            className="grid grid-cols-[16px_1fr_80px_40px_36px] md:grid-cols-[16px_1fr_150px_40px_36px] gap-4 px-4 py-3 rounded-md hover:bg-white/10 group cursor-pointer items-center transition-colors"
           >
             <div className="text-white/60 group-hover:text-white text-base">
               {isThisSongPlaying ? (
@@ -256,6 +252,10 @@ export default function SongDetailPage() {
             
             <div className="text-right text-sm text-white/60">
               {durationText}
+            </div>
+
+            <div onClick={(event) => event.stopPropagation()}>
+              <PlaylistAddButton songId={song.id} iconClassName="w-6 h-6" />
             </div>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, MoreHorizontal, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2, Save, X } from 'lucide-react';
+import { Play, Pause, Share2, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2, Save, X } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
@@ -48,7 +48,7 @@ export default function ArtistPage() {
   // Ensure we decode the URL encoded name properly
   const artistName = decodeURIComponent(params.name as string);
   
-  const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
+  const { playSong, currentSong, isPlaying, togglePlayPause, setQueue, isShuffling, toggleShuffle } = usePlayer();
   const supabase = createClient();
   
   const [songs, setSongs] = useState<Song[]>([]);
@@ -61,6 +61,7 @@ export default function ArtistPage() {
   const [isUploadingArtistVideo, setIsUploadingArtistVideo] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [shareStatus, setShareStatus] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -166,6 +167,39 @@ export default function ArtistPage() {
       const queue = songs.map((s): Song => ({ ...s, creatorName: artistName }));
       setQueue(queue, 0);
       playSong(queue[0]);
+    }
+  };
+
+  const handleShuffle = () => {
+    if (songs.length === 0) return;
+
+    toggleShuffle();
+    if (!isShuffling) {
+      const queue = songs.map((song): Song => ({ ...song, creatorName: artistName }));
+      const startIndex = Math.floor(Math.random() * queue.length);
+      setQueue(queue, startIndex);
+      playSong(queue[startIndex]);
+    }
+  };
+
+  const handleShareArtist = async () => {
+    const artistUrl = `${window.location.origin}/artist/${encodeURIComponent(artistName)}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: artistName,
+          text: `${artistName} auf YORIAX`,
+          url: artistUrl,
+        });
+        setShareStatus('Geteilt');
+      } else {
+        await navigator.clipboard.writeText(artistUrl);
+        setShareStatus('Link kopiert');
+      }
+      window.setTimeout(() => setShareStatus(''), 1800);
+    } catch {
+      // Closing the native share sheet is not an error the UI needs to surface.
     }
   };
 
@@ -528,7 +562,15 @@ export default function ArtistPage() {
             )}
           </button>
           
-          <button className="text-white/40 hover:text-white transition-all hover:scale-110" title="Shuffle">
+          <button
+            onClick={handleShuffle}
+            disabled={songs.length === 0}
+            className={`transition-all hover:scale-110 disabled:cursor-not-allowed disabled:opacity-40 ${
+              isShuffling ? 'text-primary' : 'text-white/40 hover:text-white'
+            }`}
+            title={isShuffling ? 'Shuffle deaktivieren' : 'Shuffle aktivieren'}
+            aria-pressed={isShuffling}
+          >
             <Shuffle className="w-7 h-7" />
           </button>
           
@@ -551,9 +593,21 @@ export default function ArtistPage() {
             {isFollowing ? 'Folge ich' : 'Folgen'}
           </button>
           
-          <button className="text-white/40 hover:text-white transition-colors">
-            <MoreHorizontal className="w-8 h-8" />
-          </button>
+          <div className="relative flex items-center">
+            <button
+              onClick={handleShareArtist}
+              className="text-white/40 hover:text-white transition-colors"
+              title="Künstler teilen"
+              aria-label={`${artistName} teilen`}
+            >
+              <Share2 className="w-6 h-6" />
+            </button>
+            {shareStatus && (
+              <span className="absolute left-full ml-3 whitespace-nowrap rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-md">
+                {shareStatus}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Popular Section */}
