@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Library, Search, Upload, UsersRound } from 'lucide-react';
+import { Clapperboard, Home, Library, Search, Upload } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { isAdminUser } from '@/lib/admin';
 
 const BASE_NAV_ITEMS = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/search', label: 'Suche', icon: Search },
-  { href: '/friends', label: 'Feed', icon: UsersRound },
+  { href: '/feed', label: 'Feed', icon: Clapperboard },
   { href: '/playlists', label: 'Bibliothek', icon: Library },
 ] as const;
 
