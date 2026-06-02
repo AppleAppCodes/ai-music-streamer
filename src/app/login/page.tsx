@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
+import { CheckCircle2 } from 'lucide-react';
 import { getErrorMessage } from '@/lib/errors';
 
 export default function LoginPage() {
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
   const [turnstileSize, setTurnstileSize] = useState<'compact' | 'flexible'>('compact');
   const captchaTokenRef = useRef<string | null>(null);
   const turnstileRef = useRef<TurnstileInstance>(null);
@@ -109,7 +111,7 @@ export default function LoginPage() {
         router.push('/');
         router.refresh();
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -117,8 +119,12 @@ export default function LoginPage() {
           }
         });
         if (error) throw error;
-        router.push('/');
-        router.refresh();
+        if (!data.session) {
+          setConfirmationEmail(email);
+        } else {
+          router.push('/');
+          router.refresh();
+        }
       }
     } catch (err: unknown) {
       setError(getErrorMessage(err));
@@ -146,6 +152,26 @@ export default function LoginPage() {
           <div className="absolute inset-0 rounded-3xl ring-1 ring-inset ring-white/10 pointer-events-none" />
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
+          {confirmationEmail ? (
+            <div className="text-center">
+              <CheckCircle2 className="mx-auto h-12 w-12 text-teal-300" />
+              <h1 className="mt-5 text-3xl font-bold tracking-tight text-white">E-Mail bestätigen</h1>
+              <p className="mt-3 text-sm leading-6 text-white/60">
+                Wir haben dir einen Bestätigungslink an <span className="font-bold text-white">{confirmationEmail}</span> gesendet.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmationEmail(null);
+                  setIsLogin(true);
+                }}
+                className="mt-7 text-sm font-semibold text-teal-200 transition-colors hover:text-white"
+              >
+                Zurück zum Login
+              </button>
+            </div>
+          ) : (
+          <>
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
               {isLogin ? 'Willkommen zurück' : 'Account erstellen'}
@@ -232,6 +258,8 @@ export default function LoginPage() {
                 : 'Bereits einen Account? Hier einloggen'}
             </button>
           </div>
+          </>
+          )}
         </div>
 
         {/* Back to Home Link */}

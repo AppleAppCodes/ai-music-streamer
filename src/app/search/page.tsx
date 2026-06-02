@@ -18,6 +18,8 @@ interface ArtistResult {
   artist_name: string;
 }
 
+type SearchSong = Pick<Song, 'id' | 'title' | 'artist_name' | 'cover_url' | 'plays'>;
+
 function SearchResults() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
@@ -25,9 +27,10 @@ function SearchResults() {
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
-  const [songs, setSongs] = useState<Song[]>([]);
+  const [songs, setSongs] = useState<SearchSong[]>([]);
   const [playlists, setPlaylists] = useState<PlaylistResult[]>([]);
   const [artists, setArtists] = useState<ArtistResult[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -44,21 +47,25 @@ function SearchResults() {
 
       setLoading(true);
 
-      // Search Songs (title or artist name)
-      const { data: songsData } = await supabase
-        .from('songs')
-        .select('*, profiles(username)')
-        .or(`title.ilike.%${trimmedQuery}%,artist_name.ilike.%${trimmedQuery}%`)
-        .order('plays', { ascending: false })
-        .limit(20);
-
-      // Search Playlists
-      const { data: playlistsData } = await supabase
-        .from('playlists')
-        .select('*, profiles(username)')
-        .eq('is_public', true)
-        .ilike('title', `%${trimmedQuery}%`)
-        .limit(10);
+      const [
+        { data: songsData },
+        { data: playlistsData },
+        { data: { session } },
+      ] = await Promise.all([
+        supabase
+          .from('songs')
+          .select('id, title, artist_name, cover_url, plays')
+          .or(`title.ilike.%${trimmedQuery}%,artist_name.ilike.%${trimmedQuery}%`)
+          .order('plays', { ascending: false })
+          .limit(20),
+        supabase
+          .from('playlists')
+          .select('*, profiles(username)')
+          .eq('is_public', true)
+          .ilike('title', `%${trimmedQuery}%`)
+          .limit(10),
+        supabase.auth.getSession(),
+      ]);
 
       if (!isActive) return;
 
@@ -69,9 +76,10 @@ function SearchResults() {
           .map(s => s.artist_name)
       )).map(name => ({ artist_name: name }));
 
-      setSongs((songsData || []) as Song[]);
+      setSongs((songsData || []) as SearchSong[]);
       setPlaylists((playlistsData || []) as PlaylistResult[]);
       setArtists(uniqueArtists);
+      setIsAuthenticated(!!session);
       setLoading(false);
     }
 
@@ -154,7 +162,7 @@ function SearchResults() {
                   <h2 className="text-2xl font-bold text-white mb-6">Top-Ergebnis</h2>
                   {artists.length > 0 ? (
                     <Link
-                      href={`/artist/${encodeURIComponent(artists[0].artist_name)}`}
+                      href={isAuthenticated ? `/artist/${encodeURIComponent(artists[0].artist_name)}` : '/login'}
                       className="group flex flex-col gap-4 p-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all duration-300 relative overflow-hidden h-[240px] justify-end"
                     >
                       <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shadow-lg mb-2">
@@ -168,7 +176,7 @@ function SearchResults() {
                       </div>
                     </Link>
                   ) : (
-                    <Link href={`/song/${songs[0].id}`} className="group flex flex-col gap-4 p-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all duration-300 relative overflow-hidden h-[240px] justify-end">
+                    <Link href={isAuthenticated ? `/song/${songs[0].id}` : '/login'} className="group flex flex-col gap-4 p-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all duration-300 relative overflow-hidden h-[240px] justify-end">
                       <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shadow-lg overflow-hidden mb-2">
                         <img src={songs[0].cover_url} alt={songs[0].title} className="w-full h-full object-cover" />
                       </div>
@@ -192,7 +200,7 @@ function SearchResults() {
                     {songs.slice(0, 4).map((song) => {
                       return (
                         <Link 
-                          href={`/song/${song.id}`}
+                          href={isAuthenticated ? `/song/${song.id}` : '/login'}
                           key={song.id}
                           className="flex items-center gap-4 p-2 rounded-md hover:bg-white/10 group cursor-pointer transition-colors"
                         >
@@ -219,7 +227,7 @@ function SearchResults() {
                   {artists.slice(1, 7).map((artist, i) => (
                     <Link
                       key={i}
-                      href={`/artist/${encodeURIComponent(artist.artist_name)}`}
+                      href={isAuthenticated ? `/artist/${encodeURIComponent(artist.artist_name)}` : '/login'}
                       className="group flex flex-col items-center text-center gap-3 p-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all duration-300"
                     >
                       <div className="w-full aspect-square rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center mb-2 shadow-lg">
@@ -241,7 +249,7 @@ function SearchResults() {
                   {playlists.map((playlist) => (
                     <Link
                       key={playlist.id}
-                      href={`/playlist/${playlist.id}`}
+                      href={isAuthenticated ? `/playlist/${playlist.id}` : '/login'}
                       className="group relative flex flex-col gap-3 p-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all duration-300"
                     >
                       <div className="relative aspect-square w-full rounded-lg overflow-hidden shadow-lg bg-[#282828] flex items-center justify-center">

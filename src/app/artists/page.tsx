@@ -17,6 +17,36 @@ interface ArtistStat {
   createdAt: string;
 }
 
+function ArtistVideo({ src, artistName }: { src: string; artistName: string }) {
+  const [ready, setReady] = useState(false);
+
+  return (
+    <>
+      {!ready ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#101010]">
+          <Loader2 className="h-8 w-8 animate-spin text-violet-300" aria-label={`${artistName} Video lädt`} />
+        </div>
+      ) : null}
+      <video
+        src={`${src}#t=0.001`}
+        autoPlay
+        preload="auto"
+        loop
+        muted
+        playsInline
+        controlsList="nodownload"
+        onLoadedData={() => setReady(true)}
+        onCanPlay={() => setReady(true)}
+        onContextMenu={(event) => event.preventDefault()}
+        onDragStart={(event) => event.preventDefault()}
+        className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 group-hover:scale-110 ${
+          ready ? 'opacity-100' : 'opacity-0'
+        } pointer-events-none select-none`}
+      />
+    </>
+  );
+}
+
 export default function ArtistsPage() {
   const [artists, setArtists] = useState<ArtistStat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -227,32 +257,10 @@ export default function ArtistsPage() {
                 href={`/artist/${encodeURIComponent(artist.name)}`} 
                 key={artist.name}
                 className="group relative h-64 md:h-72 rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-[0_0_40px_rgba(168,85,247,0.3)] hover:-translate-y-2 border border-white/10"
-                onMouseEnter={(e) => {
-                  const vid = e.currentTarget.querySelector('video');
-                  if (vid) vid.play().catch(() => {});
-                }}
-                onMouseLeave={(e) => {
-                  const vid = e.currentTarget.querySelector('video');
-                  if (vid) {
-                    vid.pause();
-                    vid.currentTime = 0;
-                  }
-                }}
               >
                 {/* Background Image or Video */}
                 {artist.videoUrl ? (
-                  <video 
-                    src={`${artist.videoUrl}#t=0.001`}
-                    poster={artist.coverUrl}
-                    preload="auto"
-                    loop
-                    muted
-                    playsInline
-                    controlsList="nodownload"
-                    onContextMenu={(e) => e.preventDefault()}
-                    onDragStart={(e) => e.preventDefault()}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-none select-none" 
-                  />
+                  <ArtistVideo src={artist.videoUrl} artistName={artist.name} />
                 ) : (
                   <img 
                     src={artist.coverUrl} 

@@ -1,22 +1,18 @@
 import Link from 'next/link';
-import { ArrowRight, Mic2, Music2, Sparkles } from 'lucide-react';
+import { Mic2, Music2, Sparkles } from 'lucide-react';
 import type { Song } from '@/lib/types';
 
-function SectionTitle({ children, href }: { children: React.ReactNode; href?: string }) {
+type GuestSong = Pick<Song, 'id' | 'title' | 'artist_name' | 'cover_url' | 'plays'>;
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-5 flex items-center justify-between gap-4">
+    <div className="mb-5">
       <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">{children}</h2>
-      {href ? (
-        <Link href={href} className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-white/55 transition-colors hover:text-white">
-          Alle anzeigen
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      ) : null}
     </div>
   );
 }
 
-export default function GuestHome({ songs }: { songs: Song[] }) {
+export default function GuestHome({ songs }: { songs: GuestSong[] }) {
   const artists = Array.from(
     songs.reduce((map, song) => {
       const name = song.artist_name?.trim();
@@ -55,13 +51,13 @@ export default function GuestHome({ songs }: { songs: Song[] }) {
 
       <div className="space-y-14 px-5 sm:px-8 md:px-10">
         <section>
-          <SectionTitle href="/search">Angesagte Songs</SectionTitle>
+          <SectionTitle>Angesagte Songs</SectionTitle>
           {songs.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
               {songs.slice(0, 12).map((song) => (
                 <Link
                   key={song.id}
-                  href={`/song/${song.id}`}
+                  href="/login"
                   className="group min-w-0 rounded-2xl border border-white/5 bg-white/[0.035] p-3 transition-all hover:-translate-y-1 hover:border-white/12 hover:bg-white/[0.075]"
                 >
                   <div className="aspect-square overflow-hidden rounded-xl bg-white/5 shadow-xl">
@@ -78,13 +74,13 @@ export default function GuestHome({ songs }: { songs: Song[] }) {
         </section>
 
         <section>
-          <SectionTitle href="/artists">Angesagte Künstler*innen</SectionTitle>
+          <SectionTitle>Angesagte Künstler*innen</SectionTitle>
           {artists.length > 0 ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
               {artists.map((artist) => (
                 <Link
                   key={artist.name}
-                  href={`/artist/${encodeURIComponent(artist.name)}`}
+                  href="/login"
                   className="group min-w-0 rounded-2xl p-2 text-center transition-colors hover:bg-white/[0.055]"
                 >
                   <div className="aspect-square overflow-hidden rounded-full border border-white/10 bg-white/5 shadow-xl">

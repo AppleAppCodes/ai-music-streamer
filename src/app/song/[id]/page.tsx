@@ -56,7 +56,7 @@ export default function SongDetailPage() {
       // Fetch the main song
       const { data: songData } = await supabase
         .from('songs')
-        .select('*, profiles(username)')
+        .select('*, profiles!songs_creator_id_fkey(username)')
         .eq('id', id)
         .single();
         

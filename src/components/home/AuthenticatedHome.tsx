@@ -233,7 +233,7 @@ export default function AuthenticatedHome() {
       // Fetch trending songs (ordered by plays)
       const { data: trending } = await supabase
         .from('songs')
-        .select('*, profiles(username)')
+        .select('*, profiles!songs_creator_id_fkey(username)')
         .order('plays', { ascending: false })
         .limit(4);
 
@@ -247,7 +247,7 @@ export default function AuthenticatedHome() {
       // Fetch new releases (ordered by created_at)
       const { data: recent } = await supabase
         .from('songs')
-        .select('*, profiles(username)')
+        .select('*, profiles!songs_creator_id_fkey(username)')
         .order('created_at', { ascending: false })
         .limit(4);
 

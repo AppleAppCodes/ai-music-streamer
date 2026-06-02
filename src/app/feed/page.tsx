@@ -463,7 +463,9 @@ export default function FeedPage() {
       return [...songs].sort((first, second) => stableHash(first.id) - stableHash(second.id));
     }
 
-    return [...songs].sort((first, second) => {
+    return songs
+      .filter((song) => song.genre?.trim().toLowerCase() !== 'chillhop')
+      .sort((first, second) => {
       const getScore = (song: FeedSong) => (
         Math.log10(Math.max(1, song.plays + 1)) * 12
         + song.stats.likes_count * 5
@@ -473,7 +475,7 @@ export default function FeedPage() {
         + (followedArtists.has(song.artist_name || song.creatorName || 'Creator') ? 22 : 0)
       );
       return getScore(second) - getScore(first);
-    });
+      });
   }, [followedArtists, likedGenres, mode, songs]);
 
   const changeMode = (nextMode: FeedMode) => {

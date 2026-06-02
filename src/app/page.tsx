@@ -1,6 +1,5 @@
 import AuthenticatedHome from '@/components/home/AuthenticatedHome';
 import GuestHome from '@/components/home/GuestHome';
-import type { Song } from '@/lib/types';
 import { createClient } from '@/utils/supabase/server';
 
 export default async function Home() {
@@ -12,7 +11,7 @@ export default async function Home() {
     supabase.auth.getUser(),
     supabase
       .from('songs')
-      .select('*')
+      .select('id, title, artist_name, cover_url, plays')
       .order('plays', { ascending: false })
       .limit(16),
   ]);
@@ -21,5 +20,5 @@ export default async function Home() {
     return <AuthenticatedHome />;
   }
 
-  return <GuestHome songs={(songs || []) as Song[]} />;
+  return <GuestHome songs={songs || []} />;
 }
