@@ -21,12 +21,10 @@ export default function LoginPage() {
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
 
-  // Stable options object – size must be 'invisible' to match Cloudflare dashboard config
+  // The Cloudflare widget is configured as Invisible and issues a token on render.
   const turnstileOptions = useMemo(() => ({ 
     theme: 'dark' as const,
     size: 'invisible' as const,
-    appearance: 'execute' as const,
-    execution: 'execute' as const,
   }), []);
 
   const handleCaptchaSuccess = useCallback((token: string) => {
@@ -54,9 +52,6 @@ export default function LoginPage() {
     if (captchaTokenRef.current) {
       return captchaTokenRef.current;
     }
-
-    // Try to trigger execution explicitly for invisible widget
-    turnstileRef.current?.execute();
 
     // Wait for token with polling
     for (let i = 0; i < 15; i++) {
