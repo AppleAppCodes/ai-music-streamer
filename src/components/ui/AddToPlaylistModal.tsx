@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
 import { X, Plus, Minus, Music, Loader2, Search } from 'lucide-react';
 
@@ -154,10 +155,10 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
     playlist.title.toLowerCase().includes(searchTerm.trim().toLowerCase())
   );
 
-  return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/80 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
+  const modal = (
+    <div className="fixed inset-0 z-[180] flex items-end justify-center bg-black/80 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
       <div 
-        className="flex max-h-[82vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#181818] shadow-2xl sm:rounded-xl"
+        className="mb-[env(safe-area-inset-bottom)] flex max-h-[84dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#181818] shadow-2xl shadow-black/60 sm:mb-0 sm:max-h-[720px] sm:rounded-xl"
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -189,7 +190,7 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
           </label>
         </div>
 
-        <div className="p-2 overflow-y-auto flex-1">
+        <div className="min-h-0 flex-1 overflow-y-auto p-2 pb-4">
           <button 
             onClick={handleCreateAndAdd}
             disabled={addingTo !== null}
@@ -258,4 +259,8 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(modal, document.body);
 }

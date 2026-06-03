@@ -146,18 +146,18 @@ export default function SongDetailPage() {
       <div className="absolute top-0 left-0 right-0 h-[400px] bg-gradient-to-b from-[#4A2B29] to-[#121212] opacity-80 pointer-events-none" />
       
       {/* Header Content */}
-      <div className="relative pt-24 px-6 md:px-10 pb-6 flex flex-col md:flex-row gap-6 md:gap-8 items-end">
-        <div className="w-48 h-48 md:w-60 md:h-60 flex-shrink-0 shadow-2xl shadow-black/50 overflow-hidden rounded-md">
+      <div className="relative flex flex-col items-center gap-5 px-5 pb-6 pt-20 text-center md:flex-row md:items-end md:gap-8 md:px-10 md:pt-24 md:text-left">
+        <div className="h-44 w-44 flex-shrink-0 overflow-hidden rounded-md shadow-2xl shadow-black/50 sm:h-48 sm:w-48 md:h-60 md:w-60">
           <img src={song.cover_url} alt={song.title} className="w-full h-full object-cover" />
         </div>
-        <div className="flex flex-col gap-2 md:gap-4 mt-4 md:mt-0">
+        <div className="flex w-full min-w-0 flex-col items-center gap-2 md:mt-0 md:items-start md:gap-4">
           <span className="text-sm font-semibold text-white/90 drop-shadow-md tracking-wider uppercase">
             {t('song.single')}
           </span>
-          <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tighter drop-shadow-lg break-words">
+          <h1 className="max-w-full break-words text-center text-4xl font-extrabold tracking-tighter text-white drop-shadow-lg sm:text-5xl md:text-left md:text-7xl">
             {song.title}
           </h1>
-          <div className="flex items-center gap-2 text-sm text-white/90 mt-2 font-medium">
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm font-medium text-white/90 md:justify-start">
             <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden hover:scale-105 transition-transform">
               <span className="text-xs">{displayArtist.charAt(0)}</span>
             </Link>
@@ -182,7 +182,7 @@ export default function SongDetailPage() {
       <div className="relative bg-black/20 backdrop-blur-3xl px-6 md:px-10 py-6 min-h-screen">
         
         {/* Action Bar */}
-        <div className="flex items-center gap-6 mb-10">
+        <div className="mb-10 flex items-center justify-center gap-6 md:justify-start">
           <button 
             onClick={() => {
               if (currentSong?.id === song.id) {
@@ -206,11 +206,11 @@ export default function SongDetailPage() {
         {/* Tracklist Table */}
         <div className="mb-16">
           {/* Table Header */}
-          <div className="grid grid-cols-[16px_1fr_80px_40px_36px] md:grid-cols-[16px_1fr_150px_40px_36px] gap-4 px-4 py-2 border-b border-white/10 text-sm text-white/60 mb-2">
+          <div className="mb-2 grid grid-cols-[16px_minmax(0,1fr)_36px] gap-3 border-b border-white/10 px-2 py-2 text-sm text-white/60 sm:grid-cols-[16px_minmax(0,1fr)_80px_40px_36px] sm:gap-4 sm:px-4 md:grid-cols-[16px_1fr_150px_40px_36px]">
             <div>#</div>
             <div>{t('song.title')}</div>
-            <div className="text-right">{t('song.plays')}</div>
-            <div className="flex justify-end"><Clock3 className="w-4 h-4" /></div>
+            <div className="hidden text-right sm:block">{t('song.plays')}</div>
+            <div className="hidden justify-end sm:flex"><Clock3 className="w-4 h-4" /></div>
             <div />
           </div>
           
@@ -224,7 +224,7 @@ export default function SongDetailPage() {
                 playSong({ ...song, creatorName: displayArtist });
               }
             }}
-            className="grid grid-cols-[16px_1fr_80px_40px_36px] md:grid-cols-[16px_1fr_150px_40px_36px] gap-4 px-4 py-3 rounded-md hover:bg-white/10 group cursor-pointer items-center transition-colors"
+            className="grid cursor-pointer grid-cols-[16px_minmax(0,1fr)_36px] items-center gap-3 rounded-md px-2 py-3 transition-colors hover:bg-white/10 sm:grid-cols-[16px_minmax(0,1fr)_80px_40px_36px] sm:gap-4 sm:px-4 md:grid-cols-[16px_1fr_150px_40px_36px]"
           >
             <div className="text-white/60 group-hover:text-white text-base">
               {isThisSongPlaying ? (
@@ -239,18 +239,18 @@ export default function SongDetailPage() {
               {!isThisSongPlaying && <Play className="w-4 h-4 hidden group-hover:block fill-current" />}
             </div>
             
-            <div className="flex flex-col">
-              <span className={`text-base font-normal ${currentSong?.id === song.id ? 'text-primary' : 'text-white'}`}>
+            <div className="flex min-w-0 flex-col">
+              <span className={`truncate text-base font-normal ${currentSong?.id === song.id ? 'text-primary' : 'text-white'}`}>
                 {song.title}
               </span>
-              <span className="text-sm text-white/60">{displayArtist}</span>
+              <span className="truncate text-sm text-white/60">{displayArtist}</span>
             </div>
             
-            <div className="text-right text-sm text-white/60 font-mono tracking-wider">
+            <div className="hidden text-right font-mono text-sm tracking-wider text-white/60 sm:block">
               {song.plays.toLocaleString()}
             </div>
             
-            <div className="text-right text-sm text-white/60">
+            <div className="hidden text-right text-sm text-white/60 sm:block">
               {durationText}
             </div>
 

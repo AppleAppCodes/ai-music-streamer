@@ -29,6 +29,11 @@ const syncopate = Syncopate({
 export const metadata: Metadata = {
   title: "Yoriax | The first streaming platform for AI-native music",
   description: "Stream, discover, and publish the best AI-generated music.",
+  icons: {
+    icon: [{ url: "/icon.svg?v=2", type: "image/svg+xml" }],
+    shortcut: [{ url: "/icon.svg?v=2", type: "image/svg+xml" }],
+    apple: [{ url: "/icon.svg?v=2", type: "image/svg+xml" }],
+  },
 };
 
 export default async function RootLayout({

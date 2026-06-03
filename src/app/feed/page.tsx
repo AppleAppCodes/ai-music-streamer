@@ -149,6 +149,47 @@ function FeedCard({
   const displayArtist = song.artist_name || song.creatorName || 'Creator';
   const avatarUrl = song.profiles?.avatar_url;
 
+  const seekToHookStart = useCallback((media: HTMLMediaElement) => {
+    const configuredStart = Math.max(0, Number(song.clip.hook_start_seconds) || 0);
+    const configuredEnd = Math.max(
+      configuredStart + 0.25,
+      Number(song.clip.hook_end_seconds) || configuredStart + DEFAULT_HOOK_DURATION_SECONDS,
+    );
+    const duration = Number.isFinite(media.duration) && media.duration > 0 ? media.duration : configuredEnd;
+    const start = Math.min(configuredStart, Math.max(0, duration - 0.2));
+    const end = Math.min(Math.max(configuredEnd, start + 0.25), duration);
+
+    if (
+      !Number.isFinite(media.currentTime)
+      || media.currentTime < start
+      || media.currentTime >= end
+      || media.currentTime < 0.05
+    ) {
+      media.currentTime = start;
+    }
+
+    return { start, end };
+  }, [song.clip.hook_end_seconds, song.clip.hook_start_seconds]);
+
+  const playFromHook = useCallback((media: HTMLMediaElement) => {
+    const startPlayback = () => {
+      seekToHookStart(media);
+      return media.play();
+    };
+
+    if (media.readyState >= 1) {
+      return startPlayback();
+    }
+
+    const metadataPromise = new Promise<void>((resolve, reject) => {
+      media.addEventListener('loadedmetadata', () => {
+        startPlayback().then(resolve).catch(reject);
+      }, { once: true });
+    });
+    media.load();
+    return metadataPromise;
+  }, [seekToHookStart]);
+
   useEffect(() => {
     const media = mediaRef.current;
     if (!media) return;
@@ -160,12 +201,7 @@ function FeedCard({
     }
 
     const startAtHook = () => {
-      const duration = Number.isFinite(media.duration) ? media.duration : song.clip.hook_end_seconds;
-      const maxStart = Math.max(0, duration - 0.2);
-      if (media.currentTime < song.clip.hook_start_seconds || media.currentTime >= song.clip.hook_end_seconds) {
-        media.currentTime = Math.min(song.clip.hook_start_seconds, maxStart);
-      }
-      media.play().catch(() => {
+      playFromHook(media).catch(() => {
         if (!muted) {
           media.muted = false;
           onAutoplayBlocked();
@@ -183,7 +219,7 @@ function FeedCard({
       media.removeEventListener('loadedmetadata', startAtHook);
       media.pause();
     };
-  }, [active, mediaRef, muted, onAutoplayBlocked, song.clip.hook_end_seconds, song.clip.hook_start_seconds]);
+  }, [active, mediaRef, muted, onAutoplayBlocked, playFromHook]);
 
   useEffect(() => () => {
     if (heartTimerRef.current) window.clearTimeout(heartTimerRef.current);
@@ -193,9 +229,9 @@ function FeedCard({
     const media = mediaRef.current;
     if (!media) return;
 
-    const end = Math.min(song.clip.hook_end_seconds, Number.isFinite(media.duration) ? media.duration : song.clip.hook_end_seconds);
+    const { start, end } = seekToHookStart(media);
     if (media.currentTime >= end) {
-      media.currentTime = song.clip.hook_start_seconds;
+      media.currentTime = start;
       media.play().catch(() => {});
     }
   };
@@ -223,7 +259,7 @@ function FeedCard({
     const media = mediaRef.current;
     if (media) {
       media.muted = false;
-      media.play().catch(() => {});
+      playFromHook(media).catch(() => {});
     }
     onUserInteraction();
   };
@@ -232,7 +268,7 @@ function FeedCard({
     const media = mediaRef.current;
     if (media) {
       media.muted = !muted;
-      if (muted) media.play().catch(() => {});
+      if (muted) playFromHook(media).catch(() => {});
     }
     onToggleMute();
   };

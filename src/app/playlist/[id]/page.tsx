@@ -306,8 +306,6 @@ export default function PlaylistPage() {
 
   if (!playlist) return null;
 
-  const isAnyPlaying = songs.some(s => s.id === currentSong?.id) && isPlaying;
-
   return (
     <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
       {/* Background Gradient matching cover or generic */}
@@ -316,11 +314,11 @@ export default function PlaylistPage() {
       </div>
       
       {/* Hero Content */}
-      <div className="relative pt-24 px-6 md:px-10 pb-8 flex items-end gap-6 z-10 group">
+      <div className="group relative z-10 flex flex-col items-center gap-5 px-5 pb-8 pt-20 text-center md:flex-row md:items-end md:gap-6 md:px-10 md:pt-24 md:text-left">
         
         {/* Cover Art */}
         <div 
-          className="relative w-48 h-48 md:w-56 md:h-56 shadow-2xl shrink-0 group/cover cursor-pointer rounded-xl overflow-hidden bg-[#282828] flex items-center justify-center"
+          className="group/cover relative flex h-44 w-44 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-[#282828] shadow-2xl sm:h-48 sm:w-48 md:h-56 md:w-56"
           onClick={() => isOwner && fileInputRef.current?.click()}
         >
           {playlist.cover_url ? (
@@ -345,7 +343,7 @@ export default function PlaylistPage() {
         </div>
 
         {/* Info */}
-        <div className="flex flex-col gap-3 pb-2 w-full">
+        <div className="flex w-full min-w-0 flex-col items-center gap-3 pb-2 md:items-start">
           <span className="text-sm font-bold text-white uppercase tracking-wider">Playlist</span>
           
           {isEditingTitle ? (
@@ -356,11 +354,11 @@ export default function PlaylistPage() {
               onBlur={handleSaveTitle}
               onKeyDown={e => e.key === 'Enter' && handleSaveTitle()}
               autoFocus
-              className="bg-transparent border-b border-white/50 text-5xl md:text-7xl font-black text-white focus:outline-none focus:border-white w-full"
+              className="w-full border-b border-white/50 bg-transparent text-center text-4xl font-black text-white focus:border-white focus:outline-none sm:text-5xl md:text-left md:text-7xl"
             />
           ) : (
             <h1 
-              className={`text-5xl md:text-7xl font-black text-white tracking-tighter truncate ${isOwner ? 'cursor-pointer hover:underline' : ''}`}
+              className={`max-w-full break-words text-center text-4xl font-black tracking-tighter text-white sm:text-5xl md:text-left md:text-7xl md:truncate ${isOwner ? 'cursor-pointer hover:underline' : ''}`}
               onClick={() => isOwner && setIsEditingTitle(true)}
               title={isOwner ? "Klicken zum Bearbeiten" : ""}
             >
@@ -368,7 +366,7 @@ export default function PlaylistPage() {
             </h1>
           )}
           
-          <div className="flex items-center gap-2 text-sm text-white/70 font-medium mt-2">
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm font-medium text-white/70 md:justify-start">
             <div className="w-6 h-6 rounded-full bg-gradient-primary flex items-center justify-center text-xs text-white">
               U
             </div>
@@ -380,10 +378,10 @@ export default function PlaylistPage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="relative bg-[#0A0A0A] px-6 md:px-10 py-6 min-h-screen z-10">
+      <div className="relative z-10 min-h-screen bg-[#0A0A0A] px-4 py-6 md:px-10">
         
         {/* Action Bar */}
-        <div className="flex items-center gap-6 mb-10">
+        <div className="mb-10 flex items-center justify-center gap-6 md:justify-start">
           <button 
             onClick={handlePlayAll}
             disabled={songs.length === 0}

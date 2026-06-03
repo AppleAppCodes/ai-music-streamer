@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Bell, LogIn, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ProfileDropdown from '@/components/ui/ProfileDropdown';
@@ -17,7 +17,9 @@ interface HeaderClientProps {
 export default function HeaderClient({ user, signOutAction }: HeaderClientProps) {
   const { t } = useTranslation();
   const router = useRouter();
+  const pathname = usePathname();
   const searchReturnPath = useRef<string | null>(null);
+  const hideMobileSearch = pathname.startsWith('/search');
 
   useEffect(() => {
     if (user) {
@@ -49,7 +51,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
       </Link>
 
       {/* Center - Search Bar */}
-      <div className="relative flex min-w-0 flex-1 items-center justify-center">
+      <div className={`relative min-w-0 flex-1 items-center justify-center ${hideMobileSearch ? 'hidden md:flex' : 'flex'}`}>
         <div className="relative w-full max-w-lg group">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-white/60 group-hover:text-white transition-colors" />
