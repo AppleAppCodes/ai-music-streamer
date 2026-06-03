@@ -1,8 +1,9 @@
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
 import { loadHomeMusic, type HomeMusicData } from '../lib/music-data';
+import { usePlayer } from '../lib/player-context';
 import type { Song } from '../lib/types';
 import { theme } from '../theme';
 
@@ -98,6 +99,8 @@ function ErrorBlock({ message }: { message: string }) {
 }
 
 function SongRail({ title, songs }: { title: string; songs: Song[] }) {
+  const { activeSong, isPlaying, playSong } = usePlayer();
+
   if (songs.length === 0) return null;
 
   return (
@@ -105,7 +108,14 @@ function SongRail({ title, songs }: { title: string; songs: Song[] }) {
       <Text style={styles.sectionTitle}>{title}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.songRail}>
         {songs.map((song) => (
-          <View key={song.id} style={styles.songCard}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            key={song.id}
+            onPress={() => {
+              void playSong(song);
+            }}
+            style={styles.songCard}
+          >
             {song.cover_url ? (
               <Image source={{ uri: song.cover_url }} style={styles.cover} />
             ) : (
@@ -113,6 +123,9 @@ function SongRail({ title, songs }: { title: string; songs: Song[] }) {
                 <Text style={styles.coverFallbackText}>Y</Text>
               </View>
             )}
+            <View style={styles.playBadge}>
+              <Text style={styles.playBadgeText}>{activeSong?.id === song.id && isPlaying ? 'II' : '▶'}</Text>
+            </View>
             <Text style={styles.songTitle} numberOfLines={1}>
               {song.title}
             </Text>
@@ -120,7 +133,7 @@ function SongRail({ title, songs }: { title: string; songs: Song[] }) {
               {song.artist_name || song.creatorName || 'Creator'}
             </Text>
             <Text style={styles.songMeta}>{formatPlays(song.plays)} Streams</Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
@@ -260,6 +273,25 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontSize: 32,
     fontWeight: '900',
+  },
+  playBadge: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.text,
+    borderRadius: 999,
+    bottom: 46,
+    height: 34,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 10,
+    width: 34,
+  },
+  playBadgeText: {
+    color: '#050505',
+    fontSize: 13,
+    fontWeight: '900',
+    includeFontPadding: false,
+    lineHeight: 16,
+    textAlign: 'center',
   },
   songTitle: {
     color: theme.colors.text,

@@ -15,6 +15,8 @@
       "package": "com.yoriax.app",
       "edgeToEdgeEnabled": true
     },
-    "plugins": []
+    "plugins": [
+      "expo-audio"
+    ]
   }
 }

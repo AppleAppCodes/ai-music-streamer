@@ -1,7 +1,8 @@
-import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { loadLibraryMusic, type LibraryMusicData } from '../lib/music-data';
+import { usePlayer } from '../lib/player-context';
 import type { Playlist, Song } from '../lib/types';
 import { theme } from '../theme';
 
@@ -99,8 +100,17 @@ function SectionTitle({ title }: { title: string }) {
 }
 
 function SongRow({ song }: { song: Song }) {
+  const { activeSong, isPlaying, playSong } = usePlayer();
+  const isActive = activeSong?.id === song.id;
+
   return (
-    <View style={styles.itemRow}>
+    <TouchableOpacity
+      accessibilityRole="button"
+      onPress={() => {
+        void playSong(song);
+      }}
+      style={[styles.itemRow, isActive && styles.itemRowActive]}
+    >
       {song.cover_url ? (
         <Image source={{ uri: song.cover_url }} style={styles.itemImage} />
       ) : (
@@ -116,7 +126,8 @@ function SongRow({ song }: { song: Song }) {
           {song.artist_name || song.creatorName || 'Creator'}
         </Text>
       </View>
-    </View>
+      <Text style={styles.rowPlayState}>{isActive && isPlaying ? 'II' : '▶'}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -256,6 +267,10 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 10,
   },
+  itemRowActive: {
+    backgroundColor: 'rgba(124,58,237,0.18)',
+    borderColor: 'rgba(124,58,237,0.42)',
+  },
   itemImage: {
     backgroundColor: theme.colors.surfaceMuted,
     borderRadius: 12,
@@ -289,5 +304,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     marginTop: 3,
+  },
+  rowPlayState: {
+    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '900',
+    width: 28,
   },
 });

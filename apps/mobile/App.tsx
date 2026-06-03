@@ -1,9 +1,11 @@
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { MiniPlayer } from './src/components/MiniPlayer';
 import { AuthProvider, useAuth } from './src/lib/auth-context';
 import { hasSupabaseConfig } from './src/lib/env';
+import { PlayerProvider, usePlayer } from './src/lib/player-context';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { LibraryScreen } from './src/screens/LibraryScreen';
 import { ForYouScreen } from './src/screens/ForYouScreen';
@@ -22,7 +24,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <AppShell />
+        <PlayerProvider>
+          <AppShell />
+        </PlayerProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
@@ -31,6 +35,7 @@ export default function App() {
 function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const { initializing, signOut, user } = useAuth();
+  const { activeSong, pause } = usePlayer();
   const activeScreen = useMemo(() => {
     if (activeTab === 'for-you') return <ForYouScreen />;
     if (activeTab === 'library') return <LibraryScreen />;
@@ -38,6 +43,10 @@ function AppShell() {
   }, [activeTab]);
   const signedIn = Boolean(user);
   const headerStatus = getHeaderStatus(initializing, user?.email ?? null);
+
+  useEffect(() => {
+    if (!signedIn) pause();
+  }, [pause, signedIn]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
@@ -66,7 +75,11 @@ function AppShell() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.content, !signedIn && styles.authContent]}
+        contentContainerStyle={[
+          styles.content,
+          signedIn && activeSong && styles.contentWithPlayer,
+          !signedIn && styles.authContent,
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {initializing ? (
@@ -80,6 +93,8 @@ function AppShell() {
           <AuthScreen />
         )}
       </ScrollView>
+
+      {signedIn ? <MiniPlayer /> : null}
 
       {signedIn ? (
         <View style={styles.tabBar}>
@@ -163,6 +178,9 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingBottom: 110,
+  },
+  contentWithPlayer: {
+    paddingBottom: 190,
   },
   authContent: {
     flexGrow: 1,

@@ -1,13 +1,15 @@
-import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
 import { loadFeedPreview } from '../lib/music-data';
+import { usePlayer } from '../lib/player-context';
 import type { FeedPreviewSong } from '../lib/types';
 import { theme } from '../theme';
 
 export function ForYouScreen() {
   const { user } = useAuth();
+  const { activeSong, isPlaying, playSong } = usePlayer();
   const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +43,7 @@ export function ForYouScreen() {
   }, [user]);
 
   const firstSong = songs[0] ?? null;
+  const firstHookStart = getHookStart(firstSong);
 
   return (
     <View style={styles.screen}>
@@ -69,6 +72,30 @@ export function ForYouScreen() {
             Hook: {firstSong.clip.hook_start_seconds}s bis {firstSong.clip.hook_end_seconds}s
           </Text>
         ) : null}
+        {firstSong ? (
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => {
+                void playSong(firstSong, { startAt: firstHookStart });
+              }}
+              style={styles.primaryAction}
+            >
+              <Text style={styles.primaryActionText}>
+                {activeSong?.id === firstSong.id && isPlaying ? 'Hook laeuft' : 'Hook abspielen'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => {
+                void playSong(firstSong, { startAt: 0 });
+              }}
+              style={styles.secondaryAction}
+            >
+              <Text style={styles.secondaryActionText}>Ganzer Song</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
 
       {loading ? (
@@ -87,7 +114,14 @@ export function ForYouScreen() {
       {!loading && songs.length > 0 ? (
         <View style={styles.queueList}>
           {songs.slice(0, 8).map((song, index) => (
-            <View key={song.id} style={styles.queueRow}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              key={song.id}
+              onPress={() => {
+                void playSong(song, { startAt: getHookStart(song) });
+              }}
+              style={[styles.queueRow, activeSong?.id === song.id && styles.queueRowActive]}
+            >
               <Text style={styles.queueRank}>{index + 1}</Text>
               <View style={styles.queueText}>
                 <Text style={styles.queueTitle} numberOfLines={1}>
@@ -97,13 +131,19 @@ export function ForYouScreen() {
                   {song.artist_name || song.creatorName || 'Creator'}
                 </Text>
               </View>
-              <Text style={styles.queueLikes}>{song.likes_count ?? 0} Likes</Text>
-            </View>
+              <Text style={styles.queueLikes}>
+                {activeSong?.id === song.id && isPlaying ? 'Laeuft' : `${song.likes_count ?? 0} Likes`}
+              </Text>
+            </TouchableOpacity>
           ))}
         </View>
       ) : null}
     </View>
   );
+}
+
+function getHookStart(song: FeedPreviewSong | null) {
+  return Math.max(0, song?.clip?.hook_start_seconds ?? 0);
 }
 
 const styles = StyleSheet.create({
@@ -169,6 +209,39 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: 12,
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  primaryAction: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.text,
+    borderRadius: 16,
+    flex: 1,
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  primaryActionText: {
+    color: '#050505',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  secondaryAction: {
+    alignItems: 'center',
+    borderColor: theme.colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: 16,
+  },
+  secondaryActionText: {
+    color: theme.colors.text,
+    fontSize: 14,
+    fontWeight: '900',
+  },
   stateBox: {
     alignItems: 'center',
     borderColor: theme.colors.border,
@@ -206,6 +279,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     padding: 12,
+  },
+  queueRowActive: {
+    backgroundColor: 'rgba(124,58,237,0.18)',
+    borderColor: 'rgba(124,58,237,0.42)',
   },
   queueRank: {
     color: theme.colors.subtle,
