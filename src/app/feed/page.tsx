@@ -1,22 +1,19 @@
 'use client';
 
-import { FormEvent, PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Bookmark,
   Check,
   ChevronDown,
   ChevronUp,
   Compass,
   Heart,
   Loader2,
-  MessageCircle,
   Music2,
   Play,
   Plus,
   Save,
-  Send,
   Settings2,
   Share2,
   Sparkles,
@@ -42,21 +39,11 @@ interface FeedClip {
 interface FeedStats {
   song_id: string;
   likes_count: number;
-  comments_count: number;
-  saves_count: number;
 }
 
 interface FeedProfile {
   username?: string | null;
   avatar_url?: string | null;
-}
-
-interface FeedComment {
-  id: string;
-  user_id: string;
-  body: string;
-  created_at: string;
-  profiles?: FeedProfile | FeedProfile[] | null;
 }
 
 type FeedSongRecord = Song & {
@@ -72,23 +59,20 @@ type FeedSong = Song & {
 };
 
 type FeedMode = 'for-you' | 'following' | 'explore';
-type StatsKey = 'likes_count' | 'comments_count' | 'saves_count';
+type StatsKey = 'likes_count';
 
 interface FeedCardProps {
   song: FeedSong;
   active: boolean;
   muted: boolean;
   liked: boolean;
-  saved: boolean;
   following: boolean;
   isAdmin: boolean;
   onAutoplayBlocked: () => void;
-  onComment: () => void;
   onEdit: () => void;
   onFollow: () => void;
   onLike: (forceLike?: boolean) => void;
   onListen: () => void;
-  onSave: () => void;
   onShare: () => void;
   onToggleMute: () => void;
   onUserInteraction: () => void;
@@ -117,13 +101,7 @@ function getStats(record: FeedSongRecord): FeedStats {
   return getSingleRelation(record.song_feed_stats) || {
     song_id: record.id,
     likes_count: 0,
-    comments_count: 0,
-    saves_count: 0,
   };
-}
-
-function getCommentProfile(comment: FeedComment): FeedProfile | null {
-  return getSingleRelation(comment.profiles);
 }
 
 function formatCount(value: number): string {
@@ -137,21 +115,27 @@ function stableHash(value: string): number {
   return value.split('').reduce((hash, character) => ((hash << 5) - hash) + character.charCodeAt(0), 0);
 }
 
+function getForYouScore(song: FeedSong, likedGenres: Set<string>, followedArtists: Set<string>): number {
+  return (
+    Math.log10(Math.max(1, song.plays + 1)) * 12
+    + song.stats.likes_count * 5
+    + (song.genre && likedGenres.has(song.genre) ? 18 : 0)
+    + (followedArtists.has(song.artist_name || song.creatorName || 'Creator') ? 22 : 0)
+  );
+}
+
 function FeedCard({
   song,
   active,
   muted,
   liked,
-  saved,
   following,
   isAdmin,
   onAutoplayBlocked,
-  onComment,
   onEdit,
   onFollow,
   onLike,
   onListen,
-  onSave,
   onShare,
   onToggleMute,
   onUserInteraction,
@@ -307,7 +291,7 @@ function FeedCard({
           </button>
         ) : null}
 
-        <div className="absolute bottom-28 right-3 z-20 flex flex-col items-center gap-4 text-white">
+        <div className="absolute bottom-[calc(9.5rem+env(safe-area-inset-bottom))] right-3 z-20 flex flex-col items-center gap-4 text-white md:bottom-28" onPointerDown={(event) => event.stopPropagation()}>
           <button type="button" onClick={onFollow} className="group relative" aria-label={following ? `${displayArtist} nicht mehr folgen` : `${displayArtist} folgen`}>
             <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-violet-950 text-sm font-black shadow-lg">
               {avatarUrl ? <img src={avatarUrl} alt={displayArtist} className="h-full w-full object-cover" /> : displayArtist.slice(0, 1).toUpperCase()}
@@ -322,16 +306,6 @@ function FeedCard({
             <span className="text-[11px] font-bold">{formatCount(song.stats.likes_count)}</span>
           </button>
 
-          <button type="button" onClick={onComment} className="flex flex-col items-center gap-1" aria-label={`Kommentare zu ${song.title}`}>
-            <MessageCircle className="h-8 w-8 fill-black/20 text-white drop-shadow-lg" strokeWidth={2.3} />
-            <span className="text-[11px] font-bold">{formatCount(song.stats.comments_count)}</span>
-          </button>
-
-          <button type="button" onClick={onSave} className="flex flex-col items-center gap-1" aria-label={saved ? `${song.title} nicht mehr speichern` : `${song.title} speichern`}>
-            <Bookmark className={`h-8 w-8 drop-shadow-lg transition-transform active:scale-75 ${saved ? 'fill-amber-300 text-amber-300' : 'fill-black/20 text-white'}`} strokeWidth={2.3} />
-            <span className="text-[11px] font-bold">{formatCount(song.stats.saves_count)}</span>
-          </button>
-
           <button type="button" onClick={onShare} className="flex flex-col items-center gap-1" aria-label={`${song.title} teilen`}>
             <Share2 className="h-8 w-8 fill-black/20 text-white drop-shadow-lg" strokeWidth={2.3} />
             <span className="text-[11px] font-bold">Teilen</span>
@@ -342,7 +316,7 @@ function FeedCard({
           </button>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 z-10 p-5 pr-20">
+        <div className="absolute inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-10 p-5 pr-20 md:bottom-0" onPointerDown={(event) => event.stopPropagation()}>
           <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-violet-300">
             <Music2 className="h-4 w-4" />
             Yoriax Hook
@@ -357,7 +331,7 @@ function FeedCard({
           <button
             type="button"
             onClick={onListen}
-            className="mt-4 flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-black transition-transform hover:scale-[1.02]"
+            className="mt-4 flex w-fit items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-black shadow-[0_0_30px_rgba(255,255,255,0.25)] transition-transform hover:scale-[1.02] sm:px-6 sm:py-3.5 sm:text-base"
           >
             <Play className="h-4 w-4 fill-current" />
             Ganzen Song hören
@@ -380,15 +354,9 @@ export default function FeedPage() {
   const [soundHint, setSoundHint] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [userLabel, setUserLabel] = useState('Du');
   const [likedSongIds, setLikedSongIds] = useState<Set<string>>(new Set());
-  const [savedSongIds, setSavedSongIds] = useState<Set<string>>(new Set());
   const [followedArtists, setFollowedArtists] = useState<Set<string>>(new Set());
-  const [commentsSong, setCommentsSong] = useState<FeedSong | null>(null);
-  const [comments, setComments] = useState<FeedComment[]>([]);
-  const [commentsLoading, setCommentsLoading] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const [commentSending, setCommentSending] = useState(false);
+  const [rankingScores, setRankingScores] = useState<Record<string, number>>({});
   const [actionError, setActionError] = useState('');
   const [editingSong, setEditingSong] = useState<FeedSong | null>(null);
   const [hookStart, setHookStart] = useState(0);
@@ -399,6 +367,7 @@ export default function FeedPage() {
   const [saveError, setSaveError] = useState('');
   const scrollerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Array<HTMLElement | null>>([]);
+  const scrollRafRef = useRef<number | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -411,7 +380,7 @@ export default function FeedPage() {
       const [{ data: songData, error }, { data: sessionData }] = await Promise.all([
         supabase
           .from('songs')
-          .select('*, profiles!songs_creator_id_fkey(username, avatar_url), song_feed_clips(song_id, video_url, hook_start_seconds, hook_end_seconds), song_feed_stats(song_id, likes_count, comments_count, saves_count)')
+          .select('*, profiles!songs_creator_id_fkey(username, avatar_url), song_feed_clips(song_id, video_url, hook_start_seconds, hook_end_seconds), song_feed_stats(song_id, likes_count)')
           .order('plays', { ascending: false })
           .limit(80),
         supabase.auth.getSession(),
@@ -426,31 +395,38 @@ export default function FeedPage() {
       }));
 
       const session = sessionData.session;
-      setSongs(feedSongs);
+      let initialLikedSongIds = new Set<string>();
+      let initialFollowedArtists = new Set<string>();
+
       setIsAdmin(isAdminUser(session?.user));
       setUserId(session?.user.id || null);
-      setUserLabel(session?.user.user_metadata?.username || session?.user.email?.split('@')[0] || 'Du');
 
       if (session) {
-        const [{ data: likes }, { data: saves }, { data: follows }] = await Promise.all([
+        const [{ data: likes }, { data: follows }] = await Promise.all([
           supabase.from('liked_songs').select('song_id').eq('user_id', session.user.id),
-          supabase.from('feed_saves').select('song_id').eq('user_id', session.user.id),
           supabase.from('follows').select('artist_name').eq('user_id', session.user.id),
         ]);
-        setLikedSongIds(new Set((likes || []).map((item) => item.song_id)));
-        setSavedSongIds(new Set((saves || []).map((item) => item.song_id)));
-        setFollowedArtists(new Set((follows || []).map((item) => item.artist_name)));
+        initialLikedSongIds = new Set((likes || []).map((item) => item.song_id));
+        initialFollowedArtists = new Set((follows || []).map((item) => item.artist_name));
       }
 
+      const initialLikedGenres = new Set<string>(
+        feedSongs.flatMap((song) => (
+          initialLikedSongIds.has(song.id) && song.genre ? [song.genre] : []
+        )),
+      );
+
+      setSongs(feedSongs);
+      setLikedSongIds(initialLikedSongIds);
+      setFollowedArtists(initialFollowedArtists);
+      setRankingScores(Object.fromEntries(
+        feedSongs.map((song) => [song.id, getForYouScore(song, initialLikedGenres, initialFollowedArtists)]),
+      ));
       setLoading(false);
     };
 
     loadFeed();
   }, [supabase]);
-
-  const likedGenres = useMemo(() => new Set(
-    songs.filter((song) => likedSongIds.has(song.id)).map((song) => song.genre).filter(Boolean),
-  ), [likedSongIds, songs]);
 
   const displayedSongs = useMemo(() => {
     if (mode === 'following') {
@@ -463,18 +439,11 @@ export default function FeedPage() {
 
     return songs
       .filter((song) => song.genre?.trim().toLowerCase() !== 'chillhop')
-      .sort((first, second) => {
-      const getScore = (song: FeedSong) => (
-        Math.log10(Math.max(1, song.plays + 1)) * 12
-        + song.stats.likes_count * 5
-        + song.stats.saves_count * 3
-        + song.stats.comments_count * 2
-        + (likedGenres.has(song.genre) ? 18 : 0)
-        + (followedArtists.has(song.artist_name || song.creatorName || 'Creator') ? 22 : 0)
-      );
-      return getScore(second) - getScore(first);
-      });
-  }, [followedArtists, likedGenres, mode, songs]);
+      .sort((first, second) => (
+        (rankingScores[second.id] || 0) - (rankingScores[first.id] || 0)
+        || stableHash(first.id) - stableHash(second.id)
+      ));
+  }, [followedArtists, mode, rankingScores, songs]);
 
   const changeMode = (nextMode: FeedMode) => {
     itemRefs.current = [];
@@ -484,27 +453,63 @@ export default function FeedPage() {
   };
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
-            const index = Number((entry.target as HTMLElement).dataset.index);
-            if (Number.isInteger(index)) setActiveIndex(index);
-          }
-        }
-      },
-      { root: scrollerRef.current, threshold: [0.65] },
-    );
+    if (activeIndex < displayedSongs.length) return;
+    const frame = window.requestAnimationFrame(() => {
+      setActiveIndex(Math.max(0, displayedSongs.length - 1));
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeIndex, displayedSongs.length]);
 
-    itemRefs.current.forEach((element) => {
-      if (element) observer.observe(element);
+  const updateActiveFromScroll = useCallback(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || displayedSongs.length === 0) return;
+
+    const scrollerRect = scroller.getBoundingClientRect();
+    const focusY = scrollerRect.top + scrollerRect.height / 2;
+    let nextIndex = 0;
+    let smallestDistance = Number.POSITIVE_INFINITY;
+
+    itemRefs.current.forEach((element, index) => {
+      if (!element) return;
+      const rect = element.getBoundingClientRect();
+      const centerY = rect.top + rect.height / 2;
+      const distance = Math.abs(centerY - focusY);
+      if (distance < smallestDistance) {
+        smallestDistance = distance;
+        nextIndex = index;
+      }
     });
 
-    return () => observer.disconnect();
-  }, [displayedSongs]);
+    setActiveIndex((currentIndex) => (currentIndex === nextIndex ? currentIndex : nextIndex));
+  }, [displayedSongs.length]);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const scheduleActiveUpdate = () => {
+      if (scrollRafRef.current !== null) return;
+      scrollRafRef.current = window.requestAnimationFrame(() => {
+        scrollRafRef.current = null;
+        updateActiveFromScroll();
+      });
+    };
+
+    scheduleActiveUpdate();
+    scroller.addEventListener('scroll', scheduleActiveUpdate, { passive: true });
+
+    return () => {
+      scroller.removeEventListener('scroll', scheduleActiveUpdate);
+      if (scrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = null;
+      }
+    };
+  }, [displayedSongs.length, mode, updateActiveFromScroll]);
 
   const scrollToIndex = useCallback((index: number) => {
     const targetIndex = Math.max(0, Math.min(displayedSongs.length - 1, index));
+    setActiveIndex(targetIndex);
     itemRefs.current[targetIndex]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [displayedSongs.length]);
 
@@ -569,35 +574,6 @@ export default function FeedPage() {
     }
   };
 
-  const toggleSave = async (song: FeedSong) => {
-    if (!requireLogin()) return;
-    const currentlySaved = savedSongIds.has(song.id);
-    const nextSaved = !currentlySaved;
-
-    setSavedSongIds((currentIds) => {
-      const nextIds = new Set(currentIds);
-      if (nextSaved) nextIds.add(song.id);
-      else nextIds.delete(song.id);
-      return nextIds;
-    });
-    updateSongStats(song.id, 'saves_count', nextSaved ? 1 : -1);
-
-    const { error } = nextSaved
-      ? await supabase.from('feed_saves').insert({ user_id: userId, song_id: song.id })
-      : await supabase.from('feed_saves').delete().eq('user_id', userId).eq('song_id', song.id);
-
-    if (error) {
-      setActionError('Speichern ist fehlgeschlagen.');
-      setSavedSongIds((currentIds) => {
-        const nextIds = new Set(currentIds);
-        if (currentlySaved) nextIds.add(song.id);
-        else nextIds.delete(song.id);
-        return nextIds;
-      });
-      updateSongStats(song.id, 'saves_count', nextSaved ? -1 : 1);
-    }
-  };
-
   const toggleFollow = async (song: FeedSong) => {
     if (!requireLogin()) return;
     const artist = song.artist_name || song.creatorName || 'Creator';
@@ -623,45 +599,6 @@ export default function FeedPage() {
         return nextArtists;
       });
     }
-  };
-
-  const openComments = async (song: FeedSong) => {
-    setCommentsSong(song);
-    setCommentsLoading(true);
-    setComments([]);
-    const { data, error } = await supabase
-      .from('feed_comments')
-      .select('id, user_id, body, created_at, profiles!feed_comments_user_id_fkey(username, avatar_url)')
-      .eq('song_id', song.id)
-      .order('created_at', { ascending: false })
-      .limit(100);
-    if (error) setActionError('Kommentare konnten nicht geladen werden.');
-    setComments((data || []) as FeedComment[]);
-    setCommentsLoading(false);
-  };
-
-  const submitComment = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!commentsSong || !requireLogin()) return;
-    const body = commentText.trim();
-    if (!body) return;
-
-    setCommentSending(true);
-    const { data, error } = await supabase
-      .from('feed_comments')
-      .insert({ user_id: userId, song_id: commentsSong.id, body })
-      .select('id, user_id, body, created_at')
-      .single();
-    setCommentSending(false);
-
-    if (error) {
-      setActionError('Kommentar konnte nicht veröffentlicht werden.');
-      return;
-    }
-
-    setComments((currentComments) => [{ ...data, profiles: { username: userLabel } }, ...currentComments]);
-    setCommentText('');
-    updateSongStats(commentsSong.id, 'comments_count', 1);
   };
 
   const listenToFullSong = (song: FeedSong, index: number) => {
@@ -829,16 +766,13 @@ export default function FeedPage() {
                     active={index === activeIndex}
                     muted={muted}
                     liked={likedSongIds.has(song.id)}
-                    saved={savedSongIds.has(song.id)}
                     following={followedArtists.has(artist)}
                     isAdmin={isAdmin}
                     onAutoplayBlocked={handleAutoplayBlocked}
-                    onComment={() => openComments(song)}
                     onEdit={() => openEditor(song)}
                     onFollow={() => toggleFollow(song)}
                     onLike={(forceLike) => toggleLike(song, forceLike)}
                     onListen={() => listenToFullSong(song, index)}
-                    onSave={() => toggleSave(song)}
                     onShare={() => shareSong(song)}
                     onToggleMute={() => {
                       setAutoplayMuted(false);
@@ -851,7 +785,7 @@ export default function FeedPage() {
             })}
           </div>
 
-          <div className="absolute right-5 top-1/2 z-30 hidden -translate-y-1/2 flex-col gap-3 md:flex">
+          <div className="absolute left-4 top-1/2 z-30 flex -translate-y-1/2 flex-col gap-3 md:left-auto md:right-5">
             <button type="button" onClick={() => scrollToIndex(activeIndex - 1)} disabled={activeIndex === 0} className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 disabled:opacity-25" aria-label="Vorheriger Hook">
               <ChevronUp className="h-6 w-6" />
             </button>
@@ -865,49 +799,6 @@ export default function FeedPage() {
           </div>
         </>
       )}
-
-      {commentsSong ? (
-        <div className="fixed inset-0 z-[110] flex items-end justify-end bg-black/45 md:p-4" onClick={() => setCommentsSong(null)}>
-          <section className="flex h-[72dvh] w-full flex-col rounded-t-3xl border border-white/10 bg-[#151515] shadow-2xl md:h-full md:max-w-md md:rounded-3xl" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-400">Kommentare</p>
-                <h2 className="mt-1 truncate text-lg font-black text-white">{commentsSong.title}</h2>
-              </div>
-              <button type="button" onClick={() => setCommentsSong(null)} className="text-white/55 hover:text-white" aria-label="Kommentare schließen">
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-              {commentsLoading ? <Loader2 className="mx-auto mt-8 h-7 w-7 animate-spin text-violet-400" /> : null}
-              {!commentsLoading && comments.length === 0 ? <p className="mt-8 text-center text-sm text-white/45">Noch keine Kommentare. Starte die Unterhaltung.</p> : null}
-              {comments.map((comment) => {
-                const profile = getCommentProfile(comment);
-                const username = profile?.username || 'Yoriax User';
-                return (
-                  <article key={comment.id} className="flex gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-violet-900/70 text-xs font-black text-white">
-                      {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" /> : username.slice(0, 1).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-white/65">@{username}</p>
-                      <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-white/90">{comment.body}</p>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-
-            <form onSubmit={submitComment} className="flex gap-2 border-t border-white/10 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-              <input value={commentText} onChange={(event) => setCommentText(event.target.value)} maxLength={500} placeholder="Kommentar hinzufügen..." className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-violet-400/70" />
-              <button type="submit" disabled={commentSending || !commentText.trim()} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-500 text-white transition-colors hover:bg-violet-400 disabled:opacity-35" aria-label="Kommentar veröffentlichen">
-                {commentSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-              </button>
-            </form>
-          </section>
-        </div>
-      ) : null}
 
       {editingSong ? (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" onClick={() => setEditingSong(null)}>

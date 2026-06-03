@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, Clock3, Heart, Shuffle, List, Check, Menu } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Clock3, Heart, Shuffle, List, Check, Menu } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import { useTranslation } from 'react-i18next';
 import LikeButton from '@/components/ui/LikeButton';
@@ -125,6 +125,15 @@ export default function LikedSongsPage() {
       {/* Background Gradient Header - Premium Glassmorphism (Not Spotify) */}
       <div className="absolute top-0 left-0 right-0 h-[600px] bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-[#0A0A0A] blur-3xl pointer-events-none" />
       <div className="absolute left-1/2 top-16 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-[120px] pointer-events-none md:left-auto md:right-20 md:top-20 md:h-96 md:w-96 md:translate-x-0" />
+
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="absolute left-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 hover:text-white md:left-8 md:top-8"
+        aria-label="Zurück"
+      >
+        <ArrowLeft className="h-6 w-6" />
+      </button>
       
       {/* Header Content */}
       <div className="relative flex flex-col items-center gap-5 px-5 pb-7 pt-10 text-center md:flex-row md:items-end md:gap-10 md:px-10 md:pb-8 md:pt-24 md:text-left">
