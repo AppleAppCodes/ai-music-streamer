@@ -182,10 +182,9 @@ function FeedCard({
         media.currentTime = Math.min(song.clip.hook_start_seconds, maxStart);
       }
       media.play().catch(() => {
-        if (!media.muted) {
-          media.muted = true;
+        if (!muted) {
+          media.muted = false;
           onAutoplayBlocked();
-          media.play().catch(() => {});
         }
       });
     };
@@ -237,7 +236,6 @@ function FeedCard({
   };
 
   const unlockSoundFromGesture = () => {
-    if (!muted) return;
     const media = mediaRef.current;
     if (media) {
       media.muted = false;
@@ -690,9 +688,9 @@ export default function FeedPage() {
   };
 
   const handleAutoplayBlocked = useCallback(() => {
-    setMuted(true);
+    setMuted(false);
     setAutoplayMuted(true);
-    setSoundHint('Tippe auf den Lautsprecher, um den Ton einzuschalten.');
+    setSoundHint('Tippe auf den Hook, um den Ton zu starten.');
     window.setTimeout(() => setSoundHint(''), 3500);
   }, []);
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Library, Music, Search } from 'lucide-react';
+import { Music, Search } from 'lucide-react';
 import Link from 'next/link';
 
 interface Playlist {
@@ -14,6 +14,10 @@ interface Playlist {
     username: string;
   };
 }
+
+type PlaylistRow = Omit<Playlist, 'profiles'> & {
+  profiles: Playlist['profiles'] | Playlist['profiles'][] | null;
+};
 
 export default function DiscoverPlaylistsPage() {
   const supabase = createClient();
@@ -34,7 +38,16 @@ export default function DiscoverPlaylistsPage() {
       }
 
       const { data } = await query;
-      if (data) setPlaylists(data as any[]);
+      if (data) {
+        setPlaylists(
+          (data as PlaylistRow[]).map((playlist) => ({
+            ...playlist,
+            profiles: Array.isArray(playlist.profiles)
+              ? playlist.profiles[0] || { username: 'Unbekannt' }
+              : playlist.profiles || { username: 'Unbekannt' },
+          }))
+        );
+      }
       setLoading(false);
     }
     

@@ -1,11 +1,9 @@
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import HeaderClient from './HeaderClient';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-export default async function Header() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+export default function Header({ user }: { user: SupabaseUser | null }) {
   async function signOutAction() {
     'use server';
     const sb = await createClient();

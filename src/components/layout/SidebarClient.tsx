@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserCheck, UsersRound, Sparkles } from 'lucide-react';
+import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserCheck, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
 import { isAdminUser } from '@/lib/admin';
@@ -52,10 +52,6 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
           <Link href="/discover/playlists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
             <ListMusic className="w-5 h-5 group-hover:text-primary transition-colors" />
             Playlists Entdecken
-          </Link>
-          <Link href="/friends" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
-            <UsersRound className="w-5 h-5 group-hover:text-primary transition-colors" />
-            Friend Feed
           </Link>
         </nav>
       </div>

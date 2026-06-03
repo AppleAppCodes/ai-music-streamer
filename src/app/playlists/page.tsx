@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Library, Music, Plus } from 'lucide-react';
+import { Heart, Library, Music, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -18,6 +18,7 @@ export default function PlaylistsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [likedSongsCount, setLikedSongsCount] = useState(0);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -28,13 +29,20 @@ export default function PlaylistsPage() {
         return;
       }
 
-      const { data } = await supabase
-        .from('playlists')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false });
+      const [{ data: playlistData }, { count }] = await Promise.all([
+        supabase
+          .from('playlists')
+          .select('id, title, cover_url, created_at')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('liked_songs')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', session.user.id),
+      ]);
 
-      if (data) setPlaylists(data);
+      if (playlistData) setPlaylists(playlistData);
+      setLikedSongsCount(count || 0);
       setLoading(false);
     }
     loadPlaylists();
@@ -81,68 +89,96 @@ export default function PlaylistsPage() {
         <div className="w-full h-full bg-gradient-to-b from-indigo-900/30 via-[#0A0A0A]/80 to-[#0A0A0A]" />
       </div>
 
-      <div className="relative pt-16 px-6 md:px-10 pb-6 z-10">
-        <div className="flex justify-between items-end mb-8">
+      <div className="relative z-10 px-4 pb-6 pt-10 sm:px-6 md:px-10 md:pt-16">
+        <div className="mb-6 flex items-end justify-between gap-4 md:mb-8">
           <div>
             <p className="text-sm text-white/50 uppercase tracking-wider font-semibold mb-1">Deine Bibliothek</p>
-            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">Meine Playlists</h1>
+            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">Bibliothek</h1>
           </div>
           <button 
             onClick={handleCreate}
             disabled={creating}
-            className="flex items-center gap-2 px-6 py-2.5 bg-white text-black hover:bg-gray-200 rounded-full font-bold transition-transform hover:scale-105 shadow-xl disabled:opacity-50"
+            className="flex shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-black shadow-xl transition-transform hover:scale-105 hover:bg-gray-200 disabled:opacity-50 sm:px-6"
           >
             <Plus className="w-5 h-5" />
-            Erstellen
+            <span className="hidden sm:inline">Erstellen</span>
           </button>
         </div>
 
-        {playlists.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-6">
-              <Library className="w-12 h-12 text-white/20" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Noch keine Playlists</h2>
-            <p className="text-white/50 max-w-md mb-8">
-              Erstelle deine erste Playlist und fange an, deine Lieblingssongs zu sammeln.
-            </p>
-            <button 
-              onClick={handleCreate}
-              disabled={creating}
-              className="px-8 py-3 bg-primary hover:bg-primary-hover text-white rounded-full font-bold transition-colors"
+        <div className="space-y-8">
+          <section>
+            <Link
+              href="/collection/tracks"
+              className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.055] p-3.5 shadow-xl shadow-black/20 transition-all hover:border-white/20 hover:bg-white/[0.09] md:max-w-xl"
             >
-              Playlist erstellen
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
-            {playlists.map((playlist) => (
-              <Link
-                key={playlist.id}
-                href={`/playlist/${playlist.id}`}
-                className="group relative flex flex-col gap-3 p-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all duration-300"
-              >
-                <div className="relative aspect-square w-full rounded-lg overflow-hidden shadow-lg bg-[#282828] flex items-center justify-center">
-                  {playlist.cover_url ? (
-                    <img
-                      src={playlist.cover_url}
-                      alt={playlist.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <Music className="w-16 h-16 text-white/20" />
-                  )}
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_22px_rgba(168,85,247,0.35)]">
+                <Heart className="h-8 w-8 fill-white text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-lg font-black text-white">Lieblingssongs</h2>
+                <p className="mt-0.5 text-sm font-medium text-white/45">
+                  {likedSongsCount} {likedSongsCount === 1 ? 'Song' : 'Songs'}
+                </p>
+              </div>
+              <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-white/55 transition-colors group-hover:text-white">
+                Öffnen
+              </span>
+            </Link>
+          </section>
+
+          <section>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-2xl font-black tracking-tight text-white">Deine Playlists</h2>
+            </div>
+
+            {playlists.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/[0.035] px-5 py-16 text-center">
+                <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6">
+                  <Library className="w-10 h-10 text-white/20" />
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-semibold text-white truncate">{playlist.title}</span>
-                  <span className="text-xs text-white/40 truncate mt-0.5">
-                    Von Dir
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+                <h3 className="text-2xl font-bold text-white mb-2">Noch keine Playlists</h3>
+                <p className="text-white/50 max-w-md mb-8">
+                  Erstelle deine erste Playlist und sammle Songs nach deinem Geschmack.
+                </p>
+                <button 
+                  onClick={handleCreate}
+                  disabled={creating}
+                  className="px-8 py-3 bg-primary hover:bg-primary-hover text-white rounded-full font-bold transition-colors"
+                >
+                  Playlist erstellen
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                {playlists.map((playlist) => (
+                  <Link
+                    key={playlist.id}
+                    href={`/playlist/${playlist.id}`}
+                    className="group relative flex items-center gap-3 rounded-2xl bg-white/[0.03] p-3 transition-all duration-300 hover:bg-white/[0.08] sm:flex-col sm:items-stretch sm:gap-3 sm:p-3.5"
+                  >
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#282828] flex items-center justify-center shadow-lg sm:aspect-square sm:h-auto sm:w-full sm:rounded-lg">
+                      {playlist.cover_url ? (
+                        <img
+                          src={playlist.cover_url}
+                          alt={playlist.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <Music className="h-8 w-8 text-white/20 sm:h-16 sm:w-16" />
+                      )}
+                    </div>
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm font-semibold text-white">{playlist.title}</span>
+                      <span className="mt-0.5 truncate text-xs text-white/40">
+                        Von Dir
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );

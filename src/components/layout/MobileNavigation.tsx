@@ -1,9 +1,6 @@
-import { createClient } from '@/utils/supabase/server';
 import MobileNavigationClient from './MobileNavigationClient';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-export default async function MobileNavigation() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+export default function MobileNavigation({ user }: { user: SupabaseUser | null }) {
   return <MobileNavigationClient user={user} />;
 }

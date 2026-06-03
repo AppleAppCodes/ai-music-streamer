@@ -64,14 +64,6 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
             Profil
           </Link>
 
-          <Link 
-            href="/friends"
-            onClick={() => setIsOpen(false)}
-            className="block px-4 py-2.5 mx-2 rounded-lg hover:bg-purple-500/10 hover:text-purple-300 transition-colors"
-          >
-            Friend Feed
-          </Link>
-
           <Link
             href="mailto:apply@yoriax.com?subject=Bewerbung%20als%20KI-Künstler%20bei%20Yoriax" 
             onClick={() => setIsOpen(false)}

@@ -1,9 +1,6 @@
-import { createClient } from '@/utils/supabase/server';
 import SidebarClient from './SidebarClient';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-export default async function Sidebar() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+export default function Sidebar({ user }: { user: SupabaseUser | null }) {
   return <SidebarClient user={user} />;
 }

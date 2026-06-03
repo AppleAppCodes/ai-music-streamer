@@ -6,7 +6,6 @@ import Header from "@/components/layout/Header";
 import AudioPlayer from "@/components/layout/AudioPlayer";
 import PlayerLayout from "@/components/layout/PlayerLayout";
 import CookieConsent from "@/components/ui/CookieConsent";
-import ListeningPresenceSync from "@/components/social/ListeningPresenceSync";
 import MobileNavigation from "@/components/layout/MobileNavigation";
 import GuestPreviewBanner from "@/components/layout/GuestPreviewBanner";
 import { createClient } from "@/utils/supabase/server";
@@ -55,9 +54,9 @@ export default async function RootLayout({
             }}
           />
           <div className="flex h-full w-full relative z-0">
-            {user ? <Sidebar /> : null}
+            {user ? <Sidebar user={user} /> : null}
             <div className="flex-1 flex flex-col relative min-w-0">
-              <Header />
+              <Header user={user} />
               <main className={`flex-1 overflow-y-auto no-scrollbar bg-gradient-to-b from-surface to-background ${
                 user
                   ? 'pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-28'
@@ -69,9 +68,8 @@ export default async function RootLayout({
           </div>
           {user ? (
             <>
-              <ListeningPresenceSync />
               <AudioPlayer />
-              <MobileNavigation />
+              <MobileNavigation user={user} />
             </>
           ) : (
             <GuestPreviewBanner />
