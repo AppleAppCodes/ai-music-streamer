@@ -8,6 +8,7 @@ Goal: build real native apps for Android and iOS stores. The current mobile brow
 - Native app starts as a sidecar Expo project in `apps/mobile`.
 - Shared backend remains Supabase: Auth, songs, playlists, likes, feed hooks, storage and charts.
 - Shared code will be extracted later only where it reduces duplication safely.
+- Supabase Auth is wired in the native shell with AsyncStorage session persistence. The native app only uses public Supabase client keys, never service-role keys.
 
 ## Testing
 
@@ -32,6 +33,7 @@ Goal: build real native apps for Android and iOS stores. The current mobile brow
 - Web autoplay restrictions do not apply the same way in native app audio sessions.
 - We should not ship a simple WebView wrapper as the final app.
 - We can still reuse API contracts, types, theme decisions and product logic from the web app.
+- If Supabase captcha protection is enforced for email/password auth, native login needs a dedicated Turnstile/native captcha flow before store release.
 
 ## Current Technical Notes
 

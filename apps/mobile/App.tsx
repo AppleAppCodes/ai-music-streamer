@@ -1,12 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { AuthProvider, useAuth } from './src/lib/auth-context';
+import { hasSupabaseConfig } from './src/lib/env';
+import { AuthScreen } from './src/screens/AuthScreen';
 import { LibraryScreen } from './src/screens/LibraryScreen';
 import { ForYouScreen } from './src/screens/ForYouScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { theme } from './src/theme';
-import { hasSupabaseConfig } from './src/lib/env';
 
 type TabId = 'home' | 'for-you' | 'library';
 
@@ -17,35 +19,69 @@ const tabs: Array<{ id: TabId; label: string }> = [
 ];
 
 export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
+    </SafeAreaProvider>
+  );
+}
+
+function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>('home');
+  const { initializing, signOut, user } = useAuth();
   const activeScreen = useMemo(() => {
     if (activeTab === 'for-you') return <ForYouScreen />;
     if (activeTab === 'library') return <LibraryScreen />;
     return <HomeScreen />;
   }, [activeTab]);
+  const signedIn = Boolean(user);
+  const headerStatus = getHeaderStatus(initializing, user?.email ?? null);
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
-        <StatusBar style="light" />
-        <View style={styles.header}>
-          <View style={styles.logo} accessibilityLabel="Yoriax Logo">
-            <View style={[styles.logoBar, styles.logoBarSmall]} />
-            <View style={[styles.logoBar, styles.logoBarLarge]} />
-            <View style={[styles.logoBar, styles.logoBarMedium]} />
-          </View>
-          <View style={styles.headerText}>
-            <Text style={styles.brand}>YORIAX</Text>
-            <Text style={styles.connection}>
-              {hasSupabaseConfig ? 'Native App Basis verbunden' : 'Supabase Env fehlt'}
-            </Text>
-          </View>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+      <StatusBar style="light" />
+      <View style={styles.header}>
+        <View style={styles.logo} accessibilityLabel="Yoriax Logo">
+          <View style={[styles.logoBar, styles.logoBarSmall]} />
+          <View style={[styles.logoBar, styles.logoBarLarge]} />
+          <View style={[styles.logoBar, styles.logoBarMedium]} />
         </View>
+        <View style={styles.headerText}>
+          <Text style={styles.brand}>YORIAX</Text>
+          <Text style={styles.connection}>{headerStatus}</Text>
+        </View>
+        {signedIn ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => {
+              void signOut();
+            }}
+            style={styles.logoutButton}
+          >
+            <Text style={styles.logoutText}>Abmelden</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {activeScreen}
-        </ScrollView>
+      <ScrollView
+        contentContainerStyle={[styles.content, !signedIn && styles.authContent]}
+        showsVerticalScrollIndicator={false}
+      >
+        {initializing ? (
+          <View style={styles.loadingCard}>
+            <ActivityIndicator color={theme.colors.text} />
+            <Text style={styles.loadingText}>Session wird geladen</Text>
+          </View>
+        ) : signedIn ? (
+          activeScreen
+        ) : (
+          <AuthScreen />
+        )}
+      </ScrollView>
 
+      {signedIn ? (
         <View style={styles.tabBar}>
           {tabs.map((tab) => {
             const active = activeTab === tab.id;
@@ -62,9 +98,16 @@ export default function App() {
             );
           })}
         </View>
-      </SafeAreaView>
-    </SafeAreaProvider>
+      ) : null}
+    </SafeAreaView>
   );
+}
+
+function getHeaderStatus(initializing: boolean, email: string | null) {
+  if (!hasSupabaseConfig) return 'Supabase Env fehlt';
+  if (initializing) return 'Session wird geladen';
+  if (email) return `Angemeldet als ${email}`;
+  return 'Native Auth bereit';
 }
 
 const styles = StyleSheet.create({
@@ -120,6 +163,37 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingBottom: 110,
+  },
+  authContent: {
+    flexGrow: 1,
+    paddingBottom: 34,
+  },
+  loadingCard: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 12,
+    marginTop: 80,
+    padding: 24,
+  },
+  loadingText: {
+    color: theme.colors.muted,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  logoutButton: {
+    borderColor: theme.colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  logoutText: {
+    color: theme.colors.text,
+    fontSize: 12,
+    fontWeight: '800',
   },
   tabBar: {
     backgroundColor: 'rgba(5,5,5,0.96)',
