@@ -49,7 +49,7 @@ export default async function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${syncopate.variable} h-full antialiased dark`}
     >
-      <body className="h-full flex flex-col bg-background text-foreground overflow-hidden">
+      <body className="flex min-h-full flex-col overflow-x-hidden bg-background text-foreground md:h-full md:overflow-hidden">
         <PlayerLayout>
           {/* Global Film Grain Overlay */}
           <div 
@@ -58,11 +58,11 @@ export default async function RootLayout({
               backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
             }}
           />
-          <div className="flex h-full w-full relative z-0">
+          <div className="relative z-0 flex min-h-dvh w-full md:h-full md:min-h-0">
             {user ? <Sidebar user={user} /> : null}
             <div className="flex-1 flex flex-col relative min-w-0">
               <Header user={user} />
-              <main className={`flex-1 overflow-y-auto no-scrollbar bg-gradient-to-b from-surface to-background ${
+              <main className={`bg-gradient-to-b from-surface to-background md:flex-1 md:overflow-y-auto md:no-scrollbar ${
                 user
                   ? 'pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-28'
                   : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'

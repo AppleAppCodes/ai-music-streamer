@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Mic2, Play, Users, Edit2, Loader2, Music } from 'lucide-react';
+import { ArrowLeft, Mic2, Play, Users, Edit2, Loader2, Music } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { isAdminUser } from '@/lib/admin';
@@ -48,6 +49,7 @@ function ArtistVideo({ src, artistName }: { src: string; artistName: string }) {
 }
 
 export default function ArtistsPage() {
+  const router = useRouter();
   const [artists, setArtists] = useState<ArtistStat[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -198,6 +200,15 @@ export default function ArtistsPage() {
         )}
       </div>
       <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-black/10 via-[#0A0A0A]/60 to-[#0A0A0A] pointer-events-none z-0" />
+
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="absolute left-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 hover:text-white md:left-8 md:top-8"
+        aria-label="Zurück"
+      >
+        <ArrowLeft className="h-6 w-6" />
+      </button>
       
       {/* Header Content */}
       <div className="relative group pt-24 px-6 md:px-10 pb-8 flex flex-col md:flex-row gap-8 items-end z-10">

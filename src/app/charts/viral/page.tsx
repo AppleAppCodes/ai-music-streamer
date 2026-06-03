@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { CalendarDays, Flame, Pause, Play, TrendingUp } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Flame, Pause, Play, TrendingUp } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
 import { usePlayer } from '@/lib/player-context';
@@ -149,6 +150,7 @@ function ChartPanel({
 }
 
 export default function ViralChartsPage() {
+  const router = useRouter();
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   const [songs, setSongs] = useState<Song[]>([]);
   const [dailyPlays, setDailyPlays] = useState<DailyPlay[]>([]);
@@ -237,6 +239,14 @@ export default function ViralChartsPage() {
   return (
     <div className="relative flex-1 overflow-y-auto bg-[#080808] px-4 pb-32 pt-16 sm:px-6 md:px-10 md:pt-20">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-gradient-to-br from-orange-500/10 via-violet-500/5 to-transparent" />
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="absolute left-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 hover:text-white md:left-8 md:top-6"
+        aria-label="Zurück"
+      >
+        <ArrowLeft className="h-6 w-6" />
+      </button>
       <div className="relative mx-auto max-w-[1500px]">
         <div className="mb-7 flex flex-col gap-2">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-primary">

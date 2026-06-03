@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Music, Search } from 'lucide-react';
+import { ArrowLeft, Music, Search } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface Playlist {
   id: string;
@@ -21,6 +22,7 @@ type PlaylistRow = Omit<Playlist, 'profiles'> & {
 
 export default function DiscoverPlaylistsPage() {
   const supabase = createClient();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,6 +67,15 @@ export default function DiscoverPlaylistsPage() {
       <div className="absolute top-0 left-0 right-0 h-[400px] pointer-events-none z-0">
         <div className="w-full h-full bg-gradient-to-b from-indigo-900/20 via-[#0A0A0A]/80 to-[#0A0A0A]" />
       </div>
+
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="absolute left-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 hover:text-white md:left-8 md:top-8"
+        aria-label="Zurück"
+      >
+        <ArrowLeft className="h-6 w-6" />
+      </button>
 
       <div className="relative pt-16 px-6 md:px-10 pb-6 z-10">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">

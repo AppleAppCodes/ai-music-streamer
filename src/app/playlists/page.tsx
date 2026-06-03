@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Heart, Library, Music, Plus } from 'lucide-react';
+import { ArrowLeft, Heart, Library, Music, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -89,7 +89,16 @@ export default function PlaylistsPage() {
         <div className="w-full h-full bg-gradient-to-b from-indigo-900/30 via-[#0A0A0A]/80 to-[#0A0A0A]" />
       </div>
 
-      <div className="relative z-10 px-4 pb-6 pt-10 sm:px-6 md:px-10 md:pt-16">
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="absolute left-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 hover:text-white md:left-8 md:top-8"
+        aria-label="Zurück"
+      >
+        <ArrowLeft className="h-6 w-6" />
+      </button>
+
+      <div className="relative z-10 px-4 pb-6 pt-16 sm:px-6 md:px-10 md:pt-16">
         <div className="mb-6 flex items-end justify-between gap-4 md:mb-8">
           <div>
             <p className="text-sm text-white/50 uppercase tracking-wider font-semibold mb-1">Deine Bibliothek</p>

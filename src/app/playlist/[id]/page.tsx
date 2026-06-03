@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
@@ -312,6 +312,15 @@ export default function PlaylistPage() {
       <div className="absolute top-0 left-0 right-0 h-[400px] pointer-events-none z-0">
         <div className="w-full h-full bg-gradient-to-b from-blue-900/40 via-[#0A0A0A]/80 to-[#0A0A0A]" />
       </div>
+
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="absolute left-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 hover:text-white md:left-8 md:top-8"
+        aria-label="Zurück"
+      >
+        <ArrowLeft className="h-6 w-6" />
+      </button>
       
       {/* Hero Content */}
       <div className="group relative z-10 flex flex-col items-center gap-5 px-5 pb-8 pt-20 text-center md:flex-row md:items-end md:gap-6 md:px-10 md:pt-24 md:text-left">

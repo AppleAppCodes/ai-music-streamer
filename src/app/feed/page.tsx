@@ -223,8 +223,10 @@ function FeedCard({
     const startAtHook = () => {
       playFromHook(media).catch(() => {
         if (!muted) {
-          media.muted = false;
-          onAutoplayBlocked();
+          media.muted = true;
+          playFromHook(media)
+            .then(onAutoplayBlocked)
+            .catch(onAutoplayBlocked);
         }
       });
     };
@@ -683,7 +685,7 @@ export default function FeedPage() {
   };
 
   const handleAutoplayBlocked = useCallback(() => {
-    setMuted(false);
+    setMuted(true);
     setAutoplayMuted(true);
   }, []);
 
