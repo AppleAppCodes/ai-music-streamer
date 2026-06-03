@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Yoriax",
+    "slug": "yoriax",
+    "scheme": "yoriax",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#050505",
+    "ios": {
+      "bundleIdentifier": "com.yoriax.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.yoriax.app",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": []
+  }
+}
