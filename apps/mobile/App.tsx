@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { LibraryScreen } from './src/screens/LibraryScreen';
 import { ForYouScreen } from './src/screens/ForYouScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -24,43 +25,45 @@ export default function App() {
   }, [activeTab]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="light" />
-      <View style={styles.header}>
-        <View style={styles.logo} accessibilityLabel="Yoriax Logo">
-          <View style={[styles.logoBar, styles.logoBarSmall]} />
-          <View style={[styles.logoBar, styles.logoBarLarge]} />
-          <View style={[styles.logoBar, styles.logoBarMedium]} />
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+        <StatusBar style="light" />
+        <View style={styles.header}>
+          <View style={styles.logo} accessibilityLabel="Yoriax Logo">
+            <View style={[styles.logoBar, styles.logoBarSmall]} />
+            <View style={[styles.logoBar, styles.logoBarLarge]} />
+            <View style={[styles.logoBar, styles.logoBarMedium]} />
+          </View>
+          <View style={styles.headerText}>
+            <Text style={styles.brand}>YORIAX</Text>
+            <Text style={styles.connection}>
+              {hasSupabaseConfig ? 'Native App Basis verbunden' : 'Supabase Env fehlt'}
+            </Text>
+          </View>
         </View>
-        <View style={styles.headerText}>
-          <Text style={styles.brand}>YORIAX</Text>
-          <Text style={styles.connection}>
-            {hasSupabaseConfig ? 'Native App Basis verbunden' : 'Supabase Env fehlt'}
-          </Text>
+
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {activeScreen}
+        </ScrollView>
+
+        <View style={styles.tabBar}>
+          {tabs.map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={[styles.tabButton, active && styles.tabButtonActive]}
+                onPress={() => setActiveTab(tab.id)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+              >
+                <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {activeScreen}
-      </ScrollView>
-
-      <View style={styles.tabBar}>
-        {tabs.map((tab) => {
-          const active = activeTab === tab.id;
-          return (
-            <TouchableOpacity
-              key={tab.id}
-              style={[styles.tabButton, active && styles.tabButtonActive]}
-              onPress={() => setActiveTab(tab.id)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-            >
-              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
