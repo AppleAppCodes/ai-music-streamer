@@ -9,6 +9,7 @@ Goal: build real native apps for Android and iOS stores. The current mobile brow
 - Shared backend remains Supabase: Auth, songs, playlists, likes, feed hooks, storage and charts.
 - Shared code will be extracted later only where it reduces duplication safely.
 - Supabase Auth is wired in the native shell with AsyncStorage session persistence. The native app only uses public Supabase client keys, never service-role keys.
+- Home, library and for-you preview screens now read real Yoriax data from Supabase after login. Playback is intentionally not connected yet.
 
 ## Testing
 
@@ -21,12 +22,13 @@ Goal: build real native apps for Android and iOS stores. The current mobile brow
 
 1. Native shell, theme and app navigation.
 2. Supabase session handling with native storage.
-3. Native audio player with lockscreen/background controls.
-4. For-you feed with swipe gestures and hook start/end playback.
-5. Library, liked songs, playlists and charts.
-6. Upload/admin functions only after user-facing playback flows are stable.
-7. Android internal test release.
-8. iOS TestFlight release.
+3. Read-only Supabase music data on Home, Library and For-you preview.
+4. Native audio player with lockscreen/background controls.
+5. For-you feed with swipe gestures and hook start/end playback.
+6. Library, liked songs, playlists and charts.
+7. Upload/admin functions only after user-facing playback flows are stable.
+8. Android internal test release.
+9. iOS TestFlight release.
 
 ## Important Product Notes
 

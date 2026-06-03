@@ -1,12 +1,15 @@
 export interface Song {
   id: string;
   title: string;
+  creator_id?: string | null;
+  creatorName?: string | null;
   artist_name?: string | null;
   cover_url: string;
   audio_url: string;
   genre?: string | null;
   duration?: number | null;
   plays: number;
+  created_at?: string | null;
 }
 
 export interface FeedClip {
@@ -14,4 +17,17 @@ export interface FeedClip {
   video_url?: string | null;
   hook_start_seconds: number;
   hook_end_seconds: number;
+}
+
+export interface FeedPreviewSong extends Song {
+  clip?: FeedClip | null;
+  likes_count?: number;
+}
+
+export interface Playlist {
+  id: string;
+  title: string;
+  cover_url?: string | null;
+  is_public?: boolean | null;
+  created_at?: string | null;
 }
