@@ -28,6 +28,7 @@ import { Song } from '@/lib/types';
 import { usePlayer } from '@/lib/player-context';
 import { isAdminUser } from '@/lib/admin';
 import { getErrorMessage } from '@/lib/errors';
+import { setNowPlayingMetadata } from '@/lib/media-session';
 
 interface FeedClip {
   song_id: string;
@@ -89,11 +90,20 @@ function getClip(record: FeedSongRecord): FeedClip {
   const relation = getSingleRelation(record.song_feed_clips);
   const fallbackEnd = Math.max(1, Math.min(record.duration || DEFAULT_HOOK_DURATION_SECONDS, DEFAULT_HOOK_DURATION_SECONDS));
 
-  return relation || {
+  const rawStart = Math.max(0, Number(relation?.hook_start_seconds) || 0);
+  const rawEnd = Number(relation?.hook_end_seconds);
+  const maxEnd = record.duration ? Math.max(1, record.duration) : undefined;
+  const start = maxEnd ? Math.min(rawStart, Math.max(0, maxEnd - 0.25)) : rawStart;
+  const end = Math.max(
+    start + 1,
+    Number.isFinite(rawEnd) && rawEnd > 0 ? rawEnd : fallbackEnd,
+  );
+
+  return {
     song_id: record.id,
-    video_url: null,
-    hook_start_seconds: 0,
-    hook_end_seconds: fallbackEnd,
+    video_url: relation?.video_url || null,
+    hook_start_seconds: start,
+    hook_end_seconds: maxEnd ? Math.min(end, maxEnd) : end,
   };
 }
 
@@ -149,7 +159,17 @@ function FeedCard({
   const displayArtist = song.artist_name || song.creatorName || 'Creator';
   const avatarUrl = song.profiles?.avatar_url;
 
-  const seekToHookStart = useCallback((media: HTMLMediaElement) => {
+  useEffect(() => {
+    if (!active) return;
+    setNowPlayingMetadata({
+      title: song.title,
+      artist: displayArtist,
+      album: 'Yoriax Hook',
+      artworkUrl: song.cover_url,
+    });
+  }, [active, displayArtist, song.cover_url, song.title]);
+
+  const seekToHookStart = useCallback((media: HTMLMediaElement, force = false) => {
     const configuredStart = Math.max(0, Number(song.clip.hook_start_seconds) || 0);
     const configuredEnd = Math.max(
       configuredStart + 0.25,
@@ -160,10 +180,10 @@ function FeedCard({
     const end = Math.min(Math.max(configuredEnd, start + 0.25), duration);
 
     if (
+      force ||
       !Number.isFinite(media.currentTime)
-      || media.currentTime < start
+      || media.currentTime + 0.05 < start
       || media.currentTime >= end
-      || media.currentTime < 0.05
     ) {
       media.currentTime = start;
     }
@@ -173,7 +193,7 @@ function FeedCard({
 
   const playFromHook = useCallback((media: HTMLMediaElement) => {
     const startPlayback = () => {
-      seekToHookStart(media);
+      seekToHookStart(media, true);
       return media.play();
     };
 
@@ -268,7 +288,10 @@ function FeedCard({
     const media = mediaRef.current;
     if (media) {
       media.muted = !muted;
-      if (muted) playFromHook(media).catch(() => {});
+      if (muted) {
+        seekToHookStart(media);
+        media.play().catch(() => {});
+      }
     }
     onToggleMute();
   };
@@ -387,7 +410,6 @@ export default function FeedPage() {
   const [mode, setMode] = useState<FeedMode>('for-you');
   const [muted, setMuted] = useState(false);
   const [autoplayMuted, setAutoplayMuted] = useState(false);
-  const [soundHint, setSoundHint] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [likedSongIds, setLikedSongIds] = useState<Set<string>>(new Set());
@@ -663,15 +685,12 @@ export default function FeedPage() {
   const handleAutoplayBlocked = useCallback(() => {
     setMuted(false);
     setAutoplayMuted(true);
-    setSoundHint('Tippe auf den Hook, um den Ton zu starten.');
-    window.setTimeout(() => setSoundHint(''), 3500);
   }, []);
 
   const unlockSoundAfterGesture = useCallback(() => {
     if (!autoplayMuted) return;
     setAutoplayMuted(false);
     setMuted(false);
-    setSoundHint('');
   }, [autoplayMuted]);
 
   const openEditor = (song: FeedSong) => {
@@ -685,11 +704,20 @@ export default function FeedPage() {
 
   const saveClip = async () => {
     if (!editingSong) return;
-    if (hookStart < 0 || hookEnd <= hookStart) {
+    const durationLimit = editingSong.duration && editingSong.duration > 0 ? editingSong.duration : null;
+    const normalizedStart = Math.max(
+      0,
+      durationLimit ? Math.min(Number(hookStart) || 0, Math.max(0, durationLimit - 0.25)) : Number(hookStart) || 0,
+    );
+    const normalizedEnd = durationLimit
+      ? Math.min(Math.max(Number(hookEnd) || 0, normalizedStart + 1), durationLimit)
+      : Math.max(Number(hookEnd) || 0, normalizedStart + 1);
+
+    if (normalizedEnd <= normalizedStart) {
       setSaveError('Das Hook-Ende muss nach dem Start liegen.');
       return;
     }
-    if (editingSong.duration && hookEnd > editingSong.duration) {
+    if (durationLimit && normalizedEnd > durationLimit) {
       setSaveError(`Der Song ist nur ${editingSong.duration} Sekunden lang.`);
       return;
     }
@@ -709,8 +737,8 @@ export default function FeedPage() {
       const nextClip: FeedClip = {
         song_id: editingSong.id,
         video_url: nextVideoUrl,
-        hook_start_seconds: hookStart,
-        hook_end_seconds: hookEnd,
+        hook_start_seconds: normalizedStart,
+        hook_end_seconds: normalizedEnd,
       };
       const { error } = await supabase.from('song_feed_clips').upsert({
         ...nextClip,
@@ -755,12 +783,6 @@ export default function FeedPage() {
           </button>
         ))}
       </div>
-
-      {soundHint ? (
-        <div className="absolute left-1/2 top-20 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/70 px-4 py-2 text-xs font-bold text-white/80 backdrop-blur-md">
-          {soundHint}
-        </div>
-      ) : null}
 
       {actionError ? (
         <button type="button" onClick={() => setActionError('')} className="absolute left-1/2 top-20 z-40 -translate-x-1/2 rounded-full border border-red-400/20 bg-red-500/15 px-4 py-2 text-xs font-bold text-red-100 backdrop-blur-md">

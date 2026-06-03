@@ -5,6 +5,7 @@ import { Song } from '@/lib/types';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { setNowPlayingMetadata } from '@/lib/media-session';
 
 interface PlayerContextType {
   currentSong: Song | null;
@@ -195,6 +196,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       loadSongIntoAudio(currentSong, false);
     }
   }, [currentSong, loadSongIntoAudio]);
+
+  useEffect(() => {
+    if (!currentSong) return;
+
+    setNowPlayingMetadata({
+      title: currentSong.title,
+      artist: currentSong.artist_name || currentSong.creatorName || 'Creator',
+      album: currentSong.album?.title || 'Yoriax',
+      artworkUrl: currentSong.cover_url,
+    });
+  }, [currentSong]);
 
   const playSong = useCallback((song: Song) => {
     if (!user) {
