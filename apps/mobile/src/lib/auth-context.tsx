@@ -20,9 +20,9 @@ type AuthContextValue = {
   initializing: boolean;
   lastError: string | null;
   session: Session | null;
-  signIn: (email: string, password: string) => Promise<AuthResult>;
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>;
   signOut: () => Promise<AuthResult>;
-  signUp: (email: string, password: string) => Promise<AuthResult>;
+  signUp: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>;
   user: User | null;
 };
 
@@ -34,7 +34,7 @@ function normalizeAuthError(error: AuthError | Error | unknown): string {
     const lowerMessage = message.toLowerCase();
 
     if (lowerMessage.includes('captcha') || lowerMessage.includes('turnstile')) {
-      return 'Sicherheitspruefung fuer Native ist noch nicht verbunden. Der Web-Login bleibt unveraendert.';
+      return 'Sicherheitspruefung fehlgeschlagen. Bitte warte kurz, bis die Pruefung abgeschlossen ist, und versuche es erneut.';
     }
 
     if (lowerMessage.includes('invalid login credentials')) {
@@ -107,7 +107,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+  const signIn = useCallback(async (email: string, password: string, captchaToken?: string): Promise<AuthResult> => {
     if (!hasSupabaseConfig || !supabase) {
       return missingConfigResult();
     }
@@ -115,6 +115,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
+      options: captchaToken ? { captchaToken } : undefined,
     });
 
     if (error) {
@@ -127,7 +128,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return { ok: true };
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+  const signUp = useCallback(async (email: string, password: string, captchaToken?: string): Promise<AuthResult> => {
     if (!hasSupabaseConfig || !supabase) {
       return missingConfigResult();
     }
@@ -135,6 +136,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
+      options: captchaToken ? { captchaToken } : undefined,
     });
 
     if (error) {

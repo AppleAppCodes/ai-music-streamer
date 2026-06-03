@@ -9,7 +9,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { TurnstileChallenge } from '../components/TurnstileChallenge';
 import { useAuth } from '../lib/auth-context';
+import { hasTurnstileConfig } from '../lib/env';
 import { theme } from '../theme';
 
 type AuthMode = 'sign-in' | 'sign-up';
@@ -20,10 +22,14 @@ export function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [captchaError, setCaptchaError] = useState<string | null>(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const isSignUp = mode === 'sign-up';
-  const canSubmit = authReady && email.trim().length > 3 && password.length >= 6 && !submitting;
+  const captchaReady = hasTurnstileConfig && Boolean(captchaToken);
+  const canSubmit = authReady && captchaReady && email.trim().length > 3 && password.length >= 6 && !submitting;
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -31,7 +37,7 @@ export function AuthScreen() {
     setSubmitting(true);
     setMessage(null);
 
-    const result = isSignUp ? await signUp(email, password) : await signIn(email, password);
+    const result = isSignUp ? await signUp(email, password, captchaToken ?? undefined) : await signIn(email, password, captchaToken ?? undefined);
 
     if (!result.ok) {
       setMessage(result.message);
@@ -41,6 +47,8 @@ export function AuthScreen() {
     }
 
     setSubmitting(false);
+    setCaptchaToken(null);
+    setCaptchaResetKey((key) => key + 1);
   }
 
   return (
@@ -98,9 +106,18 @@ export function AuthScreen() {
           </View>
         </View>
 
-        {message || lastError ? (
+        <TurnstileChallenge
+          key={captchaResetKey}
+          onError={setCaptchaError}
+          onToken={setCaptchaToken}
+        />
+        <Text style={styles.captchaHelp}>
+          {captchaReady ? 'Sicherheitspruefung abgeschlossen.' : 'Bitte bestaetige die Sicherheitspruefung, bevor du dich einloggst.'}
+        </Text>
+
+        {message || captchaError || lastError ? (
           <View style={styles.messageBox}>
-            <Text style={styles.messageText}>{message ?? lastError}</Text>
+            <Text style={styles.messageText}>{message ?? captchaError ?? lastError}</Text>
           </View>
         ) : null}
 
@@ -113,7 +130,9 @@ export function AuthScreen() {
           {submitting ? (
             <ActivityIndicator color="#0b0b0b" />
           ) : (
-            <Text style={styles.primaryButtonText}>{isSignUp ? 'Account erstellen' : 'Einloggen'}</Text>
+            <Text style={styles.primaryButtonText}>
+              {!captchaReady ? 'Sicherheitspruefung bestaetigen' : isSignUp ? 'Account erstellen' : 'Einloggen'}
+            </Text>
           )}
         </TouchableOpacity>
 
@@ -222,6 +241,13 @@ const styles = StyleSheet.create({
     color: '#fecaca',
     fontSize: 13,
     lineHeight: 19,
+  },
+  captchaHelp: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
+    marginTop: 10,
   },
   primaryButton: {
     alignItems: 'center',

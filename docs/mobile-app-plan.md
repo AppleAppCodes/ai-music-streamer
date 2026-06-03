@@ -9,6 +9,7 @@ Goal: build real native apps for Android and iOS stores. The current mobile brow
 - Shared backend remains Supabase: Auth, songs, playlists, likes, feed hooks, storage and charts.
 - Shared code will be extracted later only where it reduces duplication safely.
 - Supabase Auth is wired in the native shell with AsyncStorage session persistence. The native app only uses public Supabase client keys, never service-role keys.
+- Native email/password auth uses Cloudflare Turnstile through a WebView and sends the token to Supabase as `captchaToken`.
 - Home, library and for-you preview screens now read real Yoriax data from Supabase after login. Playback is intentionally not connected yet.
 
 ## Testing
@@ -35,7 +36,7 @@ Goal: build real native apps for Android and iOS stores. The current mobile brow
 - Web autoplay restrictions do not apply the same way in native app audio sessions.
 - We should not ship a simple WebView wrapper as the final app.
 - We can still reuse API contracts, types, theme decisions and product logic from the web app.
-- If Supabase captcha protection is enforced for email/password auth, native login needs a dedicated Turnstile/native captcha flow before store release.
+- Supabase captcha protection is enforced for email/password auth, so native login must keep the Turnstile WebView flow working on both Android and iOS.
 
 ## Current Technical Notes
 
