@@ -132,11 +132,10 @@ export function ForYouScreen() {
 
         <View style={styles.contentContainer}>
           <View style={styles.textContainer}>
-            <Text style={styles.artistName}>{item.artist_name || item.creatorName || 'Creator'}</Text>
-            <Text style={styles.songTitle}>{item.title}</Text>
-            <Text style={styles.hookTime}>
-              Hook: {item.clip?.hook_start_seconds ?? 0}s - {item.clip?.hook_end_seconds ?? 30}s
+            <Text style={[styles.artistName, { color: theme.colors.primary }]}>
+              {item.artist_name || item.creatorName || 'Creator'}
             </Text>
+            <Text style={styles.songTitle}>{item.title}</Text>
             <TouchableOpacity 
               style={styles.fullSongButton}
               onPress={() => {
@@ -149,31 +148,31 @@ export function ForYouScreen() {
               <Text style={styles.fullSongText}>Ganzen Song hören</Text>
             </TouchableOpacity>
           </View>
+        </View>
 
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => {
-                if (isActive) {
-                  toggle();
-                } else {
-                  startHookPlayback(item, true);
-                }
-              }}
-            >
-              <Ionicons name={isActive && isPlaying ? "pause-circle" : "play-circle"} size={44} color="white" />
-            </TouchableOpacity>
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              if (isActive) {
+                toggle();
+              } else {
+                startHookPlayback(item, true);
+              }
+            }}
+          >
+            <Ionicons name={isActive && isPlaying ? "pause-circle" : "play-circle"} size={44} color="white" />
+          </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="heart" size={32} color={isActive ? theme.colors.primary : "white"} />
-              <Text style={styles.actionText}>{item.likes_count ?? 0}</Text>
-            </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="heart" size={32} color={isActive ? theme.colors.primary : "white"} />
+            <Text style={styles.actionText}>{item.likes_count ?? 0}</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="share-social" size={32} color="white" />
-              <Text style={styles.actionText}>Teilen</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="share-social" size={32} color="white" />
+            <Text style={styles.actionText}>Teilen</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -286,7 +285,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingBottom: 220, // space for tab bar and miniplayer
+    paddingBottom: 250, // move the text structure even higher
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     zIndex: 5,
@@ -309,10 +308,9 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     flex: 1,
-    paddingRight: 20,
+    paddingRight: 60, // keep text from hitting absolute buttons
   },
   artistName: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
@@ -335,9 +333,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   actionsContainer: {
+    position: 'absolute',
+    right: 16,
+    bottom: 300, // Move buttons way up to the middle right
     alignItems: 'center',
-    gap: 20,
-    paddingBottom: 20,
+    gap: 24,
+    zIndex: 10,
   },
   actionButton: {
     alignItems: 'center',
