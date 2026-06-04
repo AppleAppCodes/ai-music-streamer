@@ -7,6 +7,7 @@ import type { Song } from '../lib/types';
 import { formatPlays } from '../lib/format';
 import { supabase } from '../lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -68,6 +69,7 @@ export function ArtistScreen({ route, navigation }: Props) {
   }, [artistName]);
 
   const totalPlays = songs.reduce((acc, song) => acc + (song.plays || 0), 0);
+  const monthlyListeners = getMonthlyListeners(songs);
 
   return (
     <View style={styles.container}>
@@ -80,24 +82,22 @@ export function ArtistScreen({ route, navigation }: Props) {
         {bannerUrl ? (
           <ImageBackground source={{ uri: bannerUrl }} style={styles.heroBanner}>
             <LinearGradient
-              colors={['rgba(12,10,18,0.1)', 'rgba(12,10,18,0.8)', '#0c0a12']}
+              colors={['rgba(12,10,18,0.10)', 'rgba(12,10,18,0.58)', '#0c0a12']}
               style={StyleSheet.absoluteFill}
             />
             <View style={styles.heroContent}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{artistName.charAt(0).toUpperCase()}</Text>
-              </View>
-              <Text style={styles.title}>{artistName}</Text>
-              <Text style={styles.subtitle}>{formatPlays(totalPlays)} Streams gesamt</Text>
+              <VerifiedBadge />
+              <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
+              <Text style={styles.subtitle}>{monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen</Text>
+              <Text style={styles.totalStreams}>{formatPlays(totalPlays)} Streams gesamt</Text>
             </View>
           </ImageBackground>
         ) : (
           <View style={styles.hero}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{artistName.charAt(0).toUpperCase()}</Text>
-            </View>
-            <Text style={styles.title}>{artistName}</Text>
-            <Text style={styles.subtitle}>{formatPlays(totalPlays)} Streams gesamt</Text>
+            <VerifiedBadge />
+            <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
+            <Text style={styles.subtitle}>{monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen</Text>
+            <Text style={styles.totalStreams}>{formatPlays(totalPlays)} Streams gesamt</Text>
           </View>
         )}
 
@@ -151,6 +151,32 @@ export function ArtistScreen({ route, navigation }: Props) {
   );
 }
 
+function VerifiedBadge() {
+  return (
+    <View style={styles.verifiedRow}>
+      <View style={styles.verifiedIcon}>
+        <Ionicons name="checkmark" size={12} color="#60a5fa" />
+      </View>
+      <Text style={styles.verifiedText}>Verifizierter Künstler</Text>
+    </View>
+  );
+}
+
+function getMonthlyListeners(songs: Song[]) {
+  if (songs.length === 0) return 0;
+
+  const totalPlays = songs.reduce((sum, song) => sum + (song.plays || 0), 0);
+  const oldestSong = songs.reduce((oldest, song) => {
+    const songDate = song.created_at ? new Date(song.created_at) : new Date();
+    const oldestDate = oldest.created_at ? new Date(oldest.created_at) : new Date();
+    return songDate < oldestDate ? song : oldest;
+  }, songs[0]);
+  const firstReleaseDate = oldestSong.created_at ? new Date(oldestSong.created_at) : new Date();
+  const monthsActive = Math.max(1, (Date.now() - firstReleaseDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+
+  return Math.round(totalPlays / monthsActive);
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -175,46 +201,63 @@ const styles = StyleSheet.create({
     paddingBottom: 120, // space for MiniPlayer
   },
   heroBanner: {
-    width: '100%',
-    minHeight: 300,
     justifyContent: 'flex-end',
+    minHeight: 310,
+    width: '100%',
   },
   heroContent: {
-    alignItems: 'center',
-    paddingVertical: 30,
+    alignItems: 'flex-start',
+    paddingBottom: 34,
+    paddingHorizontal: 28,
     zIndex: 1,
   },
   hero: {
-    alignItems: 'center',
-    paddingVertical: 30,
+    alignItems: 'flex-start',
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    paddingHorizontal: 28,
+    paddingVertical: 36,
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: theme.colors.surfaceMuted,
-    justifyContent: 'center',
+  verifiedRow: {
     alignItems: 'center',
-    marginBottom: 16,
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
   },
-  avatarText: {
-    color: theme.colors.text,
-    fontSize: 40,
-    fontWeight: '900',
+  verifiedIcon: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(96,165,250,0.16)',
+    borderColor: 'rgba(96,165,250,0.58)',
+    borderRadius: 999,
+    borderWidth: 1.5,
+    height: 22,
+    justifyContent: 'center',
+    width: 22,
+  },
+  verifiedText: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 14,
+    fontWeight: '700',
   },
   title: {
     color: theme.colors.text,
-    fontSize: 28,
+    fontSize: 46,
     fontWeight: '900',
-    letterSpacing: -0.5,
+    letterSpacing: -1.6,
+    maxWidth: '100%',
+    textAlign: 'left',
   },
   subtitle: {
     color: theme.colors.muted,
     fontSize: 14,
-    fontWeight: '600',
-    marginTop: 6,
+    fontWeight: '800',
+    marginTop: 12,
+  },
+  totalStreams: {
+    color: theme.colors.subtle,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
   },
   stateBox: {
     padding: 40,
