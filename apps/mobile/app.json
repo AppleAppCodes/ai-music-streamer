@@ -24,7 +24,6 @@
     "android": {
       "package": "com.yoriax.app",
       "versionCode": 2,
-      "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "foregroundImage": "./ios/Yoriax/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png",
         "backgroundColor": "#050505"
@@ -38,7 +37,10 @@
         {
           "photosPermission": "YORIAX nutzt deine Mediathek, damit du ein Profilbild auswählen kannst."
         }
-      ]
+      ],
+      "expo-status-bar",
+      "expo-font",
+      "expo-asset"
     ],
     "extra": {
       "yoriaxReleaseStage": "testing"

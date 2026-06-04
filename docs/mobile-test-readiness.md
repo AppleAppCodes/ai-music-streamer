@@ -16,10 +16,24 @@ Der Check führt Mobile-TypeScript und den Mobile-Lint-Scope aus. Wenn dieser Be
 
 ## Lokale Device-Tests
 
-iOS über Xcode:
+Expo Go ist fuer diese App aktuell nicht der richtige Testweg. Das Projekt nutzt Expo SDK 56; wenn Expo Go auf dem Handy diese SDK-Version nicht unterstützt, erscheint "Project is incompatible with this version of Expo Go". Nutze stattdessen einen Development Build.
+
+iOS Development Build einmal auf dem iPhone installieren:
 
 ```bash
-npm run mobile:ios
+npm run mobile:ios:device
+```
+
+Danach Metro fuer die installierte YORIAX-Development-App starten:
+
+```bash
+npm run mobile:start:dev-client
+```
+
+Wenn iPhone und Mac sich im Netzwerk nicht finden, den Tunnel nutzen:
+
+```bash
+npm run mobile:start:dev-client:tunnel
 ```
 
 Android über Android Studio oder Emulator:
