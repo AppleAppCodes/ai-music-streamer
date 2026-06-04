@@ -79,7 +79,7 @@ export function HomeScreen() {
       accent: '#eab308', // Yellow
       icon: 'trending-up',
       label: 'Charts',
-      subtitle: 'Viral und Daily',
+      subtitle: 'Viral, Daily, Artists',
       onPress: () => navigation.navigate('Charts'),
       gradientColors: ['rgba(234,179,8,0.25)', 'rgba(234,179,8,0.05)', 'rgba(255,255,255,0.02)'],
     },

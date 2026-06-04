@@ -415,7 +415,52 @@ export async function loadCreatedSongs(userId: string): Promise<Song[]> {
 export interface ChartsData {
   viralSongs: Song[];
   dailySongs: Song[];
+  artistCharts: ArtistStat[];
   dailyPlayMap: Record<string, number>;
+}
+
+function buildArtistStatsFromSongs(songs: Song[]): ArtistStat[] {
+  const artistMap = new Map<string, ArtistStat & { topSongPlays: number }>();
+
+  songs.forEach((song) => {
+    const name = song.artist_name || song.creatorName || 'Unbekannt';
+    if (name === 'Unbekannt') return;
+
+    if (!artistMap.has(name)) {
+      artistMap.set(name, {
+        name,
+        plays: 0,
+        songsCount: 0,
+        coverUrl: song.cover_url || '',
+        createdAt: song.created_at || new Date(0).toISOString(),
+        topSongPlays: song.plays || 0,
+      });
+    }
+
+    const artist = artistMap.get(name)!;
+    artist.plays += song.plays || 0;
+    artist.songsCount += 1;
+
+    if ((song.plays || 0) > artist.topSongPlays) {
+      artist.coverUrl = song.cover_url || artist.coverUrl;
+      artist.topSongPlays = song.plays || 0;
+    }
+
+    if (song.created_at && new Date(song.created_at).getTime() > new Date(artist.createdAt).getTime()) {
+      artist.createdAt = song.created_at;
+    }
+  });
+
+  return Array.from(artistMap.values())
+    .sort((a, b) => b.plays - a.plays || b.songsCount - a.songsCount)
+    .map((artist) => ({
+      name: artist.name,
+      plays: artist.plays,
+      songsCount: artist.songsCount,
+      coverUrl: artist.coverUrl,
+      videoUrl: artist.videoUrl,
+      createdAt: artist.createdAt,
+    }));
 }
 
 export async function loadChartsData(): Promise<ChartsData> {
@@ -445,8 +490,9 @@ export async function loadChartsData(): Promise<ChartsData> {
       return playDiff || b.plays - a.plays;
     })
     .slice(0, 50);
+  const artistCharts = buildArtistStatsFromSongs(allSongs).slice(0, 30);
 
-  return { viralSongs, dailySongs, dailyPlayMap };
+  return { viralSongs, dailySongs, artistCharts, dailyPlayMap };
 }
 
 export interface ArtistStat {

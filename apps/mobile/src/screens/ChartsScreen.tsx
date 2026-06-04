@@ -5,15 +5,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
-import { loadChartsData, type ChartsData } from '../lib/music-data';
+import { formatPlays } from '../lib/format';
+import { loadChartsData, type ArtistStat, type ChartsData } from '../lib/music-data';
 import { usePlayer } from '../lib/player-context';
 import type { Song } from '../lib/types';
 import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Charts'>;
-type ChartTab = 'viral' | 'daily';
-type Accent = 'orange' | 'violet';
+type ChartTab = 'viral' | 'daily' | 'artists';
+type Accent = 'orange' | 'violet' | 'teal';
 
 interface ChartPanelProps {
   accent: Accent;
@@ -31,6 +32,7 @@ interface ChartPanelProps {
 const ACCENTS: Record<Accent, string> = {
   orange: '#f97316',
   violet: theme.colors.primaryLight,
+  teal: theme.colors.accent,
 };
 
 function ChartPanel({
@@ -113,6 +115,66 @@ function ChartPanel({
   );
 }
 
+function ArtistChartPanel({
+  artists,
+  onOpenArtist,
+}: {
+  artists: ArtistStat[];
+  onOpenArtist: (artistName: string) => void;
+}) {
+  const accentColor = ACCENTS.teal;
+
+  return (
+    <View style={[styles.panel, { borderColor: `${accentColor}44` }]}>
+      <LinearGradient
+        colors={[`${accentColor}2b`, 'rgba(255,255,255,0.035)', 'rgba(255,255,255,0.018)']}
+        style={StyleSheet.absoluteFill}
+      />
+
+      <View style={styles.panelHeader}>
+        <View style={styles.panelCopy}>
+          <View style={styles.panelEyebrow}>
+            <Ionicons name="mic" size={15} color={accentColor} />
+            <Text style={[styles.eyebrowText, { color: accentColor }]}>Top {artists.length}</Text>
+          </View>
+          <Text style={styles.panelTitle}>Artist Charts</Text>
+          <Text style={styles.panelSubtitle}>Künstler mit den stärksten Gesamt-Streams auf YORIAX.</Text>
+        </View>
+      </View>
+
+      <View style={styles.panelList}>
+        {artists.length === 0 ? (
+          <StateCard icon="mic-outline" title="Noch keine Künstler" message="Sobald Songs veröffentlicht sind, erscheinen Künstler-Charts hier." />
+        ) : (
+          artists.map((artist, index) => (
+            <TouchableOpacity
+              accessibilityRole="button"
+              key={artist.name}
+              onPress={() => onOpenArtist(artist.name)}
+              style={styles.row}
+            >
+              <Text style={[styles.rank, index < 3 && { color: accentColor }]}>{index + 1}</Text>
+              <CoverArt uri={artist.coverUrl} size={50} radius={12} />
+              <View style={styles.rowText}>
+                <Text style={[styles.rowTitle, { color: index < 3 ? accentColor : theme.colors.text }]} numberOfLines={1}>
+                  {artist.name}
+                </Text>
+                <Text style={styles.rowMeta} numberOfLines={1}>
+                  {artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}
+                </Text>
+              </View>
+              <View style={styles.rowRight}>
+                <Text style={styles.metricValue}>{formatPlays(artist.plays)}</Text>
+                <Text style={styles.metric}>Streams</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
+      </View>
+    </View>
+  );
+}
+
 export function ChartsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [data, setData] = useState<ChartsData | null>(null);
@@ -158,8 +220,8 @@ export function ChartsScreen({ navigation }: Props) {
     void playSong(chartSongs[index]);
   };
 
-  const currentSongs = activeTab === 'viral' ? data?.viralSongs ?? [] : data?.dailySongs ?? [];
-  const currentAccent: Accent = activeTab === 'viral' ? 'orange' : 'violet';
+  const currentSongs = activeTab === 'viral' ? data?.viralSongs ?? [] : activeTab === 'daily' ? data?.dailySongs ?? [] : [];
+  const currentAccent: Accent = activeTab === 'viral' ? 'orange' : activeTab === 'daily' ? 'violet' : 'teal';
 
   return (
     <View style={styles.container}>
@@ -178,6 +240,7 @@ export function ChartsScreen({ navigation }: Props) {
       <View style={styles.tabs}>
         <ChartTabButton active={activeTab === 'viral'} icon="flame" label="Viral 20" onPress={() => setActiveTab('viral')} tint={ACCENTS.orange} />
         <ChartTabButton active={activeTab === 'daily'} icon="calendar" label="Daily 50" onPress={() => setActiveTab('daily')} tint={ACCENTS.violet} />
+        <ChartTabButton active={activeTab === 'artists'} icon="mic" label="Artists" onPress={() => setActiveTab('artists')} tint={ACCENTS.teal} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -185,6 +248,11 @@ export function ChartsScreen({ navigation }: Props) {
           <StateCard title="Charts werden geladen" message="Wir holen die aktuellen YORIAX-Rankings." loading />
         ) : error ? (
           <StateCard icon="warning" title="Charts nicht verfügbar" message={error} />
+        ) : activeTab === 'artists' ? (
+          <ArtistChartPanel
+            artists={data?.artistCharts ?? []}
+            onOpenArtist={(artistName) => navigation.navigate('Artist', { artistId: artistName })}
+          />
         ) : (
           <ChartPanel
             accent={currentAccent}
@@ -283,7 +351,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     color: theme.colors.muted,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '900',
   },
   content: {
@@ -386,5 +454,10 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
+  },
+  metricValue: {
+    color: theme.colors.text,
+    fontSize: 13,
+    fontWeight: '900',
   },
 });

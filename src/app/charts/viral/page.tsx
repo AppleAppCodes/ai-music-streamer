@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CalendarDays, Flame, Pause, Play, TrendingUp } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ChevronRight, Flame, Mic2, Pause, Play, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
@@ -16,6 +16,18 @@ interface DailyPlay {
 
 interface RankedSong {
   song: Song;
+  metric: number;
+}
+
+interface ArtistChartItem {
+  name: string;
+  plays: number;
+  songsCount: number;
+  coverUrl: string;
+}
+
+interface RankedArtist {
+  artist: ArtistChartItem;
   metric: number;
 }
 
@@ -101,7 +113,7 @@ function ChartPanel({
               <div
                 key={song.id}
                 onClick={() => onPlaySong(songs, index)}
-                className="group grid cursor-pointer grid-cols-[24px_40px_minmax(0,1fr)_28px] items-center gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-white/[0.07]"
+                className="group grid cursor-pointer grid-cols-[24px_40px_minmax(0,1fr)_auto_28px] items-center gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-white/[0.07]"
               >
                 <div className="flex justify-center text-xs font-bold text-white/45">
                   {isThisSongPlaying ? (
@@ -131,6 +143,10 @@ function ChartPanel({
                     {displayArtist}
                   </Link>
                 </div>
+                <div className="text-right">
+                  <div className="text-xs font-black tabular-nums text-white/80">{formatMetric(metric)}</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.14em] text-white/30">{metricLabel}</div>
+                </div>
                 <div onClick={(event) => event.stopPropagation()}>
                   <PlaylistAddButton songId={song.id} iconClassName="h-5 w-5" />
                 </div>
@@ -140,6 +156,62 @@ function ChartPanel({
         </div>
       ) : (
         <div className="p-8 text-center text-sm text-white/45">Für diese Charts sind noch keine Songs vorhanden.</div>
+      )}
+    </section>
+  );
+}
+
+function ArtistChartPanel({ rankedArtists }: { rankedArtists: RankedArtist[] }) {
+  return (
+    <section className="relative min-w-0 overflow-hidden rounded-2xl border border-teal-300/20 bg-white/[0.035] shadow-2xl shadow-black/20">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-br from-teal-400/20 via-cyan-400/5 to-transparent" />
+      <div className="relative border-b border-white/10 p-4 sm:p-5">
+        <div className="mb-2 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-teal-200/80">
+          <Mic2 className="h-4 w-4" />
+          Top {rankedArtists.length}
+        </div>
+        <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">Artist Charts</h2>
+        <p className="mt-1 text-xs text-white/50 sm:text-sm">
+          Die Künstler mit den stärksten Gesamt-Streams auf YORIAX.
+        </p>
+      </div>
+
+      {rankedArtists.length > 0 ? (
+        <div className="max-h-[68vh] overflow-y-auto overscroll-contain p-2">
+          {rankedArtists.map(({ artist, metric }, index) => (
+            <Link
+              key={artist.name}
+              href={`/artist/${encodeURIComponent(artist.name)}`}
+              className="group grid grid-cols-[24px_40px_minmax(0,1fr)_auto] items-center gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-white/[0.07]"
+            >
+              <div className="flex justify-center text-xs font-bold text-white/45">
+                <span className={index < 3 ? 'text-teal-200' : undefined}>{index + 1}</span>
+              </div>
+              <img
+                src={artist.coverUrl}
+                alt={artist.name}
+                className="h-10 w-10 rounded-md object-cover shadow-md"
+              />
+              <div className="min-w-0">
+                <div className={`truncate text-sm font-bold ${index < 3 ? 'text-teal-200' : 'text-white/90'}`}>
+                  {artist.name}
+                </div>
+                <div className="truncate text-xs text-white/45">
+                  {artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-right">
+                <div>
+                  <div className="text-xs font-black tabular-nums text-white/80">{formatMetric(metric)}</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.14em] text-white/30">Streams</div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-white/25 transition-colors group-hover:text-teal-200" />
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="p-8 text-center text-sm text-white/45">Für diese Charts sind noch keine Künstler vorhanden.</div>
       )}
     </section>
   );
@@ -196,6 +268,47 @@ export default function ViralChartsPage() {
     [dailyPlayMap, songs],
   );
 
+  const artistCharts = useMemo<RankedArtist[]>(() => {
+    const artistMap = new Map<string, ArtistChartItem & { topSongPlays: number }>();
+
+    songs.forEach((song) => {
+      const name = song.artist_name || song.creatorName || 'Unbekannt';
+      if (name === 'Unbekannt') return;
+
+      if (!artistMap.has(name)) {
+        artistMap.set(name, {
+          name,
+          plays: 0,
+          songsCount: 0,
+          coverUrl: song.cover_url,
+          topSongPlays: song.plays || 0,
+        });
+      }
+
+      const artist = artistMap.get(name)!;
+      artist.plays += song.plays || 0;
+      artist.songsCount += 1;
+
+      if ((song.plays || 0) > artist.topSongPlays) {
+        artist.coverUrl = song.cover_url || artist.coverUrl;
+        artist.topSongPlays = song.plays || 0;
+      }
+    });
+
+    return Array.from(artistMap.values())
+      .sort((a, b) => b.plays - a.plays || b.songsCount - a.songsCount)
+      .slice(0, 30)
+      .map((artist) => ({
+        artist: {
+          name: artist.name,
+          plays: artist.plays,
+          songsCount: artist.songsCount,
+          coverUrl: artist.coverUrl,
+        },
+        metric: artist.plays,
+      }));
+  }, [songs]);
+
   const handlePlayChart = (chartSongs: Song[]) => {
     if (chartSongs.length === 0) return;
 
@@ -251,11 +364,11 @@ export default function ViralChartsPage() {
           </div>
           <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">Charts</h1>
           <p className="max-w-2xl text-sm text-white/55">
-            Entdecke, welche Tracks langfristig viral gehen und welche Songs heute besonders oft gehört werden.
+            Entdecke, welche Tracks langfristig viral gehen, welche Songs heute besonders oft gehört werden und welche Artists gerade vorne liegen.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
           <ChartPanel
             title="Viral Charts"
             eyebrow="Top 20"
@@ -282,6 +395,7 @@ export default function ViralChartsPage() {
             onPlayChart={handlePlayChart}
             onPlaySong={handlePlaySong}
           />
+          <ArtistChartPanel rankedArtists={artistCharts} />
         </div>
       </div>
     </div>
