@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { isAdminUser } from '@/lib/admin';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import {
+  ALLOWED_AUDIO_EXTENSIONS,
+  ALLOWED_AUDIO_TYPES,
+  ALLOWED_COVER_IMAGE_EXTENSIONS,
+  ALLOWED_COVER_IMAGE_TYPES,
+  extensionForMimeType,
+  getUploadFileExtension,
+  MAX_AUDIO_BYTES,
+  MAX_COVER_IMAGE_BYTES,
+  validateUploadFile,
+} from '@/lib/upload-validation';
 
 /** CORS headers applied to every response from this route. */
 const corsHeaders = {
@@ -151,6 +162,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const audioValidationError = validateUploadFile(audioFile, {
+      allowedExtensions: ALLOWED_AUDIO_EXTENSIONS,
+      allowedMimeTypes: ALLOWED_AUDIO_TYPES,
+      label: 'Audio-Datei',
+      maxBytes: MAX_AUDIO_BYTES,
+    });
+    if (audioValidationError) {
+      return NextResponse.json(
+        { error: audioValidationError },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+
+    const coverValidationError = validateUploadFile(coverFile, {
+      allowedExtensions: ALLOWED_COVER_IMAGE_EXTENSIONS,
+      allowedMimeTypes: ALLOWED_COVER_IMAGE_TYPES,
+      label: 'Cover',
+      maxBytes: MAX_COVER_IMAGE_BYTES,
+    });
+    if (coverValidationError) {
+      return NextResponse.json(
+        { error: coverValidationError },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+
     // --- Check for duplicates ------------------------------------------
     const { data: existingSongs, error: searchError } = await supabase
       .from('songs')
@@ -176,7 +213,7 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
 
     // --- Upload audio --------------------------------------------------
-    const audioExt = audioFile.name.split('.').pop() ?? 'mp3';
+    const audioExt = extensionForMimeType(audioFile.type, getUploadFileExtension(audioFile) || 'mp3');
     const audioPath = `${userId}/${timestamp}_song.${audioExt}`;
     const audioBuffer = await audioFile.arrayBuffer();
 
@@ -195,7 +232,7 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Upload cover --------------------------------------------------
-    const coverExt = coverFile.name.split('.').pop() ?? 'jpg';
+    const coverExt = extensionForMimeType(coverFile.type, getUploadFileExtension(coverFile) || 'jpg');
     const coverPath = `${userId}/${timestamp}_cover.${coverExt}`;
     const coverBuffer = await coverFile.arrayBuffer();
 

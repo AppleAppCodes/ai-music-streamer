@@ -9,6 +9,14 @@ export async function POST(
     const { id } = await params;
     const supabase = await createClient();
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const { data: newPlays, error } = await supabase
       .rpc('increment_song_plays', { target_song_id: id });
 

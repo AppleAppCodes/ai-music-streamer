@@ -7,10 +7,10 @@ import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import PlayerSaveButton from '@/components/ui/PlayerSaveButton';
 import MobilePlayerFullscreen from './MobilePlayerFullscreen';
-import { createClient } from '@/utils/supabase/client';
 import { compressImage } from '@/lib/imageCompression';
 import { getErrorMessage } from '@/lib/errors';
 import { isAdminUser } from '@/lib/admin';
+import { uploadSongCover } from '@/lib/song-cover-upload';
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return '0:00';
@@ -67,7 +67,6 @@ export default function AudioPlayer() {
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const sleepTimerRef = useRef<number | null>(null);
-  const supabase = createClient();
   const displayArtist = currentSong?.artist_name || currentSong?.creatorName || t('player.creatorFallback');
   const canPlayPrevious = queueIndex > 0;
   const canPlayNext = queueIndex >= 0 && queueIndex < queue.length - 1;
@@ -193,31 +192,21 @@ export default function AudioPlayer() {
     setIsUploadingCover(true);
     try {
       file = await compressImage(file);
-      const ext = file.name.split('.').pop();
-      const path = `songs/cover_${currentSong.id}_${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('covers').upload(path, file);
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from('covers').getPublicUrl(path);
-      const { error: dbError } = await supabase
-        .from('songs')
-        .update({ cover_url: urlData.publicUrl })
-        .eq('id', currentSong.id);
-      if (dbError) throw dbError;
+      const coverUrl = await uploadSongCover(currentSong.id, file);
 
       try {
         const cachedSong = localStorage.getItem('player_currentSong');
         if (cachedSong) {
           const parsedSong = JSON.parse(cachedSong);
           if (parsedSong.id === currentSong.id) {
-            localStorage.setItem('player_currentSong', JSON.stringify({ ...parsedSong, cover_url: urlData.publicUrl }));
+            localStorage.setItem('player_currentSong', JSON.stringify({ ...parsedSong, cover_url: coverUrl }));
           }
         }
         const cachedQueue = localStorage.getItem('player_queue');
         if (cachedQueue) {
           const parsedQueue = JSON.parse(cachedQueue);
           localStorage.setItem('player_queue', JSON.stringify(
-            parsedQueue.map((song: { id: string }) => song.id === currentSong.id ? { ...song, cover_url: urlData.publicUrl } : song)
+            parsedQueue.map((song: { id: string }) => song.id === currentSong.id ? { ...song, cover_url: coverUrl } : song)
           ));
         }
       } catch (cacheError) {

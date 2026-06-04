@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/client';
 import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
 import { isAdminUser } from '@/lib/admin';
+import { uploadSongCover } from '@/lib/song-cover-upload';
 
 interface PlaylistAddButtonProps {
   songId: string;
@@ -129,13 +130,7 @@ export default function PlaylistAddButton({
             setIsUploading(true);
             try {
               file = await compressImage(file);
-              const ext = file.name.split('.').pop();
-              const path = `songs/cover_${songId}_${Date.now()}.${ext}`;
-              const { error: uploadError } = await supabase.storage.from('covers').upload(path, file);
-              if (uploadError) throw uploadError;
-              const { data: urlData } = supabase.storage.from('covers').getPublicUrl(path);
-              const { error: dbError } = await supabase.from('songs').update({ cover_url: urlData.publicUrl }).eq('id', songId);
-              if (dbError) throw dbError;
+              await uploadSongCover(songId, file);
               window.location.reload();
             } catch (err) {
               console.error(err);

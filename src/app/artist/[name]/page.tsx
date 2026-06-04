@@ -44,6 +44,43 @@ const TiktokIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+type ArtistSocials = {
+  instagram_url?: string;
+  tiktok_url?: string;
+  youtube_url?: string;
+};
+
+function normalizeExternalUrl(value?: string | null) {
+  const rawValue = value?.trim();
+  if (!rawValue) return '';
+
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(rawValue)
+    ? rawValue
+    : `https://${rawValue}`;
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
+function normalizeArtistSocials(input: ArtistSocials): ArtistSocials {
+  return {
+    instagram_url: normalizeExternalUrl(input.instagram_url),
+    tiktok_url: normalizeExternalUrl(input.tiktok_url),
+    youtube_url: normalizeExternalUrl(input.youtube_url),
+  };
+}
+
+function hasInvalidSocialUrl(raw: ArtistSocials, normalized: ArtistSocials) {
+  return (['instagram_url', 'tiktok_url', 'youtube_url'] as const).some((key) => {
+    return Boolean(raw[key]?.trim()) && !normalized[key];
+  });
+}
+
 export default function ArtistPage() {
   const params = useParams();
   const router = useRouter();
@@ -67,7 +104,7 @@ export default function ArtistPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  const [socials, setSocials] = useState<{instagram_url?: string, tiktok_url?: string, youtube_url?: string} | null>(null);
+  const [socials, setSocials] = useState<ArtistSocials | null>(null);
   const [isEditingSocials, setIsEditingSocials] = useState(false);
   const [editSocials, setEditSocials] = useState({instagram_url: '', tiktok_url: '', youtube_url: ''});
   const [isSavingSocials, setIsSavingSocials] = useState(false);
@@ -166,11 +203,12 @@ export default function ArtistPage() {
         .eq('artist_name', artistName)
         .maybeSingle();
       if (socialsData) {
-        setSocials(socialsData);
+        const normalizedSocials = normalizeArtistSocials(socialsData);
+        setSocials(normalizedSocials);
         setEditSocials({
-          instagram_url: socialsData.instagram_url || '',
-          tiktok_url: socialsData.tiktok_url || '',
-          youtube_url: socialsData.youtube_url || ''
+          instagram_url: normalizedSocials.instagram_url || '',
+          tiktok_url: normalizedSocials.tiktok_url || '',
+          youtube_url: normalizedSocials.youtube_url || ''
         });
       }
       
@@ -255,19 +293,30 @@ export default function ArtistPage() {
 
   const handleSaveSocials = async () => {
     if (!isAdmin) return;
+    const normalizedSocials = normalizeArtistSocials(editSocials);
+    if (hasInvalidSocialUrl(editSocials, normalizedSocials)) {
+      alert('Bitte nur gültige http/https Social-Links speichern.');
+      return;
+    }
+
     setIsSavingSocials(true);
     try {
       const { error } = await supabase
         .from('artist_profiles')
         .upsert({ 
           artist_name: artistName,
-          instagram_url: editSocials.instagram_url,
-          tiktok_url: editSocials.tiktok_url,
-          youtube_url: editSocials.youtube_url
+          instagram_url: normalizedSocials.instagram_url,
+          tiktok_url: normalizedSocials.tiktok_url,
+          youtube_url: normalizedSocials.youtube_url
         }, { onConflict: 'artist_name' });
         
       if (error) throw error;
-      setSocials(editSocials);
+      setSocials(normalizedSocials);
+      setEditSocials({
+        instagram_url: normalizedSocials.instagram_url || '',
+        tiktok_url: normalizedSocials.tiktok_url || '',
+        youtube_url: normalizedSocials.youtube_url || '',
+      });
       setIsEditingSocials(false);
     } catch (err) {
       console.error('Error saving socials', err);

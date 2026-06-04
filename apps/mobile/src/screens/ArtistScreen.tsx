@@ -339,6 +339,8 @@ function SocialLink({
   url?: string | null;
 }) {
   if (!url) return null;
+  const normalizedUrl = normalizeExternalUrl(url);
+  if (!normalizedUrl) return null;
 
   return (
     <TouchableOpacity
@@ -346,7 +348,9 @@ function SocialLink({
       accessibilityRole="link"
       activeOpacity={0.84}
       onPress={() => {
-        void Linking.openURL(normalizeExternalUrl(url));
+        void Linking.openURL(normalizedUrl).catch(() => {
+          Alert.alert('Link nicht verfügbar', 'Dieser Social-Link konnte nicht geöffnet werden.');
+        });
       }}
       style={styles.socialButton}
     >
@@ -372,8 +376,20 @@ function getMonthlyListeners(songs: Song[]) {
 }
 
 function normalizeExternalUrl(url: string) {
-  const trimmedUrl = url.trim();
-  return /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`;
+  const rawUrl = url.trim();
+  if (!rawUrl) return null;
+
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(rawUrl)
+    ? rawUrl
+    : `https://${rawUrl}`;
+
+  try {
+    const parsedUrl = new URL(candidate);
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') return null;
+    return parsedUrl.toString();
+  } catch {
+    return null;
+  }
 }
 
 function getShuffleStartIndex(songs: Song[], currentIndex: number) {
