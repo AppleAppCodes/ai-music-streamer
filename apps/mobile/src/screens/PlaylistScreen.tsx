@@ -71,7 +71,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
           <View style={styles.playlistHero}>
             {playlist.cover_url ? (
-              <Image source={{ uri: playlist.cover_url }} style={styles.playlistCover} />
+              <Image source={{ uri: playlist.cover_url }} style={styles.playlistCover} alt="" />
             ) : (
               <View style={[styles.playlistCover, styles.playlistFallback]}>
                 <Text style={styles.playlistFallbackText}>♪</Text>
@@ -117,7 +117,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
                     }}
                   >
                     {song.cover_url ? (
-                      <Image source={{ uri: song.cover_url }} style={styles.songCover} />
+                      <Image source={{ uri: song.cover_url }} style={styles.songCover} alt="" />
                     ) : (
                       <View style={[styles.songCover, styles.songFallback]}>
                         <Text style={styles.songFallbackText}>Y</Text>

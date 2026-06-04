@@ -1,4 +1,4 @@
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,8 @@ import { usePlayer } from '../lib/player-context';
 import type { Song } from '../lib/types';
 import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
+import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
+import { formatDuration } from '../lib/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LikedSongs'>;
 
@@ -18,6 +20,7 @@ export function LikedSongsScreen({ navigation }: Props) {
   const [data, setData] = useState<LibraryMusicData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [playlistSongId, setPlaylistSongId] = useState<string | null>(null);
   const { activeSong, isPlaying, playSong, setQueue, toggleShuffle } = usePlayer();
 
   useEffect(() => {
@@ -72,10 +75,34 @@ export function LikedSongsScreen({ navigation }: Props) {
       song.title,
       'Was möchtest du tun?',
       [
-        { text: 'Teilen', onPress: () => console.log('Teilen', song.id) },
-        { text: 'Zur Playlist hinzufügen', onPress: () => console.log('Playlist', song.id) },
-        { text: 'Zum Künstler', onPress: () => console.log('Künstler', song.id) },
-        { text: 'Zum Album', onPress: () => console.log('Album', song.id) },
+        {
+          text: 'Teilen',
+          onPress: () => {
+            void Share.share({
+              message: `Hoer ${song.title} auf YORIAX: https://www.yoriax.com/song/${song.id}`,
+              title: song.title,
+            });
+          },
+        },
+        { text: 'Zur Playlist hinzufügen', onPress: () => setPlaylistSongId(song.id) },
+        {
+          text: 'Zum Künstler',
+          onPress: () => navigation.navigate('Artist', { artistId: song.artist_name || song.creatorName || song.creator_id || 'unknown' }),
+        },
+        {
+          text: 'Song-Details',
+          onPress: () => {
+            Alert.alert(
+              song.title,
+              [
+                song.artist_name || song.creatorName || 'Creator',
+                song.genre ? `Genre: ${song.genre}` : null,
+                song.duration ? `Dauer: ${formatDuration(song.duration)}` : null,
+                `Streams: ${song.plays.toLocaleString('de-DE')}`,
+              ].filter(Boolean).join('\n'),
+            );
+          },
+        },
         { text: 'Abbrechen', style: 'cancel' },
       ],
       { cancelable: true },
@@ -163,6 +190,13 @@ export function LikedSongsScreen({ navigation }: Props) {
           </View>
         )}
       </ScrollView>
+      {playlistSongId ? (
+        <AddToPlaylistModal
+          visible={Boolean(playlistSongId)}
+          songId={playlistSongId}
+          onClose={() => setPlaylistSongId(null)}
+        />
+      ) : null}
     </View>
   );
 }

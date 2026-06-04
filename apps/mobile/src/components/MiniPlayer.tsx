@@ -26,7 +26,7 @@ export function MiniPlayer() {
     >
       {activeSong.cover_url && (
         <View style={StyleSheet.absoluteFill}>
-          <Image source={{ uri: activeSong.cover_url }} style={StyleSheet.absoluteFill} blurRadius={10} />
+          <Image source={{ uri: activeSong.cover_url }} style={StyleSheet.absoluteFill} blurRadius={10} alt="" />
           <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
           <LinearGradient
             colors={['rgba(12,10,18,0.5)', 'rgba(12,10,18,0.9)']}

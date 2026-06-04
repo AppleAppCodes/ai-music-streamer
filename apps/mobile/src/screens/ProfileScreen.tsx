@@ -64,7 +64,7 @@ export function ProfileScreen({ navigation }: Props) {
             <View style={styles.avatarColumn}>
               <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8}>
                 {avatarUrl ? (
-                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} alt="" />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarText}>{username.charAt(0).toUpperCase()}</Text>

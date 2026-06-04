@@ -100,7 +100,7 @@ export function SearchScreen() {
                   accessibilityRole="button"
                 >
                   {song.cover_url ? (
-                    <Image source={{ uri: song.cover_url }} style={styles.cover} />
+                    <Image source={{ uri: song.cover_url }} style={styles.cover} alt="" />
                   ) : (
                     <View style={[styles.cover, styles.coverFallback]}>
                       <Text style={styles.coverFallbackText}>Y</Text>

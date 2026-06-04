@@ -121,7 +121,7 @@ function SongRow({ song, index, list }: { song: Song; index: number; list: Song[
       style={[styles.itemRow, isActive && styles.itemRowActive]}
     >
       {song.cover_url ? (
-        <Image source={{ uri: song.cover_url }} style={styles.itemImage} />
+        <Image source={{ uri: song.cover_url }} style={styles.itemImage} alt="" />
       ) : (
         <View style={[styles.itemImage, styles.itemFallback]}>
           <Text style={styles.itemFallbackText}>Y</Text>
@@ -149,7 +149,7 @@ function PlaylistRow({ playlist }: { playlist: Playlist }) {
       onPress={() => navigation.navigate('Playlist', { playlistId: playlist.id })}
     >
       {playlist.cover_url ? (
-        <Image source={{ uri: playlist.cover_url }} style={styles.itemImage} />
+        <Image source={{ uri: playlist.cover_url }} style={styles.itemImage} alt="" />
       ) : (
         <View style={[styles.itemImage, styles.playlistFallback]}>
           <Text style={styles.itemFallbackText}>♪</Text>
