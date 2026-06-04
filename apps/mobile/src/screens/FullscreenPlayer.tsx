@@ -152,8 +152,8 @@ export function FullscreenPlayer({ navigation }: Props) {
           <TouchableOpacity style={styles.secondaryControlButton}>
             <Ionicons name="share-social-outline" size={24} color={theme.colors.muted} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={toggleRepeat} style={styles.secondaryControlButton}>
-            <Ionicons name={repeatMode === 'one' ? "repeat" : "repeat"} size={24} color={repeatMode !== 'none' ? theme.colors.primary : theme.colors.muted} />
+          <TouchableOpacity style={styles.secondaryControlButton}>
+            <Ionicons name="list-outline" size={26} color={theme.colors.muted} />
           </TouchableOpacity>
         </View>
         
