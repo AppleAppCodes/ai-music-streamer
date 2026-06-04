@@ -76,18 +76,7 @@ export function LibraryScreen() {
 
       {data && !loading ? (
         <>
-          <SectionTitle title="Zuletzt geliked" />
-          {data.likedSongs.length > 0 ? (
-            <View style={styles.list}>
-              {data.likedSongs.slice(0, 8).map((song, index, arr) => (
-                <SongRow key={song.id} song={song} index={index} list={arr} />
-              ))}
-            </View>
-          ) : (
-            <EmptyBlock title="Noch keine Lieblingssongs" copy="Likes aus Web und App erscheinen hier." />
-          )}
-
-          <SectionTitle title="Deine Playlists" />
+          <SectionTitle title="Meine Playlists" />
           {data.playlists.length > 0 ? (
             <View style={styles.list}>
               {data.playlists.slice(0, 8).map((playlist) => (
@@ -96,6 +85,17 @@ export function LibraryScreen() {
             </View>
           ) : (
             <EmptyBlock title="Noch keine Playlists" copy="Sobald du Playlists erstellst, werden sie hier synchronisiert." />
+          )}
+
+          <SectionTitle title="Zuletzt gehört" />
+          {data.likedSongs.length > 0 ? (
+            <View style={styles.list}>
+              {data.likedSongs.slice(0, 8).map((song, index, arr) => (
+                <SongRow key={song.id} song={song} index={index} list={arr} />
+              ))}
+            </View>
+          ) : (
+            <EmptyBlock title="Noch keine Songs gehört" copy="Deine zuletzt gehörten Songs erscheinen hier." />
           )}
         </>
       ) : null}
