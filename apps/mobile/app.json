@@ -5,19 +5,43 @@
     "scheme": "yoriax",
     "version": "0.1.0",
     "orientation": "portrait",
+    "icon": "./ios/Yoriax/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#050505",
     "ios": {
       "bundleIdentifier": "com.yoriax.app",
-      "supportsTablet": false
+      "buildNumber": "2",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryAddUsageDescription": "YORIAX speichert Bilder nur, wenn du dies ausdrücklich auswählst.",
+        "NSPhotoLibraryUsageDescription": "YORIAX nutzt deine Mediathek, damit du ein Profilbild auswählen kannst.",
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
     },
     "android": {
       "package": "com.yoriax.app",
-      "edgeToEdgeEnabled": true
+      "versionCode": 2,
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./ios/Yoriax/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png",
+        "backgroundColor": "#050505"
+      }
     },
     "plugins": [
       "expo-audio",
-      "expo-video"
-    ]
+      "expo-video",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "YORIAX nutzt deine Mediathek, damit du ein Profilbild auswählen kannst."
+        }
+      ]
+    ],
+    "extra": {
+      "yoriaxReleaseStage": "testing"
+    }
   }
 }

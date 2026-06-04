@@ -10,7 +10,14 @@
     "mobile:start": "npm --prefix apps/mobile run start",
     "mobile:android": "npm --prefix apps/mobile run android",
     "mobile:ios": "npm --prefix apps/mobile run ios",
-    "mobile:typecheck": "npm --prefix apps/mobile run typecheck"
+    "mobile:prebuild": "npm --prefix apps/mobile run prebuild",
+    "mobile:prebuild:android": "npm --prefix apps/mobile run prebuild -- --platform android",
+    "mobile:prebuild:ios": "npm --prefix apps/mobile run prebuild -- --platform ios",
+    "mobile:typecheck": "npm --prefix apps/mobile run typecheck",
+    "mobile:lint": "eslint apps/mobile/App.tsx apps/mobile/src --max-warnings=0",
+    "mobile:check": "npm run mobile:typecheck && npm run mobile:lint",
+    "mobile:eas:preview:android": "cd apps/mobile && npx eas-cli build --platform android --profile preview",
+    "mobile:eas:preview:ios": "cd apps/mobile && npx eas-cli build --platform ios --profile preview"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.5.2",
