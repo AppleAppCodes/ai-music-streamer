@@ -106,35 +106,27 @@ export function HomeScreen() {
         <IconButton icon="person-circle-outline" onPress={() => navigation.navigate('Profile')} />
       </View>
 
-      <LinearGradient
-        colors={['rgba(124,58,237,0.28)', 'rgba(45,212,191,0.10)', 'rgba(255,255,255,0.035)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.hero}
-      >
-        <Text style={styles.eyebrow}>YORIAX MOBILE</Text>
-        <Text style={styles.title}>Entdecke neue Tracks</Text>
-        <Text style={styles.copy}>Viral Charts, Hooks, Künstler und deine Bibliothek in einem konsistenten Mobile-Flow.</Text>
-
-        <View style={styles.statsRow}>
-          <StatPill label="Songs" value={data?.totalSongs ?? 0} />
-          <StatPill label="Für dich" value={data?.recommendedSongs.length ?? 0} />
-        </View>
-      </LinearGradient>
-
       <View style={styles.quickGrid}>
         {quickTiles.map((tile) => (
           <TouchableOpacity
             accessibilityRole="button"
             key={tile.label}
             onPress={tile.onPress}
-            style={styles.quickTile}
+            activeOpacity={0.8}
+            style={{ width: '48%' }}
           >
-            <View style={[styles.quickIcon, { backgroundColor: `${tile.accent}24` }]}>
-              <Ionicons name={tile.icon} size={21} color={tile.accent} />
-            </View>
-            <Text style={styles.quickLabel} numberOfLines={1}>{tile.label}</Text>
-            <Text style={styles.quickSubtitle} numberOfLines={1}>{tile.subtitle}</Text>
+            <LinearGradient
+              colors={['rgba(124,58,237,0.28)', 'rgba(45,212,191,0.10)', 'rgba(255,255,255,0.035)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.quickTile}
+            >
+              <View style={[styles.quickIcon, { backgroundColor: `${tile.accent}24` }]}>
+                <Ionicons name={tile.icon} size={21} color={tile.accent} />
+              </View>
+              <Text style={styles.quickLabel} numberOfLines={1}>{tile.label}</Text>
+              <Text style={styles.quickSubtitle} numberOfLines={1}>{tile.subtitle}</Text>
+            </LinearGradient>
           </TouchableOpacity>
         ))}
       </View>
@@ -150,15 +142,6 @@ export function HomeScreen() {
         </View>
       ) : null}
     </ScrollView>
-  );
-}
-
-function StatPill({ label, value }: { label: string; value: number }) {
-  return (
-    <View style={styles.statPill}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
   );
 }
 
@@ -223,70 +206,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  hero: {
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.xl,
-    borderWidth: 1,
-    overflow: 'hidden',
-    padding: 22,
-  },
-  eyebrow: {
-    color: theme.colors.accent,
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 2.4,
-  },
-  title: {
-    color: theme.colors.text,
-    fontSize: 36,
-    fontWeight: '900',
-    letterSpacing: -1.2,
-    marginTop: 10,
-  },
-  copy: {
-    color: theme.colors.muted,
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 21,
-    marginTop: 10,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 20,
-  },
-  statPill: {
-    backgroundColor: 'rgba(0,0,0,0.22)',
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.md,
-    borderWidth: 1,
-    flex: 1,
-    padding: 14,
-  },
-  statValue: {
-    color: theme.colors.text,
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  statLabel: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: '800',
-    marginTop: 2,
-  },
   quickGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
   quickTile: {
-    backgroundColor: 'rgba(255,255,255,0.055)',
     borderColor: theme.colors.border,
     borderRadius: theme.radii.lg,
     borderWidth: 1,
     minHeight: 108,
     padding: 14,
-    width: '48%',
+    width: '100%',
   },
   quickIcon: {
     alignItems: 'center',

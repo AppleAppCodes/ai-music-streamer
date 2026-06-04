@@ -60,7 +60,7 @@ function FeedVisual({ item, active }: { item: FeedPreviewSong; active: boolean }
 
 export function ForYouScreen() {
   const { user } = useAuth();
-  const { activeSong, isPlaying, playSong, toggle } = usePlayer();
+  const { activeSong, isPlaying, playSong, toggle, setQueue } = usePlayer();
   const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,6 +137,17 @@ export function ForYouScreen() {
             <Text style={styles.hookTime}>
               Hook: {item.clip?.hook_start_seconds ?? 0}s - {item.clip?.hook_end_seconds ?? 30}s
             </Text>
+            <TouchableOpacity 
+              style={styles.fullSongButton}
+              onPress={() => {
+                setQueue([item], 0);
+                void playSong(item);
+                // Also navigate to mini player or Liked Songs if needed, but playing is enough
+              }}
+            >
+              <Ionicons name="musical-notes" size={14} color="#000" />
+              <Text style={styles.fullSongText}>Ganzen Song hören</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.actionsContainer}>
@@ -275,10 +286,26 @@ const styles = StyleSheet.create({
   contentContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingBottom: 130, // space for tab bar and miniplayer
+    paddingBottom: 220, // space for tab bar and miniplayer
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     zIndex: 5,
+  },
+  fullSongButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    gap: 6,
+  },
+  fullSongText: {
+    color: '#000',
+    fontSize: 13,
+    fontWeight: '800',
   },
   textContainer: {
     flex: 1,
