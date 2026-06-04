@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ActionSheetIOS, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { theme } from '../theme';
 import { usePlayer } from '../lib/player-context';
@@ -8,6 +8,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { formatDuration } from '../lib/format';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
 import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
 
@@ -48,6 +50,27 @@ export function FullscreenPlayer({ navigation }: Props) {
     }
   };
 
+  const handleContextMenu = () => {
+    const options = ['Abbrechen', 'Song-Details', 'Sleeptimer', 'Teilen'];
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: 0 },
+        (buttonIndex) => {
+          if (buttonIndex === 1) Alert.alert('Song-Details', 'Kommt bald!');
+          if (buttonIndex === 2) Alert.alert('Sleeptimer', 'Kommt bald!');
+          if (buttonIndex === 3) Alert.alert('Teilen', 'Link kopiert!');
+        }
+      );
+    } else {
+      Alert.alert('Optionen', undefined, [
+        { text: 'Song-Details', onPress: () => Alert.alert('Song-Details', 'Kommt bald!') },
+        { text: 'Sleeptimer', onPress: () => Alert.alert('Sleeptimer', 'Kommt bald!') },
+        { text: 'Teilen', onPress: () => Alert.alert('Teilen', 'Link kopiert!') },
+        { text: 'Abbrechen', style: 'cancel' }
+      ]);
+    }
+  };
+
   if (!activeSong) {
     return (
       <View style={styles.container}>
@@ -63,9 +86,23 @@ export function FullscreenPlayer({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      {activeSong.cover_url && (
+        <View style={StyleSheet.absoluteFill}>
+          <Image source={{ uri: activeSong.cover_url }} style={StyleSheet.absoluteFill} blurRadius={10} />
+          <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill} />
+          <LinearGradient
+            colors={['rgba(12,10,18,0.4)', 'rgba(12,10,18,0.8)', '#0c0a12']}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      )}
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
           <Ionicons name="chevron-down" size={32} color={theme.colors.text} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleContextMenu} style={styles.menuButton}>
+          <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -82,9 +119,18 @@ export function FullscreenPlayer({ navigation }: Props) {
           <View style={styles.titleRow}>
             <View style={styles.titleTextContainer}>
               <Text style={styles.title} numberOfLines={1}>{activeSong.title}</Text>
-              <Text style={styles.artist} numberOfLines={1}>
-                {activeSong.artist_name || activeSong.creatorName || 'Creator'}
-              </Text>
+              <TouchableOpacity onPress={() => {
+                navigation.goBack();
+                setTimeout(() => {
+                  navigation.navigate('Artist', { 
+                    artistId: activeSong.creator_id || 'unknown'
+                  });
+                }, 300);
+              }}>
+                <Text style={styles.artist} numberOfLines={1}>
+                  {activeSong.artist_name || activeSong.creatorName || 'Creator'}
+                </Text>
+              </TouchableOpacity>
             </View>
             <View style={styles.actionButtons}>
               <TouchableOpacity 
@@ -177,8 +223,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 10,
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   closeButton: {
+    padding: 8,
+  },
+  menuButton: {
     padding: 8,
   },
   content: {

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from '../theme';
 import { useAuth } from '../lib/auth-context';
-import { addSongToPlaylist, getUserPlaylists } from '../lib/music-data';
+import { addSongToPlaylist, createPlaylist, getUserPlaylists } from '../lib/music-data';
 import type { Playlist } from '../lib/types';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -75,12 +75,46 @@ export function AddToPlaylistModal({ visible, songId, onClose }: AddToPlaylistMo
             <View style={styles.centerBox}>
               <ActivityIndicator color={theme.colors.text} />
             </View>
-          ) : playlists.length === 0 ? (
-            <View style={styles.centerBox}>
-              <Text style={styles.emptyText}>Du hast noch keine Playlists.</Text>
-            </View>
           ) : (
             <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+              <TouchableOpacity
+                style={styles.playlistRow}
+                onPress={() => {
+                  Alert.prompt(
+                    'Neue Playlist',
+                    'Wie soll die Playlist heißen?',
+                    [
+                      { text: 'Abbrechen', style: 'cancel' },
+                      {
+                        text: 'Erstellen',
+                        onPress: async (text?: string) => {
+                          if (!text || !user) return;
+                          setLoading(true);
+                          try {
+                            const newPlaylist = await createPlaylist(user.id, text);
+                            setPlaylists([newPlaylist, ...playlists]);
+                            await handleAdd(newPlaylist.id);
+                          } catch (e) {
+                            console.error(e);
+                            setLoading(false);
+                          }
+                        },
+                      },
+                    ],
+                    'plain-text'
+                  );
+                }}
+              >
+                <View style={[styles.playlistIcon, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                  <Ionicons name="add" size={24} color={theme.colors.text} />
+                </View>
+                <View style={styles.playlistInfo}>
+                  <Text style={styles.playlistTitle}>Neue Playlist erstellen</Text>
+                </View>
+              </TouchableOpacity>
+              
+              {playlists.length > 0 && <View style={styles.divider} />}
+
               {playlists.map(playlist => (
                 <TouchableOpacity
                   key={playlist.id}
@@ -159,6 +193,11 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 20,
     gap: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: 4,
   },
   playlistRow: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDuration } from '../lib/format';
 import { usePlayer } from '../lib/player-context';
@@ -7,6 +7,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { CoverArt } from './YoriaxUI';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export function MiniPlayer() {
   const { activeSong, currentTime, duration, error, isBuffering, isPlaying, toggle } = usePlayer();
@@ -22,6 +24,16 @@ export function MiniPlayer() {
       activeOpacity={0.9}
       onPress={() => navigation.navigate('FullscreenPlayer')}
     >
+      {activeSong.cover_url && (
+        <View style={StyleSheet.absoluteFill}>
+          <Image source={{ uri: activeSong.cover_url }} style={StyleSheet.absoluteFill} blurRadius={10} />
+          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+          <LinearGradient
+            colors={['rgba(12,10,18,0.5)', 'rgba(12,10,18,0.9)']}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      )}
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progress}%` }]} />
       </View>
@@ -57,7 +69,7 @@ export function MiniPlayer() {
 
 const styles = StyleSheet.create({
   shell: {
-    backgroundColor: 'rgba(12,10,18,0.96)',
+    backgroundColor: 'transparent',
     borderColor: theme.colors.borderStrong,
     borderRadius: theme.radii.lg,
     borderWidth: 1,

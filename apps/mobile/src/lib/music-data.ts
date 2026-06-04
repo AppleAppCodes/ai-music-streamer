@@ -357,6 +357,25 @@ export async function getUserPlaylists(userId: string): Promise<Playlist[]> {
   return (data || []) as Playlist[];
 }
 
+export async function createPlaylist(userId: string, title: string): Promise<Playlist> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('playlists')
+    .insert({
+      user_id: userId,
+      title,
+      is_public: false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data as Playlist;
+}
+
 export async function addSongToPlaylist(playlistId: string, songId: string): Promise<void> {
   const client = requireClient();
 

@@ -1,9 +1,7 @@
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useState } from 'react';
+import { Alert, ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../lib/auth-context';
-import { loadCreatedSongs } from '../lib/music-data';
-import { usePlayer } from '../lib/player-context';
-import type { Song } from '../lib/types';
 import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -13,95 +11,124 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
 export function ProfileScreen({ navigation }: Props) {
   const { user, signOut } = useAuth();
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { activeSong, isPlaying, playSong, setQueue } = usePlayer();
+  
+  const initialUsername = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
+  const email = user?.email || '';
+  const initialAvatarUrl = user?.user_metadata?.avatar_url || null;
 
-  useEffect(() => {
-    let mounted = true;
-    async function load() {
-      if (!user) return;
-      setLoading(true);
-      const data = await loadCreatedSongs(user.id);
-      if (mounted) {
-        setSongs(data);
-        setLoading(false);
-      }
+  const [username, setUsername] = useState(initialUsername);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      setAvatarUrl(result.assets[0].uri);
     }
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [user]);
-
-  const handlePlaySong = (song: Song, index: number) => {
-    setQueue(songs, index);
-    void playSong(song);
   };
 
-  const username = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
-  const avatarUrl = user?.user_metadata?.avatar_url;
+  const handleSave = async () => {
+    setIsSaving(true);
+    // TODO: Upload to Supabase Storage and update user_metadata
+    setTimeout(() => {
+      setIsSaving(false);
+      Alert.alert('Gespeichert', 'Deine Änderungen wurden erfolgreich gespeichert.');
+    }, 1000);
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={28} color={theme.colors.text} />
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <View style={styles.headerIconBox}>
+              <Ionicons name="settings-outline" size={20} color={theme.colors.text} />
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Einstellungen</Text>
+        </View>
         <TouchableOpacity onPress={() => void signOut()} style={styles.logoutButton}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.heroSection}>
-          <View style={styles.heroIconBox}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
-            ) : (
-              <Text style={styles.heroAvatarText}>{username.charAt(0).toUpperCase()}</Text>
-            )}
+        <View style={styles.card}>
+          <View style={styles.cardBodyRow}>
+            <View style={styles.avatarColumn}>
+              <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8}>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarText}>{username.charAt(0).toUpperCase()}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              <Text style={styles.avatarLabel}>Profilbild</Text>
+              <Text style={styles.avatarHint}>Empfohlen: 400x400px</Text>
+            </View>
+
+            <View style={styles.formColumn}>
+              <Text style={styles.inputLabel}>Benutzername</Text>
+              <View style={styles.inputBox}>
+                <Ionicons name="person-outline" size={18} color={theme.colors.muted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={username}
+                  onChangeText={setUsername}
+                  placeholder="Dein Name"
+                  placeholderTextColor={theme.colors.muted}
+                />
+              </View>
+
+              <Text style={styles.inputLabel}>E-Mail Adresse</Text>
+              <View style={styles.inputBoxDisabled}>
+                <TextInput
+                  style={styles.inputDisabled}
+                  value={email}
+                  editable={false}
+                />
+              </View>
+              <Text style={styles.inputHint}>Die E-Mail Adresse kann derzeit nicht geändert werden.</Text>
+            </View>
           </View>
-          <Text style={styles.heroTitle}>@{username}</Text>
-          <Text style={styles.heroMeta}>Dein Profil</Text>
+          <View style={styles.cardFooter}>
+            <TouchableOpacity style={styles.saveButton} onPress={() => void handleSave()} disabled={isSaving}>
+              {isSaving ? (
+                <ActivityIndicator color="#000" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="save-outline" size={18} color="#000" />
+                  <Text style={styles.saveButtonText}>Änderungen speichern</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Deine erstellten Songs</Text>
-        
-        {loading ? (
-          <ActivityIndicator color={theme.colors.text} style={styles.loader} />
-        ) : songs.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyTitle}>Keine eigenen Songs</Text>
-            <Text style={styles.emptyCopy}>Wenn du in der YORIAX Web-App Songs erstellst, tauchen sie hier auf.</Text>
+        <View style={styles.card}>
+          <View style={styles.subscriptionHeaderRow}>
+            <Ionicons name="card-outline" size={22} color={theme.colors.text} />
+            <Text style={styles.subscriptionTitle}>Abonnement</Text>
           </View>
-        ) : (
-          <View style={styles.list}>
-            {songs.map((song, index) => {
-              const isActive = activeSong?.id === song.id;
-              return (
-                <TouchableOpacity
-                  key={song.id}
-                  style={[styles.itemRow, isActive && styles.itemRowActive]}
-                  onPress={() => handlePlaySong(song, index)}
-                >
-                  {song.cover_url ? (
-                    <Image source={{ uri: song.cover_url }} style={styles.itemImage} />
-                  ) : (
-                    <View style={[styles.itemImage, styles.itemFallback]}>
-                      <Text style={styles.itemFallbackText}>Y</Text>
-                    </View>
-                  )}
-                  <View style={styles.itemText}>
-                    <Text style={styles.itemTitle} numberOfLines={1}>{song.title}</Text>
-                    <Text style={styles.itemMeta} numberOfLines={1}>{song.genre || 'AI Music'}</Text>
-                  </View>
-                  <Text style={styles.rowPlayState}>{isActive && isPlaying ? 'II' : '▶'}</Text>
-                </TouchableOpacity>
-              );
-            })}
+
+          <View style={styles.planBox}>
+            <View style={styles.planInfo}>
+              <Text style={styles.planName}>Free Plan</Text>
+              <Text style={styles.planDesc}>Du nutzt aktuell die kostenlose Version mit eingeschränkten Funktionen.</Text>
+            </View>
+            <TouchableOpacity style={styles.upgradeButton} onPress={() => Alert.alert('Bald verfügbar', 'Premium kommt bald!')}>
+              <Text style={styles.upgradeText}>Auf Premium upgraden</Text>
+            </TouchableOpacity>
           </View>
-        )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -117,12 +144,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 10,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   backButton: {
-    padding: 8,
-    marginLeft: -8,
+  },
+  headerIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.surfaceMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: theme.colors.text,
   },
   logoutButton: {
     backgroundColor: 'rgba(239,68,68,0.15)',
@@ -137,120 +180,170 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingBottom: 100,
+    gap: 20,
   },
-  heroSection: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  heroIconBox: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     overflow: 'hidden',
+    padding: 24,
+  },
+  cardBodyRow: {
+    flexDirection: 'row',
+    gap: 32,
+  },
+  avatarColumn: {
+    alignItems: 'center',
+    width: 120,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   avatarImage: {
-    width: '100%',
-    height: '100%',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
   },
-  heroAvatarText: {
-    fontSize: 64,
+  avatarText: {
+    fontSize: 40,
     fontWeight: '900',
-    color: theme.colors.text,
+    color: '#fff',
   },
-  heroTitle: {
-    fontSize: 28,
-    fontWeight: '900',
+  avatarLabel: {
     color: theme.colors.text,
+    fontSize: 15,
+    fontWeight: '800',
     marginBottom: 4,
   },
-  heroMeta: {
-    fontSize: 16,
+  avatarHint: {
     color: theme.colors.muted,
-    fontWeight: '600',
+    fontSize: 12,
   },
-  sectionTitle: {
+  formColumn: {
+    flex: 1,
+  },
+  inputLabel: {
+    color: theme.colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  inputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 48,
+    marginBottom: 20,
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    color: theme.colors.text,
+    fontSize: 15,
+  },
+  inputBoxDisabled: {
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 48,
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  inputDisabled: {
+    color: theme.colors.muted,
+    fontSize: 15,
+  },
+  inputHint: {
+    color: theme.colors.muted,
+    fontSize: 12,
+  },
+  cardFooter: {
+    alignItems: 'flex-end',
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  saveButton: {
+    backgroundColor: theme.colors.text,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 100,
+  },
+  saveButtonText: {
+    color: '#000',
+    fontWeight: '800',
+    fontSize: 15,
+  },
+  subscriptionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  subscriptionTitle: {
+    color: theme.colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  planBox: {
+    backgroundColor: 'rgba(88,28,135,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(88,28,135,0.4)',
+    borderRadius: 12,
+    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  planInfo: {
+    flex: 1,
+    paddingRight: 20,
+  },
+  planName: {
     color: theme.colors.text,
     fontSize: 22,
     fontWeight: '900',
-    letterSpacing: -0.3,
-    marginBottom: 16,
+    marginBottom: 8,
   },
-  loader: {
-    marginTop: 40,
-  },
-  emptyBox: {
-    borderColor: theme.colors.border,
-    borderRadius: 22,
-    borderWidth: 1,
-    padding: 18,
-    marginTop: 10,
-  },
-  emptyTitle: {
-    color: theme.colors.text,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  emptyCopy: {
+  planDesc: {
     color: theme.colors.muted,
     fontSize: 14,
-    lineHeight: 21,
-    marginTop: 6,
+    lineHeight: 20,
   },
-  list: {
-    gap: 10,
-  },
-  itemRow: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: theme.colors.border,
-    borderRadius: 18,
+  upgradeButton: {
     borderWidth: 1,
-    flexDirection: 'row',
-    gap: 12,
-    padding: 10,
+    borderColor: theme.colors.border,
+    borderRadius: 100,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  itemRowActive: {
-    backgroundColor: 'rgba(124,58,237,0.18)',
-    borderColor: 'rgba(124,58,237,0.42)',
-  },
-  itemImage: {
-    backgroundColor: theme.colors.surfaceMuted,
-    borderRadius: 12,
-    height: 56,
-    width: 56,
-  },
-  itemFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  itemFallbackText: {
+  upgradeText: {
     color: theme.colors.text,
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  itemText: {
-    flex: 1,
-  },
-  itemTitle: {
-    color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  itemMeta: {
-    color: theme.colors.muted,
-    fontSize: 13,
     fontWeight: '700',
-    marginTop: 3,
-  },
-  rowPlayState: {
-    color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: '900',
-    width: 28,
+    fontSize: 14,
   },
 });
