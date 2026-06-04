@@ -73,11 +73,15 @@ export function ArtistScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backText}>‹ Zurück</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        accessibilityRole="button"
+        activeOpacity={0.86}
+        onPress={() => navigation.goBack()}
+        style={styles.floatingBackButton}
+      >
+        <Ionicons name="chevron-back" size={18} color={theme.colors.text} />
+        <Text style={styles.floatingBackText}>Zurück</Text>
+      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {bannerUrl ? (
           <ImageBackground source={{ uri: bannerUrl }} style={styles.heroBanner}>
@@ -182,20 +186,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  header: {
-    paddingTop: 50, // Safe area approx
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-    backgroundColor: theme.colors.background,
-    zIndex: 10,
-  },
-  backButton: {
+  floatingBackButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(5,5,5,0.58)',
+    borderColor: theme.colors.borderStrong,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 4,
+    left: 18,
+    paddingHorizontal: 12,
     paddingVertical: 8,
+    position: 'absolute',
+    top: 14,
+    zIndex: 20,
   },
-  backText: {
-    color: theme.colors.primary,
-    fontSize: 16,
-    fontWeight: '700',
+  floatingBackText: {
+    color: theme.colors.text,
+    fontSize: 13,
+    fontWeight: '800',
   },
   content: {
     paddingBottom: 120, // space for MiniPlayer
