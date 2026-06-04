@@ -1,4 +1,4 @@
-import { ActivityIndicator, Image, ImageBackground, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ImageBackground, Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useState, useEffect } from 'react';
 import { theme } from '../theme';
 import { usePlayer } from '../lib/player-context';
@@ -10,9 +10,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import { useAuth } from '../lib/auth-context';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Artist'>;
 type StorageFile = { name: string; created_at?: string | null };
+type ArtistSocials = {
+  instagram_url?: string | null;
+  tiktok_url?: string | null;
+  youtube_url?: string | null;
+};
 
 export function ArtistScreen({ route, navigation }: Props) {
   const { artistId: artistName } = route.params;
@@ -20,7 +26,11 @@ export function ArtistScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [socials, setSocials] = useState<ArtistSocials | null>(null);
 
+  const { user } = useAuth();
   const { activeSong, isPlaying, isShuffling, playSong, setQueue, toggle, toggleShuffle } = usePlayer();
 
   useEffect(() => {
@@ -29,6 +39,8 @@ export function ArtistScreen({ route, navigation }: Props) {
       setLoading(true);
       setError(null);
       setBannerUrl(null);
+      setSocials(null);
+      setIsFollowing(false);
       try {
         const data = await loadArtistSongs(artistName);
         if (mounted) setSongs(data);
@@ -58,6 +70,27 @@ export function ArtistScreen({ route, navigation }: Props) {
             setBannerUrl(publicUrlData.publicUrl);
           }
         }
+
+        const [{ data: socialsData }, followResult] = await Promise.all([
+          client
+            .from('artist_profiles')
+            .select('instagram_url, tiktok_url, youtube_url')
+            .eq('artist_name', artistName)
+            .maybeSingle(),
+          user
+            ? client
+                .from('follows')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('artist_name', artistName)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+        ]);
+
+        if (mounted) {
+          setSocials((socialsData as ArtistSocials | null) ?? null);
+          setIsFollowing(Boolean(followResult.data));
+        }
       } catch (err) {
         if (mounted) setError(err instanceof Error ? err.message : 'Künstler konnte nicht geladen werden.');
       } finally {
@@ -66,7 +99,7 @@ export function ArtistScreen({ route, navigation }: Props) {
     }
     load();
     return () => { mounted = false; };
-  }, [artistName]);
+  }, [artistName, user]);
 
   const totalPlays = songs.reduce((acc, song) => acc + (song.plays || 0), 0);
   const monthlyListeners = getMonthlyListeners(songs);
@@ -74,6 +107,7 @@ export function ArtistScreen({ route, navigation }: Props) {
   const hasSongs = artistQueue.length > 0;
   const isArtistActive = artistQueue.some((song) => song.id === activeSong?.id);
   const isArtistPlaying = isArtistActive && isPlaying;
+  const hasSocials = Boolean(socials?.instagram_url || socials?.tiktok_url || socials?.youtube_url);
 
   function handlePlayAll() {
     if (!hasSongs) return;
@@ -112,6 +146,33 @@ export function ArtistScreen({ route, navigation }: Props) {
       message: `Hoer ${artistName} auf YORIAX: https://www.yoriax.com/artist/${encodeURIComponent(artistName)}`,
       title: artistName,
     });
+  }
+
+  async function handleFollow() {
+    if (!user || !supabase) return;
+
+    setFollowLoading(true);
+    try {
+      if (isFollowing) {
+        const { error: followError } = await supabase
+          .from('follows')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('artist_name', artistName);
+        if (followError) throw new Error(followError.message);
+        setIsFollowing(false);
+      } else {
+        const { error: followError } = await supabase
+          .from('follows')
+          .insert({ user_id: user.id, artist_name: artistName });
+        if (followError) throw new Error(followError.message);
+        setIsFollowing(true);
+      }
+    } catch (followError) {
+      Alert.alert('Folgen nicht möglich', followError instanceof Error ? followError.message : 'Bitte versuche es erneut.');
+    } finally {
+      setFollowLoading(false);
+    }
   }
 
   return (
@@ -185,10 +246,36 @@ export function ArtistScreen({ route, navigation }: Props) {
               <TouchableOpacity accessibilityRole="button" activeOpacity={0.86} onPress={handleShare} style={styles.secondaryAction}>
                 <Ionicons name="share-social" size={21} color={theme.colors.muted} />
               </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityRole="button"
+                activeOpacity={0.86}
+                disabled={followLoading}
+                onPress={() => {
+                  void handleFollow();
+                }}
+                style={[styles.followButton, isFollowing && styles.followButtonActive, followLoading && styles.disabledButton]}
+              >
+                {followLoading ? (
+                  <ActivityIndicator color={theme.colors.text} size="small" />
+                ) : (
+                  <Ionicons name={isFollowing ? 'person' : 'person-add'} size={15} color={theme.colors.text} />
+                )}
+                <Text style={styles.followButtonText}>{isFollowing ? 'Folge ich' : 'Folgen'}</Text>
+              </TouchableOpacity>
               <View style={styles.songCountPill}>
                 <Text style={styles.songCountText}>{songs.length} {songs.length === 1 ? 'Song' : 'Songs'}</Text>
               </View>
             </View>
+            {hasSocials ? (
+              <View style={styles.socialCard}>
+                <Text style={styles.socialLabel}>Socials</Text>
+                <View style={styles.socialActions}>
+                  <SocialLink icon="logo-instagram" label="Instagram" tint="#E1306C" url={socials?.instagram_url} />
+                  <SocialLink icon="logo-tiktok" label="TikTok" tint="#00f2fe" url={socials?.tiktok_url} />
+                  <SocialLink icon="logo-youtube" label="YouTube" tint="#FF0033" url={socials?.youtube_url} />
+                </View>
+              </View>
+            ) : null}
             <Text style={styles.sectionTitle}>Beliebte Songs</Text>
             <View style={styles.songList}>
               {songs.map((song, idx) => {
@@ -240,6 +327,35 @@ function VerifiedBadge() {
   );
 }
 
+function SocialLink({
+  icon,
+  label,
+  tint,
+  url,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  tint: string;
+  url?: string | null;
+}) {
+  if (!url) return null;
+
+  return (
+    <TouchableOpacity
+      accessibilityLabel={label}
+      accessibilityRole="link"
+      activeOpacity={0.84}
+      onPress={() => {
+        void Linking.openURL(normalizeExternalUrl(url));
+      }}
+      style={styles.socialButton}
+    >
+      <Ionicons name={icon} size={20} color={tint} />
+      <Text style={styles.socialButtonText}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 function getMonthlyListeners(songs: Song[]) {
   if (songs.length === 0) return 0;
 
@@ -253,6 +369,11 @@ function getMonthlyListeners(songs: Song[]) {
   const monthsActive = Math.max(1, (Date.now() - firstReleaseDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
 
   return Math.round(totalPlays / monthsActive);
+}
+
+function normalizeExternalUrl(url: string) {
+  const trimmedUrl = url.trim();
+  return /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`;
 }
 
 function getShuffleStartIndex(songs: Song[], currentIndex: number) {
@@ -369,6 +490,7 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     alignItems: 'center',
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 12,
     marginBottom: 24,
@@ -402,6 +524,29 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primarySoft,
     borderColor: theme.colors.primaryLight,
   },
+  followButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderColor: theme.colors.borderStrong,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    minHeight: 40,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+  },
+  followButtonActive: {
+    backgroundColor: 'rgba(255,255,255,0.13)',
+    borderColor: 'rgba(255,255,255,0.38)',
+  },
+  followButtonText: {
+    color: theme.colors.text,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
   disabledButton: {
     opacity: 0.42,
   },
@@ -417,6 +562,43 @@ const styles = StyleSheet.create({
   },
   songCountText: {
     color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  socialCard: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderColor: theme.colors.border,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 24,
+    padding: 14,
+  },
+  socialLabel: {
+    color: theme.colors.subtle,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  socialActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  socialButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: theme.colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+  },
+  socialButtonText: {
+    color: theme.colors.text,
     fontSize: 12,
     fontWeight: '800',
   },
