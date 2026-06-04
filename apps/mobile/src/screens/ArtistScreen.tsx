@@ -1,4 +1,4 @@
-import { ActivityIndicator, Image, ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ImageBackground, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useState, useEffect } from 'react';
 import { theme } from '../theme';
 import { usePlayer } from '../lib/player-context';
@@ -21,7 +21,7 @@ export function ArtistScreen({ route, navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
 
-  const { activeSong, isPlaying, playSong } = usePlayer();
+  const { activeSong, isPlaying, isShuffling, playSong, setQueue, toggle, toggleShuffle } = usePlayer();
 
   useEffect(() => {
     let mounted = true;
@@ -70,6 +70,49 @@ export function ArtistScreen({ route, navigation }: Props) {
 
   const totalPlays = songs.reduce((acc, song) => acc + (song.plays || 0), 0);
   const monthlyListeners = getMonthlyListeners(songs);
+  const artistQueue = songs.map((song) => ({ ...song, creatorName: song.creatorName || artistName }));
+  const hasSongs = artistQueue.length > 0;
+  const isArtistActive = artistQueue.some((song) => song.id === activeSong?.id);
+  const isArtistPlaying = isArtistActive && isPlaying;
+
+  function handlePlayAll() {
+    if (!hasSongs) return;
+
+    if (isArtistActive) {
+      toggle();
+      return;
+    }
+
+    setQueue(artistQueue, 0);
+    void playSong(artistQueue[0]);
+  }
+
+  function handleShuffle() {
+    if (!hasSongs) return;
+
+    if (!isShuffling) {
+      toggleShuffle();
+    }
+
+    const currentIndex = artistQueue.findIndex((song) => song.id === activeSong?.id);
+    const startIndex = getShuffleStartIndex(artistQueue, currentIndex);
+    setQueue(artistQueue, startIndex);
+    void playSong(artistQueue[startIndex]);
+  }
+
+  function handleSongPress(index: number) {
+    if (!artistQueue[index]) return;
+
+    setQueue(artistQueue, index);
+    void playSong(artistQueue[index]);
+  }
+
+  function handleShare() {
+    void Share.share({
+      message: `Hoer ${artistName} auf YORIAX: https://www.yoriax.com/artist/${encodeURIComponent(artistName)}`,
+      title: artistName,
+    });
+  }
 
   return (
     <View style={styles.container}>
@@ -115,6 +158,37 @@ export function ArtistScreen({ route, navigation }: Props) {
           </View>
         ) : (
           <View style={styles.section}>
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                activeOpacity={0.86}
+                disabled={!hasSongs}
+                onPress={handlePlayAll}
+                style={[styles.playAllButton, !hasSongs && styles.disabledButton]}
+              >
+                <Ionicons
+                  name={isArtistPlaying ? 'pause' : 'play'}
+                  size={28}
+                  color="#050505"
+                  style={!isArtistPlaying ? styles.playIconOffset : undefined}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityRole="button"
+                activeOpacity={0.86}
+                disabled={!hasSongs}
+                onPress={handleShuffle}
+                style={[styles.secondaryAction, isShuffling && styles.secondaryActionActive, !hasSongs && styles.disabledButton]}
+              >
+                <Ionicons name="shuffle" size={22} color={isShuffling ? theme.colors.text : theme.colors.muted} />
+              </TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" activeOpacity={0.86} onPress={handleShare} style={styles.secondaryAction}>
+                <Ionicons name="share-social" size={21} color={theme.colors.muted} />
+              </TouchableOpacity>
+              <View style={styles.songCountPill}>
+                <Text style={styles.songCountText}>{songs.length} {songs.length === 1 ? 'Song' : 'Songs'}</Text>
+              </View>
+            </View>
             <Text style={styles.sectionTitle}>Beliebte Songs</Text>
             <View style={styles.songList}>
               {songs.map((song, idx) => {
@@ -123,7 +197,7 @@ export function ArtistScreen({ route, navigation }: Props) {
                   <TouchableOpacity
                     key={song.id}
                     style={styles.songRow}
-                    onPress={() => void playSong(song)}
+                    onPress={() => handleSongPress(idx)}
                   >
                     <Text style={styles.songIndex}>{idx + 1}</Text>
                     {song.cover_url ? (
@@ -179,6 +253,12 @@ function getMonthlyListeners(songs: Song[]) {
   const monthsActive = Math.max(1, (Date.now() - firstReleaseDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
 
   return Math.round(totalPlays / monthsActive);
+}
+
+function getShuffleStartIndex(songs: Song[], currentIndex: number) {
+  if (songs.length <= 1) return 0;
+  const safeCurrentIndex = currentIndex >= 0 ? currentIndex : 0;
+  return (safeCurrentIndex + Math.max(1, Math.floor(songs.length / 2))) % songs.length;
 }
 
 const styles = StyleSheet.create({
@@ -286,6 +366,59 @@ const styles = StyleSheet.create({
   },
   section: {
     padding: 20,
+  },
+  actionRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  playAllButton: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.text,
+    borderRadius: 999,
+    height: 58,
+    justifyContent: 'center',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.24,
+    shadowRadius: 24,
+    width: 58,
+  },
+  playIconOffset: {
+    marginLeft: 3,
+  },
+  secondaryAction: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderColor: theme.colors.borderStrong,
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 46,
+    justifyContent: 'center',
+    width: 46,
+  },
+  secondaryActionActive: {
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.primaryLight,
+  },
+  disabledButton: {
+    opacity: 0.42,
+  },
+  songCountPill: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: theme.colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginLeft: 'auto',
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+  songCountText: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
   },
   sectionTitle: {
     color: theme.colors.text,
