@@ -154,7 +154,7 @@ export function HomeScreen() {
 }
 
 function SongRail({ title, songs }: { title: string; songs: Song[] }) {
-  const { activeSong, isPlaying, playSong, setQueue } = usePlayer();
+  const { activeSong, isPlaying, playSong, setQueue, toggle } = usePlayer();
 
   if (songs.length === 0) return null;
 
@@ -170,8 +170,12 @@ function SongRail({ title, songs }: { title: string; songs: Song[] }) {
               accessibilityRole="button"
               key={song.id}
               onPress={() => {
-                setQueue(arr, index);
-                void playSong(song);
+                if (active) {
+                  toggle();
+                } else {
+                  setQueue(arr, index);
+                  void playSong(song);
+                }
               }}
               style={[styles.songCard, active && styles.songCardActive]}
             >

@@ -1,6 +1,5 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { formatDuration } from '../lib/format';
 import { usePlayer } from '../lib/player-context';
 import { theme } from '../theme';
@@ -24,12 +23,7 @@ export function MiniPlayer() {
       onPress={() => navigation.navigate('FullscreenPlayer')}
     >
       <View style={styles.progressTrack}>
-        <LinearGradient
-          colors={[theme.colors.primaryLight, theme.colors.accent]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.progressFill, { width: `${progress}%` }]}
-        />
+        <View style={[styles.progressFill, { width: `${progress}%` }]} />
       </View>
       <View style={styles.content}>
         <CoverArt uri={activeSong.cover_url} size={52} radius={14} />
@@ -82,7 +76,7 @@ const styles = StyleSheet.create({
     height: 3,
   },
   progressFill: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#fff',
     height: '100%',
   },
   content: {
