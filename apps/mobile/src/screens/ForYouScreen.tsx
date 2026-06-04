@@ -7,6 +7,9 @@ import type { FeedPreviewSong } from '../lib/types';
 import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/types';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const VIEWABILITY_CONFIG = {
@@ -59,6 +62,7 @@ function FeedVisual({ item, active }: { item: FeedPreviewSong; active: boolean }
 }
 
 export function ForYouScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const { activeSong, isPlaying, playSong, toggle, setQueue } = usePlayer();
   const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
@@ -98,8 +102,10 @@ export function ForYouScreen() {
   const startHookPlayback = useCallback((song: FeedPreviewSong, force = false) => {
     if (!force && currentVisibleId.current === song.id && activeSong?.id === song.id) return;
     currentVisibleId.current = song.id;
+
+    setQueue([song], 0);
     void playSong(song, { startAt: getHookStart(song) });
-  }, [activeSong?.id, playSong]);
+  }, [activeSong?.id, playSong, setQueue]);
 
   useEffect(() => {
     if (loading || songs.length === 0 || currentVisibleId.current) return;
@@ -141,7 +147,7 @@ export function ForYouScreen() {
               onPress={() => {
                 setQueue([item], 0);
                 void playSong(item);
-                // Also navigate to mini player or Liked Songs if needed, but playing is enough
+                navigation.navigate('FullscreenPlayer');
               }}
             >
               <Ionicons name="musical-notes" size={14} color="#000" />
