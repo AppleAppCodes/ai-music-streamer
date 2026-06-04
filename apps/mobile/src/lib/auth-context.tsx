@@ -1,4 +1,6 @@
 import type { AuthError, Session, User } from '@supabase/supabase-js';
+import { makeRedirectUri } from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import {
   createContext,
   useCallback,
@@ -11,6 +13,8 @@ import {
 import { hasSupabaseConfig } from './env';
 import { supabase } from './supabase';
 
+WebBrowser.maybeCompleteAuthSession();
+
 type AuthResult =
   | { ok: true; needsEmailConfirmation?: boolean }
   | { ok: false; message: string };
@@ -21,6 +25,7 @@ type AuthContextValue = {
   lastError: string | null;
   session: Session | null;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>;
+  signInWithGoogle: () => Promise<AuthResult>;
   signOut: () => Promise<AuthResult>;
   signUp: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>;
   user: User | null;
@@ -49,6 +54,13 @@ function normalizeAuthError(error: AuthError | Error | unknown): string {
   }
 
   return 'Anmeldung fehlgeschlagen. Bitte versuche es erneut.';
+}
+
+function getOAuthRedirectUri() {
+  return makeRedirectUri({
+    path: 'auth/callback',
+    scheme: 'yoriax',
+  });
 }
 
 function missingConfigResult(): AuthResult {
@@ -148,6 +160,65 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return { ok: true, needsEmailConfirmation: !data.session };
   }, []);
 
+  const signInWithGoogle = useCallback(async (): Promise<AuthResult> => {
+    if (!hasSupabaseConfig || !supabase) {
+      return missingConfigResult();
+    }
+
+    const redirectTo = getOAuthRedirectUri();
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        skipBrowserRedirect: true,
+      },
+    });
+
+    if (error) {
+      const message = normalizeAuthError(error);
+      setLastError(message);
+      return { ok: false, message };
+    }
+
+    if (!data.url) {
+      const message = 'Google Login konnte nicht gestartet werden.';
+      setLastError(message);
+      return { ok: false, message };
+    }
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+    if (result.type !== 'success') {
+      return { ok: false, message: 'Google Login wurde abgebrochen.' };
+    }
+
+    try {
+      const callbackUrl = new URL(result.url);
+      const code = callbackUrl.searchParams.get('code');
+
+      if (!code) {
+        const message = 'Google Login konnte nicht abgeschlossen werden.';
+        setLastError(message);
+        return { ok: false, message };
+      }
+
+      const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) {
+        const message = normalizeAuthError(exchangeError);
+        setLastError(message);
+        return { ok: false, message };
+      }
+
+      setSession(sessionData.session ?? null);
+      setLastError(null);
+      return { ok: true };
+    } catch (oauthError) {
+      const message = normalizeAuthError(oauthError);
+      setLastError(message);
+      return { ok: false, message };
+    }
+  }, []);
+
   const signOut = useCallback(async (): Promise<AuthResult> => {
     if (!hasSupabaseConfig || !supabase) {
       return missingConfigResult();
@@ -173,11 +244,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       lastError,
       session,
       signIn,
+      signInWithGoogle,
       signOut,
       signUp,
       user: session?.user ?? null,
     }),
-    [initializing, lastError, session, signIn, signOut, signUp],
+    [initializing, lastError, session, signIn, signInWithGoogle, signOut, signUp],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

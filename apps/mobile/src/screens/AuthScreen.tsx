@@ -17,7 +17,7 @@ import { theme } from '../theme';
 type AuthMode = 'sign-in' | 'sign-up';
 
 export function AuthScreen() {
-  const { authReady, lastError, signIn, signUp } = useAuth();
+  const { authReady, lastError, signIn, signInWithGoogle, signUp } = useAuth();
   const [mode, setMode] = useState<AuthMode>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,6 +26,7 @@ export function AuthScreen() {
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   const isSignUp = mode === 'sign-up';
   const captchaReady = hasTurnstileConfig && Boolean(captchaToken);
@@ -51,6 +52,20 @@ export function AuthScreen() {
     setCaptchaResetKey((key) => key + 1);
   }
 
+  async function handleGoogleLogin() {
+    if (!authReady || googleSubmitting) return;
+
+    setGoogleSubmitting(true);
+    setMessage(null);
+
+    const result = await signInWithGoogle();
+    if (!result.ok) {
+      setMessage(result.message);
+    }
+
+    setGoogleSubmitting(false);
+  }
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -73,6 +88,32 @@ export function AuthScreen() {
             </Text>
           </View>
         ) : null}
+
+        <TouchableOpacity
+          accessibilityRole="button"
+          disabled={!authReady || googleSubmitting || submitting}
+          onPress={() => {
+            void handleGoogleLogin();
+          }}
+          style={[styles.googleButton, (!authReady || googleSubmitting || submitting) && styles.buttonDisabled]}
+        >
+          {googleSubmitting ? (
+            <ActivityIndicator color={theme.colors.text} />
+          ) : (
+            <>
+              <View style={styles.googleIcon}>
+                <Text style={styles.googleIconText}>G</Text>
+              </View>
+              <Text style={styles.googleButtonText}>Mit Google fortfahren</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>oder</Text>
+          <View style={styles.dividerLine} />
+        </View>
 
         <View style={styles.form}>
           <View style={styles.field}>
@@ -205,9 +246,58 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginTop: 4,
   },
+  googleButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderColor: theme.colors.borderStrong,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'center',
+    marginTop: 22,
+    minHeight: 52,
+    paddingHorizontal: 18,
+  },
+  googleIcon: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.text,
+    borderRadius: 999,
+    height: 26,
+    justifyContent: 'center',
+    width: 26,
+  },
+  googleIconText: {
+    color: '#050505',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  googleButtonText: {
+    color: theme.colors.text,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  dividerRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  dividerLine: {
+    backgroundColor: theme.colors.border,
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    color: theme.colors.subtle,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
   form: {
     gap: 14,
-    marginTop: 22,
+    marginTop: 20,
   },
   field: {
     gap: 8,

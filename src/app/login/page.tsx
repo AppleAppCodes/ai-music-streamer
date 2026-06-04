@@ -1,12 +1,17 @@
 'use client';
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
 import { CheckCircle2 } from 'lucide-react';
 import { getErrorMessage } from '@/lib/errors';
+
+function getSafeNextPath(value: string | null) {
+  if (!value?.startsWith('/') || value.startsWith('//')) return '/';
+  return value;
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -16,13 +21,19 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
   const [turnstileSize, setTurnstileSize] = useState<'compact' | 'flexible'>('compact');
+  const [googleLoading, setGoogleLoading] = useState(false);
   const captchaTokenRef = useRef<string | null>(null);
   const turnstileRef = useRef<TurnstileInstance>(null);
   
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
+  const oauthError = searchParams.get('error') === 'google_oauth_failed'
+    ? 'Google Login konnte nicht abgeschlossen werden. Bitte versuche es erneut.'
+    : null;
+  const visibleError = error || oauthError;
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 480px)');
@@ -134,6 +145,27 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    setError(null);
+
+    try {
+      const next = getSafeNextPath(searchParams.get('next'));
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+        },
+      });
+
+      if (error) throw error;
+    } catch (err) {
+      setError(getErrorMessage(err));
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-black">
       {/* Background Effects */}
@@ -206,9 +238,9 @@ export default function LoginPage() {
               />
             </div>
 
-            {error && (
+            {visibleError && (
               <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
-                {error}
+                {visibleError}
               </div>
             )}
 
@@ -240,6 +272,24 @@ export default function LoginPage() {
               </span>
             </button>
           </form>
+
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-white/35">oder</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading || googleLoading}
+            className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3.5 font-bold text-white transition-all hover:border-white/20 hover:bg-white/[0.1] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-black text-black">
+              G
+            </span>
+            {googleLoading ? 'Google wird geöffnet...' : 'Mit Google fortfahren'}
+          </button>
 
           <div className="mt-6 text-center">
             <button 

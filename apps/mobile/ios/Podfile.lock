@@ -1,4 +1,6 @@
 PODS:
+  - EXApplication (56.0.3):
+    - ExpoModulesCore
   - EXConstants (56.0.16):
     - ExpoModulesCore
   - EXJSONUtils (56.0.0)
@@ -184,6 +186,8 @@ PODS:
     - ExpoModulesCore
   - ExpoBlur (56.0.3):
     - ExpoModulesCore
+  - ExpoCrypto (56.0.4):
+    - ExpoModulesCore
   - ExpoDomWebView (56.0.5):
     - ExpoModulesCore
   - ExpoFileSystem (56.0.7):
@@ -195,6 +199,8 @@ PODS:
   - ExpoKeepAwake (56.0.3):
     - ExpoModulesCore
   - ExpoLinearGradient (56.0.4):
+    - ExpoModulesCore
+  - ExpoLinking (56.0.13):
     - ExpoModulesCore
   - ExpoLogBox (56.0.12):
     - React-Core
@@ -229,6 +235,8 @@ PODS:
     - ExpoModulesCore
     - ExpoModulesJSI
   - ExpoVideo (56.1.2):
+    - ExpoModulesCore
+  - ExpoWebBrowser (56.0.5):
     - ExpoModulesCore
   - EXUpdatesInterface (56.0.2):
     - ExpoModulesCore
@@ -2228,6 +2236,7 @@ PODS:
   - Yoga (0.0.0)
 
 DEPENDENCIES:
+  - EXApplication (from `../node_modules/expo-auth-session/node_modules/expo-application/ios`)
   - EXConstants (from `../node_modules/expo-constants/ios`)
   - EXJSONUtils (from `../node_modules/expo-json-utils/ios`)
   - EXManifests (from `../node_modules/expo-manifests/ios`)
@@ -2239,17 +2248,20 @@ DEPENDENCIES:
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
   - ExpoAudio (from `../node_modules/expo-audio/ios`)
   - ExpoBlur (from `../node_modules/expo-blur/ios`)
+  - ExpoCrypto (from `../node_modules/expo-auth-session/node_modules/expo-crypto/ios`)
   - "ExpoDomWebView (from `../node_modules/expo/node_modules/@expo/dom-webview/ios`)"
   - ExpoFileSystem (from `../node_modules/expo/node_modules/expo-file-system/ios/ExpoFileSystem.podspec`)
   - ExpoFont (from `../node_modules/expo-font/ios/ExpoFont.podspec`)
   - ExpoImagePicker (from `../node_modules/expo-image-picker/ios`)
   - ExpoKeepAwake (from `../node_modules/expo/node_modules/expo-keep-awake/ios`)
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
+  - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - "ExpoLogBox (from `../node_modules/expo/node_modules/@expo/log-box`)"
   - ExpoModulesCore (from `../node_modules/expo-modules-core/ExpoModulesCore.podspec`)
   - ExpoModulesJSI (from `../node_modules/expo-modules-jsi/apple`)
   - ExpoModulesWorklets (from `../node_modules/expo-modules-core/ExpoModulesWorklets.podspec`)
   - ExpoVideo (from `../node_modules/expo-video/ios/ExpoVideo.podspec`)
+  - ExpoWebBrowser (from `../node_modules/expo-web-browser/ios`)
   - EXUpdatesInterface (from `../node_modules/expo-updates-interface/ios`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
@@ -2333,6 +2345,8 @@ DEPENDENCIES:
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 EXTERNAL SOURCES:
+  EXApplication:
+    :path: "../node_modules/expo-auth-session/node_modules/expo-application/ios"
   EXConstants:
     :path: "../node_modules/expo-constants/ios"
   EXJSONUtils:
@@ -2355,6 +2369,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-audio/ios"
   ExpoBlur:
     :path: "../node_modules/expo-blur/ios"
+  ExpoCrypto:
+    :path: "../node_modules/expo-auth-session/node_modules/expo-crypto/ios"
   ExpoDomWebView:
     :path: "../node_modules/expo/node_modules/@expo/dom-webview/ios"
   ExpoFileSystem:
@@ -2367,6 +2383,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo/node_modules/expo-keep-awake/ios"
   ExpoLinearGradient:
     :path: "../node_modules/expo-linear-gradient/ios"
+  ExpoLinking:
+    :path: "../node_modules/expo-linking/ios"
   ExpoLogBox:
     :path: "../node_modules/expo/node_modules/@expo/log-box"
   ExpoModulesCore:
@@ -2377,6 +2395,8 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/expo-modules-core/ExpoModulesWorklets.podspec"
   ExpoVideo:
     :podspec: "../node_modules/expo-video/ios/ExpoVideo.podspec"
+  ExpoWebBrowser:
+    :path: "../node_modules/expo-web-browser/ios"
   EXUpdatesInterface:
     :path: "../node_modules/expo-updates-interface/ios"
   FBLazyVector:
@@ -2540,6 +2560,7 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
+  EXApplication: e6040c92edc5522accd62852342e6b14742d42c0
   EXConstants: 1c400bb9969f4c9e5ab324553138b74ae47b9efe
   EXJSONUtils: dba2755f4e24009eaf87a876b2d615ea06c16e42
   EXManifests: 7e19be8df665a338493060a419847dae76ffcd43
@@ -2551,17 +2572,20 @@ SPEC CHECKSUMS:
   ExpoAsset: c2e7b5ba1fe75be683282d6264e38fd7cd8defbb
   ExpoAudio: 7774082d316ceecc2b26efeb10480bea2fa4d67e
   ExpoBlur: caddd80171e5f8f3581ff3d865e99c6465047240
+  ExpoCrypto: b54a97c4357d46d7f8de079e69fa89029572244b
   ExpoDomWebView: 27205be8754f9992913b8a9a08e65019f2207075
   ExpoFileSystem: d730a1cb33f2c91dec01561f0d710054fda32ae9
   ExpoFont: 6fe496f2be617ed4367f159f215dcc4ba27d37d6
   ExpoImagePicker: 808f5ed1553dca885ed5b05a8d6c67bf1d379da3
   ExpoKeepAwake: 359c47a1d9ccc3a3c519bca6e39562cce230c5bb
   ExpoLinearGradient: 16c2b9c6105444883d34958d573725de1293b8d0
+  ExpoLinking: 49cc5ddd93b68506c588aa1985c27b795e6d69d6
   ExpoLogBox: 7aa03244fe5eeced5129e4ec7ad5bd9a3994378e
   ExpoModulesCore: 953adbfdc960cade54f95cfae0898f7fc11923da
   ExpoModulesJSI: f25a013ea9a79904bdd535e4bea0872e155cde09
   ExpoModulesWorklets: 3f847eb6ba544bd4b55d585f89b3b18f8cd73a72
   ExpoVideo: 8ebbbf65778c5f986d65fc17bb60b79e9d7624e6
+  ExpoWebBrowser: 6e3d90e3fe1952d21a8494872b1e1a485cd50e2f
   EXUpdatesInterface: 25408a97d682355eb9fb37e5aa6e22caece1881f
   FBLazyVector: 24e62c765683b8d89006a88a2c8f5cf019f0074d
   hermes-engine: ed96ca4cfb46b4eb25b31c49acc3bb37107394f9
