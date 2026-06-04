@@ -26,6 +26,7 @@ type QuickTile = {
   label: string;
   onPress: () => void;
   subtitle: string;
+  gradientColors: readonly [string, string, string];
 };
 
 export function HomeScreen() {
@@ -65,32 +66,36 @@ export function HomeScreen() {
 
   const quickTiles = useMemo<QuickTile[]>(() => [
     {
-      accent: theme.colors.primaryLight,
+      accent: theme.colors.primaryLight, // Purple
       icon: 'heart',
       label: 'Lieblingssongs',
       subtitle: 'Deine gespeicherten Tracks',
       onPress: () => navigation.navigate('LikedSongs'),
+      gradientColors: ['rgba(168,85,247,0.25)', 'rgba(168,85,247,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
-      accent: '#f97316',
+      accent: '#eab308', // Yellow
       icon: 'trending-up',
       label: 'Charts',
       subtitle: 'Viral und Daily',
       onPress: () => navigation.navigate('Charts'),
+      gradientColors: ['rgba(234,179,8,0.25)', 'rgba(234,179,8,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
-      accent: theme.colors.accent,
+      accent: '#0d9488', // Teal
       icon: 'mic',
       label: 'Künstler',
       subtitle: 'Neue Creator entdecken',
       onPress: () => navigation.navigate('Artists'),
+      gradientColors: ['rgba(13,148,136,0.25)', 'rgba(13,148,136,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
-      accent: '#38bdf8',
+      accent: '#06b6d4', // Cyan
       icon: 'library',
       label: 'Playlists',
       subtitle: 'Sammlungen öffnen',
       onPress: () => navigation.navigate('Library'),
+      gradientColors: ['rgba(6,182,212,0.25)', 'rgba(6,182,212,0.05)', 'rgba(255,255,255,0.02)'],
     },
   ], [navigation]);
 
@@ -116,7 +121,7 @@ export function HomeScreen() {
             style={{ width: '48%' }}
           >
             <LinearGradient
-              colors={['rgba(124,58,237,0.28)', 'rgba(45,212,191,0.10)', 'rgba(255,255,255,0.035)']}
+              colors={tile.gradientColors}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.quickTile}
