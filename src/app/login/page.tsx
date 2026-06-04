@@ -43,7 +43,6 @@ export default function LoginPage() {
   }), [turnstileSize]);
 
   const handleCaptchaSuccess = useCallback((token: string) => {
-    console.log('Turnstile token received');
     captchaTokenRef.current = token;
   }, []);
 
@@ -53,7 +52,6 @@ export default function LoginPage() {
   }, []);
 
   const handleCaptchaExpire = useCallback(() => {
-    console.log('Turnstile token expired');
     captchaTokenRef.current = null;
   }, []);
 

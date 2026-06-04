@@ -2,6 +2,7 @@ import { Alert, ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInpu
 import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../lib/auth-context';
+import { supabase } from '../lib/supabase';
 import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -9,8 +10,35 @@ import { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
+const PROFANITY_LIST = ['nazi', 'hitler', 'fuck', 'shit', 'bitch', 'asshole', 'cunt', 'dick', 'pussy', 'whore', 'slut', 'fagot', 'nigger', 'nigga', 'retard'];
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Fehler beim Speichern.';
+}
+
+function containsProfanity(text: string) {
+  const lower = text.toLowerCase();
+  return PROFANITY_LIST.some((word) => lower.includes(word));
+}
+
+function isLocalImageUri(uri: string) {
+  return uri.startsWith('file:') || uri.startsWith('content:') || uri.startsWith('assets-library:');
+}
+
+function getImageExtension(uri: string) {
+  const cleanUri = uri.split('?')[0] ?? uri;
+  const extension = cleanUri.split('.').pop()?.toLowerCase();
+  return extension && ['jpg', 'jpeg', 'png', 'webp'].includes(extension) ? extension : 'jpg';
+}
+
+function getImageContentType(extension: string) {
+  if (extension === 'png') return 'image/png';
+  if (extension === 'webp') return 'image/webp';
+  return 'image/jpeg';
+}
+
 export function ProfileScreen({ navigation }: Props) {
-  const { user, signOut } = useAuth();
+  const { authReady, user, signOut } = useAuth();
   
   const initialUsername = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
   const email = user?.email || '';
@@ -34,12 +62,84 @@ export function ProfileScreen({ navigation }: Props) {
   };
 
   const handleSave = async () => {
+    if (!authReady || !supabase || !user) {
+      Alert.alert('Nicht möglich', 'Dein Profil kann gerade nicht gespeichert werden, weil die App nicht verbunden ist.');
+      return;
+    }
+
+    const trimmedUsername = username.trim();
+
+    if (trimmedUsername.length < 3) {
+      Alert.alert('Benutzername zu kurz', 'Der Benutzername muss mindestens 3 Zeichen lang sein.');
+      return;
+    }
+
+    if (containsProfanity(trimmedUsername)) {
+      Alert.alert('Benutzername nicht erlaubt', 'Dieser Benutzername enthält nicht erlaubte Wörter. Bitte wähle einen anderen.');
+      return;
+    }
+
     setIsSaving(true);
-    // TODO: Upload to Supabase Storage and update user_metadata
-    setTimeout(() => {
-      setIsSaving(false);
+
+    try {
+      let nextAvatarUrl = avatarUrl;
+
+      if (nextAvatarUrl && isLocalImageUri(nextAvatarUrl)) {
+        const extension = getImageExtension(nextAvatarUrl);
+        const response = await fetch(nextAvatarUrl);
+        const blob = await response.blob();
+        const path = `avatars/${user.id}-${Date.now()}.${extension}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('covers')
+          .upload(path, blob, {
+            contentType: getImageContentType(extension),
+            upsert: true,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('covers')
+          .getPublicUrl(path);
+
+        nextAvatarUrl = publicUrlData.publicUrl;
+      }
+
+      const profileUpdate: { username: string; avatar_url?: string } = { username: trimmedUsername };
+      if (nextAvatarUrl) {
+        profileUpdate.avatar_url = nextAvatarUrl;
+      }
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update(profileUpdate)
+        .eq('id', user.id);
+
+      if (profileError) {
+        if (profileError.code === '23505') {
+          throw new Error('Dieser Benutzername ist leider schon vergeben.');
+        }
+        throw profileError;
+      }
+
+      const { error: authError } = await supabase.auth.updateUser({
+        data: {
+          username: trimmedUsername,
+          ...(nextAvatarUrl ? { avatar_url: nextAvatarUrl } : {}),
+        },
+      });
+
+      if (authError) throw authError;
+
+      setUsername(trimmedUsername);
+      setAvatarUrl(nextAvatarUrl);
       Alert.alert('Gespeichert', 'Deine Änderungen wurden erfolgreich gespeichert.');
-    }, 1000);
+    } catch (error) {
+      Alert.alert('Fehler beim Speichern', getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
