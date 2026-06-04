@@ -21,6 +21,8 @@ function formatDuration(seconds: number | null | undefined): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+const ARTIST_SONG_PAGE_SIZE = 1000;
+
 const InstagramIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
@@ -81,17 +83,37 @@ export default function ArtistPage() {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);
       
-      // 1. Fetch Popular Songs by exactly this artist name
-      const { data: songsData } = await supabase
-        .from('songs')
-        .select('*')
-        .ilike('artist_name', artistName)
-        .order('plays', { ascending: false })
-        .limit(10); // Top 10
-        
-      if (songsData) {
-        setSongs(songsData as Song[]);
+      // 1. Fetch all songs by exactly this artist name, ordered by popularity.
+      const artistSongs: Song[] = [];
+      let rangeStart = 0;
+
+      while (true) {
+        const { data: songsData, error } = await supabase
+          .from('songs')
+          .select('*')
+          .ilike('artist_name', artistName)
+          .order('plays', { ascending: false })
+          .range(rangeStart, rangeStart + ARTIST_SONG_PAGE_SIZE - 1);
+
+        if (error) {
+          console.error('Failed to load artist songs:', error);
+          break;
+        }
+
+        if (!songsData || songsData.length === 0) {
+          break;
+        }
+
+        artistSongs.push(...(songsData as Song[]));
+
+        if (songsData.length < ARTIST_SONG_PAGE_SIZE) {
+          break;
+        }
+
+        rangeStart += ARTIST_SONG_PAGE_SIZE;
       }
+
+      setSongs(artistSongs);
       
       // 2. Check if a custom banner exists
       const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
