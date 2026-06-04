@@ -1,22 +1,32 @@
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { CoverArt, GradientOrb, IconButton, StateCard, YoriaxLogo } from '../components/YoriaxUI';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
 import { loadHomeMusic, type HomeMusicData } from '../lib/music-data';
 import { usePlayer } from '../lib/player-context';
 import type { Song } from '../lib/types';
-import { theme } from '../theme';
-import { useNavigation } from '@react-navigation/native';
-import type { CompositeNavigationProp } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
-import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../theme';
 
 type HomeNavigation = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Home'>,
   NativeStackNavigationProp<RootStackParamList>
 >;
+
+type QuickTile = {
+  accent: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  subtitle: string;
+};
 
 export function HomeScreen() {
   const { user } = useAuth();
@@ -53,98 +63,101 @@ export function HomeScreen() {
     };
   }, [user]);
 
+  const quickTiles = useMemo<QuickTile[]>(() => [
+    {
+      accent: theme.colors.primaryLight,
+      icon: 'heart',
+      label: 'Lieblingssongs',
+      subtitle: 'Deine gespeicherten Tracks',
+      onPress: () => navigation.navigate('LikedSongs'),
+    },
+    {
+      accent: '#f97316',
+      icon: 'trending-up',
+      label: 'Charts',
+      subtitle: 'Viral und Daily',
+      onPress: () => navigation.navigate('Charts'),
+    },
+    {
+      accent: theme.colors.accent,
+      icon: 'mic',
+      label: 'Künstler',
+      subtitle: 'Neue Creator entdecken',
+      onPress: () => navigation.navigate('Artists'),
+    },
+    {
+      accent: '#38bdf8',
+      icon: 'library',
+      label: 'Playlists',
+      subtitle: 'Sammlungen öffnen',
+      onPress: () => navigation.navigate('Library'),
+    },
+  ], [navigation]);
+
   return (
-    <View style={styles.stack}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <GradientOrb style={styles.topOrb} />
       <View style={styles.header}>
-        <Text style={styles.logo}>YORIAX</Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => {
-              navigation.navigate('Profile');
-            }}
-          >
-            <Ionicons name="person-circle-outline" size={28} color={theme.colors.text} />
-          </TouchableOpacity>
-        </View>
+        <YoriaxLogo />
+        <IconButton icon="person-circle-outline" onPress={() => navigation.navigate('Profile')} />
       </View>
 
-      <View style={styles.hero}>
-        <Text style={styles.title}>Home</Text>
-        <Text style={styles.copy}>Echte Yoriax-Daten sind verbunden. Player und Navigation zu Details folgen als naechster Schritt.</Text>
+      <LinearGradient
+        colors={['rgba(124,58,237,0.28)', 'rgba(45,212,191,0.10)', 'rgba(255,255,255,0.035)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}
+      >
+        <Text style={styles.eyebrow}>YORIAX MOBILE</Text>
+        <Text style={styles.title}>Entdecke neue Tracks</Text>
+        <Text style={styles.copy}>Viral Charts, Hooks, Künstler und deine Bibliothek in einem konsistenten Mobile-Flow.</Text>
+
         <View style={styles.statsRow}>
-          <View style={styles.statPill}>
-            <Text style={styles.statValue}>{data?.totalSongs ?? 0}</Text>
-            <Text style={styles.statLabel}>Songs</Text>
-          </View>
-          <View style={styles.statPill}>
-            <Text style={styles.statValue}>{data?.recommendedSongs.length ?? 0}</Text>
-            <Text style={styles.statLabel}>Fuer dich</Text>
-          </View>
+          <StatPill label="Songs" value={data?.totalSongs ?? 0} />
+          <StatPill label="Für dich" value={data?.recommendedSongs.length ?? 0} />
         </View>
+      </LinearGradient>
+
+      <View style={styles.quickGrid}>
+        {quickTiles.map((tile) => (
+          <TouchableOpacity
+            accessibilityRole="button"
+            key={tile.label}
+            onPress={tile.onPress}
+            style={styles.quickTile}
+          >
+            <View style={[styles.quickIcon, { backgroundColor: `${tile.accent}24` }]}>
+              <Ionicons name={tile.icon} size={21} color={tile.accent} />
+            </View>
+            <Text style={styles.quickLabel} numberOfLines={1}>{tile.label}</Text>
+            <Text style={styles.quickSubtitle} numberOfLines={1}>{tile.subtitle}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      <View style={styles.grid}>
-        <TouchableOpacity
-          style={[styles.tile, styles.tileAccent]}
-          onPress={() => {
-            navigation.navigate('LikedSongs');
-          }}
-        >
-          <Text style={styles.tileText}>Lieblingssongs</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tile}
-          onPress={() => {
-            navigation.navigate('Charts');
-          }}
-        >
-          <Text style={styles.tileText}>Charts</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tile}
-          onPress={() => navigation.navigate('Search')}
-        >
-          <Text style={styles.tileText}>Künstler</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tile}
-          onPress={() => navigation.navigate('Library')}
-        >
-          <Text style={styles.tileText}>Playlists</Text>
-        </TouchableOpacity>
-      </View>
-
-      {loading ? <LoadingBlock label="Musik wird geladen" /> : null}
-      {error ? <ErrorBlock message={error} /> : null}
+      {loading ? <StateCard title="Musik wird geladen" message="Wir holen deine YORIAX-Daten." loading /> : null}
+      {error ? <StateCard icon="warning" title="Home konnte nicht geladen werden" message={error} /> : null}
 
       {data && !loading ? (
-        <>
+        <View style={styles.sections}>
           <SongRail title="Trending heute" songs={data.trendingSongs} />
-          <SongRail title="Fuer dich ausgewaehlt" songs={data.recommendedSongs} />
-          <SongRail title="Neu auf Yoriax" songs={data.latestSongs} />
-        </>
+          <SongRail title="Für dich ausgewählt" songs={data.recommendedSongs} />
+          <SongRail title="Neu auf YORIAX" songs={data.latestSongs} />
+        </View>
       ) : null}
-    </View>
+    </ScrollView>
   );
 }
 
-function LoadingBlock({ label }: { label: string }) {
+function StatPill({ label, value }: { label: string; value: number }) {
   return (
-    <View style={styles.stateBox}>
-      <ActivityIndicator color={theme.colors.text} />
-      <Text style={styles.stateText}>{label}</Text>
-    </View>
-  );
-}
-
-function ErrorBlock({ message }: { message: string }) {
-  return (
-    <View style={styles.errorBox}>
-      <Text style={styles.errorText}>{message}</Text>
+    <View style={styles.statPill}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
@@ -158,100 +171,94 @@ function SongRail({ title, songs }: { title: string; songs: Song[] }) {
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.songRail}>
-        {songs.map((song, index, arr) => (
-          <TouchableOpacity
-            accessibilityRole="button"
-            key={song.id}
-            onPress={() => {
-              setQueue(arr, index);
-              void playSong(song);
-            }}
-            style={styles.songCard}
-          >
-            {song.cover_url ? (
-              <Image source={{ uri: song.cover_url }} style={styles.cover} />
-            ) : (
-              <View style={[styles.cover, styles.coverFallback]}>
-                <Text style={styles.coverFallbackText}>Y</Text>
+        {songs.map((song, index, arr) => {
+          const active = activeSong?.id === song.id;
+
+          return (
+            <TouchableOpacity
+              accessibilityRole="button"
+              key={song.id}
+              onPress={() => {
+                setQueue(arr, index);
+                void playSong(song);
+              }}
+              style={[styles.songCard, active && styles.songCardActive]}
+            >
+              <CoverArt uri={song.cover_url} size={132} radius={18} />
+              <View style={[styles.playBadge, active && styles.playBadgeActive]}>
+                <Ionicons name={active && isPlaying ? 'pause' : 'play'} size={16} color={active ? theme.colors.text : theme.colors.background} />
               </View>
-            )}
-            <View style={styles.playBadge}>
-              <Text style={styles.playBadgeText}>{activeSong?.id === song.id && isPlaying ? 'II' : '▶'}</Text>
-            </View>
-            <Text style={styles.songTitle} numberOfLines={1}>
-              {song.title}
-            </Text>
-            <Text style={styles.songArtist} numberOfLines={1}>
-              {song.artist_name || song.creatorName || 'Creator'}
-            </Text>
-            <Text style={styles.songMeta}>{formatPlays(song.plays)} Streams</Text>
-          </TouchableOpacity>
-        ))}
+              <Text style={[styles.songTitle, active && styles.songTitleActive]} numberOfLines={1}>
+                {song.title}
+              </Text>
+              <Text style={styles.songArtist} numberOfLines={1}>
+                {song.artist_name || song.creatorName || 'Creator'}
+              </Text>
+              <Text style={styles.songMeta}>{formatPlays(song.plays)} Streams</Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  stack: {
-    gap: 16,
+  container: {
+    backgroundColor: theme.colors.background,
+    flex: 1,
+  },
+  content: {
+    gap: theme.spacing.section,
+    paddingBottom: 170,
+    paddingHorizontal: theme.spacing.screen,
+    paddingTop: 18,
+  },
+  topOrb: {
+    right: -130,
+    top: -130,
   },
   header: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 10,
-  },
-  logo: {
-    color: theme.colors.text,
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  headerIcons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  iconButton: {
-    padding: 4,
   },
   hero: {
-    backgroundColor: theme.colors.surface,
     borderColor: theme.colors.border,
-    borderRadius: 28,
+    borderRadius: theme.radii.xl,
     borderWidth: 1,
-    padding: 24,
+    overflow: 'hidden',
+    padding: 22,
   },
   eyebrow: {
     color: theme.colors.accent,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 2.4,
-    textTransform: 'uppercase',
   },
   title: {
     color: theme.colors.text,
-    fontSize: 44,
+    fontSize: 36,
     fontWeight: '900',
-    letterSpacing: -1.5,
+    letterSpacing: -1.2,
     marginTop: 10,
   },
   copy: {
     color: theme.colors.muted,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 21,
     marginTop: 10,
   },
   statsRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 18,
+    marginTop: 20,
   },
   statPill: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(0,0,0,0.22)',
     borderColor: theme.colors.border,
-    borderRadius: 18,
+    borderRadius: theme.radii.md,
     borderWidth: 1,
     flex: 1,
     padding: 14,
@@ -267,109 +274,88 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 2,
   },
-  grid: {
+  quickGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
-  tile: {
-    backgroundColor: theme.colors.surfaceMuted,
+  quickTile: {
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderColor: theme.colors.border,
-    borderRadius: 18,
+    borderRadius: theme.radii.lg,
     borderWidth: 1,
-    minHeight: 82,
-    padding: 16,
+    minHeight: 108,
+    padding: 14,
     width: '48%',
   },
-  tileAccent: {
-    backgroundColor: '#25103c',
-    borderColor: 'rgba(124,58,237,0.42)',
+  quickIcon: {
+    alignItems: 'center',
+    borderRadius: theme.radii.md,
+    height: 38,
+    justifyContent: 'center',
+    marginBottom: 12,
+    width: 38,
   },
-  tileText: {
+  quickLabel: {
     color: theme.colors.text,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '900',
   },
-  stateBox: {
-    alignItems: 'center',
-    borderColor: theme.colors.border,
-    borderRadius: 22,
-    borderWidth: 1,
-    gap: 10,
-    padding: 18,
-  },
-  stateText: {
+  quickSubtitle: {
     color: theme.colors.muted,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
+    marginTop: 4,
   },
-  errorBox: {
-    backgroundColor: 'rgba(239,68,68,0.12)',
-    borderColor: 'rgba(239,68,68,0.32)',
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 14,
-  },
-  errorText: {
-    color: '#fecaca',
-    fontSize: 13,
-    lineHeight: 19,
+  sections: {
+    gap: 28,
   },
   section: {
     gap: 12,
   },
   sectionTitle: {
     color: theme.colors.text,
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '900',
-    letterSpacing: -0.4,
+    letterSpacing: -0.35,
   },
   songRail: {
     gap: 14,
     paddingRight: 20,
   },
   songCard: {
-    width: 142,
+    borderColor: 'transparent',
+    borderRadius: theme.radii.lg,
+    borderWidth: 1,
+    padding: 8,
+    width: 150,
   },
-  cover: {
-    aspectRatio: 1,
-    backgroundColor: theme.colors.surfaceMuted,
-    borderRadius: 18,
-    width: 142,
-  },
-  coverFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coverFallbackText: {
-    color: theme.colors.text,
-    fontSize: 32,
-    fontWeight: '900',
+  songCardActive: {
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: 'rgba(168,85,247,0.38)',
   },
   playBadge: {
     alignItems: 'center',
     backgroundColor: theme.colors.text,
-    borderRadius: 999,
-    bottom: 46,
-    height: 34,
+    borderRadius: theme.radii.round,
+    height: 36,
     justifyContent: 'center',
     position: 'absolute',
-    right: 10,
-    width: 34,
+    right: 16,
+    top: 96,
+    width: 36,
   },
-  playBadgeText: {
-    color: '#050505',
-    fontSize: 13,
-    fontWeight: '900',
-    includeFontPadding: false,
-    lineHeight: 16,
-    textAlign: 'center',
+  playBadgeActive: {
+    backgroundColor: theme.colors.primary,
   },
   songTitle: {
     color: theme.colors.text,
     fontSize: 14,
     fontWeight: '900',
     marginTop: 10,
+  },
+  songTitleActive: {
+    color: theme.colors.primaryLight,
   },
   songArtist: {
     color: theme.colors.muted,

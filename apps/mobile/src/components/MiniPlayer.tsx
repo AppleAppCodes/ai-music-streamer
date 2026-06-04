@@ -1,10 +1,13 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { formatDuration } from '../lib/format';
 import { usePlayer } from '../lib/player-context';
 import { theme } from '../theme';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import { CoverArt } from './YoriaxUI';
 
 export function MiniPlayer() {
   const { activeSong, currentTime, duration, error, isBuffering, isPlaying, toggle } = usePlayer();
@@ -21,29 +24,37 @@ export function MiniPlayer() {
       onPress={() => navigation.navigate('FullscreenPlayer')}
     >
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${progress}%` }]} />
+        <LinearGradient
+          colors={[theme.colors.primaryLight, theme.colors.accent]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.progressFill, { width: `${progress}%` }]}
+        />
       </View>
       <View style={styles.content}>
-        {activeSong.cover_url ? (
-          <Image source={{ uri: activeSong.cover_url }} style={styles.cover} />
-        ) : (
-          <View style={[styles.cover, styles.coverFallback]}>
-            <Text style={styles.coverFallbackText}>Y</Text>
-          </View>
-        )}
+        <CoverArt uri={activeSong.cover_url} size={52} radius={14} />
 
         <View style={styles.textBlock}>
           <Text style={styles.title} numberOfLines={1}>
             {activeSong.title}
           </Text>
-          <Text style={styles.meta} numberOfLines={1}>
+          <Text style={[styles.meta, error ? styles.metaError : null]} numberOfLines={1}>
             {error || activeSong.artist_name || activeSong.creatorName || 'Creator'}
           </Text>
         </View>
 
         <Text style={styles.time}>{formatDuration(currentTime)}</Text>
-        <TouchableOpacity accessibilityRole="button" onPress={toggle} style={styles.button}>
-          <Text style={styles.buttonText}>{isBuffering ? '…' : isPlaying ? 'Ⅱ' : '▶'}</Text>
+        <TouchableOpacity accessibilityRole="button" activeOpacity={0.85} onPress={toggle} style={styles.button}>
+          {isBuffering ? (
+            <ActivityIndicator color="#050505" size="small" />
+          ) : (
+            <Ionicons
+              name={isPlaying ? 'pause' : 'play'}
+              size={22}
+              color="#050505"
+              style={!isPlaying ? styles.playIcon : undefined}
+            />
+          )}
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -52,15 +63,19 @@ export function MiniPlayer() {
 
 const styles = StyleSheet.create({
   shell: {
-    backgroundColor: 'rgba(10,10,10,0.98)',
-    borderColor: theme.colors.border,
-    borderRadius: 20,
+    backgroundColor: 'rgba(12,10,18,0.96)',
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radii.lg,
     borderWidth: 1,
-    bottom: 86,
+    bottom: 94,
     left: 14,
     overflow: 'hidden',
     position: 'absolute',
     right: 14,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.18,
+    shadowRadius: 26,
   },
   progressTrack: {
     backgroundColor: 'rgba(255,255,255,0.12)',
@@ -74,22 +89,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
-    padding: 10,
-  },
-  cover: {
-    backgroundColor: theme.colors.surfaceMuted,
-    borderRadius: 12,
-    height: 48,
-    width: 48,
-  },
-  coverFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coverFallbackText: {
-    color: theme.colors.text,
-    fontSize: 20,
-    fontWeight: '900',
+    padding: 11,
   },
   textBlock: {
     flex: 1,
@@ -105,6 +105,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 3,
   },
+  metaError: {
+    color: '#fecaca',
+  },
   time: {
     color: theme.colors.subtle,
     fontSize: 12,
@@ -114,16 +117,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.text,
     borderRadius: 999,
-    height: 42,
+    height: 44,
     justifyContent: 'center',
-    width: 42,
+    width: 44,
   },
-  buttonText: {
-    color: '#050505',
-    fontSize: 17,
-    fontWeight: '900',
-    includeFontPadding: false,
-    lineHeight: 20,
-    textAlign: 'center',
+  playIcon: {
+    marginLeft: 2,
   },
 });

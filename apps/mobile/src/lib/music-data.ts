@@ -429,3 +429,66 @@ export async function loadChartsData(): Promise<ChartsData> {
 
   return { viralSongs, dailySongs, dailyPlayMap };
 }
+
+export interface ArtistStat {
+  name: string;
+  plays: number;
+  songsCount: number;
+  coverUrl: string;
+  videoUrl?: string;
+  createdAt: string;
+}
+
+export async function loadArtistsData(): Promise<ArtistStat[]> {
+  const client = requireClient();
+
+  const { data: songsData, error: songsError } = await client
+    .from('songs')
+    .select('artist_name, plays, cover_url, created_at');
+
+  if (songsError) throw new Error(songsError.message);
+
+  const artistMap = new Map<string, ArtistStat>();
+
+  (songsData || []).forEach(song => {
+    const name = song.artist_name || 'Unbekannt';
+    if (name === 'Unbekannt') return;
+
+    if (!artistMap.has(name)) {
+      artistMap.set(name, {
+        name,
+        plays: 0,
+        songsCount: 0,
+        coverUrl: song.cover_url || '',
+        createdAt: song.created_at || new Date(0).toISOString()
+      });
+    }
+    const artist = artistMap.get(name)!;
+    artist.plays += (song.plays || 0);
+    artist.songsCount += 1;
+
+    if (song.created_at && new Date(song.created_at).getTime() > new Date(artist.createdAt).getTime()) {
+      artist.createdAt = song.created_at;
+    }
+  });
+
+  const artistArray = Array.from(artistMap.values());
+
+  const { data: banners } = await client.storage.from('covers').list('banners', { limit: 100 });
+  if (banners) {
+    artistArray.forEach(artist => {
+      const sanitizedName = artist.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const videoFiles = banners.filter(f => f.name.startsWith(sanitizedName + '_video'));
+      if (videoFiles.length > 0) {
+        videoFiles.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        const videoFile = videoFiles[0];
+        const { data: urlData } = client.storage
+          .from('covers')
+          .getPublicUrl(`banners/${videoFile.name}`);
+        artist.videoUrl = urlData.publicUrl;
+      }
+    });
+  }
+
+  return artistArray.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}

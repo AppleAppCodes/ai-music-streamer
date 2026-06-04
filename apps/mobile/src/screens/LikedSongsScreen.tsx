@@ -1,13 +1,15 @@
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
 import { useAuth } from '../lib/auth-context';
 import { loadLibraryMusic, type LibraryMusicData } from '../lib/music-data';
 import { usePlayer } from '../lib/player-context';
 import type { Song } from '../lib/types';
+import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
-import { Ionicons } from '@expo/vector-icons';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LikedSongs'>;
 
@@ -16,7 +18,7 @@ export function LikedSongsScreen({ navigation }: Props) {
   const [data, setData] = useState<LibraryMusicData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { activeSong, isPlaying, playSong, setQueue } = usePlayer();
+  const { activeSong, isPlaying, playSong, setQueue, toggleShuffle } = usePlayer();
 
   useEffect(() => {
     let mounted = true;
@@ -45,74 +47,116 @@ export function LikedSongsScreen({ navigation }: Props) {
     };
   }, [user]);
 
+  const likedSongs = data?.likedSongs ?? [];
+
   const handlePlayAll = () => {
-    if (!data || data.likedSongs.length === 0) return;
-    setQueue(data.likedSongs, 0);
-    void playSong(data.likedSongs[0]);
+    if (likedSongs.length === 0) return;
+    setQueue(likedSongs, 0);
+    void playSong(likedSongs[0]);
+  };
+
+  const handleShuffle = () => {
+    if (likedSongs.length === 0) return;
+    toggleShuffle();
+    setQueue(likedSongs, 0);
+    void playSong(likedSongs[0]);
   };
 
   const handlePlaySong = (song: Song, index: number) => {
-    if (!data) return;
-    setQueue(data.likedSongs, index);
+    setQueue(likedSongs, index);
     void playSong(song);
+  };
+
+  const handleContextMenu = (song: Song) => {
+    Alert.alert(
+      song.title,
+      'Was möchtest du tun?',
+      [
+        { text: 'Teilen', onPress: () => console.log('Teilen', song.id) },
+        { text: 'Zur Playlist hinzufügen', onPress: () => console.log('Playlist', song.id) },
+        { text: 'Zum Künstler', onPress: () => console.log('Künstler', song.id) },
+        { text: 'Zum Album', onPress: () => console.log('Album', song.id) },
+        { text: 'Abbrechen', style: 'cancel' },
+      ],
+      { cancelable: true },
+    );
   };
 
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={['rgba(124,58,237,0.38)', 'rgba(124,58,237,0.12)', 'transparent']}
+        locations={[0, 0.42, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={28} color={theme.colors.text} />
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.heroSection}>
-          <View style={styles.heroIconBox}>
-            <Ionicons name="heart" size={64} color={theme.colors.text} />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.hero}>
+          <View style={styles.heroIcon}>
+            <Ionicons name="heart" size={30} color={theme.colors.text} />
           </View>
-          <Text style={styles.heroTitle}>Lieblingssongs</Text>
-          <Text style={styles.heroMeta}>
-            {data ? data.likedSongs.length : 0} Songs
-          </Text>
+          <View style={styles.heroText}>
+            <Text style={styles.eyebrow}>PLAYLIST</Text>
+            <Text style={styles.heroTitle}>Lieblingssongs</Text>
+            <Text style={styles.heroMeta}>{likedSongs.length} Songs</Text>
+          </View>
+        </View>
 
-          {data && data.likedSongs.length > 0 && (
-            <TouchableOpacity style={styles.playAllButton} onPress={handlePlayAll}>
-              <Ionicons name="play" size={24} color={theme.colors.background} />
-              <Text style={styles.playAllText}>Abspielen</Text>
-            </TouchableOpacity>
-          )}
+        <View style={styles.actions}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            disabled={likedSongs.length === 0}
+            onPress={handleShuffle}
+            style={[styles.secondaryButton, likedSongs.length === 0 && styles.disabledButton]}
+          >
+            <Ionicons name="shuffle" size={22} color={likedSongs.length === 0 ? theme.colors.subtle : theme.colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityRole="button"
+            disabled={likedSongs.length === 0}
+            onPress={handlePlayAll}
+            style={[styles.playButton, likedSongs.length === 0 && styles.disabledButton]}
+          >
+            <Ionicons name="play" size={28} color={likedSongs.length === 0 ? theme.colors.subtle : '#050505'} />
+          </TouchableOpacity>
         </View>
 
         {loading ? (
-          <ActivityIndicator color={theme.colors.text} style={styles.loader} />
+          <StateCard title="Lieblingssongs werden geladen" message="Deine gespeicherten Tracks werden synchronisiert." loading />
         ) : error ? (
-          <Text style={styles.errorText}>{error}</Text>
-        ) : data?.likedSongs.length === 0 ? (
-          <Text style={styles.emptyText}>Du hast noch keine Lieblingssongs.</Text>
+          <StateCard icon="warning" title="Konnte nicht geladen werden" message={error} />
+        ) : likedSongs.length === 0 ? (
+          <StateCard icon="heart-outline" title="Noch keine Lieblingssongs" message="Tippe bei Songs auf das Herz, dann erscheinen sie hier." />
         ) : (
           <View style={styles.list}>
-            {data?.likedSongs.map((song, index) => {
-              const isActive = activeSong?.id === song.id;
+            {likedSongs.map((song, index) => {
+              const active = activeSong?.id === song.id;
+
               return (
                 <TouchableOpacity
+                  accessibilityRole="button"
                   key={song.id}
-                  style={[styles.itemRow, isActive && styles.itemRowActive]}
                   onPress={() => handlePlaySong(song, index)}
+                  style={[styles.row, active && styles.rowActive]}
                 >
-                  {song.cover_url ? (
-                    <Image source={{ uri: song.cover_url }} style={styles.itemImage} />
-                  ) : (
-                    <View style={[styles.itemImage, styles.itemFallback]}>
-                      <Text style={styles.itemFallbackText}>Y</Text>
-                    </View>
-                  )}
-                  <View style={styles.itemText}>
-                    <Text style={styles.itemTitle} numberOfLines={1}>{song.title}</Text>
-                    <Text style={styles.itemMeta} numberOfLines={1}>
-                      {song.artist_name || song.creatorName || 'Creator'}
-                    </Text>
+                  <CoverArt uri={song.cover_url} size={52} radius={12} />
+                  <View style={styles.rowText}>
+                    <Text style={[styles.rowTitle, active && styles.rowTitleActive]} numberOfLines={1}>{song.title}</Text>
+                    <Text style={styles.rowMeta} numberOfLines={1}>{song.artist_name || song.creatorName || 'Creator'}</Text>
                   </View>
-                  <Text style={styles.rowPlayState}>{isActive && isPlaying ? 'II' : '▶'}</Text>
+                  {active && isPlaying ? <Ionicons name="volume-high" size={18} color={theme.colors.primaryLight} /> : null}
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                    onPress={() => handleContextMenu(song)}
+                    style={styles.contextButton}
+                  >
+                    <Ionicons name="ellipsis-horizontal" size={20} color={theme.colors.muted} />
+                  </TouchableOpacity>
                 </TouchableOpacity>
               );
             })}
@@ -125,129 +169,125 @@ export function LikedSongsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: theme.colors.background,
+    flex: 1,
   },
   header: {
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-  },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
+    left: 20,
+    position: 'absolute',
+    top: 18,
+    zIndex: 10,
   },
   content: {
-    padding: 20,
-    paddingBottom: 100,
+    paddingBottom: 170,
+    paddingHorizontal: theme.spacing.screen,
+    paddingTop: 86,
   },
-  heroSection: {
+  hero: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 18,
+  },
+  heroIcon: {
     alignItems: 'center',
-    marginBottom: 40,
-  },
-  heroIconBox: {
-    width: 200,
-    height: 200,
-    borderRadius: 24,
     backgroundColor: theme.colors.primary,
-    alignItems: 'center',
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 26,
+    borderWidth: 1,
+    height: 88,
     justifyContent: 'center',
     shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    marginBottom: 24,
+    shadowOpacity: 0.32,
+    shadowRadius: 18,
+    width: 88,
+  },
+  heroText: {
+    flex: 1,
+    paddingBottom: 4,
+  },
+  eyebrow: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 2.4,
   },
   heroTitle: {
-    fontSize: 28,
-    fontWeight: '900',
     color: theme.colors.text,
-    marginBottom: 8,
+    fontSize: 38,
+    fontWeight: '900',
+    letterSpacing: -1,
+    marginTop: 6,
   },
   heroMeta: {
-    fontSize: 16,
     color: theme.colors.muted,
-    fontWeight: '600',
-    marginBottom: 24,
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 6,
   },
-  playAllButton: {
-    flexDirection: 'row',
+  actions: {
     alignItems: 'center',
-    backgroundColor: theme.colors.text,
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 30,
-    gap: 8,
+    flexDirection: 'row',
+    gap: 18,
+    justifyContent: 'flex-end',
+    marginBottom: 18,
+    marginTop: 24,
   },
-  playAllText: {
-    color: theme.colors.background,
-    fontSize: 18,
-    fontWeight: '900',
+  secondaryButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.round,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
   },
-  loader: {
-    marginTop: 40,
+  playButton: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.primaryLight,
+    borderRadius: theme.radii.round,
+    height: 58,
+    justifyContent: 'center',
+    width: 58,
   },
-  errorText: {
-    color: '#ef4444',
-    textAlign: 'center',
-    marginTop: 40,
-  },
-  emptyText: {
-    color: theme.colors.muted,
-    textAlign: 'center',
-    marginTop: 40,
-    fontSize: 16,
+  disabledButton: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   list: {
-    gap: 10,
+    gap: 8,
   },
-  itemRow: {
+  row: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: theme.colors.border,
-    borderRadius: 18,
+    borderColor: 'transparent',
+    borderRadius: theme.radii.md,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 12,
-    padding: 10,
+    padding: 8,
   },
-  itemRowActive: {
-    backgroundColor: 'rgba(124,58,237,0.18)',
-    borderColor: 'rgba(124,58,237,0.42)',
+  rowActive: {
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: 'rgba(168,85,247,0.42)',
   },
-  itemImage: {
-    backgroundColor: theme.colors.surfaceMuted,
-    borderRadius: 12,
-    height: 56,
-    width: 56,
-  },
-  itemFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  itemFallbackText: {
-    color: theme.colors.text,
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  itemText: {
+  rowText: {
     flex: 1,
   },
-  itemTitle: {
+  rowTitle: {
     color: theme.colors.text,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
   },
-  itemMeta: {
+  rowTitleActive: {
+    color: theme.colors.primaryLight,
+  },
+  rowMeta: {
     color: theme.colors.muted,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     marginTop: 3,
   },
-  rowPlayState: {
-    color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: '900',
-    width: 28,
+  contextButton: {
+    padding: 8,
   },
 });
