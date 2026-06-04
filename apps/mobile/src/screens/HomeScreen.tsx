@@ -6,7 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CoverArt, GradientOrb, IconButton, StateCard, YoriaxLogo } from '../components/YoriaxUI';
+import { CoverArt, IconButton, StateCard, YoriaxLogo } from '../components/YoriaxUI';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
 import { loadHomeMusic, type HomeMusicData } from '../lib/music-data';
@@ -105,7 +105,10 @@ export function HomeScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <GradientOrb style={styles.topOrb} />
+      <LinearGradient
+        colors={['rgba(88,28,135,0.45)', 'rgba(12,10,18,0)']}
+        style={styles.topGradient}
+      />
       <View style={styles.header}>
         <YoriaxLogo />
         <IconButton icon="person-circle-outline" onPress={() => navigation.navigate('Profile')} />
@@ -202,9 +205,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.screen,
     paddingTop: 18,
   },
-  topOrb: {
-    right: -130,
-    top: -130,
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 400,
   },
   header: {
     alignItems: 'center',
