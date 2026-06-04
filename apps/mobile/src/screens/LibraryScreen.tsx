@@ -1,6 +1,7 @@
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { loadLibraryMusic, type LibraryMusicData } from '../lib/music-data';
 import { usePlayer } from '../lib/player-context';
 import type { Playlist, Song } from '../lib/types';
@@ -11,6 +12,7 @@ import { RootStackParamList } from '../navigation/types';
 
 export function LibraryScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [data, setData] = useState<LibraryMusicData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export function LibraryScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   return (
-    <View style={styles.stack}>
+    <View style={[styles.stack, { paddingTop: insets.top + 18 }]}>
       <Text style={styles.title}>Bibliothek</Text>
       <TouchableOpacity
         style={styles.row}
@@ -176,7 +178,11 @@ function EmptyBlock({ title, copy }: { title: string; copy: string }) {
 
 const styles = StyleSheet.create({
   stack: {
+    backgroundColor: theme.colors.background,
+    flex: 1,
     gap: 16,
+    paddingBottom: 170,
+    paddingHorizontal: theme.spacing.screen,
   },
   title: {
     color: theme.colors.text,

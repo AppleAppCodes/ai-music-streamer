@@ -1,5 +1,5 @@
-import { Alert, ActionSheetIOS, Image, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
+import { Alert, ActionSheetIOS, Animated, Image, PanResponder, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { theme } from '../theme';
 import { usePlayer } from '../lib/player-context';
 import { useAuth } from '../lib/auth-context';
@@ -12,22 +12,55 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
 import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FullscreenPlayer'>;
 
 export function FullscreenPlayer({ navigation }: Props) {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [isLiked, setIsLiked] = useState(false);
   const [likedSongId, setLikedSongId] = useState<string | null>(null);
   const [isLikeLoading, setIsLikeLoading] = useState(false);
   const [isPlaylistModalVisible, setIsPlaylistModalVisible] = useState(false);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [translateY] = useState(() => new Animated.Value(0));
   const { 
     activeSong, currentTime, duration, isPlaying, isBuffering, toggle, 
     pause, playNext, playPrevious, isShuffling, repeatMode, toggleShuffle, toggleRepeat, seekTo
   } = usePlayer();
   const activeSongId = activeSong?.id;
   const isCurrentSongLiked = Boolean(activeSongId && likedSongId === activeSongId && isLiked);
+  const repeatActive = repeatMode !== 'none';
+
+  const resetDrag = useCallback(() => {
+    Animated.spring(translateY, {
+      toValue: 0,
+      useNativeDriver: true,
+      speed: 24,
+      bounciness: 4,
+    }).start();
+  }, [translateY]);
+
+  const playerPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_event, gesture) =>
+          gesture.dy > 12 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.15,
+        onPanResponderMove: (_event, gesture) => {
+          translateY.setValue(Math.max(0, Math.min(gesture.dy, 190)));
+        },
+        onPanResponderRelease: (_event, gesture) => {
+          if (gesture.dy > 105 || gesture.vy > 0.85) {
+            navigation.goBack();
+            return;
+          }
+          resetDrag();
+        },
+        onPanResponderTerminate: resetDrag,
+      }),
+    [navigation, resetDrag, translateY],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -54,13 +87,21 @@ export function FullscreenPlayer({ navigation }: Props) {
 
   const handleLike = async () => {
     if (!user || !activeSong || isLikeLoading) return;
+    const songId = activeSong.id;
+    const previousStatus = isCurrentSongLiked;
+
+    setLikedSongId(songId);
+    setIsLiked(!previousStatus);
     setIsLikeLoading(true);
+
     try {
-      const newStatus = await toggleLike(user.id, activeSong.id, isCurrentSongLiked);
-      setLikedSongId(activeSong.id);
+      const newStatus = await toggleLike(user.id, songId, previousStatus);
+      setLikedSongId(songId);
       setIsLiked(newStatus);
     } catch (e) {
       console.error(e);
+      setLikedSongId(songId);
+      setIsLiked(previousStatus);
     } finally {
       setIsLikeLoading(false);
     }
@@ -182,11 +223,15 @@ export function FullscreenPlayer({ navigation }: Props) {
         </View>
       )}
 
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
+      <Animated.View
+        style={[styles.foreground, { transform: [{ translateY }] }]}
+        {...playerPanResponder.panHandlers}
+      >
+      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton} hitSlop={10}>
           <Ionicons name="chevron-down" size={32} color={theme.colors.text} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleContextMenu} style={styles.menuButton}>
+        <TouchableOpacity onPress={handleContextMenu} style={styles.menuButton} hitSlop={10}>
           <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
@@ -221,6 +266,7 @@ export function FullscreenPlayer({ navigation }: Props) {
               <TouchableOpacity 
                 style={styles.actionButton}
                 onPress={() => setIsPlaylistModalVisible(true)}
+                hitSlop={10}
               >
                 <Ionicons name="add-circle-outline" size={28} color={theme.colors.text} />
               </TouchableOpacity>
@@ -229,6 +275,7 @@ export function FullscreenPlayer({ navigation }: Props) {
                 style={styles.likeButton}
                 onPress={() => { void handleLike(); }}
                 disabled={isLikeLoading}
+                hitSlop={12}
               >
                 <Ionicons 
 	                  name={isCurrentSongLiked ? "heart" : "heart-outline"}
@@ -274,8 +321,19 @@ export function FullscreenPlayer({ navigation }: Props) {
             <Ionicons name="play-skip-forward" size={36} color={theme.colors.text} />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={toggleRepeat} style={styles.secondaryControlButton}>
-            <Ionicons name={repeatMode === 'one' ? "repeat" : "repeat"} size={24} color={repeatMode !== 'none' ? theme.colors.primary : theme.colors.muted} />
+          <TouchableOpacity
+            onPress={toggleRepeat}
+            style={styles.secondaryControlButton}
+            accessibilityLabel={repeatMode === 'one' ? 'Aktuellen Song wiederholen' : repeatMode === 'all' ? 'Playlist wiederholen' : 'Wiederholung aus'}
+          >
+            <View style={styles.repeatIconWrap}>
+              <Ionicons name="repeat" size={24} color={repeatActive ? theme.colors.text : theme.colors.muted} />
+              {repeatMode === 'one' ? (
+                <View style={styles.repeatOneBadge}>
+                  <Text style={styles.repeatOneText}>1</Text>
+                </View>
+              ) : null}
+            </View>
           </TouchableOpacity>
         </View>
         
@@ -289,6 +347,7 @@ export function FullscreenPlayer({ navigation }: Props) {
         </View>
         
       </View>
+      </Animated.View>
       <AddToPlaylistModal 
         visible={isPlaylistModalVisible} 
         songId={activeSong.id} 
@@ -303,8 +362,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  foreground: {
+    flex: 1,
+  },
   header: {
-    paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 10,
     flexDirection: 'row',
@@ -374,10 +435,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionButton: {
-    padding: 4,
+    alignItems: 'center',
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
   },
   likeButton: {
-    padding: 4,
+    alignItems: 'center',
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
   },
   progressContainer: {
     width: '100%',
@@ -408,6 +475,31 @@ const styles = StyleSheet.create({
   },
   secondaryControlButton: {
     padding: 10,
+  },
+  repeatIconWrap: {
+    alignItems: 'center',
+    height: 28,
+    justifyContent: 'center',
+    width: 28,
+  },
+  repeatOneBadge: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.text,
+    borderColor: '#0c0a12',
+    borderRadius: 7,
+    borderWidth: 1,
+    height: 14,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: -3,
+    top: -4,
+    width: 14,
+  },
+  repeatOneText: {
+    color: '#050505',
+    fontSize: 9,
+    fontWeight: '900',
+    lineHeight: 10,
   },
   playButton: {
     width: 72,

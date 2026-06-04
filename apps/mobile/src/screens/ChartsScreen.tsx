@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
 import { loadChartsData, type ChartsData } from '../lib/music-data';
@@ -113,6 +114,7 @@ function ChartPanel({
 }
 
 export function ChartsScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [data, setData] = useState<ChartsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -165,7 +167,7 @@ export function ChartsScreen({ navigation }: Props) {
         colors={['rgba(124,58,237,0.24)', 'rgba(249,115,22,0.10)', 'transparent']}
         style={styles.heroGlow}
       />
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 18 }]}>
         <BackButton onPress={() => navigation.goBack()} />
         <View style={styles.headerText}>
           <Text style={styles.headerEyebrow}>YORIAX</Text>
@@ -245,7 +247,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 14,
     paddingHorizontal: theme.spacing.screen,
-    paddingTop: 18,
   },
   headerText: {
     flex: 1,

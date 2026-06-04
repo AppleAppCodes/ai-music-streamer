@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CoverArt, IconButton, StateCard, YoriaxLogo } from '../components/YoriaxUI';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
@@ -32,6 +33,7 @@ type QuickTile = {
 export function HomeScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<HomeNavigation>();
+  const insets = useSafeAreaInsets();
   const [data, setData] = useState<HomeMusicData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +104,7 @@ export function HomeScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 18 }]}
       showsVerticalScrollIndicator={false}
     >
       <LinearGradient
@@ -207,7 +209,6 @@ const styles = StyleSheet.create({
     gap: theme.spacing.section,
     paddingBottom: 170,
     paddingHorizontal: theme.spacing.screen,
-    paddingTop: 18,
   },
   topGradient: {
     position: 'absolute',

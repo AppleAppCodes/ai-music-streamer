@@ -33,7 +33,7 @@ function AppShell() {
   }, [pause, signedIn]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.safeArea} edges={signedIn ? ['left', 'right'] : ['top', 'left', 'right', 'bottom']}>
       <StatusBar style="light" />
       {!signedIn && (
         <View style={styles.header}>

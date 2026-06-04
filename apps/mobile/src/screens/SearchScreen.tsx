@@ -1,5 +1,6 @@
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useState, useEffect } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { usePlayer } from '../lib/player-context';
 import { searchMusic } from '../lib/music-data';
@@ -7,6 +8,7 @@ import type { Song } from '../lib/types';
 import { formatPlays } from '../lib/format';
 
 export function SearchScreen() {
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [results, setResults] = useState<Song[]>([]);
@@ -55,7 +57,7 @@ export function SearchScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 18 }]}>
         <Text style={styles.title}>Suchen</Text>
         <View style={styles.searchBox}>
           <TextInput
@@ -139,7 +141,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   header: {
-    padding: 20,
+    paddingHorizontal: 20,
     paddingBottom: 10,
   },
   title: {
