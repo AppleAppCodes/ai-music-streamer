@@ -5,6 +5,9 @@ import { loadLibraryMusic, type LibraryMusicData } from '../lib/music-data';
 import { usePlayer } from '../lib/player-context';
 import type { Playlist, Song } from '../lib/types';
 import { theme } from '../theme';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 
 export function LibraryScreen() {
   const { user } = useAuth();
@@ -40,10 +43,15 @@ export function LibraryScreen() {
     };
   }, [user]);
 
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   return (
     <View style={styles.stack}>
       <Text style={styles.title}>Bibliothek</Text>
-      <View style={styles.row}>
+      <TouchableOpacity
+        style={styles.row}
+        onPress={() => navigation.navigate('LikedSongs')}
+      >
         <View style={styles.iconBox}>
           <Text style={styles.heart}>♥</Text>
         </View>
@@ -51,7 +59,7 @@ export function LibraryScreen() {
           <Text style={styles.rowTitle}>Lieblingssongs</Text>
           <Text style={styles.rowMeta}>{data?.likedSongs.length ?? 0} Songs in deinem Account</Text>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {loading ? (
         <View style={styles.stateBox}>
@@ -71,8 +79,8 @@ export function LibraryScreen() {
           <SectionTitle title="Zuletzt geliked" />
           {data.likedSongs.length > 0 ? (
             <View style={styles.list}>
-              {data.likedSongs.slice(0, 8).map((song) => (
-                <SongRow key={song.id} song={song} />
+              {data.likedSongs.slice(0, 8).map((song, index, arr) => (
+                <SongRow key={song.id} song={song} index={index} list={arr} />
               ))}
             </View>
           ) : (
@@ -99,14 +107,15 @@ function SectionTitle({ title }: { title: string }) {
   return <Text style={styles.sectionTitle}>{title}</Text>;
 }
 
-function SongRow({ song }: { song: Song }) {
-  const { activeSong, isPlaying, playSong } = usePlayer();
+function SongRow({ song, index, list }: { song: Song; index: number; list: Song[] }) {
+  const { activeSong, isPlaying, playSong, setQueue } = usePlayer();
   const isActive = activeSong?.id === song.id;
 
   return (
     <TouchableOpacity
       accessibilityRole="button"
       onPress={() => {
+        setQueue(list, index);
         void playSong(song);
       }}
       style={[styles.itemRow, isActive && styles.itemRowActive]}
@@ -132,8 +141,13 @@ function SongRow({ song }: { song: Song }) {
 }
 
 function PlaylistRow({ playlist }: { playlist: Playlist }) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   return (
-    <View style={styles.itemRow}>
+    <TouchableOpacity
+      style={styles.itemRow}
+      onPress={() => navigation.navigate('Playlist', { playlistId: playlist.id })}
+    >
       {playlist.cover_url ? (
         <Image source={{ uri: playlist.cover_url }} style={styles.itemImage} />
       ) : (
@@ -147,7 +161,7 @@ function PlaylistRow({ playlist }: { playlist: Playlist }) {
         </Text>
         <Text style={styles.itemMeta}>{playlist.is_public ? 'Oeffentlich' : 'Privat'}</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

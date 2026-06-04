@@ -66,6 +66,7 @@ interface FeedCardProps {
   song: FeedSong;
   active: boolean;
   muted: boolean;
+  soundUnlocked: boolean;
   liked: boolean;
   following: boolean;
   isAdmin: boolean;
@@ -138,6 +139,7 @@ function FeedCard({
   song,
   active,
   muted,
+  soundUnlocked,
   liked,
   following,
   isAdmin,
@@ -155,7 +157,10 @@ function FeedCard({
   const lastTapRef = useRef(0);
   const heartTimerRef = useRef<number | null>(null);
   const [showHeartBurst, setShowHeartBurst] = useState(false);
-  const mediaRef = song.clip.video_url ? videoRef : audioRef;
+  const [failedVideoUrl, setFailedVideoUrl] = useState<string | null>(null);
+  const videoUrl = song.clip.video_url || null;
+  const hasPlayableVideo = Boolean(videoUrl) && failedVideoUrl !== videoUrl;
+  const mediaRef = hasPlayableVideo ? videoRef : audioRef;
   const displayArtist = song.artist_name || song.creatorName || 'Creator';
   const avatarUrl = song.profiles?.avatar_url;
 
@@ -217,19 +222,32 @@ function FeedCard({
     media.muted = muted;
     if (!active) {
       media.pause();
+      audioRef.current?.pause();
+      videoRef.current?.pause();
       return;
     }
 
     const startAtHook = () => {
-      playFromHook(media).catch(() => {
-        if (!muted) {
+      playFromHook(media).catch((error) => {
+        if (error && error.name === 'AbortError') return;
+        if (error && error.name === 'NotAllowedError' && !muted && !soundUnlocked) {
           media.muted = true;
           playFromHook(media)
             .then(onAutoplayBlocked)
-            .catch(onAutoplayBlocked);
+            .catch((fallbackError) => {
+              if (fallbackError && fallbackError.name === 'AbortError') return;
+              onAutoplayBlocked();
+            });
+          return;
+        }
+
+        if (media === videoRef.current && videoUrl) {
+          setFailedVideoUrl(videoUrl);
         }
       });
     };
+    const audioElement = audioRef.current;
+    const videoElement = videoRef.current;
 
     if (media.readyState >= 1) {
       startAtHook();
@@ -240,8 +258,10 @@ function FeedCard({
     return () => {
       media.removeEventListener('loadedmetadata', startAtHook);
       media.pause();
+      audioElement?.pause();
+      videoElement?.pause();
     };
-  }, [active, mediaRef, muted, onAutoplayBlocked, playFromHook]);
+  }, [active, mediaRef, muted, onAutoplayBlocked, playFromHook, soundUnlocked, videoUrl]);
 
   useEffect(() => () => {
     if (heartTimerRef.current) window.clearTimeout(heartTimerRef.current);
@@ -295,6 +315,7 @@ function FeedCard({
         media.play().catch(() => {});
       }
     }
+    if (muted) onUserInteraction();
     onToggleMute();
   };
 
@@ -312,28 +333,31 @@ function FeedCard({
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/90" />
         </div>
 
-        {song.clip.video_url ? (
+        {hasPlayableVideo ? (
           <video
             ref={videoRef}
-            src={song.clip.video_url}
+            src={videoUrl || undefined}
             poster={song.cover_url}
             playsInline
-            loop={false}
+            muted={muted}
+            loop
             preload={active ? 'auto' : 'metadata'}
+            onError={() => {
+              if (videoUrl) setFailedVideoUrl(videoUrl);
+            }}
             onTimeUpdate={keepInsideHook}
             className="relative h-full w-full object-cover"
           />
         ) : (
-          <>
-            <img src={song.cover_url} alt={song.title} className="relative h-full w-full object-cover" />
-            <audio
-              ref={audioRef}
-              src={song.audio_url}
-              preload={active ? 'auto' : 'metadata'}
-              onTimeUpdate={keepInsideHook}
-            />
-          </>
+          <img src={song.cover_url} alt={song.title} className="relative h-full w-full object-cover" />
         )}
+
+        <audio
+          ref={audioRef}
+          src={song.audio_url}
+          preload={active ? 'auto' : 'metadata'}
+          onTimeUpdate={hasPlayableVideo ? undefined : keepInsideHook}
+        />
 
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/90" />
 
@@ -412,6 +436,7 @@ export default function FeedPage() {
   const [mode, setMode] = useState<FeedMode>('for-you');
   const [muted, setMuted] = useState(false);
   const [autoplayMuted, setAutoplayMuted] = useState(false);
+  const [soundUnlocked, setSoundUnlocked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [likedSongIds, setLikedSongIds] = useState<Set<string>>(new Set());
@@ -685,15 +710,17 @@ export default function FeedPage() {
   };
 
   const handleAutoplayBlocked = useCallback(() => {
+    if (soundUnlocked) return;
     setMuted(true);
     setAutoplayMuted(true);
-  }, []);
+  }, [soundUnlocked]);
 
   const unlockSoundAfterGesture = useCallback(() => {
-    if (!autoplayMuted) return;
+    setSoundUnlocked(true);
+    if (!autoplayMuted && !muted) return;
     setAutoplayMuted(false);
     setMuted(false);
-  }, [autoplayMuted]);
+  }, [autoplayMuted, muted]);
 
   const openEditor = (song: FeedSong) => {
     setEditingSong(song);
@@ -825,6 +852,7 @@ export default function FeedPage() {
                     song={song}
                     active={index === activeIndex}
                     muted={muted}
+                    soundUnlocked={soundUnlocked}
                     liked={likedSongIds.has(song.id)}
                     following={followedArtists.has(artist)}
                     isAdmin={isAdmin}
@@ -836,6 +864,7 @@ export default function FeedPage() {
                     onShare={() => shareSong(song)}
                     onToggleMute={() => {
                       setAutoplayMuted(false);
+                      if (muted) setSoundUnlocked(true);
                       setMuted((currentMuted) => !currentMuted);
                     }}
                     onUserInteraction={unlockSoundAfterGesture}

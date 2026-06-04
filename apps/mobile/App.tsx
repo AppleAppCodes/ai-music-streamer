@@ -1,24 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { MiniPlayer } from './src/components/MiniPlayer';
 import { AuthProvider, useAuth } from './src/lib/auth-context';
 import { hasSupabaseConfig } from './src/lib/env';
 import { PlayerProvider, usePlayer } from './src/lib/player-context';
 import { AuthScreen } from './src/screens/AuthScreen';
-import { LibraryScreen } from './src/screens/LibraryScreen';
-import { ForYouScreen } from './src/screens/ForYouScreen';
-import { HomeScreen } from './src/screens/HomeScreen';
+import { RootNavigator } from './src/navigation/RootNavigator';
 import { theme } from './src/theme';
-
-type TabId = 'home' | 'for-you' | 'library';
-
-const tabs: Array<{ id: TabId; label: string }> = [
-  { id: 'home', label: 'Home' },
-  { id: 'for-you', label: 'Für dich' },
-  { id: 'library', label: 'Bibliothek' },
-];
 
 export default function App() {
   return (
@@ -33,14 +22,8 @@ export default function App() {
 }
 
 function AppShell() {
-  const [activeTab, setActiveTab] = useState<TabId>('home');
   const { initializing, signOut, user } = useAuth();
   const { activeSong, pause } = usePlayer();
-  const activeScreen = useMemo(() => {
-    if (activeTab === 'for-you') return <ForYouScreen />;
-    if (activeTab === 'library') return <LibraryScreen />;
-    return <HomeScreen />;
-  }, [activeTab]);
   const signedIn = Boolean(user);
   const headerStatus = getHeaderStatus(initializing, user?.email ?? null);
 
@@ -74,46 +57,24 @@ function AppShell() {
         ) : null}
       </View>
 
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          signedIn && activeSong && styles.contentWithPlayer,
-          !signedIn && styles.authContent,
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={{ flex: 1 }}>
         {initializing ? (
-          <View style={styles.loadingCard}>
-            <ActivityIndicator color={theme.colors.text} />
-            <Text style={styles.loadingText}>Session wird geladen</Text>
+          <View style={[styles.content, styles.authContent]}>
+            <View style={styles.loadingCard}>
+              <ActivityIndicator color={theme.colors.text} />
+              <Text style={styles.loadingText}>Session wird geladen</Text>
+            </View>
           </View>
         ) : signedIn ? (
-          activeScreen
+          <>
+            <RootNavigator />
+          </>
         ) : (
-          <AuthScreen />
+          <ScrollView contentContainerStyle={[styles.content, styles.authContent]} showsVerticalScrollIndicator={false}>
+            <AuthScreen />
+          </ScrollView>
         )}
-      </ScrollView>
-
-      {signedIn ? <MiniPlayer /> : null}
-
-      {signedIn ? (
-        <View style={styles.tabBar}>
-          {tabs.map((tab) => {
-            const active = activeTab === tab.id;
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                style={[styles.tabButton, active && styles.tabButtonActive]}
-                onPress={() => setActiveTab(tab.id)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-              >
-                <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      ) : null}
+      </View>
     </SafeAreaView>
   );
 }

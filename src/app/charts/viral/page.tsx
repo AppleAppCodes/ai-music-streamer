@@ -101,7 +101,7 @@ function ChartPanel({
               <div
                 key={song.id}
                 onClick={() => onPlaySong(songs, index)}
-                className="group grid cursor-pointer grid-cols-[24px_40px_minmax(0,1fr)_auto_28px] items-center gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-white/[0.07]"
+                className="group grid cursor-pointer grid-cols-[24px_40px_minmax(0,1fr)_28px] items-center gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-white/[0.07]"
               >
                 <div className="flex justify-center text-xs font-bold text-white/45">
                   {isThisSongPlaying ? (
@@ -130,10 +130,6 @@ function ChartPanel({
                   >
                     {displayArtist}
                   </Link>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs font-bold tabular-nums text-white/70">{formatMetric(metric)}</div>
-                  <div className="hidden text-[10px] uppercase tracking-wider text-white/30 sm:block">{metricLabel}</div>
                 </div>
                 <div onClick={(event) => event.stopPropagation()}>
                   <PlaylistAddButton songId={song.id} iconClassName="h-5 w-5" />

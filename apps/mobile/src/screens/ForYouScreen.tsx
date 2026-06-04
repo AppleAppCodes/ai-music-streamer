@@ -1,31 +1,87 @@
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useState } from 'react';
-import { formatPlays } from '../lib/format';
+import { ActivityIndicator, Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View, ViewToken } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { loadFeedPreview } from '../lib/music-data';
 import { usePlayer } from '../lib/player-context';
 import type { FeedPreviewSong } from '../lib/types';
 import { theme } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
+import { VideoView, useVideoPlayer } from 'expo-video';
+
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+const VIEWABILITY_CONFIG = {
+  itemVisiblePercentThreshold: 70,
+};
+
+function getHookStart(song: FeedPreviewSong | null) {
+  return Math.max(0, song?.clip?.hook_start_seconds ?? 0);
+}
+
+function FeedVisual({ item, active }: { item: FeedPreviewSong; active: boolean }) {
+  const videoUrl = item.clip?.video_url?.trim() || null;
+  const videoPlayer = useVideoPlayer(videoUrl ? { uri: videoUrl } : null, (player) => {
+    player.loop = true;
+    player.muted = true;
+  });
+
+  useEffect(() => {
+    if (!videoUrl) return;
+
+    if (active) {
+      videoPlayer.play();
+    } else {
+      videoPlayer.pause();
+    }
+
+    return () => {
+      videoPlayer.pause();
+    };
+  }, [active, videoPlayer, videoUrl]);
+
+  if (videoUrl) {
+    return (
+      <VideoView
+        player={videoPlayer}
+        style={styles.coverImage}
+        contentFit="cover"
+        nativeControls={false}
+        playsInline
+        surfaceType="textureView"
+      />
+    );
+  }
+
+  if (item.cover_url) {
+    return <Image source={{ uri: item.cover_url }} style={styles.coverImage} resizeMode="cover" alt="" />;
+  }
+
+  return <View style={[styles.coverImage, styles.fallbackCover]} />;
+}
 
 export function ForYouScreen() {
   const { user } = useAuth();
-  const { activeSong, isPlaying, playSong } = usePlayer();
+  const { activeSong, isPlaying, playSong, toggle } = usePlayer();
   const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Track currently visible item to avoid playing the same song repeatedly
+  const currentVisibleId = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
     async function load() {
       if (!user) return;
-
       setLoading(true);
       setError(null);
 
       try {
         const nextSongs = await loadFeedPreview(user.id);
-        if (mounted) setSongs(nextSongs);
+        if (mounted) {
+          currentVisibleId.current = null;
+          setSongs(nextSongs);
+        }
       } catch (loadError) {
         if (mounted) {
           setError(loadError instanceof Error ? loadError.message : 'Fuer dich konnte nicht geladen werden.');
@@ -36,277 +92,236 @@ export function ForYouScreen() {
     }
 
     load();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [user]);
 
-  const firstSong = songs[0] ?? null;
-  const firstHookStart = getHookStart(firstSong);
+  const startHookPlayback = useCallback((song: FeedPreviewSong, force = false) => {
+    if (!force && currentVisibleId.current === song.id && activeSong?.id === song.id) return;
+    currentVisibleId.current = song.id;
+    void playSong(song, { startAt: getHookStart(song) });
+  }, [activeSong?.id, playSong]);
+
+  useEffect(() => {
+    if (loading || songs.length === 0 || currentVisibleId.current) return;
+    startHookPlayback(songs[0]);
+  }, [loading, songs, startHookPlayback]);
+
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    const visibleItem = viewableItems
+      .filter((item) => item.isViewable)
+      .sort((first, second) => (first.index ?? 0) - (second.index ?? 0))[0];
+
+    if (visibleItem?.item) {
+      startHookPlayback(visibleItem.item as FeedPreviewSong);
+    }
+  }, [startHookPlayback]);
+
+  // We want to pause when leaving the ForYou tab?
+  // Usually TikTok pauses when you go to another tab, but for a music app maybe not.
+  // We'll leave it playing for now.
+
+  const renderItem = ({ item }: { item: FeedPreviewSong }) => {
+    const isActive = activeSong?.id === item.id;
+
+    return (
+      <View style={styles.feedItem}>
+        <FeedVisual item={item} active={isActive} />
+
+        {/* Dark gradient overlay at bottom could go here, for now just a dark shadow overlay */}
+        <View style={styles.overlay} />
+
+        <View style={styles.contentContainer}>
+          <View style={styles.textContainer}>
+            <Text style={styles.artistName}>{item.artist_name || item.creatorName || 'Creator'}</Text>
+            <Text style={styles.songTitle}>{item.title}</Text>
+            <Text style={styles.hookTime}>
+              Hook: {item.clip?.hook_start_seconds ?? 0}s - {item.clip?.hook_end_seconds ?? 30}s
+            </Text>
+          </View>
+
+          <View style={styles.actionsContainer}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => {
+                if (isActive) {
+                  toggle();
+                } else {
+                  startHookPlayback(item, true);
+                }
+              }}
+            >
+              <Ionicons name={isActive && isPlaying ? "pause-circle" : "play-circle"} size={44} color="white" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton}>
+              <Ionicons name="heart" size={32} color={isActive ? theme.colors.primary : "white"} />
+              <Text style={styles.actionText}>{item.likes_count ?? 0}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton}>
+              <Ionicons name="share-social" size={32} color="white" />
+              <Text style={styles.actionText}>Teilen</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.hookCard}>
-        {firstSong?.cover_url ? (
-          <Image source={{ uri: firstSong.cover_url }} style={styles.artworkPlaceholder} />
-        ) : (
-          <View style={styles.artworkPlaceholder}>
-            <Text style={styles.artworkText}>9:16</Text>
-          </View>
-        )}
-        <View style={styles.modeTabs}>
-          <Text style={[styles.modeTab, styles.modeTabActive]}>Fuer dich</Text>
-          <Text style={styles.modeTab}>Gefolgt</Text>
-          <Text style={styles.modeTab}>Explore</Text>
-        </View>
-        <Text style={styles.eyebrow}>Hook Vorschau</Text>
-        <Text style={styles.title}>{firstSong?.title ?? 'Native Feed wird geladen'}</Text>
-        <Text style={styles.copy}>
-          {firstSong
-            ? `${firstSong.artist_name || firstSong.creatorName || 'Creator'} · ${formatPlays(firstSong.plays)} Streams`
-            : 'Songs werden aus Yoriax geladen. Player und Swipe-Gesten folgen im naechsten Schritt.'}
-        </Text>
-        {firstSong?.clip ? (
-          <Text style={styles.hookTime}>
-            Hook: {firstSong.clip.hook_start_seconds}s bis {firstSong.clip.hook_end_seconds}s
-          </Text>
-        ) : null}
-        {firstSong ? (
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              accessibilityRole="button"
-              onPress={() => {
-                void playSong(firstSong, { startAt: firstHookStart });
-              }}
-              style={styles.primaryAction}
-            >
-              <Text style={styles.primaryActionText}>
-                {activeSong?.id === firstSong.id && isPlaying ? 'Hook laeuft' : 'Hook abspielen'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              accessibilityRole="button"
-              onPress={() => {
-                void playSong(firstSong, { startAt: 0 });
-              }}
-              style={styles.secondaryAction}
-            >
-              <Text style={styles.secondaryActionText}>Ganzer Song</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
+    <View style={styles.container}>
+      <View style={styles.topTabs}>
+        <Text style={[styles.topTab, styles.topTabActive]}>Für dich</Text>
+        <Text style={styles.topTab}>Gefolgt</Text>
+        <Text style={styles.topTab}>Explore</Text>
       </View>
 
-      {loading ? (
-        <View style={styles.stateBox}>
-          <ActivityIndicator color={theme.colors.text} />
-          <Text style={styles.stateText}>Hooks werden geladen</Text>
-        </View>
-      ) : null}
-
-      {error ? (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
-
-      {!loading && songs.length > 0 ? (
-        <View style={styles.queueList}>
-          {songs.slice(0, 8).map((song, index) => (
-            <TouchableOpacity
-              accessibilityRole="button"
-              key={song.id}
-              onPress={() => {
-                void playSong(song, { startAt: getHookStart(song) });
-              }}
-              style={[styles.queueRow, activeSong?.id === song.id && styles.queueRowActive]}
-            >
-              <Text style={styles.queueRank}>{index + 1}</Text>
-              <View style={styles.queueText}>
-                <Text style={styles.queueTitle} numberOfLines={1}>
-                  {song.title}
-                </Text>
-                <Text style={styles.queueMeta} numberOfLines={1}>
-                  {song.artist_name || song.creatorName || 'Creator'}
-                </Text>
-              </View>
-              <Text style={styles.queueLikes}>
-                {activeSong?.id === song.id && isPlaying ? 'Laeuft' : `${song.likes_count ?? 0} Likes`}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      ) : null}
+      <FlatList
+        data={songs}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        snapToInterval={SCREEN_HEIGHT}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={VIEWABILITY_CONFIG}
+        initialNumToRender={2}
+        windowSize={3}
+      />
     </View>
   );
 }
 
-function getHookStart(song: FeedPreviewSong | null) {
-  return Math.max(0, song?.clip?.hook_start_seconds ?? 0);
-}
-
 const styles = StyleSheet.create({
-  screen: {
-    gap: 16,
-  },
-  hookCard: {
-    backgroundColor: theme.colors.surfaceMuted,
-    borderColor: theme.colors.border,
-    borderRadius: 28,
-    borderWidth: 1,
-    padding: 18,
-  },
-  artworkPlaceholder: {
-    alignItems: 'center',
-    aspectRatio: 9 / 16,
-    backgroundColor: '#140c23',
-    borderRadius: 24,
-    justifyContent: 'center',
-    marginBottom: 18,
-    width: '100%',
-  },
-  artworkText: {
-    color: theme.colors.subtle,
-    fontSize: 28,
-    fontWeight: '900',
-  },
-  modeTabs: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
-  modeTab: {
-    color: theme.colors.muted,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  modeTabActive: {
-    color: theme.colors.text,
-  },
-  eyebrow: {
-    color: theme.colors.primary,
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-  },
-  title: {
-    color: theme.colors.text,
-    fontSize: 28,
-    fontWeight: '900',
-    marginTop: 8,
-  },
-  copy: {
-    color: theme.colors.muted,
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: 10,
-  },
-  hookTime: {
-    color: theme.colors.accent,
-    fontSize: 13,
-    fontWeight: '900',
-    marginTop: 12,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
-  },
-  primaryAction: {
-    alignItems: 'center',
-    backgroundColor: theme.colors.text,
-    borderRadius: 16,
+  container: {
     flex: 1,
-    minHeight: 48,
+    backgroundColor: '#000',
+  },
+  centerContainer: {
+    flex: 1,
+    backgroundColor: '#000',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  primaryActionText: {
-    color: '#050505',
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  secondaryAction: {
     alignItems: 'center',
-    borderColor: theme.colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 16,
-  },
-  secondaryActionText: {
-    color: theme.colors.text,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  stateBox: {
-    alignItems: 'center',
-    borderColor: theme.colors.border,
-    borderRadius: 22,
-    borderWidth: 1,
-    gap: 10,
-    padding: 18,
-  },
-  stateText: {
-    color: theme.colors.muted,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  errorBox: {
-    backgroundColor: 'rgba(239,68,68,0.12)',
-    borderColor: 'rgba(239,68,68,0.32)',
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 14,
   },
   errorText: {
     color: '#fecaca',
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 16,
   },
-  queueList: {
-    gap: 10,
-  },
-  queueRow: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: theme.colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
+  topTabs: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    gap: 12,
-    padding: 12,
+    justifyContent: 'center',
+    gap: 20,
+    zIndex: 10,
   },
-  queueRowActive: {
-    backgroundColor: 'rgba(124,58,237,0.18)',
-    borderColor: 'rgba(124,58,237,0.42)',
-  },
-  queueRank: {
-    color: theme.colors.subtle,
-    fontSize: 14,
-    fontWeight: '900',
-    width: 22,
-  },
-  queueText: {
-    flex: 1,
-  },
-  queueTitle: {
-    color: theme.colors.text,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  queueMeta: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 3,
-  },
-  queueLikes: {
-    color: theme.colors.subtle,
-    fontSize: 11,
+  topTab: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 16,
     fontWeight: '800',
   },
+  topTabActive: {
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  feedItem: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    backgroundColor: '#140c23',
+    justifyContent: 'flex-end', // content at bottom
+  },
+  coverImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  },
+  fallbackCover: {
+    backgroundColor: '#1a102d',
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)', // slightly dark so text is readable
+  },
+  contentContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingBottom: 130, // space for tab bar and miniplayer
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    zIndex: 5,
+  },
+  textContainer: {
+    flex: 1,
+    paddingRight: 20,
+  },
+  artistName: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  songTitle: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '900',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  hookTime: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  actionsContainer: {
+    alignItems: 'center',
+    gap: 20,
+    paddingBottom: 20,
+  },
+  actionButton: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  actionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  }
 });

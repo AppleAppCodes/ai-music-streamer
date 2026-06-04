@@ -26,7 +26,9 @@ export interface FeedPreviewSong extends Song {
 
 export interface Playlist {
   id: string;
+  user_id?: string | null;
   title: string;
+  description?: string | null;
   cover_url?: string | null;
   is_public?: boolean | null;
   created_at?: string | null;

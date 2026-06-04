@@ -201,3 +201,231 @@ export async function loadFeedPreview(userId: string): Promise<FeedPreviewSong[]
     };
   });
 }
+
+export async function searchMusic(query: string): Promise<Song[]> {
+  if (!query || query.trim() === '') return [];
+  const client = requireClient();
+  const searchPattern = `%${query}%`;
+
+  const { data, error } = await client
+    .from('songs')
+    .select(SONG_SELECT_WITH_PROFILE)
+    .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern}`)
+    .order('plays', { ascending: false })
+    .limit(30);
+
+  if (error) {
+    // Falls profiles-Join fehlt, Fallback:
+    const fallback = await client
+      .from('songs')
+      .select(SONG_SELECT)
+      .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern}`)
+      .order('plays', { ascending: false })
+      .limit(30);
+
+    if (fallback.error) throw new Error(fallback.error.message);
+    return ((fallback.data || []) as SongRow[]).map(mapSong);
+  }
+
+  return ((data || []) as SongRow[]).map(mapSong);
+}
+
+export async function loadArtistSongs(artistName: string): Promise<Song[]> {
+  const client = requireClient();
+
+  const { data, error } = await client
+    .from('songs')
+    .select(SONG_SELECT_WITH_PROFILE)
+    .or(`artist_name.eq."${artistName}",creator_id.in.(select id from profiles where username = "${artistName}")`)
+    .order('plays', { ascending: false });
+
+  if (error) {
+    // Fallback if subquery fails
+    const fallback = await client
+      .from('songs')
+      .select(SONG_SELECT)
+      .eq('artist_name', artistName)
+      .order('plays', { ascending: false });
+
+    if (fallback.error) throw new Error(fallback.error.message);
+    return ((fallback.data || []) as SongRow[]).map(mapSong);
+  }
+
+  return ((data || []) as SongRow[]).map(mapSong);
+}
+
+export async function loadPlaylistDetails(playlistId: string): Promise<{ playlist: Playlist; songs: Song[] }> {
+  const client = requireClient();
+
+  const { data: playlistRow, error: playlistError } = await client
+    .from('playlists')
+    .select('id, user_id, title, description, cover_url, is_public, created_at')
+    .eq('id', playlistId)
+    .single();
+
+  if (playlistError || !playlistRow) {
+    throw new Error(playlistError?.message || 'Playlist nicht gefunden');
+  }
+
+  const playlist: Playlist = {
+    id: playlistRow.id,
+    user_id: playlistRow.user_id,
+    title: playlistRow.title,
+    description: playlistRow.description,
+    cover_url: playlistRow.cover_url,
+    is_public: playlistRow.is_public,
+    created_at: playlistRow.created_at,
+  };
+
+  const { data: mappingData } = await client
+    .from('playlist_songs')
+    .select('song_id, added_at')
+    .eq('playlist_id', playlistId)
+    .order('added_at', { ascending: false });
+
+  let songs: Song[] = [];
+
+  if (mappingData && mappingData.length > 0) {
+    const songIds = mappingData.map((m) => m.song_id);
+    const { data: songsData } = await client
+      .from('songs')
+      .select(SONG_SELECT_WITH_PROFILE)
+      .in('id', songIds);
+
+    if (songsData) {
+      const songRows = songsData as SongRow[];
+      const orderedSongs = mappingData
+        .map((m) => {
+          const s = songRows.find((s) => s.id === m.song_id);
+          if (s) return mapSong(s);
+          return null;
+        })
+        .filter((s): s is Song => Boolean(s));
+      songs = orderedSongs;
+    }
+  }
+
+  return { playlist, songs };
+}
+
+export async function checkIsLiked(userId: string, songId: string): Promise<boolean> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('liked_songs')
+    .select('song_id')
+    .eq('user_id', userId)
+    .eq('song_id', songId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error checking like status:', error);
+    return false;
+  }
+
+  return !!data;
+}
+
+export async function toggleLike(userId: string, songId: string, isLiked: boolean): Promise<boolean> {
+  const client = requireClient();
+
+  if (isLiked) {
+    const { error } = await client
+      .from('liked_songs')
+      .delete()
+      .eq('user_id', userId)
+      .eq('song_id', songId);
+    if (error) throw new Error(error.message);
+    return false;
+  } else {
+    const { error } = await client
+      .from('liked_songs')
+      .insert({ user_id: userId, song_id: songId });
+    if (error) throw new Error(error.message);
+    return true;
+  }
+}
+
+export async function getUserPlaylists(userId: string): Promise<Playlist[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('playlists')
+    .select('id, user_id, title, description, cover_url, is_public, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data || []) as Playlist[];
+}
+
+export async function addSongToPlaylist(playlistId: string, songId: string): Promise<void> {
+  const client = requireClient();
+
+  // check if already in playlist
+  const { data: existing } = await client
+    .from('playlist_songs')
+    .select('song_id')
+    .eq('playlist_id', playlistId)
+    .eq('song_id', songId)
+    .single();
+
+  if (existing) return; // already added
+
+  const { error } = await client
+    .from('playlist_songs')
+    .insert({ playlist_id: playlistId, song_id: songId });
+  if (error) throw new Error(error.message);
+}
+
+export async function loadCreatedSongs(userId: string): Promise<Song[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('songs')
+    .select(SONG_SELECT_WITH_PROFILE)
+    .eq('creator_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching created songs:', error);
+    return [];
+  }
+
+  if (!data) return [];
+  return (data as SongRow[]).map(mapSong);
+}
+
+export interface ChartsData {
+  viralSongs: Song[];
+  dailySongs: Song[];
+  dailyPlayMap: Record<string, number>;
+}
+
+export async function loadChartsData(): Promise<ChartsData> {
+  const client = requireClient();
+  const todayUtc = new Date().toISOString().slice(0, 10);
+
+  const [{ data: songsData }, { data: dailyData }] = await Promise.all([
+    client.from('songs').select(SONG_SELECT_WITH_PROFILE),
+    client.from('song_daily_plays').select('song_id, plays').eq('play_date', todayUtc),
+  ]);
+
+  const allSongs = ((songsData || []) as SongRow[]).map(mapSong);
+  const dailyPlays = (dailyData || []) as { song_id: string; plays: number }[];
+
+  const dailyPlayMap: Record<string, number> = {};
+  for (const { song_id, plays } of dailyPlays) {
+    dailyPlayMap[song_id] = plays;
+  }
+
+  const viralSongs = [...allSongs]
+    .sort((a, b) => b.plays - a.plays)
+    .slice(0, 20);
+
+  const dailySongs = [...allSongs]
+    .sort((a, b) => {
+      const playDiff = (dailyPlayMap[b.id] || 0) - (dailyPlayMap[a.id] || 0);
+      return playDiff || b.plays - a.plays;
+    })
+    .slice(0, 50);
+
+  return { viralSongs, dailySongs, dailyPlayMap };
+}

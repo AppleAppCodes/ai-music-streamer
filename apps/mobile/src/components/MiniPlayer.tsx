@@ -2,16 +2,24 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { formatDuration } from '../lib/format';
 import { usePlayer } from '../lib/player-context';
 import { theme } from '../theme';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/types';
 
 export function MiniPlayer() {
   const { activeSong, currentTime, duration, error, isBuffering, isPlaying, toggle } = usePlayer();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   if (!activeSong) return null;
 
   const progress = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
   return (
-    <View style={styles.shell}>
+    <TouchableOpacity
+      style={styles.shell}
+      activeOpacity={0.9}
+      onPress={() => navigation.navigate('FullscreenPlayer')}
+    >
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progress}%` }]} />
       </View>
@@ -38,7 +46,7 @@ export function MiniPlayer() {
           <Text style={styles.buttonText}>{isBuffering ? '…' : isPlaying ? 'Ⅱ' : '▶'}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

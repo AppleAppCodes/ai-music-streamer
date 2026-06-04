@@ -6,9 +6,21 @@ import { loadHomeMusic, type HomeMusicData } from '../lib/music-data';
 import { usePlayer } from '../lib/player-context';
 import type { Song } from '../lib/types';
 import { theme } from '../theme';
+import { useNavigation } from '@react-navigation/native';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainTabParamList, RootStackParamList } from '../navigation/types';
+import { Ionicons } from '@expo/vector-icons';
+
+type HomeNavigation = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'Home'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 
 export function HomeScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation<HomeNavigation>();
   const [data, setData] = useState<HomeMusicData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +55,21 @@ export function HomeScreen() {
 
   return (
     <View style={styles.stack}>
+      <View style={styles.header}>
+        <Text style={styles.logo}>YORIAX</Text>
+        <View style={styles.headerIcons}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => {
+              navigation.navigate('Profile');
+            }}
+          >
+            <Ionicons name="person-circle-outline" size={28} color={theme.colors.text} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <View style={styles.hero}>
-        <Text style={styles.eyebrow}>Yoriax Native</Text>
         <Text style={styles.title}>Home</Text>
         <Text style={styles.copy}>Echte Yoriax-Daten sind verbunden. Player und Navigation zu Details folgen als naechster Schritt.</Text>
         <View style={styles.statsRow}>
@@ -60,11 +85,37 @@ export function HomeScreen() {
       </View>
 
       <View style={styles.grid}>
-        {['Lieblingssongs', 'Charts', 'Kuenstler', 'Playlists'].map((item, index) => (
-          <View key={item} style={[styles.tile, index === 0 && styles.tileAccent]}>
-            <Text style={styles.tileText}>{item}</Text>
-          </View>
-        ))}
+        <TouchableOpacity
+          style={[styles.tile, styles.tileAccent]}
+          onPress={() => {
+            navigation.navigate('LikedSongs');
+          }}
+        >
+          <Text style={styles.tileText}>Lieblingssongs</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.tile}
+          onPress={() => {
+            navigation.navigate('Charts');
+          }}
+        >
+          <Text style={styles.tileText}>Charts</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.tile}
+          onPress={() => navigation.navigate('Search')}
+        >
+          <Text style={styles.tileText}>Künstler</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.tile}
+          onPress={() => navigation.navigate('Library')}
+        >
+          <Text style={styles.tileText}>Playlists</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? <LoadingBlock label="Musik wird geladen" /> : null}
@@ -99,7 +150,7 @@ function ErrorBlock({ message }: { message: string }) {
 }
 
 function SongRail({ title, songs }: { title: string; songs: Song[] }) {
-  const { activeSong, isPlaying, playSong } = usePlayer();
+  const { activeSong, isPlaying, playSong, setQueue } = usePlayer();
 
   if (songs.length === 0) return null;
 
@@ -107,11 +158,12 @@ function SongRail({ title, songs }: { title: string; songs: Song[] }) {
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.songRail}>
-        {songs.map((song) => (
+        {songs.map((song, index, arr) => (
           <TouchableOpacity
             accessibilityRole="button"
             key={song.id}
             onPress={() => {
+              setQueue(arr, index);
               void playSong(song);
             }}
             style={styles.songCard}
@@ -142,7 +194,27 @@ function SongRail({ title, songs }: { title: string; songs: Song[] }) {
 
 const styles = StyleSheet.create({
   stack: {
-    gap: 20,
+    gap: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginTop: 10,
+  },
+  logo: {
+    color: theme.colors.text,
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  iconButton: {
+    padding: 4,
   },
   hero: {
     backgroundColor: theme.colors.surface,

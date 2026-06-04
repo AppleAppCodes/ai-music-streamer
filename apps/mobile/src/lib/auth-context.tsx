@@ -61,14 +61,13 @@ function missingConfigResult(): AuthResult {
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
-  const [initializing, setInitializing] = useState(true);
+  const [initializing, setInitializing] = useState(hasSupabaseConfig && Boolean(supabase));
   const [lastError, setLastError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
     if (!hasSupabaseConfig || !supabase) {
-      setInitializing(false);
       return () => {
         mounted = false;
       };
