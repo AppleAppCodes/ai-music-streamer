@@ -632,9 +632,14 @@ export default function ArtistPage() {
           </div>
         </div>
 
-        {/* Popular Section */}
+        {/* Songs Section */}
         <div className="mb-12">
-          <h2 className="text-2xl font-bold text-white mb-6">Beliebt</h2>
+          <div className="mb-6 flex items-baseline gap-3">
+            <h2 className="text-2xl font-bold text-white">Alle Songs</h2>
+            <span className="text-sm font-semibold text-white/45">
+              {songs.length.toLocaleString('de-DE')} {songs.length === 1 ? 'Song' : 'Songs'}
+            </span>
+          </div>
           
           {songs.length > 0 ? (
             <div className="flex flex-col">
