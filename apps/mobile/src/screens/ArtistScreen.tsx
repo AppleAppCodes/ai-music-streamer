@@ -1,20 +1,24 @@
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useState, useEffect } from 'react';
 import { theme } from '../theme';
 import { usePlayer } from '../lib/player-context';
 import { loadArtistSongs } from '../lib/music-data';
 import type { Song } from '../lib/types';
 import { formatPlays } from '../lib/format';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
+import { supabase } from '../lib/supabase';
+import { LinearGradient } from 'expo-linear-gradient';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Artist'>;
+type StorageFile = { name: string; created_at?: string | null };
 
 export function ArtistScreen({ route, navigation }: Props) {
   const { artistId: artistName } = route.params;
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
 
   const { activeSong, isPlaying, playSong } = usePlayer();
 
@@ -23,9 +27,36 @@ export function ArtistScreen({ route, navigation }: Props) {
     async function load() {
       setLoading(true);
       setError(null);
+      setBannerUrl(null);
       try {
         const data = await loadArtistSongs(artistName);
         if (mounted) setSongs(data);
+
+        // Keep this in sync with the web artist page: covers/banners/<artist>...
+        if (!supabase) throw new Error('Supabase Env fehlt.');
+        const client = supabase;
+        const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const { data: files, error: filesError } = await client.storage
+          .from('covers')
+          .list('banners', {
+            limit: 100,
+            search: sanitizedName,
+          });
+
+        if (!filesError && files && mounted) {
+          const bannerFiles = (files as StorageFile[])
+            .filter((file) => file.name.toLowerCase().startsWith(sanitizedName) && !file.name.includes('_video'));
+
+          if (bannerFiles.length > 0) {
+            bannerFiles.sort(
+              (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(),
+            );
+            const { data: publicUrlData } = client.storage
+              .from('covers')
+              .getPublicUrl(`banners/${bannerFiles[0].name}`);
+            setBannerUrl(publicUrlData.publicUrl);
+          }
+        }
       } catch (err) {
         if (mounted) setError(err instanceof Error ? err.message : 'Künstler konnte nicht geladen werden.');
       } finally {
@@ -46,13 +77,29 @@ export function ArtistScreen({ route, navigation }: Props) {
         </TouchableOpacity>
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{artistName.charAt(0).toUpperCase()}</Text>
+        {bannerUrl ? (
+          <ImageBackground source={{ uri: bannerUrl }} style={styles.heroBanner}>
+            <LinearGradient
+              colors={['rgba(12,10,18,0.1)', 'rgba(12,10,18,0.8)', '#0c0a12']}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.heroContent}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{artistName.charAt(0).toUpperCase()}</Text>
+              </View>
+              <Text style={styles.title}>{artistName}</Text>
+              <Text style={styles.subtitle}>{formatPlays(totalPlays)} Streams gesamt</Text>
+            </View>
+          </ImageBackground>
+        ) : (
+          <View style={styles.hero}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{artistName.charAt(0).toUpperCase()}</Text>
+            </View>
+            <Text style={styles.title}>{artistName}</Text>
+            <Text style={styles.subtitle}>{formatPlays(totalPlays)} Streams gesamt</Text>
           </View>
-          <Text style={styles.title}>{artistName}</Text>
-          <Text style={styles.subtitle}>{formatPlays(totalPlays)} Streams gesamt</Text>
-        </View>
+        )}
 
         {loading ? (
           <View style={styles.stateBox}>
@@ -76,7 +123,7 @@ export function ArtistScreen({ route, navigation }: Props) {
                   >
                     <Text style={styles.songIndex}>{idx + 1}</Text>
                     {song.cover_url ? (
-                      <Image source={{ uri: song.cover_url }} style={styles.cover} />
+                      <Image source={{ uri: song.cover_url }} style={styles.cover} alt="" />
                     ) : (
                       <View style={[styles.cover, styles.coverFallback]}>
                         <Text style={styles.coverFallbackText}>Y</Text>
@@ -126,6 +173,16 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: 120, // space for MiniPlayer
+  },
+  heroBanner: {
+    width: '100%',
+    minHeight: 300,
+    justifyContent: 'flex-end',
+  },
+  heroContent: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    zIndex: 1,
   },
   hero: {
     alignItems: 'center',
