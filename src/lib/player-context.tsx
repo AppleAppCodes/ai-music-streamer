@@ -104,6 +104,16 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     resetPlayback();
   }, [resetPlayback]);
 
+  useEffect(() => {
+    window.__YORIAX_STOP_PLAYBACK__ = clearAuthenticatedPlayback;
+
+    return () => {
+      if (window.__YORIAX_STOP_PLAYBACK__ === clearAuthenticatedPlayback) {
+        delete window.__YORIAX_STOP_PLAYBACK__;
+      }
+    };
+  }, [clearAuthenticatedPlayback]);
+
   // Fetch auth state
   useEffect(() => {
     if (!isAuthenticated) {

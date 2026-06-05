@@ -105,9 +105,11 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
 
           <div className="h-px bg-purple-500/20 my-2 mx-4" />
 
-          <form action={signOutAction} onSubmit={notifyPlayerForceSignOut}>
+          <form action={signOutAction} onSubmitCapture={notifyPlayerForceSignOut}>
             <button 
               type="submit" 
+              onPointerDown={notifyPlayerForceSignOut}
+              onClick={notifyPlayerForceSignOut}
               className="w-[calc(100%-1rem)] text-left px-4 py-2.5 mx-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
             >
               Abmelden
