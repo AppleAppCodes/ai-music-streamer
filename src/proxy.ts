@@ -11,6 +11,15 @@ function isPublicPath(pathname: string) {
     || pathname.startsWith('/auth');
 }
 
+function getSafeSignedInRedirect(request: NextRequest) {
+  const nextPath = request.nextUrl.searchParams.get('next');
+  if (!nextPath || !nextPath.startsWith('/') || nextPath.startsWith('//') || nextPath.startsWith('/login')) {
+    return '/';
+  }
+
+  return nextPath;
+}
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -32,6 +41,11 @@ export async function proxy(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
+
+  if (user && request.nextUrl.pathname.startsWith('/login')) {
+    const redirectPath = getSafeSignedInRedirect(request);
+    return NextResponse.redirect(new URL(redirectPath, request.url));
+  }
 
   if (!user && !isPublicPath(request.nextUrl.pathname)) {
     const redirectUrl = request.nextUrl.clone();
