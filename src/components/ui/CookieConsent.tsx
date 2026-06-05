@@ -118,17 +118,17 @@ export default function CookieConsent() {
               />
               <ConsentCard
                 title="Analytics"
-                badge="Nicht aktiv"
-                description="YORIAX lädt aktuell kein Analytics-Tracking. Diese Kategorie bleibt deaktiviert, bis wir ein Tool bewusst integrieren."
+                badge="Nicht genutzt"
+                description="YORIAX lädt aktuell kein Analytics-Tracking. Deshalb gibt es hier gerade nichts zu aktivieren."
                 active={false}
-                locked
+                unavailable
               />
               <ConsentCard
                 title="Marketing"
-                badge="Nicht aktiv"
+                badge="Nicht genutzt"
                 description="Keine Werbe-Cookies, keine Partner-Pixel und kein personalisiertes Anzeigen-Tracking."
                 active={false}
-                locked
+                unavailable
               />
             </div>
 
@@ -162,6 +162,7 @@ function ConsentCard({
   locked = false,
   onToggle,
   title,
+  unavailable = false,
 }: {
   active: boolean;
   badge: string;
@@ -169,32 +170,55 @@ function ConsentCard({
   locked?: boolean;
   onToggle?: () => void;
   title: string;
+  unavailable?: boolean;
 }) {
+  const isInteractive = Boolean(onToggle) && !locked && !unavailable;
+
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+    <div
+      className={`rounded-2xl border border-white/10 bg-white/[0.04] p-4 ${
+        isInteractive ? 'cursor-pointer transition-colors hover:bg-white/[0.065]' : ''
+      }`}
+      onClick={isInteractive ? onToggle : undefined}
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h4 className="text-sm font-black text-white">{title}</h4>
-            <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${active ? 'bg-teal-300/15 text-teal-100' : 'bg-white/8 text-white/45'}`}>
+            <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${
+              active
+                ? 'bg-teal-300/15 text-teal-100'
+                : unavailable
+                  ? 'bg-white/8 text-white/35'
+                  : 'bg-white/8 text-white/45'
+            }`}>
               {badge}
             </span>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-white/55">{description}</p>
         </div>
-        <button
-          type="button"
-          disabled={locked}
-          onClick={onToggle}
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors ${
-            active
-              ? 'border-teal-300/35 bg-teal-300/20 text-teal-100'
-              : 'border-white/15 bg-white/5 text-white/45'
-          } ${locked ? 'cursor-default opacity-80' : 'hover:bg-white/10'}`}
-          aria-label={`${title} ${active ? 'aktiv' : 'inaktiv'}`}
-        >
-          {active ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-        </button>
+        {unavailable ? (
+          <div className="flex h-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white/35">
+            Aus
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={locked}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggle?.();
+            }}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors ${
+              active
+                ? 'border-teal-300/35 bg-teal-300/20 text-teal-100'
+                : 'border-white/15 bg-white/5 text-white/45'
+            } ${locked ? 'cursor-default opacity-80' : 'hover:bg-white/10'}`}
+            aria-label={`${title} ${active ? 'aktiv' : 'inaktiv'}`}
+          >
+            {active ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+          </button>
+        )}
       </div>
     </div>
   );

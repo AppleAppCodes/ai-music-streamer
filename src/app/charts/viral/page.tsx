@@ -14,21 +14,11 @@ interface DailyPlay {
   plays: number;
 }
 
-interface RankedSong {
-  song: Song;
-  metric: number;
-}
-
 interface ArtistChartItem {
   name: string;
   plays: number;
   songsCount: number;
   coverUrl: string;
-}
-
-interface RankedArtist {
-  artist: ArtistChartItem;
-  metric: number;
 }
 
 interface ChartPanelProps {
@@ -37,16 +27,11 @@ interface ChartPanelProps {
   description: string;
   accent: 'orange' | 'violet';
   icon: React.ReactNode;
-  rankedSongs: RankedSong[];
-  metricLabel: string;
+  rankedSongs: Song[];
   currentSong: Song | null;
   isPlaying: boolean;
   onPlayChart: (songs: Song[]) => void;
   onPlaySong: (songs: Song[], index: number) => void;
-}
-
-function formatMetric(value: number): string {
-  return value.toLocaleString('de-DE');
 }
 
 function ChartPanel({
@@ -56,13 +41,12 @@ function ChartPanel({
   accent,
   icon,
   rankedSongs,
-  metricLabel,
   currentSong,
   isPlaying,
   onPlayChart,
   onPlaySong,
 }: ChartPanelProps) {
-  const songs = rankedSongs.map(({ song }) => song);
+  const songs = rankedSongs;
   const isChartPlaying = isPlaying && songs.some((song) => song.id === currentSong?.id);
   const accentClasses = accent === 'orange'
     ? {
@@ -105,7 +89,7 @@ function ChartPanel({
 
       {rankedSongs.length > 0 ? (
         <div className="max-h-[68vh] overflow-y-auto overscroll-contain p-2">
-          {rankedSongs.map(({ song, metric }, index) => {
+          {rankedSongs.map((song, index) => {
             const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
             const displayArtist = song.artist_name || 'Creator';
 
@@ -143,9 +127,8 @@ function ChartPanel({
                     {displayArtist}
                   </Link>
                 </div>
-                <div className="text-right">
-                  <div className="text-xs font-black tabular-nums text-white/80">{formatMetric(metric)}</div>
-                  <div className="text-[10px] font-black uppercase tracking-[0.14em] text-white/30">{metricLabel}</div>
+                <div className="flex items-center justify-end pr-2 text-white/20">
+                  <TrendingUp className="h-4 w-4" />
                 </div>
                 <div onClick={(event) => event.stopPropagation()}>
                   <PlaylistAddButton songId={song.id} iconClassName="h-5 w-5" />
@@ -161,14 +144,14 @@ function ChartPanel({
   );
 }
 
-function ArtistChartPanel({ rankedArtists }: { rankedArtists: RankedArtist[] }) {
+function ArtistChartPanel({ rankedArtists }: { rankedArtists: ArtistChartItem[] }) {
   return (
     <section className="relative min-w-0 overflow-hidden rounded-2xl border border-teal-300/20 bg-white/[0.035] shadow-2xl shadow-black/20">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-br from-teal-400/20 via-cyan-400/5 to-transparent" />
       <div className="relative border-b border-white/10 p-4 sm:p-5">
         <div className="mb-2 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-teal-200/80">
           <Mic2 className="h-4 w-4" />
-          Top {rankedArtists.length}
+          Top 10
         </div>
         <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">Artist Charts</h2>
         <p className="mt-1 text-xs text-white/50 sm:text-sm">
@@ -178,7 +161,7 @@ function ArtistChartPanel({ rankedArtists }: { rankedArtists: RankedArtist[] }) 
 
       {rankedArtists.length > 0 ? (
         <div className="max-h-[68vh] overflow-y-auto overscroll-contain p-2">
-          {rankedArtists.map(({ artist, metric }, index) => (
+          {rankedArtists.map((artist, index) => (
             <Link
               key={artist.name}
               href={`/artist/${encodeURIComponent(artist.name)}`}
@@ -201,10 +184,6 @@ function ArtistChartPanel({ rankedArtists }: { rankedArtists: RankedArtist[] }) 
                 </div>
               </div>
               <div className="flex items-center gap-2 text-right">
-                <div>
-                  <div className="text-xs font-black tabular-nums text-white/80">{formatMetric(metric)}</div>
-                  <div className="text-[10px] font-black uppercase tracking-[0.14em] text-white/30">Streams</div>
-                </div>
                 <ChevronRight className="h-4 w-4 text-white/25 transition-colors group-hover:text-teal-200" />
               </div>
             </Link>
@@ -249,26 +228,24 @@ export default function ViralChartsPage() {
     [dailyPlays],
   );
 
-  const viralSongs = useMemo<RankedSong[]>(
+  const viralSongs = useMemo<Song[]>(
     () => [...songs]
       .sort((a, b) => b.plays - a.plays)
-      .slice(0, 20)
-      .map((song) => ({ song, metric: song.plays })),
+      .slice(0, 20),
     [songs],
   );
 
-  const dailySongs = useMemo<RankedSong[]>(
+  const dailySongs = useMemo<Song[]>(
     () => [...songs]
       .sort((a, b) => {
         const playDifference = (dailyPlayMap.get(b.id) || 0) - (dailyPlayMap.get(a.id) || 0);
         return playDifference || b.plays - a.plays;
       })
-      .slice(0, 50)
-      .map((song) => ({ song, metric: dailyPlayMap.get(song.id) || 0 })),
+      .slice(0, 50),
     [dailyPlayMap, songs],
   );
 
-  const artistCharts = useMemo<RankedArtist[]>(() => {
+  const artistCharts = useMemo<ArtistChartItem[]>(() => {
     const artistMap = new Map<string, ArtistChartItem & { topSongPlays: number }>();
 
     songs.forEach((song) => {
@@ -299,13 +276,10 @@ export default function ViralChartsPage() {
       .sort((a, b) => b.plays - a.plays || b.songsCount - a.songsCount)
       .slice(0, 30)
       .map((artist) => ({
-        artist: {
-          name: artist.name,
-          plays: artist.plays,
-          songsCount: artist.songsCount,
-          coverUrl: artist.coverUrl,
-        },
-        metric: artist.plays,
+        name: artist.name,
+        plays: artist.plays,
+        songsCount: artist.songsCount,
+        coverUrl: artist.coverUrl,
       }));
   }, [songs]);
 
@@ -376,7 +350,6 @@ export default function ViralChartsPage() {
             accent="orange"
             icon={<Flame className="h-4 w-4" />}
             rankedSongs={viralSongs}
-            metricLabel="Streams"
             currentSong={currentSong}
             isPlaying={isPlaying}
             onPlayChart={handlePlayChart}
@@ -389,7 +362,6 @@ export default function ViralChartsPage() {
             accent="violet"
             icon={<CalendarDays className="h-4 w-4" />}
             rankedSongs={dailySongs}
-            metricLabel="Heute"
             currentSong={currentSong}
             isPlaying={isPlaying}
             onPlayChart={handlePlayChart}
