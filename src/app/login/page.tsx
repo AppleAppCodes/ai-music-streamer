@@ -9,7 +9,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { getErrorMessage } from '@/lib/errors';
 
 function getSafeNextPath(value: string | null) {
-  if (!value?.startsWith('/') || value.startsWith('//')) return '/';
+  if (!value?.startsWith('/') || value.startsWith('//') || value.startsWith('/login')) return '/';
   return value;
 }
 
@@ -27,7 +27,8 @@ export default function LoginPage() {
   
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+  const nextPath = useMemo(() => getSafeNextPath(searchParams.get('next')), [searchParams]);
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
   const oauthError = searchParams.get('error') === 'google_oauth_failed'
@@ -46,6 +47,27 @@ export default function LoginPage() {
 
     return () => mediaQuery.removeEventListener('change', updateTurnstileSize);
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted || !data.session) return;
+      router.replace(nextPath);
+      router.refresh();
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) return;
+      router.replace(nextPath);
+      router.refresh();
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [nextPath, router, supabase]);
 
   // Keep Cloudflare's managed check usable inside the narrower mobile login card.
   const turnstileOptions = useMemo(() => ({ 
@@ -162,8 +184,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const next = getSafeNextPath(searchParams.get('next'));
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
