@@ -37,3 +37,14 @@ export function setNowPlayingMetadata({ title, artist, album = 'Yoriax', artwork
     ],
   });
 }
+
+export function clearNowPlayingMetadata() {
+  if (
+    typeof navigator === 'undefined'
+    || !('mediaSession' in navigator)
+  ) {
+    return;
+  }
+
+  navigator.mediaSession.metadata = null;
+}

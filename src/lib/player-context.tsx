@@ -5,7 +5,8 @@ import { Song } from '@/lib/types';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { setNowPlayingMetadata } from '@/lib/media-session';
+import { clearNowPlayingMetadata, setNowPlayingMetadata } from '@/lib/media-session';
+import { PLAYER_FORCE_SIGN_OUT_EVENT } from '@/lib/player-events';
 
 interface PlayerContextType {
   currentSong: Song | null;
@@ -46,24 +47,93 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [repeatMode, setRepeatMode] = useState<'none' | 'all' | 'one'>('none');
   const [isMounted, setIsMounted] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [authResolved, setAuthResolved] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const loadedSongIdRef = useRef<string | null>(null);
 
+  const resetPlayback = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+    }
+
+    loadedSongIdRef.current = null;
+    setCurrentSong(null);
+    setIsPlaying(false);
+    setProgress(0);
+    setCurrentTime(0);
+    setDuration(0);
+    setQueueState([]);
+    setQueueIndex(-1);
+    setIsShuffling(false);
+    setRepeatMode('none');
+    setShowAuthModal(false);
+    clearNowPlayingMetadata();
+
+    try {
+      localStorage.removeItem('player_currentSong');
+      localStorage.removeItem('player_queue');
+      localStorage.removeItem('player_queueIndex');
+      localStorage.removeItem('player_repeatMode');
+      localStorage.removeItem('player_isShuffling');
+    } catch (e) {
+      console.error('Failed to clear player state', e);
+    }
+  }, []);
+
+  const clearAuthenticatedPlayback = useCallback(() => {
+    setUser(null);
+    resetPlayback();
+  }, [resetPlayback]);
+
   // Fetch auth state
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        setUser(data.user);
+      } else {
+        clearAuthenticatedPlayback();
+      }
+      setAuthResolved(true);
+    }).catch((error) => {
+      console.error('Failed to fetch auth user', error);
+      clearAuthenticatedPlayback();
+      setAuthResolved(true);
+    });
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+      const nextUser = session?.user || null;
+      if (nextUser) {
+        setUser(nextUser);
+      } else {
+        clearAuthenticatedPlayback();
+      }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [clearAuthenticatedPlayback]);
+
+  useEffect(() => {
+    window.addEventListener(PLAYER_FORCE_SIGN_OUT_EVENT, clearAuthenticatedPlayback);
+
+    return () => {
+      window.removeEventListener(PLAYER_FORCE_SIGN_OUT_EVENT, clearAuthenticatedPlayback);
+    };
+  }, [clearAuthenticatedPlayback]);
 
   // Load state from localStorage on mount
   useEffect(() => {
+    if (!authResolved) return;
+
+    if (!user) {
+      const timeout = window.setTimeout(() => setIsMounted(true), 0);
+      return () => clearTimeout(timeout);
+    }
+
     let isActive = true;
     let savedSong: string | null = null;
     let savedQueue: string | null = null;
@@ -99,7 +169,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [authResolved, user]);
 
   // Save state to localStorage on change
   useEffect(() => {

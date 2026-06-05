@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { User, ExternalLink } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { isAdminUser } from '@/lib/admin';
+import { notifyPlayerForceSignOut } from '@/lib/player-events';
 
 interface ProfileDropdownProps {
   user: SupabaseUser;
@@ -104,7 +105,7 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
 
           <div className="h-px bg-purple-500/20 my-2 mx-4" />
 
-          <form action={signOutAction}>
+          <form action={signOutAction} onSubmit={notifyPlayerForceSignOut}>
             <button 
               type="submit" 
               className="w-[calc(100%-1rem)] text-left px-4 py-2.5 mx-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"

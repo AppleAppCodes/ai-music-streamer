@@ -6,6 +6,7 @@ import { Bell, LogIn, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ProfileDropdown from '@/components/ui/ProfileDropdown';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { notifyPlayerForceSignOut } from '@/lib/player-events';
 
 import { useEffect, useRef } from 'react';
 
@@ -25,6 +26,8 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
     if (user) {
       // Background call to track activity and country
       fetch('/api/user/track', { method: 'POST' }).catch(() => {});
+    } else {
+      notifyPlayerForceSignOut();
     }
   }, [user]);
 
