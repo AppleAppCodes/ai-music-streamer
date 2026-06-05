@@ -95,8 +95,8 @@ export function HomeScreen() {
       accent: '#06b6d4', // Cyan
       icon: 'library',
       label: 'Playlists',
-      subtitle: 'Sammlungen öffnen',
-      onPress: () => navigation.navigate('Library'),
+      subtitle: 'Community & kuratiert',
+      onPress: () => navigation.navigate('PlaylistDiscover'),
       gradientColors: ['rgba(6,182,212,0.25)', 'rgba(6,182,212,0.05)', 'rgba(255,255,255,0.02)'],
     },
   ], [navigation]);

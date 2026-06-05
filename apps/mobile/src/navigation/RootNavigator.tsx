@@ -19,6 +19,7 @@ import { LikedSongsScreen } from '../screens/LikedSongsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { ChartsScreen } from '../screens/ChartsScreen';
 import { ArtistsScreen } from '../screens/ArtistsScreen';
+import { PlaylistDiscoverScreen } from '../screens/PlaylistDiscoverScreen';
 import { MiniPlayer } from '../components/MiniPlayer';
 import { usePlayer } from '../lib/player-context';
 
@@ -149,6 +150,11 @@ export function RootNavigator() {
         <Stack.Screen
           name="Artists"
           component={ArtistsScreen}
+          options={{ presentation: 'card' }}
+        />
+        <Stack.Screen
+          name="PlaylistDiscover"
+          component={PlaylistDiscoverScreen}
           options={{ presentation: 'card' }}
         />
       </Stack.Navigator>

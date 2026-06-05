@@ -1,6 +1,6 @@
 import { getDailyTrendingSongs, getPersonalizedSongs, type PlaybackSignal, type SongSignal } from './recommendations';
 import { supabase } from './supabase';
-import type { FeedClip, FeedPreviewSong, Playlist, Song } from './types';
+import type { DiscoverPlaylist, FeedClip, FeedPreviewSong, Playlist, Song } from './types';
 
 const SONG_SELECT =
   'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at';
@@ -8,6 +8,7 @@ const SONG_SELECT_WITH_PROFILE = `${SONG_SELECT}, profiles!songs_creator_id_fkey
 
 type ProfileJoin = { username?: string | null } | { username?: string | null }[] | null;
 type SongRow = Song & { profiles?: ProfileJoin };
+type PlaylistRow = Playlist & { profiles?: ProfileJoin };
 type LikedSongRow = { created_at?: string | null; songs?: SongRow | SongRow[] | null };
 type FeedClipJoin = FeedClip | FeedClip[] | null;
 type FeedStatsJoin = { likes_count?: number | null } | { likes_count?: number | null }[] | null;
@@ -27,6 +28,13 @@ export interface LibraryMusicData {
   likedSongs: Song[];
   playlists: Playlist[];
 }
+
+export interface DiscoverPlaylistsData {
+  communityPlaylists: DiscoverPlaylist[];
+  officialPlaylists: DiscoverPlaylist[];
+}
+
+const OFFICIAL_PLAYLIST_SIGNALS = ['yoriax', 'official', 'offiziell', 'kuratiert', 'curated', 'admin', 'david', 'heindavid'];
 
 function requireClient() {
   if (!supabase) {
@@ -57,6 +65,27 @@ function mapSong(row: SongRow): Song {
     duration: row.duration ?? null,
     plays: row.plays ?? 0,
     created_at: row.created_at ?? null,
+  };
+}
+
+function isOfficialPlaylist(row: PlaylistRow, creatorName: string): boolean {
+  const haystack = [row.title, row.description, creatorName].filter(Boolean).join(' ').toLowerCase();
+  return OFFICIAL_PLAYLIST_SIGNALS.some((signal) => haystack.includes(signal));
+}
+
+function mapDiscoverPlaylist(row: PlaylistRow): DiscoverPlaylist {
+  const creatorName = getProfileUsername(row.profiles ?? null) || 'Unbekannt';
+
+  return {
+    id: row.id,
+    user_id: row.user_id ?? null,
+    title: row.title,
+    description: row.description ?? null,
+    cover_url: row.cover_url ?? null,
+    is_public: row.is_public ?? null,
+    created_at: row.created_at ?? null,
+    creatorName,
+    isOfficial: isOfficialPlaylist(row, creatorName),
   };
 }
 
@@ -157,6 +186,32 @@ export async function loadLibraryMusic(userId: string): Promise<LibraryMusicData
   return {
     likedSongs,
     playlists: (playlistRows || []) as Playlist[],
+  };
+}
+
+export async function loadDiscoverPlaylists(searchQuery = ''): Promise<DiscoverPlaylistsData> {
+  const client = requireClient();
+  const trimmedQuery = searchQuery.trim();
+  let query = client
+    .from('playlists')
+    .select('id, user_id, title, description, cover_url, is_public, created_at, profiles(username)')
+    .eq('is_public', true)
+    .order('created_at', { ascending: false })
+    .limit(80);
+
+  if (trimmedQuery) {
+    query = query.ilike('title', `%${trimmedQuery}%`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw new Error(error.message);
+
+  const playlists = ((data || []) as PlaylistRow[]).map(mapDiscoverPlaylist);
+
+  return {
+    officialPlaylists: playlists.filter((playlist) => playlist.isOfficial),
+    communityPlaylists: playlists.filter((playlist) => !playlist.isOfficial),
   };
 }
 

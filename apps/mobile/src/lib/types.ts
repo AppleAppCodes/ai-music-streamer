@@ -33,3 +33,8 @@ export interface Playlist {
   is_public?: boolean | null;
   created_at?: string | null;
 }
+
+export interface DiscoverPlaylist extends Playlist {
+  creatorName: string;
+  isOfficial: boolean;
+}
