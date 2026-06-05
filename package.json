@@ -23,7 +23,10 @@
     "mobile:lint": "eslint apps/mobile/App.tsx apps/mobile/src --max-warnings=0",
     "mobile:check": "npm run mobile:typecheck && npm run mobile:lint",
     "mobile:eas:preview:android": "cd apps/mobile && npx eas-cli build --platform android --profile preview",
-    "mobile:eas:preview:ios": "cd apps/mobile && npx eas-cli build --platform ios --profile preview"
+    "mobile:eas:preview:ios": "cd apps/mobile && npx eas-cli build --platform ios --profile preview",
+    "mobile:eas:production:ios": "cd apps/mobile && npx eas-cli build --platform ios --profile production",
+    "mobile:eas:submit:ios": "cd apps/mobile && npx eas-cli submit --platform ios --profile production",
+    "mobile:testflight": "cd apps/mobile && npx eas-cli build --platform ios --profile production --auto-submit"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.5.2",

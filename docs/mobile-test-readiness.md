@@ -1,6 +1,6 @@
 # YORIAX Mobile Test Readiness
 
-Stand: 2026-06-04
+Stand: 2026-06-05
 
 ## Scope
 
@@ -30,6 +30,8 @@ Danach Metro fuer die installierte YORIAX-Development-App starten:
 npm run mobile:start:dev-client
 ```
 
+Development Builds enthalten den Expo Dev Launcher. Wenn Metro nicht läuft oder das iPhone den Mac nicht findet, erscheint "Finding Dev Servers" bzw. "No development servers found". Das ist nur bei Development Builds normal. TestFlight-/Production-Builds starten direkt in YORIAX ohne Dev Launcher.
+
 Wenn iPhone und Mac sich im Netzwerk nicht finden, den Tunnel nutzen:
 
 ```bash
@@ -47,7 +49,7 @@ Der Android-Prebuild erzeugt `apps/mobile/android`. Diesen Ordner erst committen
 
 ## Interne Testbuilds
 
-iOS Preview:
+iOS Preview ohne TestFlight, aber ohne Dev Launcher:
 
 ```bash
 npm run mobile:eas:preview:ios
@@ -60,6 +62,38 @@ npm run mobile:eas:preview:android
 ```
 
 Die Preview-Profile erzeugen interne Testbuilds. Für Android ist das zunächst ein APK, damit Tests schnell auf echten Geräten installierbar sind. Production nutzt später ein AAB für Google Play.
+
+## TestFlight Ablauf
+
+Voraussetzungen:
+
+- Aktiver Apple Developer Program Account
+- App Store Connect App mit Bundle ID `com.yoriax.app`
+- EAS/Expo Account Login lokal: `cd apps/mobile && npx eas-cli login`
+- App Store Connect Zugriff für Build Uploads
+
+Vor jedem TestFlight Build:
+
+```bash
+npm run mobile:check
+```
+
+Build und automatischer Upload nach App Store Connect:
+
+```bash
+npm run mobile:testflight
+```
+
+Alternativ getrennt:
+
+```bash
+npm run mobile:eas:production:ios
+npm run mobile:eas:submit:ios
+```
+
+Nach dem Upload muss Apple den Build verarbeiten. Danach erscheint er in App Store Connect unter TestFlight und kann internen Testern zugewiesen werden.
+
+Die TestFlight Builds verwenden die `production` EAS-Konfiguration und enthalten keinen Expo Dev Launcher.
 
 ## Pflicht-Checks Auf Echten Geräten
 

@@ -17,7 +17,12 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "APP_ENV": "preview"
+        "APP_ENV": "preview",
+        "EXPO_PUBLIC_API_BASE_URL": "https://www.yoriax.com",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpcWVsaGp1Z2l3Y2t2eHlpeHloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxODg5MzUsImV4cCI6MjA5NTc2NDkzNX0.30XzN36Sdn_toB0jzBpS30UtzOS-7BxhQK72ltvUcW8",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://eiqelhjugiwckvxyixyh.supabase.co",
+        "EXPO_PUBLIC_TURNSTILE_BASE_URL": "https://www.yoriax.com",
+        "EXPO_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAADa0OcUWy7hHu9Zc"
       },
       "ios": {
         "simulator": false
@@ -29,7 +34,12 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_API_BASE_URL": "https://www.yoriax.com",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpcWVsaGp1Z2l3Y2t2eHlpeHloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxODg5MzUsImV4cCI6MjA5NTc2NDkzNX0.30XzN36Sdn_toB0jzBpS30UtzOS-7BxhQK72ltvUcW8",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://eiqelhjugiwckvxyixyh.supabase.co",
+        "EXPO_PUBLIC_TURNSTILE_BASE_URL": "https://www.yoriax.com",
+        "EXPO_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAADa0OcUWy7hHu9Zc"
       },
       "android": {
         "buildType": "app-bundle"
