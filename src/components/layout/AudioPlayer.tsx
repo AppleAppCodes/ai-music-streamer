@@ -11,6 +11,7 @@ import { compressImage } from '@/lib/imageCompression';
 import { getErrorMessage } from '@/lib/errors';
 import { isAdminUser } from '@/lib/admin';
 import { uploadSongCover } from '@/lib/song-cover-upload';
+import { hasPreferenceStorageConsent } from '@/lib/cookie-consent';
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return '0:00';
@@ -194,23 +195,26 @@ export default function AudioPlayer() {
       file = await compressImage(file);
       const coverUrl = await uploadSongCover(currentSong.id, file);
 
-      try {
-        const cachedSong = localStorage.getItem('player_currentSong');
-        if (cachedSong) {
-          const parsedSong = JSON.parse(cachedSong);
-          if (parsedSong.id === currentSong.id) {
-            localStorage.setItem('player_currentSong', JSON.stringify({ ...parsedSong, cover_url: coverUrl }));
+      if (hasPreferenceStorageConsent()) {
+        try {
+          const cachedSong = localStorage.getItem('player_currentSong');
+          if (cachedSong) {
+            const parsedSong = JSON.parse(cachedSong);
+            if (parsedSong.id === currentSong.id) {
+              localStorage.setItem('player_currentSong', JSON.stringify({ ...parsedSong, cover_url: coverUrl }));
+            }
           }
+
+          const cachedQueue = localStorage.getItem('player_queue');
+          if (cachedQueue) {
+            const parsedQueue = JSON.parse(cachedQueue);
+            localStorage.setItem('player_queue', JSON.stringify(
+              parsedQueue.map((song: { id: string }) => song.id === currentSong.id ? { ...song, cover_url: coverUrl } : song)
+            ));
+          }
+        } catch (cacheError) {
+          console.error('Failed to refresh cached cover:', cacheError);
         }
-        const cachedQueue = localStorage.getItem('player_queue');
-        if (cachedQueue) {
-          const parsedQueue = JSON.parse(cachedQueue);
-          localStorage.setItem('player_queue', JSON.stringify(
-            parsedQueue.map((song: { id: string }) => song.id === currentSong.id ? { ...song, cover_url: coverUrl } : song)
-          ));
-        }
-      } catch (cacheError) {
-        console.error('Failed to refresh cached cover:', cacheError);
       }
 
       window.location.reload();

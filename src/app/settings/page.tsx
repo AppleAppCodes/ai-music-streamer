@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { compressImage } from '@/lib/imageCompression';
+import { hasPreferenceStorageConsent } from '@/lib/cookie-consent';
 
 const LANGUAGE_STORAGE_KEY = 'ai-stream-language';
 
@@ -149,7 +150,9 @@ export default function SettingsPage() {
 
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const nextLanguage = e.target.value;
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+    if (hasPreferenceStorageConsent()) {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+    }
     i18n.changeLanguage(nextLanguage);
   };
 

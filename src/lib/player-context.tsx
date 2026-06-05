@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { clearNowPlayingMetadata, setNowPlayingMetadata } from '@/lib/media-session';
 import { PLAYER_FORCE_SIGN_OUT_EVENT } from '@/lib/player-events';
+import { COOKIE_CONSENT_CHANGED_EVENT, hasPreferenceStorageConsent } from '@/lib/cookie-consent';
 
 interface PlayerContextType {
   currentSong: Song | null;
@@ -33,6 +34,18 @@ interface PlayerContextType {
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
+
+const PLAYER_STORAGE_KEYS = [
+  'player_currentSong',
+  'player_queue',
+  'player_queueIndex',
+  'player_repeatMode',
+  'player_isShuffling',
+] as const;
+
+function clearStoredPlayerState() {
+  PLAYER_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
+}
 
 interface PlayerProviderProps {
   children: React.ReactNode;
@@ -80,11 +93,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     clearNowPlayingMetadata();
 
     try {
-      localStorage.removeItem('player_currentSong');
-      localStorage.removeItem('player_queue');
-      localStorage.removeItem('player_queueIndex');
-      localStorage.removeItem('player_repeatMode');
-      localStorage.removeItem('player_isShuffling');
+      clearStoredPlayerState();
     } catch (e) {
       console.error('Failed to clear player state', e);
     }
@@ -139,11 +148,22 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     };
   }, [clearAuthenticatedPlayback]);
 
+  useEffect(() => {
+    const handleConsentChange = () => {
+      if (!hasPreferenceStorageConsent()) {
+        clearStoredPlayerState();
+      }
+    };
+
+    window.addEventListener(COOKIE_CONSENT_CHANGED_EVENT, handleConsentChange);
+    return () => window.removeEventListener(COOKIE_CONSENT_CHANGED_EVENT, handleConsentChange);
+  }, []);
+
   // Load state from localStorage on mount
   useEffect(() => {
     if (!authResolved) return;
 
-    if (!user) {
+    if (!user || !hasPreferenceStorageConsent()) {
       const timeout = window.setTimeout(() => setIsMounted(true), 0);
       return () => clearTimeout(timeout);
     }
@@ -188,6 +208,8 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
   // Save state to localStorage on change
   useEffect(() => {
     if (!isMounted) return;
+    if (!hasPreferenceStorageConsent()) return;
+
     try {
       if (currentSong) localStorage.setItem('player_currentSong', JSON.stringify(currentSong));
       localStorage.setItem('player_queue', JSON.stringify(queue));

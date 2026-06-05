@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import CookieSettingsButton from '@/components/ui/CookieSettingsButton';
 
 export default function GuestPreviewBanner() {
   return (
@@ -8,6 +9,9 @@ export default function GuestPreviewBanner() {
         <p className="mt-1 hidden text-sm font-medium text-white/90 sm:block">
           Registriere dich kostenlos, um Songs zu hören, Favoriten zu speichern und eigene Playlists zu erstellen.
         </p>
+        <CookieSettingsButton className="mt-1 text-[11px] font-bold text-white/55 underline-offset-4 transition-colors hover:text-white hover:underline">
+          Cookie-Einstellungen
+        </CookieSettingsButton>
       </div>
       <Link
         href="/login"

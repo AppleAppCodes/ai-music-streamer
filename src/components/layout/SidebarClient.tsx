@@ -5,6 +5,7 @@ import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserChec
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
 import { isAdminUser } from '@/lib/admin';
+import CookieSettingsButton from '@/components/ui/CookieSettingsButton';
 
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -82,6 +83,9 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
           </Link>
         )}
         <CreatePlaylistButton />
+        <CookieSettingsButton className="mt-4 px-3 text-left text-[11px] font-bold uppercase tracking-[0.14em] text-white/30 transition-colors hover:text-white/60">
+          Cookies
+        </CookieSettingsButton>
       </div>
     </div>
   );
