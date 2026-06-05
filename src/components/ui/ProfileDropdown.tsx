@@ -121,6 +121,14 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
             Datenschutz
           </Link>
 
+          <Link
+            href="/agb"
+            onClick={() => setIsOpen(false)}
+            className="block px-4 py-2.5 mx-2 rounded-lg text-white/60 hover:bg-purple-500/10 hover:text-purple-300 transition-colors"
+          >
+            AGB
+          </Link>
+
           <div className="h-px bg-purple-500/20 my-2 mx-4" />
 
           <form action={signOutAction} onSubmitCapture={notifyPlayerForceSignOut}>

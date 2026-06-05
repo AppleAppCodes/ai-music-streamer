@@ -318,6 +318,17 @@ export default function LoginPage() {
                 : 'Bereits einen Account? Hier einloggen'}
             </button>
           </div>
+          <p className="mt-5 text-center text-[11px] leading-5 text-white/35">
+            Mit Registrierung oder Nutzung akzeptierst du unsere{' '}
+            <Link href="/agb" className="font-bold text-white/55 underline-offset-4 hover:text-white hover:underline">
+              AGB
+            </Link>{' '}
+            und die{' '}
+            <Link href="/datenschutz" className="font-bold text-white/55 underline-offset-4 hover:text-white hover:underline">
+              Datenschutzerklärung
+            </Link>
+            .
+          </p>
           </>
           )}
         </div>
@@ -333,6 +344,9 @@ export default function LoginPage() {
             </Link>
             <Link href="/datenschutz" className="transition-colors hover:text-white/70">
               Datenschutz
+            </Link>
+            <Link href="/agb" className="transition-colors hover:text-white/70">
+              AGB
             </Link>
           </div>
         </div>

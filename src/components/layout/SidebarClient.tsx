@@ -93,6 +93,9 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
           <Link href="/datenschutz" className="transition-colors hover:text-white/60">
             Datenschutz
           </Link>
+          <Link href="/agb" className="transition-colors hover:text-white/60">
+            AGB
+          </Link>
         </div>
       </div>
     </div>

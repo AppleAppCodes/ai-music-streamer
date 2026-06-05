@@ -7,6 +7,7 @@ function isPublicPath(pathname: string) {
     || pathname.startsWith('/search')
     || pathname.startsWith('/impressum')
     || pathname.startsWith('/datenschutz')
+    || pathname.startsWith('/agb')
     || pathname.startsWith('/auth');
 }
 

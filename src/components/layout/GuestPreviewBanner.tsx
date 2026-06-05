@@ -19,6 +19,9 @@ export default function GuestPreviewBanner() {
           <Link href="/datenschutz" className="underline-offset-4 transition-colors hover:text-white hover:underline">
             Datenschutz
           </Link>
+          <Link href="/agb" className="underline-offset-4 transition-colors hover:text-white hover:underline">
+            AGB
+          </Link>
         </div>
       </div>
       <Link
