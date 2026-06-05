@@ -41,7 +41,7 @@ export default function CreatePlaylistButton() {
       if (error) throw error;
 
       if (newPlaylist) {
-        router.push(`/playlist/${newPlaylist.id}`);
+        router.push(`/playlist/${newPlaylist.id}?add=1`);
       }
     } catch (err) {
       console.error('Error creating playlist:', err);

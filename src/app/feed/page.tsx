@@ -28,6 +28,7 @@ import { Song } from '@/lib/types';
 import { usePlayer } from '@/lib/player-context';
 import { isAdminUser } from '@/lib/admin';
 import { getErrorMessage } from '@/lib/errors';
+import { emitLikedSongChange } from '@/lib/liked-song-events';
 import { setNowPlayingMetadata } from '@/lib/media-session';
 
 interface FeedClip {
@@ -642,13 +643,35 @@ export default function FeedPage() {
       return nextIds;
     });
     updateSongStats(song.id, 'likes_count', nextLiked ? 1 : -1);
+    emitLikedSongChange(song.id, nextLiked);
 
-    const { error } = nextLiked
-      ? await supabase.from('liked_songs').insert({ user_id: userId, song_id: song.id })
-      : await supabase.from('liked_songs').delete().eq('user_id', userId).eq('song_id', song.id);
+    let error = null;
+    if (nextLiked) {
+      const { data: existing, error: lookupError } = await supabase
+        .from('liked_songs')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('song_id', song.id)
+        .limit(1);
+
+      if (!lookupError && existing?.length) {
+        return;
+      }
+
+      if (lookupError) {
+        error = lookupError;
+      } else {
+        const insertResult = await supabase.from('liked_songs').insert({ user_id: userId, song_id: song.id });
+        error = insertResult.error?.code === '23505' ? null : insertResult.error;
+      }
+    } else {
+      const deleteResult = await supabase.from('liked_songs').delete().eq('user_id', userId).eq('song_id', song.id);
+      error = deleteResult.error;
+    }
 
     if (error) {
       setActionError('Like konnte nicht gespeichert werden.');
+      emitLikedSongChange(song.id, currentlyLiked);
       setLikedSongIds((currentIds) => {
         const nextIds = new Set(currentIds);
         if (currentlyLiked) nextIds.add(song.id);

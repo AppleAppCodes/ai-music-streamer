@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X, Search, Plus, CheckCircle2 } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
@@ -41,6 +41,8 @@ export default function PlaylistPage() {
   const params = useParams();
   const playlistId = params.id as string;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const shouldOpenAddSearch = searchParams.get('add') === '1';
   
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   const supabase = createClient();
@@ -49,6 +51,11 @@ export default function PlaylistPage() {
   const [songs, setSongs] = useState<(Song & { added_at?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
+  const [songSearchQuery, setSongSearchQuery] = useState('');
+  const [songSearchResults, setSongSearchResults] = useState<Song[]>([]);
+  const [songSearchLoading, setSongSearchLoading] = useState(false);
+  const [addingSongId, setAddingSongId] = useState<string | null>(null);
+  const addSearchInputRef = useRef<HTMLInputElement>(null);
   
   // Menu state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -130,6 +137,48 @@ export default function PlaylistPage() {
     
     loadPlaylistData();
   }, [playlistId, supabase, router]);
+
+  useEffect(() => {
+    if (!shouldOpenAddSearch || loading || !isOwner) return;
+    addSearchInputRef.current?.focus();
+  }, [isOwner, loading, shouldOpenAddSearch]);
+
+  useEffect(() => {
+    if (!isOwner) return;
+
+    const trimmedQuery = songSearchQuery.trim();
+    if (trimmedQuery.length < 2) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function searchSongs() {
+      setSongSearchLoading(true);
+      const searchPattern = `%${trimmedQuery}%`;
+      const { data, error } = await supabase
+        .from('songs')
+        .select('*')
+        .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern}`)
+        .order('plays', { ascending: false })
+        .limit(12);
+
+      if (!isActive) return;
+      if (error) {
+        console.error('Song search failed:', error);
+        setSongSearchResults([]);
+      } else {
+        setSongSearchResults((data || []) as Song[]);
+      }
+      setSongSearchLoading(false);
+    }
+
+    const timer = window.setTimeout(searchSongs, 250);
+    return () => {
+      isActive = false;
+      window.clearTimeout(timer);
+    };
+  }, [isOwner, songSearchQuery, supabase]);
 
   useEffect(() => {
     const handleRemoved = (pid: string, sid: string) => {
@@ -277,6 +326,38 @@ export default function PlaylistPage() {
       alert('Fehler beim Hochladen des Covers: ' + getErrorMessage(err));
     } finally {
       setIsUploadingCover(false);
+    }
+  };
+
+  const handleSongSearchQueryChange = (value: string) => {
+    setSongSearchQuery(value);
+
+    if (value.trim().length < 2) {
+      setSongSearchResults([]);
+      setSongSearchLoading(false);
+    }
+  };
+
+  const handleAddSongFromSearch = async (song: Song) => {
+    if (!isOwner || addingSongId) return;
+
+    setAddingSongId(song.id);
+    try {
+      const { error } = await supabase
+        .from('playlist_songs')
+        .insert({ playlist_id: playlistId, song_id: song.id });
+
+      if (error && error.code !== '23505') throw error;
+
+      setSongs((previousSongs) => {
+        if (previousSongs.some((existingSong) => existingSong.id === song.id)) return previousSongs;
+        return [{ ...song, added_at: new Date().toISOString() }, ...previousSongs];
+      });
+    } catch (err: unknown) {
+      console.error('Error adding song to playlist:', err);
+      alert('Fehler beim Hinzufügen: ' + getErrorMessage(err));
+    } finally {
+      setAddingSongId(null);
     }
   };
 
@@ -445,6 +526,84 @@ export default function PlaylistPage() {
           )}
         </div>
 
+        {isOwner ? (
+          <div className="mb-10 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035] shadow-2xl shadow-black/20">
+            <div className="border-b border-white/10 px-5 py-4 md:px-6">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-xl font-black text-white">Songs hinzufügen</h2>
+                <p className="text-sm font-medium text-white/45">
+                  Suche direkt nach Songs und füge sie mit einem Klick dieser Playlist hinzu.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 md:p-6">
+              <label className="relative block">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/45" />
+                <input
+                  ref={addSearchInputRef}
+                  type="search"
+                  value={songSearchQuery}
+                  onChange={(event) => handleSongSearchQueryChange(event.target.value)}
+                  placeholder="Song oder Künstler suchen..."
+                  className="w-full rounded-2xl border border-white/10 bg-black/35 py-3.5 pl-12 pr-4 text-sm font-semibold text-white outline-none placeholder:text-white/35 focus:border-primary/60 focus:bg-black/50"
+                  aria-label="Songs für diese Playlist suchen"
+                />
+              </label>
+
+              {songSearchQuery.trim().length > 0 && songSearchQuery.trim().length < 2 ? (
+                <p className="mt-3 text-sm font-medium text-white/40">Gib mindestens 2 Zeichen ein.</p>
+              ) : null}
+
+              {songSearchLoading ? (
+                <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-4 text-sm font-semibold text-white/55">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Suche läuft...
+                </div>
+              ) : songSearchQuery.trim().length >= 2 && songSearchResults.length === 0 ? (
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-5 text-sm font-semibold text-white/45">
+                  Keine Songs gefunden.
+                </div>
+              ) : songSearchResults.length > 0 ? (
+                <div className="mt-4 grid gap-2">
+                  {songSearchResults.map((song) => {
+                    const alreadyAdded = songs.some((existingSong) => existingSong.id === song.id);
+
+                    return (
+                      <button
+                        key={song.id}
+                        type="button"
+                        onClick={() => handleAddSongFromSearch(song)}
+                        disabled={alreadyAdded || addingSongId !== null}
+                        className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] p-3 text-left transition-colors hover:border-primary/40 hover:bg-white/[0.07] disabled:cursor-default disabled:opacity-60 disabled:hover:border-white/10 disabled:hover:bg-white/[0.025]"
+                      >
+                        <img src={song.cover_url} alt={song.title} className="h-12 w-12 rounded-xl object-cover" />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-bold text-white">{song.title}</div>
+                          <div className="truncate text-xs font-semibold text-white/45">{song.artist_name || 'Creator'}</div>
+                        </div>
+                        {addingSongId === song.id ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        ) : alreadyAdded ? (
+                          <span className="inline-flex items-center gap-2 rounded-full bg-green-500/10 px-3 py-1.5 text-xs font-black text-green-400">
+                            <CheckCircle2 className="h-4 w-4" />
+                            Hinzugefügt
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-black text-black">
+                            <Plus className="h-4 w-4" />
+                            Hinzufügen
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
 
         {/* Songs List */}
         <div className="mb-12">
@@ -539,10 +698,16 @@ export default function PlaylistPage() {
                 <Music className="w-8 h-8 text-white/20" />
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Lass uns etwas Musik finden für deine Playlist</h3>
-              <p className="text-white/50 text-sm mb-6">Gehe auf Entdecken, um Songs zu finden und sie mit dem Plus-Icon hinzuzufügen.</p>
-              <Link href="/charts/viral" className="px-6 py-2.5 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform">
-                Charts durchstöbern
-              </Link>
+              <p className="text-white/50 text-sm mb-6">
+                {isOwner
+                  ? 'Nutze die Suche oben, um Songs direkt zu dieser Playlist hinzuzufügen.'
+                  : 'Gehe auf Entdecken, um Songs zu finden und sie mit dem Plus-Icon hinzuzufügen.'}
+              </p>
+              {!isOwner ? (
+                <Link href="/charts/viral" className="px-6 py-2.5 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform">
+                  Charts durchstöbern
+                </Link>
+              ) : null}
             </div>
           )}
         </div>

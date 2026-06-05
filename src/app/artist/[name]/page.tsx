@@ -50,6 +50,21 @@ type ArtistSocials = {
   youtube_url?: string;
 };
 
+type StorageFileMeta = {
+  created_at?: string | null;
+  name: string;
+  updated_at?: string | null;
+};
+
+function getStorageCacheKey(file: StorageFileMeta) {
+  return file.updated_at || file.created_at || file.name;
+}
+
+function withCacheBust(url: string, key: string | number) {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${encodeURIComponent(String(key))}`;
+}
+
 function normalizeExternalUrl(value?: string | null) {
   const rawValue = value?.trim();
   if (!rawValue) return '';
@@ -164,25 +179,25 @@ export default function ArtistPage() {
         // Find background banner matches (not video)
         const bannerFiles = files.filter(f => f.name.startsWith(sanitizedName) && !f.name.includes('_video'));
         if (bannerFiles.length > 0) {
-          bannerFiles.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+          bannerFiles.sort((a, b) => new Date(getStorageCacheKey(b)).getTime() - new Date(getStorageCacheKey(a)).getTime());
           const bannerFile = bannerFiles[0];
           
           const { data } = supabase.storage
             .from('covers')
             .getPublicUrl(`banners/${bannerFile.name}`);
-          setBannerUrl(data.publicUrl);
+          setBannerUrl(withCacheBust(data.publicUrl, getStorageCacheKey(bannerFile)));
         }
 
         // Find artist video matches
         const videoFiles = files.filter(f => f.name.startsWith(sanitizedName + '_video'));
         if (videoFiles.length > 0) {
-          videoFiles.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+          videoFiles.sort((a, b) => new Date(getStorageCacheKey(b)).getTime() - new Date(getStorageCacheKey(a)).getTime());
           const videoFile = videoFiles[0];
           
           const { data } = supabase.storage
             .from('covers')
             .getPublicUrl(`banners/${videoFile.name}`);
-          setArtistVideoUrl(data.publicUrl);
+          setArtistVideoUrl(withCacheBust(data.publicUrl, getStorageCacheKey(videoFile)));
         }
       }
       
@@ -367,7 +382,8 @@ export default function ArtistPage() {
     setIsUploadingArtistVideo(true);
     const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const ext = file.name.split('.').pop();
-    const path = `banners/${sanitizedName}_video.${ext}`;
+    const cacheKey = Date.now();
+    const path = `banners/${sanitizedName}_video_${cacheKey}.${ext}`;
 
     try {
       const { error } = await supabase.storage
@@ -380,12 +396,13 @@ export default function ArtistPage() {
         .from('covers')
         .getPublicUrl(path);
         
-      setArtistVideoUrl(`${data.publicUrl}?t=${Date.now()}`);
+      setArtistVideoUrl(withCacheBust(data.publicUrl, cacheKey));
     } catch (err: unknown) {
       console.error('Error uploading video:', err);
       alert('Fehler beim Hochladen des Videos: ' + getErrorMessage(err));
     } finally {
       setIsUploadingArtistVideo(false);
+      e.target.value = '';
     }
   };
 

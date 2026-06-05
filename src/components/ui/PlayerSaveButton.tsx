@@ -5,6 +5,7 @@ import { CheckCircle2, ListPlus, Loader2, PlusCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import AddToPlaylistModal from './AddToPlaylistModal';
+import { emitLikedSongChange, getLikedSongChangeDetail, LIKED_SONG_CHANGE_EVENT } from '@/lib/liked-song-events';
 
 interface PlayerSaveButtonProps {
   songId: string;
@@ -69,6 +70,9 @@ export default function PlayerSaveButton({
     let isActive = true;
 
     async function loadLikeStatus() {
+      setIsLoading(true);
+      setLoadedSongId(null);
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!isActive) return;
 
@@ -86,10 +90,10 @@ export default function PlayerSaveButton({
         .select('id')
         .eq('user_id', session.user.id)
         .eq('song_id', songId)
-        .maybeSingle();
+        .limit(1);
 
       if (!isActive) return;
-      setIsLiked(Boolean(data));
+      setIsLiked(Boolean(data?.length));
       setLoadedSongId(songId);
       setIsLoading(false);
     }
@@ -99,6 +103,19 @@ export default function PlayerSaveButton({
       isActive = false;
     };
   }, [songId, supabase]);
+
+  useEffect(() => {
+    const handleLikedSongChange = (event: Event) => {
+      const detail = getLikedSongChangeDetail(event);
+      if (!detail || detail.songId !== songId) return;
+      setIsLiked(detail.isLiked);
+      setLoadedSongId(songId);
+      setIsLoading(false);
+    };
+
+    window.addEventListener(LIKED_SONG_CHANGE_EVENT, handleLikedSongChange);
+    return () => window.removeEventListener(LIKED_SONG_CHANGE_EVENT, handleLikedSongChange);
+  }, [songId]);
 
   useEffect(() => {
     const closeMenu = (event: PointerEvent) => {
@@ -137,6 +154,27 @@ export default function PlayerSaveButton({
     if (isLiked) return true;
 
     setIsSaving(true);
+
+    const { data: existing, error: lookupError } = await supabase
+      .from('liked_songs')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('song_id', songId)
+      .limit(1);
+
+    if (lookupError) {
+      setIsSaving(false);
+      console.error('Error checking liked song:', lookupError);
+      return false;
+    }
+
+    if (existing?.length) {
+      setIsSaving(false);
+      setIsLiked(true);
+      emitLikedSongChange(songId, true);
+      return true;
+    }
+
     const { error } = await supabase
       .from('liked_songs')
       .insert({ user_id: userId, song_id: songId });
@@ -148,6 +186,7 @@ export default function PlayerSaveButton({
     }
 
     setIsLiked(true);
+    emitLikedSongChange(songId, true);
     return true;
   };
 
@@ -176,6 +215,7 @@ export default function PlayerSaveButton({
     }
 
     setIsLiked(false);
+    emitLikedSongChange(songId, false);
   };
 
   return (
