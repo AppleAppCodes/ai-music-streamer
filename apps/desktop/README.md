@@ -18,8 +18,17 @@ YORIAX_DESKTOP_URL=https://www.yoriax.com npm run desktop:dev
 
 ```bash
 npm run desktop:dist:mac
+npm run desktop:dist:mac:arm64
+npm run desktop:dist:mac:x64
+npm run desktop:dist:mac:universal
 npm run desktop:dist:win
 ```
+
+Recommended macOS release layout:
+
+- `desktop:dist:mac:arm64` for Apple Silicon Macs.
+- `desktop:dist:mac:x64` for Intel Macs.
+- `desktop:dist:mac:universal` only if one larger combined app is preferred.
 
 Store-ready releases still need platform signing and notarization:
 
