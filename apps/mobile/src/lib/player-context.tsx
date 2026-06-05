@@ -20,6 +20,7 @@ interface PlayerContextValue {
   playPrevious: () => void;
   queue: Song[];
   queueIndex: number;
+  reset: () => void;
   isShuffling: boolean;
   repeatMode: 'none' | 'all' | 'one';
   setQueue: (songs: Song[], startIndex?: number) => void;
@@ -95,6 +96,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const pause = useCallback(() => {
     player.pause();
+  }, [player]);
+
+  const reset = useCallback(() => {
+    player.pause();
+    player.clearLockScreenControls();
+    setActiveSong(null);
+    setError(null);
+    setQueueState([]);
+    setQueueIndex(-1);
+    setIsShuffling(false);
+    setRepeatMode('none');
   }, [player]);
 
   const toggle = useCallback(() => {
@@ -191,6 +203,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       playPrevious,
       queue,
       queueIndex,
+      reset,
       isShuffling,
       repeatMode,
       setQueue,
@@ -199,7 +212,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       seekTo,
       toggle,
     }),
-    [activeSong, error, pause, playSong, playNext, playPrevious, queue, queueIndex, isShuffling, repeatMode, setQueue, toggleShuffle, toggleRepeat, seekTo, status.currentTime, status.duration, status.error, status.isBuffering, status.playing, toggle],
+    [activeSong, error, pause, playSong, playNext, playPrevious, queue, queueIndex, reset, isShuffling, repeatMode, setQueue, toggleShuffle, toggleRepeat, seekTo, status.currentTime, status.duration, status.error, status.isBuffering, status.playing, toggle],
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;

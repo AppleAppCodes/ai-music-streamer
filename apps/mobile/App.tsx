@@ -24,13 +24,13 @@ export default function App() {
 
 function AppShell() {
   const { initializing, user } = useAuth();
-  const { pause } = usePlayer();
+  const { reset } = usePlayer();
   const signedIn = Boolean(user);
   const headerStatus = getHeaderStatus(initializing, user?.email ?? null);
 
   useEffect(() => {
-    if (!signedIn) pause();
-  }, [pause, signedIn]);
+    if (!signedIn) reset();
+  }, [reset, signedIn]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={signedIn ? ['left', 'right'] : ['top', 'left', 'right', 'bottom']}>
