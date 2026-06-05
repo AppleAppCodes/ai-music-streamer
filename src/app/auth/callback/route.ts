@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { sendWelcomeEmailForUser } from '@/lib/welcome-email';
 import { createClient } from '@/utils/supabase/server';
 
 function getSafeNextPath(value: string | null) {
@@ -22,6 +23,16 @@ export async function GET(request: NextRequest) {
       const loginUrl = new URL('/login', requestUrl.origin);
       loginUrl.searchParams.set('error', 'google_oauth_failed');
       return NextResponse.redirect(loginUrl);
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      await sendWelcomeEmailForUser(supabase, user).catch((welcomeError) => {
+        console.error('[GET /auth/callback] Welcome email failed', welcomeError);
+      });
     }
   }
 

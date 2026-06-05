@@ -10,7 +10,7 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
-import { hasSupabaseConfig } from './env';
+import { apiBaseUrl, hasSupabaseConfig } from './env';
 import { supabase } from './supabase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -71,6 +71,22 @@ function missingConfigResult(): AuthResult {
   };
 }
 
+async function triggerWelcomeEmail(accessToken?: string | null) {
+  if (!accessToken) return;
+
+  try {
+    const baseUrl = apiBaseUrl.replace(/\/+$/, '');
+    await fetch(`${baseUrl}/api/auth/welcome`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  } catch (error) {
+    console.error('[AuthProvider] Welcome email failed', error);
+  }
+}
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [initializing, setInitializing] = useState(hasSupabaseConfig && Boolean(supabase));
@@ -123,7 +139,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return missingConfigResult();
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
       options: captchaToken ? { captchaToken } : undefined,
@@ -136,6 +152,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     setLastError(null);
+    await triggerWelcomeEmail(data.session?.access_token);
     return { ok: true };
   }, []);
 
@@ -157,6 +174,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     setLastError(null);
+    await triggerWelcomeEmail(data.session?.access_token);
     return { ok: true, needsEmailConfirmation: !data.session };
   }, []);
 
@@ -211,6 +229,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       setSession(sessionData.session ?? null);
       setLastError(null);
+      await triggerWelcomeEmail(sessionData.session?.access_token);
       return { ok: true };
     } catch (oauthError) {
       const message = normalizeAuthError(oauthError);

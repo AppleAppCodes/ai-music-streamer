@@ -4,5 +4,6 @@ declare const process: {
     EXPO_PUBLIC_SUPABASE_ANON_KEY?: string;
     EXPO_PUBLIC_TURNSTILE_SITE_KEY?: string;
     EXPO_PUBLIC_TURNSTILE_BASE_URL?: string;
+    EXPO_PUBLIC_API_BASE_URL?: string;
   };
 };

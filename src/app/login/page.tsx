@@ -66,6 +66,14 @@ export default function LoginPage() {
     captchaTokenRef.current = null;
   }, []);
 
+  const triggerWelcomeEmail = useCallback(async () => {
+    try {
+      await fetch('/api/auth/welcome', { method: 'POST' });
+    } catch (welcomeError) {
+      console.error('[LoginPage] Welcome email failed', welcomeError);
+    }
+  }, []);
+
   // Helper: get a fresh token, retrying if needed
   const getCaptchaToken = async (): Promise<string | null> => {
     // Try to get response synchronously first
@@ -109,7 +117,7 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
           options: {
@@ -117,6 +125,9 @@ export default function LoginPage() {
           }
         });
         if (error) throw error;
+        if (data.session) {
+          await triggerWelcomeEmail();
+        }
         router.push('/');
         router.refresh();
       } else {
@@ -131,6 +142,7 @@ export default function LoginPage() {
         if (!data.session) {
           setConfirmationEmail(email);
         } else {
+          await triggerWelcomeEmail();
           router.push('/');
           router.refresh();
         }
