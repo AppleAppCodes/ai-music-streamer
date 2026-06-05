@@ -34,7 +34,12 @@ interface PlayerContextType {
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
-export function PlayerProvider({ children }: { children: React.ReactNode }) {
+interface PlayerProviderProps {
+  children: React.ReactNode;
+  isAuthenticated: boolean;
+}
+
+export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProps) {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -92,6 +97,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   // Fetch auth state
   useEffect(() => {
+    if (!isAuthenticated) {
+      const timeout = window.setTimeout(() => {
+        clearAuthenticatedPlayback();
+        setAuthResolved(true);
+      }, 0);
+
+      return () => window.clearTimeout(timeout);
+    }
+
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
@@ -115,7 +129,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       }
     });
     return () => subscription.unsubscribe();
-  }, [clearAuthenticatedPlayback]);
+  }, [clearAuthenticatedPlayback, isAuthenticated]);
 
   useEffect(() => {
     window.addEventListener(PLAYER_FORCE_SIGN_OUT_EVENT, clearAuthenticatedPlayback);
