@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserCheck, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
@@ -20,14 +21,14 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
     <div className="hidden w-52 bg-black h-full md:flex flex-col pt-6 pb-24 border-r border-white/5">
       <div className="px-5 mb-8">
         <Link href="/" className="flex items-center gap-4 group">
-          <div className="flex items-end justify-center gap-[3px] w-8 h-8 pb-1">
-            <div className="w-[5px] h-[14px] bg-white rounded-full group-hover:h-[24px] group-hover:bg-primary transition-all duration-300 ease-out" />
-            <div className="w-[5px] h-[26px] bg-white rounded-full group-hover:h-[16px] group-hover:bg-[#a855f7] transition-all duration-300 ease-out" />
-            <div className="w-[5px] h-[18px] bg-white rounded-full group-hover:h-[28px] group-hover:bg-primary transition-all duration-300 ease-out" />
-          </div>
-          <span className="text-2xl font-bold tracking-tight text-white uppercase group-hover:text-[#e9d5ff] transition-colors duration-300" style={{ fontFamily: 'var(--font-syncopate), sans-serif' }}>
-            Yoriax
-          </span>
+          <Image
+            src="/brand/yoriax-logo.png"
+            alt="YORIAX"
+            width={164}
+            height={38}
+            priority
+            className="h-9 w-auto transition-opacity duration-300 group-hover:opacity-85"
+          />
         </Link>
       </div>
 

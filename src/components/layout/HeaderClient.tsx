@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Bell, LogIn, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -36,21 +37,26 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
       <div className="hidden w-1/3 items-center md:flex">
         {!user ? (
           <Link href="/" className="group flex items-center gap-3" aria-label="Yoriax Home">
-            <div className="flex h-8 w-8 items-end justify-center gap-[3px] pb-1">
-              <div className="h-[14px] w-[5px] rounded-full bg-white transition-all duration-300 group-hover:h-[24px] group-hover:bg-primary" />
-              <div className="h-[26px] w-[5px] rounded-full bg-white transition-all duration-300 group-hover:h-[16px] group-hover:bg-[#a855f7]" />
-              <div className="h-[18px] w-[5px] rounded-full bg-white transition-all duration-300 group-hover:h-[28px] group-hover:bg-primary" />
-            </div>
-            <span className="text-xl font-bold uppercase tracking-tight text-white" style={{ fontFamily: 'var(--font-syncopate), sans-serif' }}>
-              Yoriax
-            </span>
+            <Image
+              src="/brand/yoriax-logo.png"
+              alt="YORIAX"
+              width={170}
+              height={39}
+              priority
+              className="h-8 w-auto transition-opacity duration-300 group-hover:opacity-85"
+            />
           </Link>
         ) : null}
       </div>
-      <Link href="/" className="flex shrink-0 items-end justify-center gap-[2.5px] w-8 h-8 pb-1 group md:hidden" aria-label="Yoriax Home">
-        <div className="w-[4px] h-[12px] bg-white rounded-full group-hover:h-[20px] transition-all duration-300 ease-out" />
-        <div className="w-[4px] h-[22px] bg-white rounded-full group-hover:h-[14px] transition-all duration-300 ease-out" />
-        <div className="w-[4px] h-[16px] bg-white rounded-full group-hover:h-[24px] transition-all duration-300 ease-out" />
+      <Link href="/" className="group flex h-9 w-9 shrink-0 items-center justify-center md:hidden" aria-label="Yoriax Home">
+        <Image
+          src="/brand/yoriax-symbol.png"
+          alt="YORIAX"
+          width={36}
+          height={36}
+          priority
+          className="h-8 w-8 object-contain transition-opacity duration-300 group-hover:opacity-85"
+        />
       </Link>
 
       {/* Center - Search Bar */}

@@ -2,26 +2,15 @@ import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View, typ
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
+import yoriaxLogo from '../../assets/yoriax-logo.png';
+import yoriaxSymbol from '../../assets/yoriax-symbol.png';
 
 export function YoriaxMark({ size = 34 }: { size?: number }) {
-  const width = Math.max(4, size * 0.16);
-
-  return (
-    <View style={[styles.mark, { height: size, width: size }]}>
-      <View style={[styles.markBar, { height: size * 0.48, width }]} />
-      <View style={[styles.markBar, { height: size * 0.86, width }]} />
-      <View style={[styles.markBar, { height: size * 0.64, width }]} />
-    </View>
-  );
+  return <Image source={yoriaxSymbol} style={{ height: size, width: size }} resizeMode="contain" alt="YORIAX" />;
 }
 
 export function YoriaxLogo() {
-  return (
-    <View style={styles.logoRow}>
-      <YoriaxMark />
-      <Text style={styles.logoText}>YORIAX</Text>
-    </View>
-  );
+  return <Image source={yoriaxLogo} style={styles.logoImage} resizeMode="contain" alt="YORIAX" />;
 }
 
 export function BackButton({ onPress, style }: { onPress: () => void; style?: StyleProp<ViewStyle> }) {
@@ -106,27 +95,9 @@ export function GradientOrb({ style }: { style?: StyleProp<ViewStyle> }) {
 }
 
 const styles = StyleSheet.create({
-  mark: {
-    alignItems: 'flex-end',
-    flexDirection: 'row',
-    gap: 4,
-    justifyContent: 'center',
-  },
-  markBar: {
-    backgroundColor: theme.colors.text,
-    borderRadius: theme.radii.round,
-  },
-  logoRow: {
-    alignItems: 'flex-end',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  logoText: {
-    color: theme.colors.text,
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 2,
-    marginBottom: -1,
+  logoImage: {
+    height: 36,
+    width: 158,
   },
   backButton: {
     alignItems: 'center',

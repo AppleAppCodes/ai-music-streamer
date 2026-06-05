@@ -29,10 +29,14 @@ const syncopate = Syncopate({
 export const metadata: Metadata = {
   title: "Yoriax | The first streaming platform for AI-native music",
   description: "Stream, discover, and publish the best AI-generated music.",
+  manifest: "/site.webmanifest",
   icons: {
-    icon: [{ url: "/icon.svg?v=3", type: "image/svg+xml" }],
-    shortcut: [{ url: "/icon.svg?v=3", type: "image/svg+xml" }],
-    apple: [{ url: "/icon.svg?v=3", type: "image/svg+xml" }],
+    icon: [
+      { url: "/favicon.ico?v=4", type: "image/x-icon" },
+      { url: "/brand/yoriax-app-icon-192.png?v=4", sizes: "192x192", type: "image/png" },
+    ],
+    shortcut: [{ url: "/favicon.ico?v=4", type: "image/x-icon" }],
+    apple: [{ url: "/apple-touch-icon.png?v=4", sizes: "180x180", type: "image/png" }],
   },
 };
 

@@ -5,7 +5,7 @@
     "scheme": "yoriax",
     "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./ios/Yoriax/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#050505",
     "ios": {
@@ -25,7 +25,7 @@
       "package": "com.yoriax.app",
       "versionCode": 2,
       "adaptiveIcon": {
-        "foregroundImage": "./ios/Yoriax/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#050505"
       }
     },

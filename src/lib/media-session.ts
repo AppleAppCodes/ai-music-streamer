@@ -6,8 +6,8 @@ interface NowPlayingMetadata {
 }
 
 function getAbsoluteArtworkUrl(url?: string | null): string {
-  if (typeof window === 'undefined') return url || '/icon.svg?v=3';
-  return new URL(url || '/icon.svg?v=3', window.location.origin).toString();
+  if (typeof window === 'undefined') return url || '/brand/yoriax-app-icon-512.png?v=4';
+  return new URL(url || '/brand/yoriax-app-icon-512.png?v=4', window.location.origin).toString();
 }
 
 export function setNowPlayingMetadata({ title, artist, album = 'Yoriax', artworkUrl }: NowPlayingMetadata) {
@@ -30,9 +30,9 @@ export function setNowPlayingMetadata({ title, artist, album = 'Yoriax', artwork
         sizes: '512x512',
       },
       {
-        src: getAbsoluteArtworkUrl('/icon.svg?v=3'),
+        src: getAbsoluteArtworkUrl('/brand/yoriax-app-icon-512.png?v=4'),
         sizes: '512x512',
-        type: 'image/svg+xml',
+        type: 'image/png',
       },
     ],
   });
