@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 function isPublicPath(pathname: string) {
   return pathname === '/'
+    || pathname === '/site.webmanifest'
     || pathname.startsWith('/login')
     || pathname.startsWith('/search')
     || pathname.startsWith('/impressum')
