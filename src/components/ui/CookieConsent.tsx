@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Check, ChevronDown, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
 import {
   COOKIE_SETTINGS_EVENT,
@@ -60,7 +61,13 @@ export default function CookieConsent() {
               Deine Privatsphäre auf YORIAX
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-white/70">
-              Wir nutzen notwendige Speicherung für Login, Sicherheit und deine Cookie-Entscheidung. Komfort-Speicherung für Sprache und Player-Zustand nutzt YORIAX nur, wenn du sie erlaubst. Analytics- und Marketing-Cookies sind aktuell deaktiviert.
+              Wir nutzen notwendige Speicherung für Login, Sicherheit und deine Cookie-Entscheidung.
+              Komfort-Speicherung für Sprache und Player-Zustand nutzt YORIAX nur, wenn du sie erlaubst.
+              Analytics- und Marketing-Cookies sind aktuell deaktiviert. Mehr dazu steht in der{' '}
+              <Link href="/datenschutz" className="font-bold text-teal-100 underline underline-offset-4 hover:text-white">
+                Datenschutzerklärung
+              </Link>
+              .
             </p>
 
             <button

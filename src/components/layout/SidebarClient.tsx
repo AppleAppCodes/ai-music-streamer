@@ -86,6 +86,14 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
         <CookieSettingsButton className="mt-4 px-3 text-left text-[11px] font-bold uppercase tracking-[0.14em] text-white/30 transition-colors hover:text-white/60">
           Cookies
         </CookieSettingsButton>
+        <div className="mt-3 flex flex-col gap-2 px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-white/25">
+          <Link href="/impressum" className="transition-colors hover:text-white/60">
+            Impressum
+          </Link>
+          <Link href="/datenschutz" className="transition-colors hover:text-white/60">
+            Datenschutz
+          </Link>
+        </div>
       </div>
     </div>
   );

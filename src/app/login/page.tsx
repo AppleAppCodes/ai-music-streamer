@@ -327,6 +327,14 @@ export default function LoginPage() {
           <Link href="/" className="text-sm font-medium text-white/40 hover:text-white transition-colors">
             ← Zurück zur Startseite
           </Link>
+          <div className="mt-4 flex items-center justify-center gap-4 text-xs font-bold text-white/30">
+            <Link href="/impressum" className="transition-colors hover:text-white/70">
+              Impressum
+            </Link>
+            <Link href="/datenschutz" className="transition-colors hover:text-white/70">
+              Datenschutz
+            </Link>
+          </div>
         </div>
       </div>
     </div>

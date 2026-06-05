@@ -146,3 +146,31 @@ input, textarea, p, h1, h2, h3, h4, span {
   opacity: 1;
   transform: scale(1.08);
 }
+
+.legal-content section + section {
+  margin-top: 2rem;
+}
+
+.legal-content h2 {
+  margin-bottom: 0.75rem;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 1.125rem;
+  font-weight: 900;
+  letter-spacing: -0.015em;
+}
+
+.legal-content p {
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.75;
+}
+
+.legal-content p + p {
+  margin-top: 1rem;
+}
+
+.legal-content a {
+  color: rgb(153, 246, 228);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}

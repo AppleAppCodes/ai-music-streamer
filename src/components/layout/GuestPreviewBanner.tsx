@@ -12,6 +12,14 @@ export default function GuestPreviewBanner() {
         <CookieSettingsButton className="mt-1 text-[11px] font-bold text-white/55 underline-offset-4 transition-colors hover:text-white hover:underline">
           Cookie-Einstellungen
         </CookieSettingsButton>
+        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-bold text-white/45">
+          <Link href="/impressum" className="underline-offset-4 transition-colors hover:text-white hover:underline">
+            Impressum
+          </Link>
+          <Link href="/datenschutz" className="underline-offset-4 transition-colors hover:text-white hover:underline">
+            Datenschutz
+          </Link>
+        </div>
       </div>
       <Link
         href="/login"
