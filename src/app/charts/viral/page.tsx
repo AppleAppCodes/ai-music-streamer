@@ -582,7 +582,7 @@ export default function ViralChartsPage() {
           <ChartPanel
             title="Viral Charts"
             eyebrow="Neu & Angesagt"
-            description="Die neuesten Trends und viralen Hits."
+            description="Die beliebtesten Songs der letzten Woche."
             accent="orange"
             icon={<Flame className="h-4 w-4" />}
             rankedSongs={isAdmin ? adminViralSongs : viralSongs}
