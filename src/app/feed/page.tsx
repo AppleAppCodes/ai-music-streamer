@@ -451,6 +451,7 @@ export default function FeedPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [inactiveGenres, setInactiveGenres] = useState<Set<string>>(new Set());
   const scrollerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Array<HTMLElement | null>>([]);
   const scrollRafRef = useRef<number | null>(null);
@@ -514,22 +515,34 @@ export default function FeedPage() {
     loadFeed();
   }, [supabase]);
 
+  const availableGenres = useMemo(() => {
+    const genres = new Set<string>();
+    songs.forEach((song) => {
+      if (song.genre) genres.add(song.genre);
+    });
+    return Array.from(genres).sort();
+  }, [songs]);
+
   const displayedSongs = useMemo(() => {
+    const filteredSongs = inactiveGenres.size > 0 
+      ? songs.filter(song => !song.genre || !inactiveGenres.has(song.genre)) 
+      : songs;
+
     if (mode === 'following') {
-      return songs.filter((song) => followedArtists.has(song.artist_name || song.creatorName || 'Creator'));
+      return filteredSongs.filter((song) => followedArtists.has(song.artist_name || song.creatorName || 'Creator'));
     }
 
     if (mode === 'explore') {
-      return [...songs].sort((first, second) => stableHash(first.id) - stableHash(second.id));
+      return [...filteredSongs].sort((first, second) => stableHash(first.id) - stableHash(second.id));
     }
 
-    return songs
+    return filteredSongs
       .filter((song) => song.genre?.trim().toLowerCase() !== 'chillhop')
       .sort((first, second) => (
         (rankingScores[second.id] || 0) - (rankingScores[first.id] || 0)
         || stableHash(first.id) - stableHash(second.id)
       ));
-  }, [followedArtists, mode, rankingScores, songs]);
+  }, [followedArtists, mode, rankingScores, songs, inactiveGenres]);
 
   const changeMode = (nextMode: FeedMode) => {
     itemRefs.current = [];
@@ -835,6 +848,39 @@ export default function FeedPage() {
           </button>
         ))}
       </div>
+
+      {mode === 'explore' && availableGenres.length > 0 ? (
+        <div className="absolute left-0 right-0 top-[4.5rem] z-40 flex items-center justify-center">
+          <div className="flex max-w-full items-center gap-2 overflow-x-auto px-4 pb-2 no-scrollbar">
+            {availableGenres.map((genre) => {
+              const isActive = !inactiveGenres.has(genre);
+              return (
+                <button
+                  key={genre}
+                  type="button"
+                  onClick={() => {
+                    setInactiveGenres((prev) => {
+                      const next = new Set(prev);
+                      if (isActive) next.add(genre);
+                      else next.delete(genre);
+                      return next;
+                    });
+                    setActiveIndex(0);
+                    scrollerRef.current?.scrollTo({ top: 0 });
+                  }}
+                  className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-colors ${
+                    isActive
+                      ? 'bg-white text-black'
+                      : 'border border-white/10 bg-black/40 text-white/60 hover:bg-black/60 hover:text-white'
+                  }`}
+                >
+                  {genre}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {actionError ? (
         <button type="button" onClick={() => setActionError('')} className="absolute left-1/2 top-20 z-40 -translate-x-1/2 rounded-full border border-red-400/20 bg-red-500/15 px-4 py-2 text-xs font-bold text-red-100 backdrop-blur-md">
