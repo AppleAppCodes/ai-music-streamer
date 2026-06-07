@@ -154,7 +154,7 @@ function ArtistChartPanel({ rankedArtists }: { rankedArtists: ArtistChartItem[] 
       <div className="relative border-b border-white/10 p-4 sm:p-5">
         <div className="mb-2 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-teal-200/80">
           <Mic2 className="h-4 w-4" />
-          Top 10
+          Top 20
         </div>
         <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">Artist Charts</h2>
         <p className="mt-1 text-xs text-white/50 sm:text-sm">
@@ -319,7 +319,7 @@ export default function ViralChartsPage() {
 
     return Array.from(artistMap.values())
       .sort((a, b) => b.plays - a.plays || b.songsCount - a.songsCount)
-      .slice(0, 30)
+      .slice(0, 20)
       .map((artist) => ({
         name: artist.name,
         plays: artist.plays,
