@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X, Search, Plus, CheckCircle2, ShieldCheck, Flag } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X, Search, Plus, CheckCircle2, ShieldCheck, Flag, Sparkles } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
@@ -94,6 +94,38 @@ export default function PlaylistPage() {
       
       const { data: { session } } = await supabase.auth.getSession();
       
+      // Handle dynamic "Daily New Releases" playlist
+      if (playlistId === 'daily-new-releases') {
+        setPlaylist({
+          id: 'daily-new-releases',
+          user_id: 'system',
+          title: 'Daily New Releases',
+          description: 'Die neuesten 20 Songs auf Yoriax. Täglich aktualisiert.',
+          cover_url: null, // Will render standard icon or we can provide an image
+          is_public: true,
+          is_official: true,
+          created_at: new Date().toISOString(),
+          profiles: {
+            username: 'YORIAX Team',
+            avatar_url: null
+          }
+        });
+        setIsOwner(false);
+        setIsAdmin(false);
+        
+        const { data: latestSongs, error } = await supabase
+          .from('songs')
+          .select('*, album:albums(id, title)')
+          .order('created_at', { ascending: false })
+          .limit(20);
+          
+        if (!error && latestSongs) {
+          setSongs(latestSongs as any);
+        }
+        setLoading(false);
+        return;
+      }
+
       // 1. Fetch Playlist details
       const { data: playlistData, error: playlistError } = await supabase
         .from('playlists')
@@ -436,7 +468,11 @@ export default function PlaylistPage() {
           className="group/cover relative flex h-44 w-44 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-[#282828] shadow-2xl sm:h-48 sm:w-48 md:h-56 md:w-56"
           onClick={() => isOwner && fileInputRef.current?.click()}
         >
-          {playlist.cover_url ? (
+          {playlist.id === 'daily-new-releases' ? (
+            <div className="w-full h-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 flex items-center justify-center">
+              <Sparkles className="w-20 h-20 text-white" />
+            </div>
+          ) : playlist.cover_url ? (
             <img src={playlist.cover_url} alt={playlist.title} className="w-full h-full object-cover" />
           ) : (
             <Music className="w-20 h-20 text-white/20" />

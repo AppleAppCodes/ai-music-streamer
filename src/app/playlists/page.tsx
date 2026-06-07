@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { ArrowLeft, Heart, Library, Music, Plus } from 'lucide-react';
+import { ArrowLeft, Heart, Library, Music, Plus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -133,6 +133,28 @@ export default function PlaylistsPage() {
                 Öffnen
               </span>
             </Link>
+          </section>
+
+          <section>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-2xl font-black tracking-tight text-white">Entdecken</h2>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              <Link
+                href="/playlist/daily-new-releases"
+                className="group relative flex items-center gap-3 rounded-2xl bg-white/[0.03] p-3 transition-all duration-300 hover:bg-white/[0.08] hover:-translate-y-1 sm:flex-col sm:items-stretch sm:gap-3 sm:p-3.5"
+              >
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg sm:aspect-square sm:h-auto sm:w-full sm:rounded-lg">
+                  <Sparkles className="h-8 w-8 text-white sm:h-12 sm:w-12" />
+                </div>
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm font-semibold text-white">Daily New Releases</span>
+                  <span className="mt-0.5 truncate text-xs text-white/40">
+                    Von YORIAX Team
+                  </span>
+                </div>
+              </Link>
+            </div>
           </section>
 
           <section>
