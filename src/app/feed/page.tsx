@@ -34,6 +34,7 @@ import { setNowPlayingMetadata } from '@/lib/media-session';
 interface FeedClip {
   song_id: string;
   video_url: string | null;
+  cover_url: string | null;
   hook_start_seconds: number;
   hook_end_seconds: number;
 }
@@ -104,6 +105,7 @@ function getClip(record: FeedSongRecord): FeedClip {
   return {
     song_id: record.id,
     video_url: relation?.video_url || null,
+    cover_url: relation?.cover_url || null,
     hook_start_seconds: start,
     hook_end_seconds: maxEnd ? Math.min(end, maxEnd) : end,
   };
@@ -330,7 +332,7 @@ function FeedCard({
         onPointerUp={handlePointerUp}
       >
         <div className="absolute inset-0">
-          <img src={song.cover_url} alt="" className="h-full w-full scale-110 object-cover opacity-45 blur-2xl" />
+          <img src={song.clip.cover_url || song.cover_url} alt="" className="h-full w-full scale-110 object-cover opacity-45 blur-2xl" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/90" />
         </div>
 
@@ -338,7 +340,7 @@ function FeedCard({
           <video
             ref={videoRef}
             src={videoUrl || undefined}
-            poster={song.cover_url}
+            poster={song.clip.cover_url || song.cover_url}
             playsInline
             muted={muted}
             loop
@@ -350,7 +352,7 @@ function FeedCard({
             className="relative h-full w-full object-cover"
           />
         ) : (
-          <img src={song.cover_url} alt={song.title} className="relative h-full w-full object-cover" />
+          <img src={song.clip.cover_url || song.cover_url} alt={song.title} className="relative h-full w-full object-cover" />
         )}
 
         <audio
@@ -449,6 +451,8 @@ export default function FeedPage() {
   const [hookEnd, setHookEnd] = useState(DEFAULT_HOOK_DURATION_SECONDS);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [inactiveGenres, setInactiveGenres] = useState<Set<string>>(new Set());
@@ -467,7 +471,7 @@ export default function FeedPage() {
       const [{ data: songData, error }, { data: sessionData }] = await Promise.all([
         supabase
           .from('songs')
-          .select('*, profiles!songs_creator_id_fkey(username, avatar_url), song_feed_clips(song_id, video_url, hook_start_seconds, hook_end_seconds), song_feed_stats(song_id, likes_count)')
+          .select('*, profiles!songs_creator_id_fkey(username, avatar_url), song_feed_clips(song_id, video_url, cover_url, hook_start_seconds, hook_end_seconds), song_feed_stats(song_id, likes_count)')
           .order('plays', { ascending: false })
           .limit(80),
         supabase.auth.getSession(),
@@ -764,6 +768,8 @@ export default function FeedPage() {
     setHookEnd(song.clip.hook_end_seconds);
     setVideoUrl(song.clip.video_url);
     setVideoFile(null);
+    setCoverUrl(song.clip.cover_url);
+    setCoverFile(null);
     setSaveError('');
   };
 
@@ -793,15 +799,25 @@ export default function FeedPage() {
       let nextVideoUrl = videoUrl;
       if (videoFile) {
         const ext = videoFile.name.split('.').pop();
-        const path = `feed/${editingSong.id}/${Date.now()}.${ext}`;
+        const path = `feed/${editingSong.id}/${Date.now()}_video.${ext}`;
         const { error: uploadError } = await supabase.storage.from('covers').upload(path, videoFile);
         if (uploadError) throw uploadError;
         nextVideoUrl = supabase.storage.from('covers').getPublicUrl(path).data.publicUrl;
       }
 
+      let nextCoverUrl = coverUrl;
+      if (coverFile) {
+        const ext = coverFile.name.split('.').pop();
+        const path = `feed/${editingSong.id}/${Date.now()}_cover.${ext}`;
+        const { error: uploadError } = await supabase.storage.from('covers').upload(path, coverFile);
+        if (uploadError) throw uploadError;
+        nextCoverUrl = supabase.storage.from('covers').getPublicUrl(path).data.publicUrl;
+      }
+
       const nextClip: FeedClip = {
         song_id: editingSong.id,
         video_url: nextVideoUrl,
+        cover_url: nextCoverUrl,
         hook_start_seconds: normalizedStart,
         hook_end_seconds: normalizedEnd,
       };
@@ -985,26 +1001,51 @@ export default function FeedPage() {
             </div>
 
             <div className="mt-5 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-bold text-white">Optionales 9:16-Video</p>
-                  <p className="mt-1 text-xs text-white/45">Ohne Video wird automatisch das Artwork angezeigt.</p>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-white">Optionales 9:16-Video</p>
+                    <p className="mt-1 text-xs text-white/45">Spielt als Loop im Feed ab.</p>
+                  </div>
+                  <label className="flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-black transition-transform hover:scale-105">
+                    <Upload className="h-4 w-4" />
+                    Video wählen
+                    <input type="file" accept="video/*" className="hidden" onChange={(event) => setVideoFile(event.target.files?.[0] || null)} />
+                  </label>
                 </div>
-                <label className="flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-black transition-transform hover:scale-105">
-                  <Upload className="h-4 w-4" />
-                  Video wählen
-                  <input type="file" accept="video/*" className="hidden" onChange={(event) => setVideoFile(event.target.files?.[0] || null)} />
-                </label>
+                {videoFile ? <p className="truncate text-xs text-violet-300">{videoFile.name}</p> : null}
+                {videoUrl && !videoFile ? (
+                  <div className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2">
+                    <span className="truncate text-xs text-white/55">Video hinterlegt</span>
+                    <button type="button" onClick={() => setVideoUrl(null)} className="text-xs font-bold text-red-300 transition-colors hover:text-red-200">
+                      Entfernen
+                    </button>
+                  </div>
+                ) : null}
+
+                <div className="h-px bg-white/10" />
+
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-white">Spezielles 9:16-Cover</p>
+                    <p className="mt-1 text-xs text-white/45">Fallback-Bild, wenn kein Video hinterlegt ist.</p>
+                  </div>
+                  <label className="flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-black transition-transform hover:scale-105">
+                    <Upload className="h-4 w-4" />
+                    Cover wählen
+                    <input type="file" accept="image/*" className="hidden" onChange={(event) => setCoverFile(event.target.files?.[0] || null)} />
+                  </label>
+                </div>
+                {coverFile ? <p className="truncate text-xs text-violet-300">{coverFile.name}</p> : null}
+                {coverUrl && !coverFile ? (
+                  <div className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2">
+                    <span className="truncate text-xs text-white/55">Spezial-Cover hinterlegt</span>
+                    <button type="button" onClick={() => setCoverUrl(null)} className="text-xs font-bold text-red-300 transition-colors hover:text-red-200">
+                      Entfernen
+                    </button>
+                  </div>
+                ) : null}
               </div>
-              {videoFile ? <p className="mt-3 truncate text-xs text-violet-300">{videoFile.name}</p> : null}
-              {videoUrl && !videoFile ? (
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2">
-                  <span className="truncate text-xs text-white/55">Video hinterlegt</span>
-                  <button type="button" onClick={() => setVideoUrl(null)} className="text-xs font-bold text-red-300 transition-colors hover:text-red-200">
-                    Entfernen
-                  </button>
-                </div>
-              ) : null}
             </div>
 
             {saveError ? <p className="mt-4 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm text-red-300">{saveError}</p> : null}
