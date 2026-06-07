@@ -300,6 +300,8 @@ export default function ViralChartsPage() {
   const supabase = createClient();
   const isAdmin = isModUser(user);
   const [adminViralSongs, setAdminViralSongs] = useState<Song[]>([]);
+  const [isAddSongModalOpen, setIsAddSongModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchCharts = async () => {
