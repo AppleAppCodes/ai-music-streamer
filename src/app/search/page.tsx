@@ -55,7 +55,7 @@ function SearchResults() {
         supabase
           .from('songs')
           .select('id, title, artist_name, cover_url, plays')
-          .or(`title.ilike.%${trimmedQuery}%,artist_name.ilike.%${trimmedQuery}%`)
+          .or(`title.ilike.%${trimmedQuery}%,artist_name.ilike.%${trimmedQuery}%,genre.ilike.%${trimmedQuery}%`)
           .order('plays', { ascending: false })
           .limit(20),
         supabase
