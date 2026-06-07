@@ -2,6 +2,7 @@ import { Alert, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } fr
 import { useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
 import { useAuth } from '../lib/auth-context';
@@ -16,6 +17,7 @@ import { formatDuration } from '../lib/format';
 type Props = NativeStackScreenProps<RootStackParamList, 'LikedSongs'>;
 
 export function LikedSongsScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [data, setData] = useState<LibraryMusicData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,11 +119,11 @@ export function LikedSongsScreen({ navigation }: Props) {
         style={StyleSheet.absoluteFill}
       />
 
-      <View style={styles.header}>
+      <View style={[styles.header, { top: Math.max(insets.top + 8, 18) }]}>
         <BackButton onPress={() => navigation.goBack()} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 60, 86) }]} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <View style={styles.heroIcon}>
             <Ionicons name="heart" size={30} color={theme.colors.text} />

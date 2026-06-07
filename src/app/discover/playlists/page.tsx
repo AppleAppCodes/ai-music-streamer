@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client';
 import { ArrowLeft, ListMusic, Music, Search, Sparkles, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 interface Playlist {
   id: string;
@@ -13,6 +14,7 @@ interface Playlist {
   description?: string | null;
   cover_url: string | null;
   created_at: string;
+  is_official: boolean;
   profiles: {
     username: string;
   };
@@ -22,23 +24,8 @@ type PlaylistRow = Omit<Playlist, 'profiles'> & {
   profiles: Playlist['profiles'] | Playlist['profiles'][] | null;
 };
 
-const OFFICIAL_SIGNALS = ['yoriax', 'official', 'offiziell', 'kuratiert', 'curated', 'admin', 'david', 'heindavid'];
-
 function getPlaylistCreator(playlist: Playlist): string {
   return playlist.profiles?.username || 'Unbekannt';
-}
-
-function isOfficialPlaylist(playlist: Playlist): boolean {
-  const haystack = [
-    playlist.title,
-    playlist.description,
-    getPlaylistCreator(playlist),
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  return OFFICIAL_SIGNALS.some((signal) => haystack.includes(signal));
 }
 
 export default function DiscoverPlaylistsPage() {
@@ -95,8 +82,8 @@ export default function DiscoverPlaylistsPage() {
     return () => clearTimeout(timer);
   }, [supabase, searchQuery]);
 
-  const officialPlaylists = playlists.filter(isOfficialPlaylist);
-  const communityPlaylists = playlists.filter((playlist) => !isOfficialPlaylist(playlist));
+  const officialPlaylists = playlists.filter((playlist) => playlist.is_official);
+  const communityPlaylists = playlists.filter((playlist) => !playlist.is_official);
   const hasResults = playlists.length > 0;
 
   return (
@@ -258,8 +245,11 @@ function PlaylistCard({ official, playlist }: { official: boolean; playlist: Pla
       </div>
       <div className="flex min-w-0 flex-col">
         <span className="truncate text-sm font-bold text-white">{playlist.title}</span>
-        <span className="mt-0.5 truncate text-xs font-semibold text-white/40">
+        <span className="mt-0.5 truncate text-xs font-semibold text-white/40 flex items-center gap-1">
           Von {getPlaylistCreator(playlist)}
+          {getPlaylistCreator(playlist) === 'YORIAX Team' && (
+            <Image src="/brand/yoriax-symbol.png" alt="Official" width={12} height={12} className="inline-block" />
+          )}
         </span>
         {playlist.description ? (
           <span className="mt-2 line-clamp-2 text-xs leading-5 text-white/35">{playlist.description}</span>

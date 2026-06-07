@@ -9,6 +9,7 @@ import CookieConsent from "@/components/ui/CookieConsent";
 import MobileNavigation from "@/components/layout/MobileNavigation";
 import GuestPreviewBanner from "@/components/layout/GuestPreviewBanner";
 import { createClient } from "@/utils/supabase/server";
+import { Analytics } from "@vercel/analytics/react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,9 +28,31 @@ const syncopate = Syncopate({
 });
 
 export const metadata: Metadata = {
-  title: "Yoriax | The first streaming platform for AI-native music",
-  description: "Stream, discover, and publish the best AI-generated music.",
+  title: "Yoriax | The AI Music Streamer",
+  description: "Entdecke, streame und teile die besten KI-generierten Songs. Yoriax ist die erste Streaming-Plattform speziell für AI-Native Music.",
   manifest: "/site.webmanifest",
+  openGraph: {
+    title: "Yoriax | The AI Music Streamer",
+    description: "Entdecke die besten KI-Songs der Welt. Werde zum Top-Künstler der neuen Ära.",
+    url: "https://www.yoriax.com",
+    siteName: "Yoriax",
+    images: [
+      {
+        url: "/brand/yoriax-og.png",
+        width: 1200,
+        height: 630,
+        alt: "Yoriax - The AI Music Streamer",
+      },
+    ],
+    locale: "de_DE",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Yoriax | The AI Music Streamer",
+    description: "Die erste Streaming-Plattform speziell für AI-Native Music.",
+    images: ["/brand/yoriax-og.png"],
+  },
   icons: {
     icon: [
       { url: "/favicon.ico?v=4", type: "image/x-icon" },
@@ -85,6 +108,7 @@ export default async function RootLayout({
           )}
           <CookieConsent />
         </PlayerLayout>
+        <Analytics />
       </body>
     </html>
   );

@@ -28,12 +28,12 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
-  const nextPath = useMemo(() => getSafeNextPath(searchParams.get('next')), [searchParams]);
+  const nextPath = useMemo(() => getSafeNextPath(searchParams?.get('next') || null), [searchParams]);
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
-  const oauthError = searchParams.get('error') === 'google_oauth_failed'
-    ? 'Google Login konnte nicht abgeschlossen werden. Bitte versuche es erneut.'
-    : null;
+  const oauthError = searchParams?.get('error') === 'google_oauth_failed'
+    ? 'Google Anmeldung fehlgeschlagen.' : null;
+  const isResetMode = searchParams?.get('type') === 'recovery' || searchParams?.get('mode') === 'reset';
   const visibleError = error || oauthError;
 
   useEffect(() => {

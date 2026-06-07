@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { ArrowLeft, Mic2, Play, Users, Edit2, Loader2, Music } from 'lucide-react';
+import { ArrowLeft, Mic2, Play, Users, Edit2, Loader2, Music, GripHorizontal, Save } from 'lucide-react';
+import { Reorder } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -16,22 +18,35 @@ interface ArtistStat {
   coverUrl: string;
   videoUrl?: string;
   createdAt: string;
+  sortOrder?: number;
 }
 
-function ArtistVideo({ src, artistName }: { src: string; artistName: string }) {
+function ArtistVideo({ src, artistName, play }: { src: string; artistName: string; play: boolean }) {
   const [ready, setReady] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (play) {
+      videoRef.current?.play().catch(() => {});
+    } else {
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.currentTime = 0;
+      }
+    }
+  }, [play]);
 
   return (
-    <>
+    <div className="absolute inset-0 w-full h-full z-0 pointer-events-none">
       {!ready ? (
         <div className="absolute inset-0 flex items-center justify-center bg-[#101010]">
           <Loader2 className="h-8 w-8 animate-spin text-violet-300" aria-label={`${artistName} Video lädt`} />
         </div>
       ) : null}
       <video
+        ref={videoRef}
         src={`${src}#t=0.001`}
-        autoPlay
-        preload="auto"
+        preload="metadata"
         loop
         muted
         playsInline
@@ -44,7 +59,55 @@ function ArtistVideo({ src, artistName }: { src: string; artistName: string }) {
           ready ? 'opacity-100' : 'opacity-0'
         } pointer-events-none select-none`}
       />
-    </>
+    </div>
+  );
+}
+
+function ArtistCard({ artist }: { artist: ArtistStat }) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <Link 
+      href={`/artist/${encodeURIComponent(artist.name)}`} 
+      className="group relative h-64 md:h-72 rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-[0_0_40px_rgba(168,85,247,0.3)] hover:-translate-y-2 border border-white/10 block"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Background Image or Video */}
+      {artist.videoUrl ? (
+        <ArtistVideo src={artist.videoUrl} artistName={artist.name} play={isHovered} />
+      ) : (
+        <Image 
+          src={artist.coverUrl} 
+          alt={artist.name} 
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          onContextMenu={(e) => e.preventDefault()}
+          onDragStart={(e) => e.preventDefault()}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-none select-none" 
+        />
+      )}
+      
+      {/* Premium Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500 pointer-events-none" />
+      <div className="absolute inset-0 bg-indigo-500/10 mix-blend-overlay group-hover:bg-purple-500/20 transition-colors duration-500 pointer-events-none" />
+      
+      {/* Content */}
+      <div className="absolute inset-0 p-8 flex flex-col justify-end translate-y-4 group-hover:translate-y-0 transition-transform duration-500 pointer-events-none">
+        <h3 className="font-black text-3xl md:text-4xl text-white mb-2 tracking-tight drop-shadow-2xl">{artist.name}</h3>
+        <div className="flex items-center gap-2 text-white/70 font-medium">
+          <Music className="w-4 h-4" />
+          <span>{artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}</span>
+        </div>
+      </div>
+
+      {/* Hover Play Button Overlay */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-90 group-hover:scale-100 pointer-events-none">
+        <div className="w-20 h-20 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center shadow-2xl">
+          <Play className="w-8 h-8 text-white fill-white ml-2" />
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -56,6 +119,8 @@ export default function ArtistsPage() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [isEditingOrder, setIsEditingOrder] = useState(false);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const supabase = createClient();
@@ -78,7 +143,8 @@ export default function ArtistsPage() {
           const { data: urlData } = supabase.storage
             .from('covers')
             .getPublicUrl(`discover/${videoFile.name}`);
-          setVideoUrl(urlData.publicUrl);
+          const cacheKey = new Date(videoFile.updated_at || videoFile.created_at || 0).getTime();
+          setVideoUrl(`${urlData.publicUrl}?t=${cacheKey}`);
         }
       }
       
@@ -125,12 +191,24 @@ export default function ArtistsPage() {
               const { data: urlData } = supabase.storage
                 .from('covers')
                 .getPublicUrl(`banners/${videoFile.name}`);
-              artist.videoUrl = urlData.publicUrl;
+              const cacheKey = new Date(videoFile.updated_at || videoFile.created_at || 0).getTime();
+              artist.videoUrl = `${urlData.publicUrl}?t=${cacheKey}`;
             }
           });
         }
         
-        setArtists(artistArray.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        // Fetch sort orders
+        const { data: profilesData } = await supabase.from('artist_profiles').select('artist_name, sort_order');
+        const profileMap = new Map((profilesData || []).map(p => [p.artist_name, p.sort_order]));
+        
+        artistArray.forEach(artist => {
+          artist.sortOrder = profileMap.get(artist.name) || 0;
+        });
+        
+        setArtists(artistArray.sort((a, b) => {
+          if (a.sortOrder !== b.sortOrder) return (a.sortOrder || 0) - (b.sortOrder || 0);
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }));
       }
       
       setLoading(false);
@@ -138,6 +216,24 @@ export default function ArtistsPage() {
 
     fetchArtists();
   }, [supabase]);
+
+  const handleSaveOrder = async () => {
+    setIsSavingOrder(true);
+    try {
+      const orderData = artists.map((artist, index) => ({
+        artist_name: artist.name,
+        sort_order: index,
+      }));
+      const { error } = await supabase.rpc('update_artist_order', { order_data: orderData });
+      if (error) throw error;
+      setIsEditingOrder(false);
+    } catch (err: unknown) {
+      console.error('Error saving order:', err);
+      alert('Fehler beim Speichern der Reihenfolge: ' + getErrorMessage(err));
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!isAdmin) return;
@@ -215,26 +311,48 @@ export default function ArtistsPage() {
         
         {/* Admin Editable Overlay */}
         {isAdmin && (
-          <div className="absolute top-10 right-10 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-            <input 
-              type="file" 
-              accept="video/*" 
-              ref={fileInputRef} 
-              className="hidden" 
-              onChange={handleVideoUpload}
-            />
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploadingVideo}
-              className="flex items-center gap-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium"
-            >
-              {isUploadingVideo ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Edit2 className="w-4 h-4" />
-              )}
-              Hintergrundvideo ändern
-            </button>
+          <div className="absolute top-10 right-10 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+            {isEditingOrder ? (
+              <button 
+                onClick={handleSaveOrder}
+                disabled={isSavingOrder}
+                className="flex items-center gap-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full border border-teal-400 transition-all text-sm font-bold shadow-lg"
+              >
+                {isSavingOrder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Reihenfolge speichern
+              </button>
+            ) : (
+              <button 
+                onClick={() => setIsEditingOrder(true)}
+                className="flex items-center gap-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium"
+              >
+                <GripHorizontal className="w-4 h-4" />
+                Reihenfolge ändern
+              </button>
+            )}
+            {!isEditingOrder && (
+              <>
+                <input 
+                  type="file" 
+                  accept="video/*" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  onChange={handleVideoUpload}
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingVideo}
+                  className="flex items-center gap-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium"
+                >
+                  {isUploadingVideo ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Edit2 className="w-4 h-4" />
+                  )}
+                  Video ändern
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -262,48 +380,42 @@ export default function ArtistsPage() {
       {/* Grid Content */}
       <div className="relative bg-black/40 backdrop-blur-xl px-6 md:px-10 py-10 min-h-screen border-t border-white/5">
         {artists.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {artists.map((artist) => (
-              <Link 
-                href={`/artist/${encodeURIComponent(artist.name)}`} 
-                key={artist.name}
-                className="group relative h-64 md:h-72 rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-[0_0_40px_rgba(168,85,247,0.3)] hover:-translate-y-2 border border-white/10"
-              >
-                {/* Background Image or Video */}
-                {artist.videoUrl ? (
-                  <ArtistVideo src={artist.videoUrl} artistName={artist.name} />
-                ) : (
-                  <img 
-                    src={artist.coverUrl} 
-                    alt={artist.name} 
-                    onContextMenu={(e) => e.preventDefault()}
-                    onDragStart={(e) => e.preventDefault()}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-none select-none" 
-                  />
-                )}
-                
-                {/* Premium Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500" />
-                <div className="absolute inset-0 bg-indigo-500/10 mix-blend-overlay group-hover:bg-purple-500/20 transition-colors duration-500" />
-                
-                {/* Content */}
-                <div className="absolute inset-0 p-8 flex flex-col justify-end translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                  <h3 className="font-black text-3xl md:text-4xl text-white mb-2 tracking-tight drop-shadow-2xl">{artist.name}</h3>
-                  <div className="flex items-center gap-2 text-white/70 font-medium">
-                    <Music className="w-4 h-4" />
-                    <span>{artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}</span>
+          isEditingOrder ? (
+            <Reorder.Group axis="y" values={artists} onReorder={setArtists} className="flex flex-col gap-4 max-w-3xl mx-auto">
+              {artists.map((artist) => (
+                <Reorder.Item 
+                  key={artist.name} 
+                  value={artist} 
+                  className="relative flex items-center justify-between bg-white/[0.08] backdrop-blur-lg border border-white/10 rounded-2xl p-4 cursor-grab active:cursor-grabbing hover:bg-white/15 transition-colors shadow-lg"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-black/50">
+                      {artist.coverUrl ? (
+                        <img src={artist.coverUrl} className="w-full h-full object-cover" alt={artist.name} />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Mic2 className="w-8 h-8 text-white/30" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-col">
+                      <h3 className="font-bold text-xl text-white tracking-tight">{artist.name}</h3>
+                      <p className="text-sm text-white/50">{artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}</p>
+                    </div>
                   </div>
-                </div>
-
-                {/* Hover Play Button Overlay */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-90 group-hover:scale-100">
-                  <div className="w-20 h-20 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center shadow-2xl hover:bg-white/20 hover:scale-105 transition-all">
-                    <Play className="w-8 h-8 text-white fill-white" />
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-colors">
+                    <GripHorizontal className="w-5 h-5" />
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                </Reorder.Item>
+              ))}
+            </Reorder.Group>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {artists.map((artist) => (
+                <ArtistCard key={artist.name} artist={artist} />
+              ))}
+            </div>
+          )
         ) : (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 border border-white/10">

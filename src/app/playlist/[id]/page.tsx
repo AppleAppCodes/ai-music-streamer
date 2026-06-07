@@ -4,14 +4,17 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X, Search, Plus, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X, Search, Plus, CheckCircle2, ShieldCheck, Flag } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import MobileSongMenu from '@/components/ui/MobileSongMenu';
+import ReportDialog from '@/components/ui/ReportDialog';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
+import { isAdminUser, isModUser } from '@/lib/admin';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -34,15 +37,20 @@ interface PlaylistData {
   description: string | null;
   cover_url: string | null;
   is_public: boolean;
+  is_official: boolean;
   created_at: string;
+  profiles?: {
+    username: string;
+    avatar_url: string | null;
+  } | null;
 }
 
 export default function PlaylistPage() {
   const params = useParams();
-  const playlistId = params.id as string;
+  const playlistId = params?.id as string;
   const router = useRouter();
   const searchParams = useSearchParams();
-  const shouldOpenAddSearch = searchParams.get('add') === '1';
+  const shouldOpenAddSearch = searchParams?.get('add') === '1';
   
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   const supabase = createClient();
@@ -51,6 +59,7 @@ export default function PlaylistPage() {
   const [songs, setSongs] = useState<(Song & { added_at?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [songSearchQuery, setSongSearchQuery] = useState('');
   const [songSearchResults, setSongSearchResults] = useState<Song[]>([]);
   const [songSearchLoading, setSongSearchLoading] = useState(false);
@@ -88,7 +97,7 @@ export default function PlaylistPage() {
       // 1. Fetch Playlist details
       const { data: playlistData, error: playlistError } = await supabase
         .from('playlists')
-        .select('*')
+        .select('*, profiles(username, avatar_url)')
         .eq('id', playlistId)
         .single();
         
@@ -102,8 +111,13 @@ export default function PlaylistPage() {
       setEditTitle(playlistData.title);
       setEditDescription(playlistData.description || '');
       
-      const owner = session?.user?.id === playlistData.user_id;
-      setIsOwner(owner);
+      if (session?.user && session.user.id === playlistData.user_id) {
+        setIsOwner(true);
+      }
+      
+      if (session?.user && isModUser(session.user)) {
+        setIsAdmin(true);
+      }
       
       // 2. Fetch Songs in playlist
       const { data: mappingData } = await supabase
@@ -257,19 +271,30 @@ export default function PlaylistPage() {
   };
 
   const handleTogglePublic = async () => {
-    if (!playlist || !isOwner) return;
-    const newPublicState = !playlist.is_public;
-    try {
-      const { error } = await supabase
-        .from('playlists')
-        .update({ is_public: newPublicState })
-        .eq('id', playlistId);
-        
-      if (error) throw error;
-      setPlaylist({ ...playlist, is_public: newPublicState });
-    } catch (err: unknown) {
-      console.error('Error updating visibility:', err);
-      alert('Fehler beim Aktualisieren der Sichtbarkeit: ' + getErrorMessage(err));
+    if (!playlist) return;
+    
+    const newStatus = !playlist.is_public;
+    const { error } = await supabase
+      .from('playlists')
+      .update({ is_public: newStatus })
+      .eq('id', playlist.id);
+      
+    if (!error) {
+      setPlaylist({ ...playlist, is_public: newStatus });
+    }
+  };
+
+  const handleToggleOfficial = async () => {
+    if (!playlist) return;
+    
+    const newStatus = !playlist.is_official;
+    const { error } = await supabase
+      .from('playlists')
+      .update({ is_official: newStatus })
+      .eq('id', playlist.id);
+      
+    if (!error) {
+      setPlaylist({ ...playlist, is_official: newStatus });
     }
   };
 
@@ -285,7 +310,7 @@ export default function PlaylistPage() {
         .eq('id', playlistId);
         
       if (error) throw error;
-      router.push('/library');
+      router.push('/playlists');
     } catch (err: unknown) {
       console.error('Error deleting playlist:', err);
       alert('Fehler beim Löschen: ' + getErrorMessage(err));
@@ -457,12 +482,40 @@ export default function PlaylistPage() {
           )}
           
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm font-medium text-white/70 md:justify-start">
-            <div className="w-6 h-6 rounded-full bg-gradient-primary flex items-center justify-center text-xs text-white">
-              U
-            </div>
-            <span className="text-white hover:underline cursor-pointer">Du</span>
+            {playlist.profiles?.username === 'YORIAX Team' ? (
+              <Image src="/brand/yoriax-symbol.png" alt="YORIAX" width={24} height={24} className="h-6 w-6 object-contain" />
+            ) : playlist.profiles?.avatar_url ? (
+              <img src={playlist.profiles.avatar_url} alt={playlist.profiles.username} className="w-6 h-6 rounded-full object-cover" />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-gradient-primary flex items-center justify-center text-xs text-white">
+                {playlist.profiles?.username?.[0]?.toUpperCase() || 'U'}
+              </div>
+            )}
+            <span className="text-white hover:underline cursor-pointer flex items-center gap-1">
+              {playlist.profiles?.username || 'Unbekannt'}
+              {playlist.profiles?.username === 'YORIAX Team' && (
+                <ShieldCheck className="h-4 w-4 text-teal-300" />
+              )}
+            </span>
             <span>•</span>
             <span>{songs.length} {songs.length === 1 ? 'Song' : 'Songs'}</span>
+            <span>•</span>
+            {playlist.is_official ? (
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-teal-500/10 px-2 py-0.5 text-xs font-semibold text-teal-300 border border-teal-500/20">
+                <Globe className="h-3 w-3" />
+                Offiziell
+              </span>
+            ) : playlist.is_public ? (
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-0.5 text-xs font-medium text-white/80 border border-white/5">
+                <Globe className="h-3 w-3" />
+                Öffentlich
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-0.5 text-xs font-medium text-white/50 border border-white/5">
+                <Lock className="h-3 w-3" />
+                Privat
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -484,46 +537,75 @@ export default function PlaylistPage() {
             )}
           </button>
           
-          {isOwner && (
-            <div className="relative" ref={menuRef}>
-              <button 
-                className="text-white/50 hover:text-white transition-colors p-2"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-              >
-                <MoreHorizontal className="w-8 h-8" />
-              </button>
-              
-              {isMenuOpen && (
-                <div className="absolute left-0 mt-2 w-56 bg-[#282828] rounded-md shadow-lg border border-white/10 overflow-hidden z-50 py-1">
-                  <button 
-                    className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
-                    onClick={() => { setIsMenuOpen(false); setIsEditModalOpen(true); }}
-                  >
-                    <Edit2 className="w-4 h-4 text-white/70" />
-                    Details bearbeiten
-                  </button>
-                  <button 
-                    className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
-                    onClick={() => { setIsMenuOpen(false); handleTogglePublic(); }}
-                  >
-                    {playlist.is_public ? (
-                      <><Lock className="w-4 h-4 text-white/70" /> Als privat markieren</>
-                    ) : (
-                      <><Globe className="w-4 h-4 text-white/70" /> Als öffentlich markieren</>
+          <div className="relative" ref={menuRef}>
+            <button 
+              className="text-white/50 hover:text-white transition-colors p-2"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              <MoreHorizontal className="w-8 h-8" />
+            </button>
+            
+            {isMenuOpen && (
+              <div className="absolute left-0 mt-2 w-56 bg-[#282828] rounded-md shadow-lg border border-white/10 overflow-hidden z-50 py-1">
+                {(isOwner || isAdmin) && (
+                  <>
+                    <button 
+                      className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
+                      onClick={() => { setIsMenuOpen(false); setIsEditModalOpen(true); }}
+                    >
+                      <Edit2 className="w-4 h-4 text-white/70" />
+                      Details bearbeiten
+                    </button>
+                    {isOwner && (
+                      <button 
+                        className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
+                        onClick={() => { setIsMenuOpen(false); handleTogglePublic(); }}
+                      >
+                        {playlist.is_public ? (
+                          <><Lock className="w-4 h-4 text-white/70" /> Als privat markieren</>
+                        ) : (
+                          <><Globe className="w-4 h-4 text-white/70" /> Als öffentlich markieren</>
+                        )}
+                      </button>
                     )}
-                  </button>
-                  <div className="h-px w-full bg-white/10 my-1"></div>
-                  <button 
-                    className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-white/10 flex items-center gap-3 transition-colors"
-                    onClick={() => { setIsMenuOpen(false); handleDeletePlaylist(); }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Playlist löschen
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+                    {isAdmin && (
+                      <button 
+                        className="w-full text-left px-4 py-3 text-sm text-teal-300 hover:bg-white/10 flex items-center gap-3 transition-colors"
+                        onClick={() => { setIsMenuOpen(false); handleToggleOfficial(); }}
+                      >
+                        {playlist.is_official ? (
+                          <><Lock className="w-4 h-4 text-teal-300/70" /> Offiziell entfernen</>
+                        ) : (
+                          <><Globe className="w-4 h-4 text-teal-300/70" /> Als offiziell markieren</>
+                        )}
+                      </button>
+                    )}
+                    <div className="h-px w-full bg-white/10 my-1"></div>
+                    <button 
+                      className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-white/10 flex items-center gap-3 transition-colors"
+                      onClick={() => { setIsMenuOpen(false); handleDeletePlaylist(); }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Playlist löschen
+                    </button>
+                    <div className="h-px w-full bg-white/10 my-1"></div>
+                  </>
+                )}
+                
+                <ReportDialog 
+                  entityType="playlist" 
+                  entityId={playlist.id} 
+                  entityName={playlist.title} 
+                  trigger={
+                    <button className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-white/10 flex items-center gap-3 transition-colors">
+                      <Flag className="w-4 h-4" />
+                      Playlist melden
+                    </button>
+                  }
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {isOwner ? (

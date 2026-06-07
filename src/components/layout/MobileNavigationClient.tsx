@@ -30,7 +30,7 @@ export default function MobileNavigationClient({ user }: { user: SupabaseUser | 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-[60] flex h-[calc(4rem+env(safe-area-inset-bottom))] items-center justify-around border-t border-white/10 bg-black/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden" aria-label="Mobile Navigation">
       {navItems.map(({ href, label, icon: Icon }) => {
-        const isActivePath = href === '/' ? pathname === href : pathname.startsWith(href);
+        const isActivePath = href === '/' ? pathname === href : pathname?.startsWith(href);
         const isPending = pendingNav?.href === href && pendingNav.from === pathname;
         const isActive = isPending || isActivePath;
 
@@ -39,7 +39,7 @@ export default function MobileNavigationClient({ user }: { user: SupabaseUser | 
             key={href}
             href={href}
             prefetch
-            onClick={() => setPendingNav({ href, from: pathname })}
+            onClick={() => setPendingNav({ href, from: pathname || '' })}
             className={`flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[10px] font-semibold transition-colors ${
               isActive ? 'text-white' : 'text-white/45 hover:text-white/80'
             }`}

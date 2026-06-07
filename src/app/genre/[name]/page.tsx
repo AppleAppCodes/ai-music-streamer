@@ -18,7 +18,7 @@ export default function GenrePage() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
-  const genreName = decodeURIComponent(params.name || '');
+  const genreName = decodeURIComponent(params?.name as string || '');
   const genre = useMemo(
     () => GENRES.find((item) => normalize(item.name) === normalize(genreName)),
     [genreName],

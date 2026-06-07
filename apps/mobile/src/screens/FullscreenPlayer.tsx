@@ -26,7 +26,7 @@ export function FullscreenPlayer({ navigation }: Props) {
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [translateY] = useState(() => new Animated.Value(0));
   const { 
-    activeSong, currentTime, duration, isPlaying, isBuffering, toggle, 
+    activeSong, currentTime, duration, isPlaying, isBuffering, isAdPlaying, toggle, 
     pause, playNext, playPrevious, isShuffling, repeatMode, toggleShuffle, toggleRepeat, seekTo
   } = usePlayer();
   const activeSongId = activeSong?.id;
@@ -267,20 +267,21 @@ export function FullscreenPlayer({ navigation }: Props) {
                 style={styles.actionButton}
                 onPress={() => setIsPlaylistModalVisible(true)}
                 hitSlop={10}
+                disabled={isAdPlaying}
               >
-                <Ionicons name="add-circle-outline" size={28} color={theme.colors.text} />
+                <Ionicons name="add-circle-outline" size={28} color={isAdPlaying ? theme.colors.muted : theme.colors.text} />
               </TouchableOpacity>
 
               <TouchableOpacity 
                 style={styles.likeButton}
                 onPress={() => { void handleLike(); }}
-                disabled={isLikeLoading}
+                disabled={isLikeLoading || isAdPlaying}
                 hitSlop={12}
               >
                 <Ionicons 
 	                  name={isCurrentSongLiked ? "heart" : "heart-outline"}
                   size={28} 
-	                  color={isCurrentSongLiked ? theme.colors.primary : theme.colors.text}
+	                  color={isAdPlaying ? theme.colors.muted : isCurrentSongLiked ? theme.colors.primary : theme.colors.text}
                 />
               </TouchableOpacity>
             </View>
@@ -296,7 +297,8 @@ export function FullscreenPlayer({ navigation }: Props) {
             minimumTrackTintColor={theme.colors.text}
             maximumTrackTintColor="rgba(255,255,255,0.2)"
             thumbTintColor={theme.colors.text}
-            onSlidingComplete={(val) => { void seekTo(val); }}
+            onSlidingComplete={(val) => { if (!isAdPlaying) void seekTo(val); }}
+            disabled={isAdPlaying}
           />
           <View style={styles.timeRow}>
             <Text style={styles.timeText}>{formatDuration(currentTime)}</Text>
@@ -309,16 +311,16 @@ export function FullscreenPlayer({ navigation }: Props) {
             <Ionicons name="shuffle" size={24} color={isShuffling ? theme.colors.primary : theme.colors.muted} />
           </TouchableOpacity>
           
-          <TouchableOpacity onPress={() => playPrevious()} style={styles.controlButton}>
-            <Ionicons name="play-skip-back" size={36} color={theme.colors.text} />
+          <TouchableOpacity onPress={() => playPrevious()} style={styles.controlButton} disabled={isAdPlaying}>
+            <Ionicons name="play-skip-back" size={36} color={isAdPlaying ? theme.colors.muted : theme.colors.text} />
           </TouchableOpacity>
           
           <TouchableOpacity onPress={toggle} style={styles.playButton}>
             <Ionicons name={isBuffering ? "ellipsis-horizontal" : isPlaying ? "pause" : "play"} size={36} color="#000" style={{ marginLeft: isPlaying || isBuffering ? 0 : 4 }} />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => playNext()} style={styles.controlButton}>
-            <Ionicons name="play-skip-forward" size={36} color={theme.colors.text} />
+          <TouchableOpacity onPress={() => playNext()} style={styles.controlButton} disabled={isAdPlaying}>
+            <Ionicons name="play-skip-forward" size={36} color={isAdPlaying ? theme.colors.muted : theme.colors.text} />
           </TouchableOpacity>
 
           <TouchableOpacity

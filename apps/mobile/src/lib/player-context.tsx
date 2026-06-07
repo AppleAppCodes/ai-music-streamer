@@ -2,6 +2,8 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayerStatus } from 'expo-audio';
 import type { AudioPlayer } from 'expo-audio';
 import type { Song } from './types';
+import { useAuth } from './auth-context';
+import { supabase } from './supabase';
 
 interface PlayOptions {
   startAt?: number | null;
@@ -14,6 +16,7 @@ interface PlayerContextValue {
   error: string | null;
   isBuffering: boolean;
   isPlaying: boolean;
+  isAdPlaying: boolean;
   pause: () => void;
   playSong: (song: Song, options?: PlayOptions) => Promise<void>;
   playNext: () => void;
@@ -44,6 +47,32 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isShuffling, setIsShuffling] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'none' | 'all' | 'one'>('none');
 
+  // Ad & User State
+  const { user } = useAuth();
+  const [isPro, setIsPro] = useState(false);
+  const [songsPlayed, setSongsPlayed] = useState(0);
+  const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const [adFrequency, setAdFrequency] = useState(3);
+  const [pendingSongToPlayAfterAd, setPendingSongToPlayAfterAd] = useState<Song | null>(null);
+  const [availableAds, setAvailableAds] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      supabase.from('profiles').select('subscription_tier').eq('id', user.id).single()
+        .then(({ data }) => setIsPro(data?.subscription_tier === 'pro'));
+    }
+    const loadAdsAndConfig = async () => {
+      const { data } = await supabase.storage.from('ads').list();
+      if (data) {
+        setAvailableAds(data.filter(f => f.name !== '.emptyFolderPlaceholder'));
+      }
+      
+      const { data: configData } = await supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single();
+      if (configData) setAdFrequency(configData.ad_frequency);
+    };
+    void loadAdsAndConfig();
+  }, [user]);
+
   useEffect(() => {
     void setAudioModeAsync({
       interruptionMode: 'doNotMix',
@@ -70,6 +99,47 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const isSameSong = activeSong?.id === song.id;
       const startAt = Math.max(0, options.startAt ?? 0);
 
+      // AD LOGIC
+      if (!isPro && song.id !== 'yoriax-audio-ad' && songsPlayed >= adFrequency && availableAds.length > 0) {
+        setPendingSongToPlayAfterAd(song);
+        setIsAdPlaying(true);
+
+        let selectedAdUrl = '';
+        if (availableAds.length > 0) {
+          const randomAd = availableAds[Math.floor(Math.random() * availableAds.length)];
+          selectedAdUrl = supabase.storage.from('ads').getPublicUrl(randomAd.name).data.publicUrl;
+        } else {
+          selectedAdUrl = supabase.storage.from('ads').getPublicUrl('yoriax-ad.mp3').data.publicUrl;
+        }
+
+        const adSong: Song = {
+          id: 'yoriax-audio-ad',
+          title: 'WERBUNG',
+          artist_name: 'YORIAX Pro',
+          cover_url: 'https://www.yoriax.com/brand/yoriax-symbol.png',
+          audio_url: selectedAdUrl,
+          plays: 0,
+          created_at: new Date().toISOString(),
+        } as Song;
+
+        player.replace({ name: adSong.title, uri: adSong.audio_url });
+        setActiveSong(adSong);
+        player.setActiveForLockScreen(true, {
+          artist: adSong.artist_name,
+          artworkUrl: adSong.cover_url,
+          title: adSong.title,
+        });
+        player.play();
+        return;
+      }
+
+      if (song.id !== 'yoriax-audio-ad') {
+        setIsAdPlaying(false);
+        if (!isSameSong) {
+          setSongsPlayed(prev => prev + 1);
+        }
+      }
+
       if (!isSameSong) {
         player.replace({
           name: song.title,
@@ -92,7 +162,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     } catch (playError) {
       setError(playError instanceof Error ? playError.message : 'Playback konnte nicht gestartet werden.');
     }
-  }, [activeSong, player]);
+  }, [activeSong, player, isPro, songsPlayed, availableAds, adFrequency]);
 
   const pause = useCallback(() => {
     player.pause();
@@ -107,6 +177,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setQueueIndex(-1);
     setIsShuffling(false);
     setRepeatMode('none');
+    setSongsPlayed(0);
+    setIsAdPlaying(false);
+    setPendingSongToPlayAfterAd(null);
   }, [player]);
 
   const toggle = useCallback(() => {
@@ -179,6 +252,25 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // A simple hack to detect end of playback: if we are near the end and playing stops.
   useEffect(() => {
     if (activeSong && !status.playing && status.duration > 0 && Math.abs(status.currentTime - status.duration) < 1.0) {
+      if (isAdPlaying) {
+        setIsAdPlaying(false);
+        setSongsPlayed(0);
+        
+        // Refetch config
+        supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single().then(({ data }) => {
+          if (data) setAdFrequency(data.ad_frequency);
+        });
+
+        if (pendingSongToPlayAfterAd) {
+          void playSong(pendingSongToPlayAfterAd);
+          setPendingSongToPlayAfterAd(null);
+        } else {
+          const timeout = setTimeout(playNext, 0);
+          return () => clearTimeout(timeout);
+        }
+        return;
+      }
+
       if (repeatMode === 'one') {
         void player.seekTo(0, 0, 0);
         player.play();
@@ -187,7 +279,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         return () => clearTimeout(timeout);
       }
     }
-  }, [activeSong, status.playing, status.currentTime, status.duration, repeatMode, playNext, player]);
+  }, [activeSong, status.playing, status.currentTime, status.duration, repeatMode, playNext, player, isAdPlaying, pendingSongToPlayAfterAd, playSong]);
 
   const value = useMemo<PlayerContextValue>(
     () => ({
@@ -197,6 +289,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       error: error ?? status.error,
       isBuffering: status.isBuffering,
       isPlaying: status.playing,
+      isAdPlaying,
       pause,
       playSong,
       playNext,

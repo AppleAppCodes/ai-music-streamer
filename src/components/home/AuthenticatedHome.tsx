@@ -243,7 +243,7 @@ export default function AuthenticatedHome() {
         ...song,
         creatorName: song.profiles?.username || song.artist_name || 'Unknown'
       }));
-      const dailySongs = getDailyTrendingSongs(songs);
+      const dailySongs = getDailyTrendingSongs(songs, 8);
       setDailyTrendingSongs(dailySongs);
 
       if (!session) {
@@ -252,7 +252,7 @@ export default function AuthenticatedHome() {
           playlistSongs: [],
           savedSongs: [],
           playbackHistory: [],
-        }));
+        }, 8));
         setIsLoading(false);
         return;
       }
@@ -292,7 +292,7 @@ export default function AuthenticatedHome() {
       const trendingIds = new Set(dailySongs.map(({ id }) => id));
       const distinctRecommendations = rankedRecommendations.filter(({ id }) => !trendingIds.has(id));
 
-      setRecommendedSongs((distinctRecommendations.length >= 4 ? distinctRecommendations : rankedRecommendations).slice(0, 4));
+      setRecommendedSongs((distinctRecommendations.length >= 8 ? distinctRecommendations : rankedRecommendations).slice(0, 8));
       setIsLoading(false);
     }
     loadMusic();

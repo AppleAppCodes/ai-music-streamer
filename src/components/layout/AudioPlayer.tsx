@@ -34,13 +34,13 @@ export default function AudioPlayer() {
   const {
     currentSong, isPlaying, progress, currentTime, duration, volume,
     playNext, playPrevious, togglePlayPause, setVolume, seekTo, queue,
-    queueIndex, isShuffling, toggleShuffle, repeatMode, toggleRepeat, user
+    queueIndex, isShuffling, toggleShuffle, repeatMode, toggleRepeat, user, isAdPlaying
   } = usePlayer();
   const { t } = useTranslation();
 
   // Keyboard controls
   useEffect(() => {
-    if (pathname.startsWith('/feed')) return;
+    if (pathname?.startsWith('/feed')) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger if user is typing in an input
@@ -324,7 +324,7 @@ export default function AudioPlayer() {
     );
   };
 
-  if (pathname.startsWith('/feed')) return null;
+  if (pathname?.startsWith('/feed')) return null;
   if (!user) return null;
   if (!currentSong && queue.length === 0) return null;
 
@@ -346,7 +346,10 @@ export default function AudioPlayer() {
           style={{
             background: `linear-gradient(to right, #ffffff 0%, #ffffff ${progressPercent}%, rgba(255,255,255,0.18) ${progressPercent}%, rgba(255,255,255,0.18) 100%)`,
           }}
-          onChange={(e) => seekTo(Number(e.currentTarget.value))}
+          onChange={(e) => {
+            if (isAdPlaying) return;
+            seekTo(Number(e.currentTarget.value));
+          }}
         />
       ) : null}
       
@@ -400,7 +403,7 @@ export default function AudioPlayer() {
           </button>
           <button
             onClick={playPrevious}
-            disabled={!canPlayPrevious}
+            disabled={!canPlayPrevious || isAdPlaying}
             className="text-muted hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-muted"
           >
             <SkipBack className="w-5 h-5 fill-current" />
@@ -413,7 +416,7 @@ export default function AudioPlayer() {
           </button>
           <button
             onClick={playNext}
-            disabled={!canPlayNext}
+            disabled={!canPlayNext || isAdPlaying}
             className="text-muted hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-muted"
           >
             <SkipForward className="w-5 h-5 fill-current" />
@@ -440,7 +443,10 @@ export default function AudioPlayer() {
             style={{
               background: `linear-gradient(to right, #ffffff 0%, #ffffff ${progressPercent}%, rgba(255,255,255,0.18) ${progressPercent}%, rgba(255,255,255,0.18) 100%)`,
             }}
-            onChange={(e) => seekTo(Number(e.currentTarget.value))}
+            onChange={(e) => {
+              if (isAdPlaying) return;
+              seekTo(Number(e.currentTarget.value));
+            }}
           />
           <span className="text-xs text-muted font-medium w-10">{formatTime(duration)}</span>
         </div>
@@ -479,7 +485,7 @@ export default function AudioPlayer() {
             e.stopPropagation();
             playNext();
           }}
-          disabled={!canPlayNext}
+          disabled={!canPlayNext || isAdPlaying}
           className="flex h-9 w-9 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white disabled:opacity-30 md:hidden"
           aria-label="Nächster Song"
         >

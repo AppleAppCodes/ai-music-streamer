@@ -364,6 +364,7 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
 }
 
 export async function checkIsLiked(userId: string, songId: string): Promise<boolean> {
+  if (songId === 'yoriax-audio-ad') return false;
   const client = requireClient();
   const { data, error } = await client
     .from('liked_songs')
@@ -381,6 +382,7 @@ export async function checkIsLiked(userId: string, songId: string): Promise<bool
 }
 
 export async function toggleLike(userId: string, songId: string, isLiked: boolean): Promise<boolean> {
+  if (songId === 'yoriax-audio-ad') return false;
   const client = requireClient();
 
   if (isLiked) {

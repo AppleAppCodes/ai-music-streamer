@@ -37,6 +37,7 @@ export default function MobilePlayerFullscreen({ isOpen, onClose }: MobilePlayer
     toggleShuffle,
     repeatMode,
     toggleRepeat,
+    isAdPlaying,
   } = usePlayer();
   
   const { t } = useTranslation();
@@ -150,7 +151,10 @@ export default function MobilePlayerFullscreen({ isOpen, onClose }: MobilePlayer
                 style={{
                   background: `linear-gradient(to right, #ffffff 0%, #ffffff ${progressPercent}%, rgba(255,255,255,0.2) ${progressPercent}%, rgba(255,255,255,0.2) 100%)`,
                 }}
-                onChange={(e) => seekTo(Number(e.currentTarget.value))}
+                onChange={(e) => {
+                  if (isAdPlaying) return;
+                  seekTo(Number(e.currentTarget.value));
+                }}
               />
               <div className="flex justify-between text-xs text-white/50 font-mono">
                 <span>{formatTime(currentTime)}</span>
@@ -169,7 +173,7 @@ export default function MobilePlayerFullscreen({ isOpen, onClose }: MobilePlayer
               
               <button
                 onClick={playPrevious}
-                disabled={!canPlayPrevious}
+                disabled={!canPlayPrevious || isAdPlaying}
                 className="p-2 text-white hover:text-primary transition-colors disabled:opacity-30 disabled:hover:text-white"
               >
                 <SkipBack className="w-10 h-10 fill-current" />
@@ -184,7 +188,7 @@ export default function MobilePlayerFullscreen({ isOpen, onClose }: MobilePlayer
               
               <button
                 onClick={playNext}
-                disabled={!canPlayNext}
+                disabled={!canPlayNext || isAdPlaying}
                 className="p-2 text-white hover:text-primary transition-colors disabled:opacity-30 disabled:hover:text-white"
               >
                 <SkipForward className="w-10 h-10 fill-current" />

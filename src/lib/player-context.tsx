@@ -8,6 +8,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { clearNowPlayingMetadata, setNowPlayingMetadata } from '@/lib/media-session';
 import { PLAYER_FORCE_SIGN_OUT_EVENT } from '@/lib/player-events';
 import { COOKIE_CONSENT_CHANGED_EVENT, hasPreferenceStorageConsent } from '@/lib/cookie-consent';
+import { initAuthChannel, initPlayerChannel, broadcastSignOut, broadcastPlaybackStarted } from '@/lib/cross-tab';
 
 interface PlayerContextType {
   currentSong: Song | null;
@@ -31,7 +32,18 @@ interface PlayerContextType {
   repeatMode: 'none' | 'all' | 'one';
   toggleRepeat: () => void;
   user: SupabaseUser | null;
+  isPro: boolean;
+  isAdPlaying: boolean;
 }
+
+const AD_SONG_TEMPLATE = {
+  id: 'yoriax-audio-ad',
+  title: 'WERBUNG',
+  artist_name: 'YORIAX Pro',
+  cover_url: '/brand/yoriax-symbol.png',
+  plays: 0,
+  created_at: new Date().toISOString(),
+} as Song;
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
@@ -65,6 +77,12 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
   const [repeatMode, setRepeatMode] = useState<'none' | 'all' | 'one'>('none');
   const [isMounted, setIsMounted] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [isPro, setIsPro] = useState(false);
+  const [songsPlayed, setSongsPlayed] = useState(0);
+  const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const [adFrequency, setAdFrequency] = useState(3);
+  const [pendingSongToPlayAfterAd, setPendingSongToPlayAfterAd] = useState<Song | null>(null);
+  const [availableAds, setAvailableAds] = useState<any[]>([]);
   const [authResolved, setAuthResolved] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   
@@ -129,6 +147,10 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
         setUser(data.user);
+        supabase.from('profiles').select('subscription_tier').eq('id', data.user.id).single()
+          .then(({ data: profileData }) => {
+            setIsPro(profileData?.subscription_tier === 'pro');
+          });
       } else {
         clearAuthenticatedPlayback();
       }
@@ -139,15 +161,55 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
       setAuthResolved(true);
     });
     
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Load available ads and global config when context initializes
+    const loadAdsAndConfig = async () => {
+      const { data: adsData } = await supabase.storage.from('ads').list();
+      if (adsData) {
+        setAvailableAds(adsData.filter(f => f.name !== '.emptyFolderPlaceholder'));
+      }
+      
+      const { data: configData } = await supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single();
+      if (configData) setAdFrequency(configData.ad_frequency);
+    };
+    loadAdsAndConfig();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const nextUser = session?.user || null;
       if (nextUser) {
         setUser(nextUser);
+        supabase.from('profiles').select('subscription_tier').eq('id', nextUser.id).single()
+          .then(({ data: profileData }) => {
+            setIsPro(profileData?.subscription_tier === 'pro');
+          });
       } else {
         clearAuthenticatedPlayback();
+        if (event === 'SIGNED_OUT') {
+          broadcastSignOut();
+          window.location.href = '/login';
+        }
       }
     });
-    return () => subscription.unsubscribe();
+
+    // Cross-tab: listen for logout from other tabs
+    const cleanupAuthChannel = initAuthChannel(() => {
+      clearAuthenticatedPlayback();
+      window.location.href = '/login';
+    });
+
+    // Cross-tab: listen for playback starting in other tabs
+    const cleanupPlayerChannel = initPlayerChannel(() => {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+      }
+      setIsPlaying(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      cleanupAuthChannel();
+      cleanupPlayerChannel();
+    };
   }, [clearAuthenticatedPlayback, isAuthenticated]);
 
   useEffect(() => {
@@ -297,6 +359,9 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Notify all other tabs to stop their playback
+    broadcastPlaybackStarted();
+
     setIsPlaying(true);
     audio.play().catch((error) => {
       console.error('Playback failed:', error);
@@ -331,6 +396,46 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     }
     
     if (!audioRef.current) return;
+
+    // Ad Logic: Check if we should play an ad
+    if (!isPro && song.id !== 'yoriax-audio-ad' && songsPlayed >= adFrequency && availableAds.length > 0) {
+      setPendingSongToPlayAfterAd(song);
+      setIsAdPlaying(true);
+      
+      let selectedAdUrl = '';
+      if (availableAds.length > 0) {
+        const randomAd = availableAds[Math.floor(Math.random() * availableAds.length)];
+        selectedAdUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ads/${randomAd.name}?t=${Date.now()}`;
+      } else {
+        // Fallback if bucket is empty or failed to load
+        selectedAdUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ads/yoriax-ad.mp3?t=${Date.now()}`;
+      }
+      
+      const freshAdSong = {
+        ...AD_SONG_TEMPLATE,
+        audio_url: selectedAdUrl,
+      };
+
+      if (currentSong?.id === AD_SONG_TEMPLATE.id) {
+        loadSongIntoAudio(freshAdSong, false);
+        startPlayback();
+        return;
+      }
+
+      setCurrentSong(freshAdSong);
+      loadSongIntoAudio(freshAdSong);
+      startPlayback();
+      return;
+    }
+
+    // Normal play
+    if (song.id !== 'yoriax-audio-ad') {
+      setIsAdPlaying(false);
+      // Only increment if we actually start a new song (not resuming)
+      if (currentSong?.id !== song.id) {
+        setSongsPlayed(prev => prev + 1);
+      }
+    }
     
     if (currentSong?.id === song.id) {
       loadSongIntoAudio(song, false);
@@ -341,7 +446,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     setCurrentSong(song);
     loadSongIntoAudio(song);
     startPlayback();
-  }, [currentSong?.id, loadSongIntoAudio, startPlayback, user]);
+  }, [currentSong?.id, loadSongIntoAudio, startPlayback, user, isPro, songsPlayed]);
 
   const setQueue = useCallback((songs: Song[], startIndex = 0) => {
     setQueueState(songs);
@@ -394,6 +499,24 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
   // Handle song ended to play next or repeat
   useEffect(() => {
     const onSongEnded = () => {
+      if (isAdPlaying) {
+        setIsAdPlaying(false);
+        setSongsPlayed(0);
+
+        // Fetch global ad frequency
+        supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single().then(({ data }) => {
+          if (data) setAdFrequency(data.ad_frequency);
+        });
+
+        if (pendingSongToPlayAfterAd) {
+          playSong(pendingSongToPlayAfterAd);
+          setPendingSongToPlayAfterAd(null);
+        } else {
+          playNext();
+        }
+        return;
+      }
+
       if (repeatMode === 'one' && audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(console.error);
@@ -404,7 +527,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     };
     window.addEventListener('player-song-ended', onSongEnded);
     return () => window.removeEventListener('player-song-ended', onSongEnded);
-  }, [playNext, repeatMode]);
+  }, [playNext, repeatMode, isAdPlaying, pendingSongToPlayAfterAd, playSong]);
 
   const togglePlayPause = useCallback(() => {
     if (!currentSong || !audioRef.current) return;
@@ -474,6 +597,8 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
         setRepeatMode(r => r === 'none' ? 'all' : r === 'all' ? 'one' : 'none');
       },
       user,
+      isPro,
+      isAdPlaying,
     }}>
       {children}
       

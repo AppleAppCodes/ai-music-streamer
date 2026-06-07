@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
 import { loadArtistsData, type ArtistStat } from '../lib/music-data';
@@ -22,9 +23,6 @@ function ArtistCard({ item, navigation }: { item: ArtistStat; navigation: Artist
   useEffect(() => {
     if (!videoUrl) return;
     videoPlayer.play();
-    return () => {
-      videoPlayer.pause();
-    };
   }, [videoPlayer, videoUrl]);
 
   return (
@@ -62,6 +60,7 @@ function ArtistCard({ item, navigation }: { item: ArtistStat; navigation: Artist
 }
 
 export function ArtistsScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [artists, setArtists] = useState<ArtistStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,13 +93,13 @@ export function ArtistsScreen({ navigation }: Props) {
         colors={['rgba(45,212,191,0.20)', 'rgba(124,58,237,0.14)', 'transparent']}
         style={styles.glow}
       />
-      <View style={styles.header}>
+      <View style={[styles.header, { top: Math.max(insets.top + 8, 18) }]}>
         <BackButton onPress={() => navigation.goBack()} />
       </View>
 
       <FlatList
         columnWrapperStyle={styles.columnWrapper}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingTop: Math.max(insets.top + 60, 84) }]}
         data={artists}
         keyExtractor={(item) => item.name}
         numColumns={2}

@@ -39,7 +39,7 @@ interface AlbumData {
 
 export default function AlbumPage() {
   const params = useParams();
-  const albumId = params.id as string;
+  const albumId = params?.id as string;
   const router = useRouter();
   
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();

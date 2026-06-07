@@ -93,11 +93,17 @@ export default function SettingsPage() {
     }
   };
 
-  const PROFANITY_LIST = ['nazi', 'hitler', 'fuck', 'shit', 'bitch', 'asshole', 'cunt', 'dick', 'pussy', 'whore', 'slut', 'fagot', 'nigger', 'nigga', 'retard'];
+    const PROFANITY_LIST = ['nazi', 'hitler', 'fuck', 'shit', 'bitch', 'asshole', 'cunt', 'dick', 'pussy', 'whore', 'slut', 'fagot', 'nigger', 'nigga', 'retard'];
+    const RESERVED_NAMES = ['admin', 'administrator', 'yoriax', 'yoriax team', 'official', 'offiziell', 'support', 'system'];
 
   const containsProfanity = (text: string) => {
     const lower = text.toLowerCase();
     return PROFANITY_LIST.some(word => lower.includes(word));
+  };
+
+  const isReservedName = (text: string) => {
+    const lower = text.toLowerCase().trim();
+    return RESERVED_NAMES.some(word => lower === word || lower.includes('yoriax'));
   };
 
   const saveProfile = async () => {
@@ -110,6 +116,11 @@ export default function SettingsPage() {
     
     if (containsProfanity(username)) {
       alert('Dieser Benutzername enthält nicht erlaubte Wörter. Bitte wähle einen anderen.');
+      return;
+    }
+
+    if (isReservedName(username) && user.email !== 'heindavid91@gmail.com') {
+      alert('Dieser Benutzername ist für das Team reserviert.');
       return;
     }
 

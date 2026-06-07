@@ -22,7 +22,7 @@ type SearchSong = Pick<Song, 'id' | 'title' | 'artist_name' | 'cover_url' | 'pla
 
 function SearchResults() {
   const searchParams = useSearchParams();
-  const query = searchParams.get('q') || '';
+  const query = searchParams?.get('q') || '';
   const router = useRouter();
   const supabase = createClient();
 

@@ -17,6 +17,10 @@ import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
 import * as path from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 // ── Supabase Setup ──────────────────────────────────────────────────────────
 
@@ -29,6 +33,18 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function logAction(toolName: string, args: any, summary: string) {
+  try {
+    await supabase.from("mcp_logs").insert({
+      tool_name: toolName,
+      arguments: args || {},
+      response_summary: summary
+    });
+  } catch (error) {
+    console.error("Failed to log action:", error);
+  }
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -137,10 +153,13 @@ server.tool(
 
       if (error) throw error;
 
+      await logAction('upload_song', { title, artist_name, genre, mood, ai_tool, audio_path, cover_path, creator_id }, `Successfully uploaded and published song: "${title}" by ${artist_name}!`);
+
       return {
         content: [{ type: 'text', text: `✅ Song "${title}" by ${artist_name} uploaded successfully!\n\nID: ${data.id}\nAudio: ${audioUrl}\nCover: ${coverUrl}` }]
       };
     } catch (err: any) {
+      await logAction('upload_song', { title, artist_name }, `Failed to upload song: ${err.message}`);
       return { content: [{ type: 'text', text: `❌ Upload failed: ${err.message}` }] };
     }
   }
@@ -242,11 +261,48 @@ server.tool(
       const { error } = await supabase.from('songs').delete().eq('id', song_id);
       if (error) throw error;
 
+      await logAction('delete_song', { song_id }, `Deleted song "${song.title}" by ${song.artist_name}`);
+
       return {
         content: [{ type: 'text', text: `🗑️ Song "${song.title}" by ${song.artist_name} has been deleted.` }]
       };
     } catch (err: any) {
+      await logAction('delete_song', { song_id }, `Delete failed: ${err.message}`);
       return { content: [{ type: 'text', text: `❌ Delete failed: ${err.message}` }] };
+    }
+  }
+);
+
+// ── Tool: rename_song ───────────────────────────────────────────────────────
+
+server.tool(
+  'rename_song',
+  'Rename a song from the platform by its ID.',
+  {
+    song_id: z.string().describe('The UUID of the song to rename'),
+    new_title: z.string().describe('The new title for the song'),
+  },
+  async ({ song_id, new_title }) => {
+    try {
+      const { data: song, error: fetchErr } = await supabase
+        .from('songs')
+        .select('title, artist_name')
+        .eq('id', song_id)
+        .single();
+
+      if (fetchErr) throw fetchErr;
+
+      const { error } = await supabase.from('songs').update({ title: new_title }).eq('id', song_id);
+      if (error) throw error;
+
+      await logAction('rename_song', { song_id, new_title }, `Renamed song "${song.title}" by ${song.artist_name} to "${new_title}"`);
+
+      return {
+        content: [{ type: 'text', text: `✅ Song "${song.title}" by ${song.artist_name} has been renamed to "${new_title}".` }]
+      };
+    } catch (err: any) {
+      await logAction('rename_song', { song_id, new_title }, `Rename failed: ${err.message}`);
+      return { content: [{ type: 'text', text: `❌ Rename failed: ${err.message}` }] };
     }
   }
 );
@@ -401,6 +457,41 @@ server.tool(
       };
     } catch (err: any) {
       return { content: [{ type: 'text', text: `❌ Error: ${err.message}` }] };
+    }
+  }
+);
+
+// ── Tool: send_message_to_antigravity ───────────────────────────────────────
+
+server.tool(
+  'send_message_to_antigravity',
+  'Send a message to David in his Antigravity AI desktop app chat window. Use this to talk to the other AI (Antigravity).',
+  {
+    message: z.string().describe('The message you want to type into the Antigravity chat window'),
+  },
+  async ({ message }) => {
+    try {
+      // Escape the message for AppleScript
+      const escapedMessage = message.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      
+      const script = `
+tell application "Antigravity" to activate
+delay 0.5
+set the clipboard to "${escapedMessage}"
+tell application "System Events"
+    keystroke "v" using command down
+    delay 0.2
+    keystroke return
+end tell
+      `;
+      
+      await execAsync(`osascript -e '${script.replace(/'/g, "'\\''")}'`);
+      
+      return {
+        content: [{ type: 'text', text: `✅ Message sent to Antigravity successfully!` }]
+      };
+    } catch (err: any) {
+      return { content: [{ type: 'text', text: `❌ Error sending message: ${err.message}` }] };
     }
   }
 );

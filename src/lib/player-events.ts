@@ -32,8 +32,14 @@ function clearStoredPlayerState() {
 export function notifyPlayerForceSignOut() {
   if (typeof window === 'undefined') return;
 
+  // Import dynamically to avoid circular deps
+  import('@/lib/cross-tab').then(({ broadcastSignOut }) => {
+    broadcastSignOut();
+  }).catch(() => {});
+
   window.__YORIAX_STOP_PLAYBACK__?.();
   stopDocumentMedia();
   clearStoredPlayerState();
   window.dispatchEvent(new Event(PLAYER_FORCE_SIGN_OUT_EVENT));
 }
+

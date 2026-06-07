@@ -4,15 +4,16 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, Share2, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2, Save, X } from 'lucide-react';
+import { Play, Pause, Share2, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2, Save, X, Flag } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import MobileSongMenu from '@/components/ui/MobileSongMenu';
+import ReportDialog from '@/components/ui/ReportDialog';
 import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { isAdminUser } from '@/lib/admin';
+import { isAdminUser, isModUser } from '@/lib/admin';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -96,18 +97,31 @@ function hasInvalidSocialUrl(raw: ArtistSocials, normalized: ArtistSocials) {
   });
 }
 
+interface Release {
+  id: string;
+  title: string;
+  cover_url: string;
+  created_at: string;
+  type: 'album' | 'ep' | 'single';
+  is_song: boolean;
+}
+
 export default function ArtistPage() {
   const params = useParams();
   const router = useRouter();
   // Ensure we decode the URL encoded name properly
-  const artistName = decodeURIComponent(params.name as string);
+  const artistName = decodeURIComponent(params?.name as string);
   
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue, isShuffling, toggleShuffle } = usePlayer();
   const supabase = createClient();
   
   const [songs, setSongs] = useState<Song[]>([]);
+  const [showAllSongs, setShowAllSongs] = useState(false);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  
+  const [releases, setReleases] = useState<Release[]>([]);
+  const [albumFilter, setAlbumFilter] = useState<'albums' | 'singles'>('albums');
   
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [artistVideoUrl, setArtistVideoUrl] = useState<string | null>(null);
@@ -123,7 +137,7 @@ export default function ArtistPage() {
   const [isEditingSocials, setIsEditingSocials] = useState(false);
   const [editSocials, setEditSocials] = useState({instagram_url: '', tiktok_url: '', youtube_url: ''});
   const [isSavingSocials, setIsSavingSocials] = useState(false);
-  const isAdmin = isAdminUser(user);
+  const isAdmin = isModUser(user);
 
   useEffect(() => {
     async function loadArtistData() {
@@ -166,6 +180,45 @@ export default function ArtistPage() {
       }
 
       setSongs(artistSongs);
+
+      // Extract releases (albums and standalone songs)
+      const standaloneSongs = artistSongs.filter(s => !s.album_id).map(s => ({
+        id: s.id,
+        title: s.title,
+        cover_url: s.cover_url,
+        created_at: s.created_at,
+        type: 'single' as const,
+        is_song: true
+      }));
+
+      const albumIds = [...new Set(artistSongs.map(s => s.album_id).filter(Boolean))] as string[];
+      let fetchedAlbums: Release[] = [];
+      if (albumIds.length > 0) {
+        const { data: albumsData } = await supabase
+          .from('albums')
+          .select('*')
+          .in('id', albumIds);
+        if (albumsData) {
+          fetchedAlbums = albumsData.map(a => ({
+            id: a.id,
+            title: a.title,
+            cover_url: a.cover_url,
+            created_at: a.created_at,
+            type: a.type as 'album' | 'ep' | 'single',
+            is_song: false
+          }));
+        }
+      }
+
+      const combinedReleases = [...fetchedAlbums, ...standaloneSongs].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setReleases(combinedReleases);
+      
+      // Default albumFilter to 'singles' if they have no albums
+      if (fetchedAlbums.filter(a => a.type === 'album').length === 0 && combinedReleases.length > 0) {
+        setAlbumFilter('singles');
+      }
       
       // 2. Check if a custom banner exists
       const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
@@ -416,28 +469,10 @@ export default function ArtistPage() {
 
   const isAnyPlaying = songs.some(s => s.id === currentSong?.id) && isPlaying;
   
-  // REAL Monthly Listeners Algorithm
-  let monthlyListeners = 0;
+  // Total Plays Calculation instead of Monthly Listeners
+  let totalPlays = 0;
   if (songs.length > 0) {
-    const totalPlays = songs.reduce((sum, song) => sum + song.plays, 0);
-    
-    // Find the oldest song to determine how many months the artist is active
-    const oldestSong = songs.reduce((oldest, song) => {
-      return new Date(song.created_at) < new Date(oldest.created_at) ? song : oldest;
-    }, songs[0]);
-    
-    const firstReleaseDate = new Date(oldestSong.created_at);
-    const now = new Date();
-    
-    // Calculate months difference
-    const msPerMonth = 1000 * 60 * 60 * 24 * 30.44;
-    let monthsActive = (now.getTime() - firstReleaseDate.getTime()) / msPerMonth;
-    
-    // Minimum 1 month to avoid dividing by zero or inflating numbers for brand new songs
-    monthsActive = Math.max(1, monthsActive);
-    
-    // Calculate average plays per month
-    monthlyListeners = Math.round(totalPlays / monthsActive);
+    totalPlays = songs.reduce((sum, song) => sum + (song.plays || 0), 0);
   }
 
   return (
@@ -468,7 +503,7 @@ export default function ArtistPage() {
       <div className="absolute top-0 left-0 right-0 h-[600px] bg-gradient-to-b from-black/10 via-[#0A0A0A]/70 to-[#0A0A0A] pointer-events-none z-0" />
       
       {/* Hero Content */}
-      <div className="relative pt-32 px-6 md:px-10 pb-8 flex flex-col md:flex-row w-full items-center md:items-end gap-10 min-h-[380px] z-10 group">
+      <div className="relative pt-20 px-6 md:px-10 pb-4 md:pb-8 flex flex-col md:flex-row w-full items-center md:items-end gap-4 md:gap-10 min-h-[250px] md:min-h-[380px] z-10 group">
         
         <div className="flex flex-col justify-end items-center md:items-start flex-shrink-0 max-w-3xl text-center md:text-left">
           {/* Admin Editable Overlay for Background */}
@@ -501,17 +536,17 @@ export default function ArtistPage() {
             <span>Verifizierter Künstler</span>
           </div>
           
-          <h1 className="text-5xl md:text-8xl font-black text-white tracking-tighter drop-shadow-2xl mb-4 truncate w-full">
+          <h1 className="text-5xl md:text-8xl font-black text-white tracking-tighter drop-shadow-2xl mb-1 md:mb-4 truncate w-full">
             {artistName}
           </h1>
           
           <div className="text-base text-white/70 font-medium">
-            {monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen
+            {totalPlays.toLocaleString('de-DE')} Gesamtaufrufe
           </div>
         </div>
 
         {/* Artist Profile Video & Socials */}
-        <div className="flex-1 flex flex-col md:flex-row w-full justify-center items-center gap-6 mt-6 md:mt-0">
+        <div className="flex-1 flex flex-col md:flex-row w-full justify-center items-center gap-4 md:gap-6 mt-4 md:mt-0">
           
           {/* Artist Profile Video (Canvas) */}
           {(artistVideoUrl || isAdmin) && (
@@ -560,75 +595,6 @@ export default function ArtistPage() {
             </div>
           )}
 
-          {/* Socials */}
-          <div className="flex flex-row md:flex-col items-center gap-3">
-            {isEditingSocials ? (
-              <div className="flex flex-col gap-2 bg-black/50 p-3 rounded-lg backdrop-blur-md border border-white/10 w-48 shadow-xl">
-                <input 
-                  type="text" 
-                  placeholder="Instagram URL" 
-                  value={editSocials.instagram_url} 
-                  onChange={e => setEditSocials({...editSocials, instagram_url: e.target.value})}
-                  className="bg-white/10 text-xs px-2 py-1.5 rounded text-white w-full border border-white/10 outline-none focus:border-primary"
-                />
-                <input 
-                  type="text" 
-                  placeholder="TikTok URL" 
-                  value={editSocials.tiktok_url} 
-                  onChange={e => setEditSocials({...editSocials, tiktok_url: e.target.value})}
-                  className="bg-white/10 text-xs px-2 py-1.5 rounded text-white w-full border border-white/10 outline-none focus:border-primary"
-                />
-                <input 
-                  type="text" 
-                  placeholder="YouTube URL" 
-                  value={editSocials.youtube_url} 
-                  onChange={e => setEditSocials({...editSocials, youtube_url: e.target.value})}
-                  className="bg-white/10 text-xs px-2 py-1.5 rounded text-white w-full border border-white/10 outline-none focus:border-primary"
-                />
-                <div className="flex justify-end gap-2 mt-1">
-                  <button onClick={() => setIsEditingSocials(false)} className="text-white/50 hover:text-white p-1 rounded-full hover:bg-white/10">
-                    <X className="w-4 h-4" />
-                  </button>
-                  <button onClick={handleSaveSocials} disabled={isSavingSocials} className="bg-primary hover:bg-primary/80 text-white px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors">
-                    {isSavingSocials ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                    Speichern
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {socials?.instagram_url && (
-                  <a href={socials.instagram_url} target="_blank" rel="noopener noreferrer" className="p-3 md:p-2.5 bg-white/5 hover:bg-white/10 hover:scale-110 rounded-full transition-all text-white/80 hover:text-[#E1306C] shadow-lg border border-white/5">
-                    <InstagramIcon className="w-5 h-5 md:w-6 md:h-6" />
-                  </a>
-                )}
-                {socials?.tiktok_url && (
-                  <a href={socials.tiktok_url} target="_blank" rel="noopener noreferrer" className="p-3 md:p-2.5 bg-white/5 hover:bg-white/10 hover:scale-110 rounded-full transition-all text-white/80 hover:text-[#00f2fe] shadow-lg border border-white/5">
-                    <TiktokIcon className="w-5 h-5 md:w-6 md:h-6" />
-                  </a>
-                )}
-                {socials?.youtube_url && (
-                  <a href={socials.youtube_url} target="_blank" rel="noopener noreferrer" className="p-3 md:p-2.5 bg-white/5 hover:bg-white/10 hover:scale-110 rounded-full transition-all text-white/80 hover:text-[#FF0000] shadow-lg border border-white/5">
-                    <YoutubeIcon className="w-5 h-5 md:w-6 md:h-6" />
-                  </a>
-                )}
-                
-                {isAdmin && (
-                  <button 
-                    onClick={() => setIsEditingSocials(true)}
-                    className="flex items-center justify-center p-3 md:p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all text-white/50 hover:text-white shadow-lg border border-white/5 border-dashed"
-                    title={(!socials?.instagram_url && !socials?.tiktok_url && !socials?.youtube_url) ? 'Socials hinzufügen' : 'Socials bearbeiten'}
-                  >
-                    {(!socials?.instagram_url && !socials?.tiktok_url && !socials?.youtube_url) ? (
-                      <span className="text-xs font-medium px-2">+ Socials</span>
-                    ) : (
-                      <Edit2 className="w-4 h-4 md:w-4 md:h-4" />
-                    )}
-                  </button>
-                )}
-              </>
-            )}
-          </div>
         </div>
       </div>
 
@@ -637,11 +603,11 @@ export default function ArtistPage() {
       <div className="relative bg-[#0A0A0A] px-6 md:px-10 py-6 min-h-screen z-10">
         
         {/* Action Bar */}
-        <div className="flex items-center gap-6 mb-10">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6 mb-10">
           <button 
             onClick={handlePlayAll}
             disabled={songs.length === 0}
-            className="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-white hover:scale-105 transition-transform shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] disabled:opacity-50 disabled:hover:scale-100"
+            className="w-14 h-14 shrink-0 rounded-full bg-primary flex items-center justify-center text-white hover:scale-105 transition-transform shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] disabled:opacity-50 disabled:hover:scale-100"
           >
             {isAnyPlaying ? (
               <Pause className="w-7 h-7 fill-current" />
@@ -695,6 +661,90 @@ export default function ArtistPage() {
                 {shareStatus}
               </span>
             )}
+            
+            <div className="ml-4 pl-4 border-l border-white/10 flex items-center">
+              <ReportDialog 
+                entityType="artist" 
+                entityId={artistName} 
+                entityName={artistName} 
+                trigger={
+                  <button className="text-white/40 hover:text-red-400 transition-colors cursor-pointer" title="Künstler melden">
+                    <Flag className="w-5 h-5" />
+                  </button>
+                }
+              />
+            </div>
+          </div>
+
+          {/* Socials */}
+          <div className="flex items-center gap-3 ml-4 pl-6 border-l border-white/10">
+            {isEditingSocials ? (
+              <div className="absolute right-6 mt-16 z-50 flex flex-col gap-2 bg-black/90 p-4 rounded-xl backdrop-blur-md border border-white/20 w-64 shadow-2xl">
+                <h4 className="text-white text-sm font-bold mb-1">Social Links bearbeiten</h4>
+                <input 
+                  type="text" 
+                  placeholder="Instagram URL" 
+                  value={editSocials.instagram_url} 
+                  onChange={e => setEditSocials({...editSocials, instagram_url: e.target.value})}
+                  className="bg-white/10 text-xs px-3 py-2 rounded text-white w-full border border-white/10 outline-none focus:border-primary transition-colors"
+                />
+                <input 
+                  type="text" 
+                  placeholder="TikTok URL" 
+                  value={editSocials.tiktok_url} 
+                  onChange={e => setEditSocials({...editSocials, tiktok_url: e.target.value})}
+                  className="bg-white/10 text-xs px-3 py-2 rounded text-white w-full border border-white/10 outline-none focus:border-primary transition-colors"
+                />
+                <input 
+                  type="text" 
+                  placeholder="YouTube URL" 
+                  value={editSocials.youtube_url} 
+                  onChange={e => setEditSocials({...editSocials, youtube_url: e.target.value})}
+                  className="bg-white/10 text-xs px-3 py-2 rounded text-white w-full border border-white/10 outline-none focus:border-primary transition-colors"
+                />
+                <div className="flex justify-end gap-2 mt-2">
+                  <button onClick={() => setIsEditingSocials(false)} className="text-white/50 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                  <button onClick={handleSaveSocials} disabled={isSavingSocials} className="bg-primary hover:bg-primary/80 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+                    {isSavingSocials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Speichern
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {socials?.instagram_url && (
+                  <a href={socials.instagram_url} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-white/5 hover:bg-white/10 hover:scale-110 rounded-full transition-all text-white/80 hover:text-[#E1306C] shadow-lg border border-white/5">
+                    <InstagramIcon className="w-5 h-5" />
+                  </a>
+                )}
+                {socials?.tiktok_url && (
+                  <a href={socials.tiktok_url} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-white/5 hover:bg-white/10 hover:scale-110 rounded-full transition-all text-white/80 hover:text-[#00f2fe] shadow-lg border border-white/5">
+                    <TiktokIcon className="w-5 h-5" />
+                  </a>
+                )}
+                {socials?.youtube_url && (
+                  <a href={socials.youtube_url} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-white/5 hover:bg-white/10 hover:scale-110 rounded-full transition-all text-white/80 hover:text-[#FF0000] shadow-lg border border-white/5">
+                    <YoutubeIcon className="w-5 h-5" />
+                  </a>
+                )}
+                
+                {isAdmin && (
+                  <button 
+                    onClick={() => setIsEditingSocials(true)}
+                    className="flex items-center justify-center p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all text-white/50 hover:text-white shadow-lg border border-white/5 border-dashed"
+                    title={(!socials?.instagram_url && !socials?.tiktok_url && !socials?.youtube_url) ? 'Socials hinzufügen' : 'Socials bearbeiten'}
+                  >
+                    {(!socials?.instagram_url && !socials?.tiktok_url && !socials?.youtube_url) ? (
+                      <span className="text-xs font-bold px-2">+ Socials</span>
+                    ) : (
+                      <Edit2 className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -709,7 +759,7 @@ export default function ArtistPage() {
           
           {songs.length > 0 ? (
             <div className="flex flex-col">
-              {songs.map((song, index) => {
+              {(showAllSongs ? songs : songs.slice(0, 5)).map((song, index) => {
                 const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
                 
                 return (
@@ -763,6 +813,22 @@ export default function ArtistPage() {
                   </div>
                 );
               })}
+              {!showAllSongs && songs.length > 5 && (
+                <button
+                  onClick={() => setShowAllSongs(true)}
+                  className="mt-6 mx-auto bg-white/5 hover:bg-white/10 text-white font-bold py-2 px-6 rounded-full border border-white/10 transition-colors text-sm"
+                >
+                  Alle anzeigen
+                </button>
+              )}
+              {showAllSongs && songs.length > 5 && (
+                <button
+                  onClick={() => setShowAllSongs(false)}
+                  className="mt-6 mx-auto bg-white/5 hover:bg-white/10 text-white font-bold py-2 px-6 rounded-full border border-white/10 transition-colors text-sm"
+                >
+                  Weniger anzeigen
+                </button>
+              )}
             </div>
           ) : (
             <div className="text-white/50">
@@ -770,6 +836,69 @@ export default function ArtistPage() {
             </div>
           )}
         </div>
+        
+        {/* Diskografie Section */}
+        {releases.length > 0 && (
+          <div className="mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Diskografie</h2>
+            </div>
+            
+            <div className="flex items-center gap-3 mb-6">
+              <button 
+                onClick={() => setAlbumFilter('albums')}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${albumFilter === 'albums' ? 'bg-white text-black' : 'bg-[#282828] text-white hover:bg-[#333]'}`}
+              >
+                Alben
+              </button>
+              <button 
+                onClick={() => setAlbumFilter('singles')}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${albumFilter === 'singles' ? 'bg-white text-black' : 'bg-[#282828] text-white hover:bg-[#333]'}`}
+              >
+                Singles und EPs
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+               {releases
+                  .filter(a => albumFilter === 'albums' ? a.type === 'album' : (a.type === 'single' || a.type === 'ep'))
+                  .map(release => (
+                     <div 
+                       key={release.id} 
+                       onClick={() => {
+                         if (release.is_song) {
+                           const song = songs.find(s => s.id === release.id);
+                           if (song) {
+                             const queueWithNames = [{ ...song, creatorName: artistName }];
+                             setQueue(queueWithNames, 0);
+                             playSong(queueWithNames[0]);
+                           }
+                         } else {
+                           router.push(`/album/${release.id}`);
+                         }
+                       }}
+                       className="group flex flex-col gap-3 p-4 bg-[#181818] hover:bg-[#282828] transition-colors rounded-xl cursor-pointer"
+                     >
+                       <div className="relative aspect-square w-full rounded-md shadow-lg overflow-hidden bg-[#333]">
+                          <img src={release.cover_url} alt={release.title} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2">
+                             {release.is_song && (
+                               <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-105 transition-transform">
+                                 <Play className="w-5 h-5 fill-current ml-1" />
+                               </div>
+                             )}
+                          </div>
+                       </div>
+                       <div className="flex flex-col gap-1">
+                          <span className="text-white font-bold truncate">{release.title}</span>
+                          <span className="text-white/50 text-sm truncate">{new Date(release.created_at).getFullYear()} • {release.type === 'album' ? 'Album' : release.type === 'ep' ? 'EP' : 'Single'}</span>
+                       </div>
+                     </div>
+                  ))
+               }
+            </div>
+          </div>
+        )}
         
       </div>
     </div>

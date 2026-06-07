@@ -27,6 +27,21 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'eiqelhjugiwckvxyixyh.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+      // allow fallback to any external image if needed temporarily
+      {
+        protocol: 'https',
+        hostname: '**',
+      }
+    ],
+  },
 };
 
 export default nextConfig;

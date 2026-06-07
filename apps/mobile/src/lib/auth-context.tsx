@@ -1,6 +1,7 @@
 import type { AuthError, Session, User } from '@supabase/supabase-js';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import {
   createContext,
   useCallback,
@@ -211,26 +212,50 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     try {
-      const callbackUrl = new URL(result.url);
-      const code = callbackUrl.searchParams.get('code');
+      const urlToParse = result.url.includes('?') ? result.url.replace('#', '&') : result.url.replace('#', '?');
+      const parsedUrl = Linking.parse(urlToParse);
+      const params = parsedUrl.queryParams || {};
+      const code = params.code;
 
-      if (!code) {
-        const message = 'Google Login konnte nicht abgeschlossen werden.';
+      if (code && typeof code === 'string') {
+        const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          const message = normalizeAuthError(exchangeError);
+          setLastError(message);
+          return { ok: false, message };
+        }
+
+        setSession(sessionData.session ?? null);
+        setLastError(null);
+        await triggerWelcomeEmail(sessionData.session?.access_token);
+        return { ok: true };
+      } else if (params.access_token && params.refresh_token) {
+        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+          access_token: params.access_token as string,
+          refresh_token: params.refresh_token as string,
+        });
+        if (sessionError) {
+          const message = normalizeAuthError(sessionError);
+          setLastError(message);
+          return { ok: false, message };
+        }
+
+        setSession(sessionData.session ?? null);
+        setLastError(null);
+        await triggerWelcomeEmail(sessionData.session?.access_token);
+        return { ok: true };
+      } else {
+        const errorDesc = params.error_description || params.error;
+        if (errorDesc) {
+          const message = 'Supabase Fehler: ' + errorDesc;
+          setLastError(message);
+          return { ok: false, message };
+        }
+        
+        const message = 'Keine Login-Daten. URL: ' + result.url.substring(0, 100);
         setLastError(message);
         return { ok: false, message };
       }
-
-      const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      if (exchangeError) {
-        const message = normalizeAuthError(exchangeError);
-        setLastError(message);
-        return { ok: false, message };
-      }
-
-      setSession(sessionData.session ?? null);
-      setLastError(null);
-      await triggerWelcomeEmail(sessionData.session?.access_token);
-      return { ok: true };
     } catch (oauthError) {
       const message = normalizeAuthError(oauthError);
       setLastError(message);

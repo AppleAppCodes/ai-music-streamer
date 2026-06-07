@@ -44,17 +44,23 @@ export default function UploadPage() {
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const getUser = async () => {
+    const getUserAndCheckTier = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/login');
-      } else if (!isAdminUser(session.user)) {
-        router.push('/');
-      } else {
-        setUser(session.user);
+        return;
       }
+      
+      const adminCheck = isAdminUser(session.user);
+      
+      if (!adminCheck) {
+        router.push('/');
+        return;
+      }
+      
+      setUser(session.user);
     };
-    getUser();
+    getUserAndCheckTier();
   }, [router, supabase]);
 
   const handleAudioFileChange = (file: File | null) => {

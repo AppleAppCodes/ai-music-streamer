@@ -1,13 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CalendarDays, ChevronRight, Flame, Mic2, Pause, Play, TrendingUp } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ChevronRight, Flame, Mic2, Pause, Play, TrendingUp, Edit2, Loader2, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
 import { usePlayer } from '@/lib/player-context';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
+import { isAdminUser, isModUser } from '@/lib/admin';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { getErrorMessage } from '@/lib/errors';
 
 interface DailyPlay {
   song_id: string;
@@ -155,7 +158,7 @@ function ArtistChartPanel({ rankedArtists }: { rankedArtists: ArtistChartItem[] 
         </div>
         <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">Artist Charts</h2>
         <p className="mt-1 text-xs text-white/50 sm:text-sm">
-          Die Künstler mit den stärksten Gesamt-Streams auf YORIAX.
+          Die aktuell angesagtesten Künstler der Community.
         </p>
       </div>
 
@@ -201,22 +204,53 @@ export default function ViralChartsPage() {
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   const [songs, setSongs] = useState<Song[]>([]);
   const [dailyPlays, setDailyPlays] = useState<DailyPlay[]>([]);
+  const [weeklyPlays, setWeeklyPlays] = useState<DailyPlay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
+  const isAdmin = isModUser(user);
 
   useEffect(() => {
     const fetchCharts = async () => {
       setLoading(true);
       const todayUtc = new Date().toISOString().slice(0, 10);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgoUtc = sevenDaysAgo.toISOString().slice(0, 10);
 
-      const [{ data: songsData }, { data: dailyData, error: dailyError }] = await Promise.all([
+      const [
+        { data: songsData }, 
+        { data: dailyData, error: dailyError }, 
+        { data: weeklyData, error: weeklyError },
+        { data: authData }
+      ] = await Promise.all([
         supabase.from('songs').select('*'),
         supabase.from('song_daily_plays').select('song_id, plays').eq('play_date', todayUtc),
+        supabase.from('song_daily_plays').select('song_id, plays').gte('play_date', sevenDaysAgoUtc),
+        supabase.auth.getSession(),
       ]);
+
+      setUser(authData.session?.user || null);
+
+      // Fetch background video
+      const { data: files } = await supabase.storage.from('covers').list('charts');
+      if (files && files.length > 0) {
+        const videoFile = files.find(f => f.name.startsWith('background-video'));
+        if (videoFile) {
+          const { data: urlData } = supabase.storage.from('covers').getPublicUrl(`charts/${videoFile.name}`);
+          const cacheKey = new Date(videoFile.updated_at || videoFile.created_at || 0).getTime();
+          setVideoUrl(`${urlData.publicUrl}?t=${cacheKey}`);
+        }
+      }
 
       if (songsData) setSongs(songsData as Song[]);
       if (dailyData) setDailyPlays(dailyData as DailyPlay[]);
+      if (weeklyData) setWeeklyPlays(weeklyData as DailyPlay[]);
       if (dailyError) console.error('Failed to load daily charts:', dailyError);
+      if (weeklyError) console.error('Failed to load weekly charts:', weeklyError);
       setLoading(false);
     };
 
@@ -228,11 +262,22 @@ export default function ViralChartsPage() {
     [dailyPlays],
   );
 
+  const weeklyPlayMap = useMemo(() => {
+    const map = new Map<string, number>();
+    weeklyPlays.forEach(({ song_id, plays }) => {
+      map.set(song_id, (map.get(song_id) || 0) + plays);
+    });
+    return map;
+  }, [weeklyPlays]);
+
   const viralSongs = useMemo<Song[]>(
     () => [...songs]
-      .sort((a, b) => b.plays - a.plays)
+      .sort((a, b) => {
+        const playDifference = (weeklyPlayMap.get(b.id) || 0) - (weeklyPlayMap.get(a.id) || 0);
+        return playDifference || b.plays - a.plays;
+      })
       .slice(0, 20),
-    [songs],
+    [weeklyPlayMap, songs],
   );
 
   const dailySongs = useMemo<Song[]>(
@@ -311,6 +356,46 @@ export default function ViralChartsPage() {
     playSong(queue[index]);
   };
 
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingVideo(true);
+    const ext = file.name.split('.').pop();
+    const path = `charts/background-video.${ext}`;
+
+    try {
+      const { error } = await supabase.storage.from('covers').upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from('covers').getPublicUrl(path);
+      setVideoUrl(`${data.publicUrl}?t=${Date.now()}`);
+    } catch (err: unknown) {
+      console.error('Error uploading video:', err);
+      alert('Fehler beim Hochladen des Videos: ' + getErrorMessage(err));
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
+
+  const handleRemoveVideo = async () => {
+    if (!isAdmin || !videoUrl) return;
+    setIsUploadingVideo(true);
+    try {
+      const { data: files } = await supabase.storage.from('covers').list('charts');
+      const videoFile = files?.find(f => f.name.startsWith('background-video'));
+      if (videoFile) {
+        await supabase.storage.from('covers').remove([`charts/${videoFile.name}`]);
+      }
+      setVideoUrl(null);
+    } catch (err: unknown) {
+      console.error('Error removing video:', err);
+      alert('Fehler beim Entfernen des Videos: ' + getErrorMessage(err));
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen flex-1 items-center justify-center bg-[#0A0A0A]">
@@ -321,7 +406,70 @@ export default function ViralChartsPage() {
 
   return (
     <div className="relative flex-1 overflow-y-auto bg-[#080808] px-4 pb-32 pt-16 sm:px-6 md:px-10 md:pt-20">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-gradient-to-br from-orange-500/10 via-violet-500/5 to-transparent" />
+      {/* Background Gradient Header or Video */}
+      <div className="absolute top-0 left-0 right-0 h-[500px] overflow-hidden pointer-events-none z-0">
+        {videoUrl ? (
+          <video 
+            src={videoUrl} 
+            autoPlay 
+            loop 
+            muted 
+            playsInline
+            controlsList="nodownload"
+            onContextMenu={(e) => e.preventDefault()}
+            className="w-full h-full object-cover opacity-40"
+            style={{ 
+              maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
+            }}
+          />
+        ) : (
+          <div className="absolute inset-x-0 top-0 h-80 bg-gradient-to-br from-orange-500/10 via-violet-500/5 to-transparent" />
+        )}
+      </div>
+
+      {/* Admin Editable Overlay */}
+      {isAdmin && (
+        <div className="group absolute top-6 right-6 md:top-10 md:right-10 z-30">
+          {/* A small invisible trigger area to hover over, so the buttons don't block everything unless hovered */}
+          <div className="absolute -inset-4 z-10" />
+          <div className="relative z-20 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+            <input 
+              type="file" 
+              accept="video/*" 
+              ref={fileInputRef} 
+              className="hidden" 
+              onChange={handleVideoUpload}
+            />
+            {videoUrl && (
+              <button 
+                onClick={handleRemoveVideo}
+                disabled={isUploadingVideo}
+                className="flex items-center gap-2 bg-red-500/80 hover:bg-red-500 backdrop-blur-md text-white px-4 py-2 rounded-full border border-red-400/50 transition-all text-sm font-medium"
+              >
+                {isUploadingVideo ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                Video entfernen
+              </button>
+            )}
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingVideo}
+              className="flex items-center gap-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium"
+            >
+              {isUploadingVideo ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Edit2 className="w-4 h-4" />
+              )}
+              {videoUrl ? 'Video ändern' : 'Hintergrundvideo setzen'}
+            </button>
+          </div>
+        </div>
+      )}
       <button
         type="button"
         onClick={() => router.back()}
@@ -346,7 +494,7 @@ export default function ViralChartsPage() {
           <ChartPanel
             title="Viral Charts"
             eyebrow="Top 20"
-            description="Die meistgestreamten Songs auf YORIAX."
+            description="Die meistgestreamten Songs der letzten Woche."
             accent="orange"
             icon={<Flame className="h-4 w-4" />}
             rankedSongs={viralSongs}
@@ -358,7 +506,7 @@ export default function ViralChartsPage() {
           <ChartPanel
             title="Daily Charts"
             eyebrow="Top 50"
-            description="Die meistgehörten Songs des heutigen Tages."
+            description="Die meistgestreamten Songs des letzten Tages."
             accent="violet"
             icon={<CalendarDays className="h-4 w-4" />}
             rankedSongs={dailySongs}
