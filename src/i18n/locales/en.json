@@ -55,6 +55,116 @@
     "successText": "Your song is now live. Redirecting..."
   },
   "player": {
-    "creatorFallback": "Artist"
+    "creatorFallback": "Artist",
+    "pause": "Pause {{title}}",
+    "play": "Play {{title}}"
+  },
+  "guestHome": {
+    "eyebrow": "Discover Yoriax",
+    "title": "Discover music you won't find anywhere else.",
+    "description": "Browse new releases, trending songs, and artists. With a free account, you can start listening immediately and create playlists.",
+    "trendingSongs": "Trending Songs",
+    "unknownArtist": "Unknown",
+    "noSongs": "No songs available yet.",
+    "trendingArtists": "Trending Artists",
+    "artistLabel": "Artist",
+    "noArtists": "No artists available yet.",
+    "ctaTitle": "Your music starts with an account.",
+    "ctaDescription": "Sign up for free, listen to full songs, and save your favorites in custom playlists."
+  },
+  "charts": {
+    "pageTitle": "Charts",
+    "pageSubtitle": "Discover which tracks are going viral, which songs are trending today, and which artists are leading the pack.",
+    "rankingsEyebrow": "Yoriax Rankings",
+    "back": "Back",
+    "emptySongs": "No songs available for these charts yet.",
+    "viral": {
+      "title": "Viral Charts",
+      "eyebrow": "New & Trending",
+      "description": "The most popular songs of the last week.",
+      "addSong": "Add Song to Charts"
+    },
+    "daily": {
+      "title": "Daily Charts",
+      "eyebrow": "Top 50",
+      "description": "The most streamed songs of the past day."
+    },
+    "artist": {
+      "title": "Artist Charts",
+      "eyebrow": "Top 20",
+      "description": "The currently most popular artists in the community.",
+      "song": "Song",
+      "songs": "Songs",
+      "empty": "No artists available for these charts yet."
+    },
+    "admin": {
+      "removeVideo": "Remove Video",
+      "changeVideo": "Change Video",
+      "setVideo": "Set Background Video",
+      "videoUploadError": "Error uploading video: ",
+      "videoRemoveError": "Error removing video: ",
+      "modal": {
+        "eyebrow": "Edit Viral Charts",
+        "title": "Search for New Song",
+        "searchPlaceholder": "Enter song or artist...",
+        "addButton": "Add",
+        "noResults": "No matching songs found.",
+        "typeToSearch": "Type above to search catalog."
+      }
+    }
+  },
+  "feed": {
+    "editHook": "Edit {{title}} Feed Hook",
+    "unfollow": "Unfollow {{artist}}",
+    "follow": "Follow {{artist}}",
+    "unlike": "Unlike {{title}}",
+    "like": "Like {{title}}",
+    "shareIcon": "Share",
+    "shareAria": "Share {{title}}",
+    "shareText": "{{title}} on YORIAX",
+    "unmute": "Unmute",
+    "mute": "Mute",
+    "yoriaxHook": "Yoriax Hook",
+    "listenFull": "Listen to full song",
+    "defaultDescription": "Discover {{genre}} on YORIAX.",
+    "errors": {
+      "like": "Could not save like.",
+      "follow": "Failed to follow.",
+      "hookEnd": "Hook end must be after hook start.",
+      "songLength": "The song is only {{duration}} seconds long."
+    },
+    "modes": {
+      "forYou": "For You",
+      "following": "Following",
+      "explore": "Explore"
+    },
+    "empty": {
+      "followingTitle": "No followed artists yet",
+      "songsTitle": "No songs available yet",
+      "followingDesc": "Follow artists via the plus icon in the feed. Their hooks will appear here.",
+      "songsDesc": "Once songs are published, their hooks will appear here automatically.",
+      "discoverButton": "Discover artists"
+    },
+    "nav": {
+      "prev": "Previous Hook",
+      "next": "Next Hook"
+    },
+    "admin": {
+      "eyebrow": "Edit For-You Hook",
+      "close": "Close Editor",
+      "startSec": "Start in Seconds",
+      "endSec": "End in Seconds",
+      "optVideoTitle": "Optional 9:16 Video",
+      "optVideoDesc": "Plays as a loop in the feed.",
+      "chooseVideo": "Choose Video",
+      "videoSet": "Video set",
+      "remove": "Remove",
+      "optCoverTitle": "Special 9:16 Cover",
+      "optCoverDesc": "Fallback image when no video is set.",
+      "chooseCover": "Choose Cover",
+      "coverSet": "Special cover set",
+      "saveHook": "Save Hook"
+    },
+    "currentHook": "Current Hook: {{title}}"
   }
 }

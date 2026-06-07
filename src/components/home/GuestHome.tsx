@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Mic2, Music2, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Song } from '@/lib/types';
 
 type GuestSong = Pick<Song, 'id' | 'title' | 'artist_name' | 'cover_url' | 'plays'>;
@@ -13,6 +14,8 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export default function GuestHome({ songs }: { songs: GuestSong[] }) {
+  const { t } = useTranslation();
+  
   const artists = Array.from(
     songs.reduce((map, song) => {
       const name = song.artist_name?.trim();
@@ -38,20 +41,20 @@ export default function GuestHome({ songs }: { songs: GuestSong[] }) {
         <div className="relative max-w-3xl">
           <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.28em] text-cyan-300/80">
             <Sparkles className="h-4 w-4" />
-            Yoriax entdecken
+            {t('guestHome.eyebrow')}
           </p>
           <h1 className="text-4xl font-black tracking-tight text-white sm:text-6xl">
-            Entdecke Musik, die es nur hier gibt.
+            {t('guestHome.title')}
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-white/58 sm:text-base">
-            Durchsuche neue Releases, angesagte Songs und Künstler*innen. Mit einem kostenlosen Konto kannst du direkt loshören und Playlists erstellen.
+            {t('guestHome.description')}
           </p>
         </div>
       </section>
 
       <div className="space-y-14 px-5 sm:px-8 md:px-10">
         <section>
-          <SectionTitle>Angesagte Songs</SectionTitle>
+          <SectionTitle>{t('guestHome.trendingSongs')}</SectionTitle>
           {songs.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
               {songs.slice(0, 12).map((song) => (
@@ -64,17 +67,17 @@ export default function GuestHome({ songs }: { songs: GuestSong[] }) {
                     <img src={song.cover_url} alt={song.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   </div>
                   <h3 className="mt-3 truncate text-sm font-bold text-white">{song.title}</h3>
-                  <p className="mt-1 truncate text-xs text-white/48">{song.artist_name || 'Unbekannt'}</p>
+                  <p className="mt-1 truncate text-xs text-white/48">{song.artist_name || t('guestHome.unknownArtist')}</p>
                 </Link>
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-8 text-sm text-white/50">Noch keine Songs verfügbar.</div>
+            <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-8 text-sm text-white/50">{t('guestHome.noSongs')}</div>
           )}
         </section>
 
         <section>
-          <SectionTitle>Angesagte Künstler*innen</SectionTitle>
+          <SectionTitle>{t('guestHome.trendingArtists')}</SectionTitle>
           {artists.length > 0 ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
               {artists.map((artist) => (
@@ -93,20 +96,20 @@ export default function GuestHome({ songs }: { songs: GuestSong[] }) {
                     )}
                   </div>
                   <h3 className="mt-3 truncate text-sm font-bold text-white">{artist.name}</h3>
-                  <p className="mt-1 text-xs text-white/45">Künstler*in</p>
+                  <p className="mt-1 text-xs text-white/45">{t('guestHome.artistLabel')}</p>
                 </Link>
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-8 text-sm text-white/50">Noch keine Künstler*innen verfügbar.</div>
+            <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-8 text-sm text-white/50">{t('guestHome.noArtists')}</div>
           )}
         </section>
 
         <section className="rounded-3xl border border-white/8 bg-gradient-to-br from-white/[0.075] to-white/[0.025] p-6 sm:p-8">
           <Music2 className="h-7 w-7 text-violet-300" />
-          <h2 className="mt-4 text-2xl font-black text-white">Deine Musik beginnt mit einem Konto.</h2>
+          <h2 className="mt-4 text-2xl font-black text-white">{t('guestHome.ctaTitle')}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
-            Registriere dich kostenlos, höre Songs vollständig und speichere deine Favoriten in eigenen Playlists.
+            {t('guestHome.ctaDescription')}
           </p>
         </section>
       </div>

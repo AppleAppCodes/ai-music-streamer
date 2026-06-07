@@ -516,7 +516,7 @@ export default function AuthenticatedHome() {
                       onClick={(event) => handleQuickAccessPlay(event, item.title)}
                       disabled={quickPlayLoading === item.title}
                       className={`flex w-10 h-10 rounded-full ${item.color || 'bg-primary'} items-center justify-center text-white shadow-xl transition-transform hover:scale-105 disabled:cursor-wait disabled:opacity-70`}
-                      aria-label={isQuickAccessPlaying ? `${item.title} pausieren` : `${item.title} abspielen`}
+                      aria-label={isQuickAccessPlaying ? t('player.pause', { title: item.title }) : t('player.play', { title: item.title })}
                     >
                       {isQuickAccessPlaying ? (
                         <Pause className="w-5 h-5 fill-current" />

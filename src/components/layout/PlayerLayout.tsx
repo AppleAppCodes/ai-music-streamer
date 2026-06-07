@@ -17,8 +17,16 @@ export default function PlayerLayout({ children, isAuthenticated }: PlayerLayout
     if (!hasPreferenceStorageConsent()) return;
 
     const savedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    if (savedLanguage && savedLanguage !== i18n.language) {
-      i18n.changeLanguage(savedLanguage);
+    if (savedLanguage) {
+      if (savedLanguage !== i18n.language) {
+        i18n.changeLanguage(savedLanguage);
+      }
+    } else {
+      const browserLang = window.navigator.language || '';
+      const autoLang = browserLang.toLowerCase().startsWith('de') ? 'de' : 'en';
+      if (autoLang !== i18n.language) {
+        i18n.changeLanguage(autoLang);
+      }
     }
   }, []);
 

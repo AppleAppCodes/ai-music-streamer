@@ -55,6 +55,116 @@
     "successText": "Dein Song ist jetzt live. Du wirst weitergeleitet..."
   },
   "player": {
-    "creatorFallback": "Künstler"
+    "creatorFallback": "Künstler",
+    "pause": "{{title}} pausieren",
+    "play": "{{title}} abspielen"
+  },
+  "guestHome": {
+    "eyebrow": "Yoriax entdecken",
+    "title": "Entdecke Musik, die es nur hier gibt.",
+    "description": "Durchsuche neue Releases, angesagte Songs und Künstler*innen. Mit einem kostenlosen Konto kannst du direkt loshören und Playlists erstellen.",
+    "trendingSongs": "Angesagte Songs",
+    "unknownArtist": "Unbekannt",
+    "noSongs": "Noch keine Songs verfügbar.",
+    "trendingArtists": "Angesagte Künstler*innen",
+    "artistLabel": "Künstler*in",
+    "noArtists": "Noch keine Künstler*innen verfügbar.",
+    "ctaTitle": "Deine Musik beginnt mit einem Konto.",
+    "ctaDescription": "Registriere dich kostenlos, höre Songs vollständig und speichere deine Favoriten in eigenen Playlists."
+  },
+  "charts": {
+    "pageTitle": "Charts",
+    "pageSubtitle": "Entdecke, welche Tracks langfristig viral gehen, welche Songs heute besonders oft gehört werden und welche Artists gerade vorne liegen.",
+    "rankingsEyebrow": "Yoriax Rankings",
+    "back": "Zurück",
+    "emptySongs": "Für diese Charts sind noch keine Songs vorhanden.",
+    "viral": {
+      "title": "Viral Charts",
+      "eyebrow": "Neu & Angesagt",
+      "description": "Die beliebtesten Songs der letzten Woche.",
+      "addSong": "Song zu Charts hinzufügen"
+    },
+    "daily": {
+      "title": "Daily Charts",
+      "eyebrow": "Top 50",
+      "description": "Die meistgestreamten Songs des letzten Tages."
+    },
+    "artist": {
+      "title": "Artist Charts",
+      "eyebrow": "Top 20",
+      "description": "Die aktuell angesagtesten Künstler der Community.",
+      "song": "Song",
+      "songs": "Songs",
+      "empty": "Für diese Charts sind noch keine Künstler vorhanden."
+    },
+    "admin": {
+      "removeVideo": "Video entfernen",
+      "changeVideo": "Video ändern",
+      "setVideo": "Hintergrundvideo setzen",
+      "videoUploadError": "Fehler beim Hochladen des Videos: ",
+      "videoRemoveError": "Fehler beim Entfernen des Videos: ",
+      "modal": {
+        "eyebrow": "Viral Charts bearbeiten",
+        "title": "Neuen Song suchen",
+        "searchPlaceholder": "Song oder Artist eingeben...",
+        "addButton": "Hinzufügen",
+        "noResults": "Keine passenden Songs gefunden.",
+        "typeToSearch": "Tippe oben, um Katalog zu durchsuchen."
+      }
+    }
+  },
+  "feed": {
+    "editHook": "{{title}} Feed-Hook bearbeiten",
+    "unfollow": "{{artist}} nicht mehr folgen",
+    "follow": "{{artist}} folgen",
+    "unlike": "{{title}} nicht mehr liken",
+    "like": "{{title}} liken",
+    "shareIcon": "Teilen",
+    "shareAria": "{{title}} teilen",
+    "shareText": "{{title}} auf YORIAX",
+    "unmute": "Ton einschalten",
+    "mute": "Ton ausschalten",
+    "yoriaxHook": "Yoriax Hook",
+    "listenFull": "Ganzen Song hören",
+    "defaultDescription": "{{genre}} auf YORIAX entdecken.",
+    "errors": {
+      "like": "Like konnte nicht gespeichert werden.",
+      "follow": "Folgen ist fehlgeschlagen.",
+      "hookEnd": "Das Hook-Ende muss nach dem Start liegen.",
+      "songLength": "Der Song ist nur {{duration}} Sekunden lang."
+    },
+    "modes": {
+      "forYou": "Für dich",
+      "following": "Gefolgt",
+      "explore": "Entdecken"
+    },
+    "empty": {
+      "followingTitle": "Noch keine gefolgten Künstler",
+      "songsTitle": "Noch keine Songs verfügbar",
+      "followingDesc": "Folge Künstlern über das Plus im Feed. Ihre Hooks erscheinen anschließend hier.",
+      "songsDesc": "Sobald Songs veröffentlicht wurden, erscheinen ihre Hooks hier automatisch.",
+      "discoverButton": "Künstler entdecken"
+    },
+    "nav": {
+      "prev": "Vorheriger Hook",
+      "next": "Nächster Hook"
+    },
+    "admin": {
+      "eyebrow": "Für-dich-Hook bearbeiten",
+      "close": "Editor schließen",
+      "startSec": "Start in Sekunden",
+      "endSec": "Ende in Sekunden",
+      "optVideoTitle": "Optionales 9:16-Video",
+      "optVideoDesc": "Spielt als Loop im Feed ab.",
+      "chooseVideo": "Video wählen",
+      "videoSet": "Video hinterlegt",
+      "remove": "Entfernen",
+      "optCoverTitle": "Spezielles 9:16-Cover",
+      "optCoverDesc": "Fallback-Bild, wenn kein Video hinterlegt ist.",
+      "chooseCover": "Cover wählen",
+      "coverSet": "Spezial-Cover hinterlegt",
+      "saveHook": "Hook speichern"
+    },
+    "currentHook": "Aktueller Hook: {{title}}"
   }
 }

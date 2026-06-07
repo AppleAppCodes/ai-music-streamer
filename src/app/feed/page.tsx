@@ -30,6 +30,7 @@ import { isAdminUser } from '@/lib/admin';
 import { getErrorMessage } from '@/lib/errors';
 import { emitLikedSongChange } from '@/lib/liked-song-events';
 import { setNowPlayingMetadata } from '@/lib/media-session';
+import { useTranslation } from 'react-i18next';
 
 interface FeedClip {
   song_id: string;
@@ -155,6 +156,7 @@ function FeedCard({
   onToggleMute,
   onUserInteraction,
 }: FeedCardProps) {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const lastTapRef = useRef(0);
@@ -373,14 +375,14 @@ function FeedCard({
             type="button"
             onClick={onEdit}
             className="absolute left-4 top-20 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white backdrop-blur-md transition-colors hover:bg-black/70"
-            aria-label={`${song.title} Feed-Hook bearbeiten`}
+            aria-label={t('feed.editHook', { title: song.title })}
           >
             <Settings2 className="h-5 w-5" />
           </button>
         ) : null}
 
         <div className="absolute bottom-[calc(9.5rem+env(safe-area-inset-bottom))] right-3 z-20 flex flex-col items-center gap-4 text-white md:bottom-28" onPointerDown={(event) => event.stopPropagation()}>
-          <button type="button" onClick={onFollow} className="group relative" aria-label={following ? `${displayArtist} nicht mehr folgen` : `${displayArtist} folgen`}>
+          <button type="button" onClick={onFollow} className="group relative" aria-label={following ? t('feed.unfollow', { artist: displayArtist }) : t('feed.follow', { artist: displayArtist })}>
             <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-violet-950 text-sm font-black shadow-lg">
               {avatarUrl ? <img src={avatarUrl} alt={displayArtist} className="h-full w-full object-cover" /> : displayArtist.slice(0, 1).toUpperCase()}
             </span>
@@ -389,17 +391,17 @@ function FeedCard({
             </span>
           </button>
 
-          <button type="button" onClick={() => onLike()} className="flex flex-col items-center gap-1" aria-label={liked ? `${song.title} nicht mehr liken` : `${song.title} liken`}>
+          <button type="button" onClick={() => onLike()} className="flex flex-col items-center gap-1" aria-label={liked ? t('feed.unlike', { title: song.title }) : t('feed.like', { title: song.title })}>
             <Heart className={`h-8 w-8 drop-shadow-lg transition-transform active:scale-75 ${liked ? 'fill-rose-500 text-rose-500' : 'fill-black/20 text-white'}`} strokeWidth={2.3} />
             <span className="text-[11px] font-bold">{formatCount(song.stats.likes_count)}</span>
           </button>
 
-          <button type="button" onClick={onShare} className="flex flex-col items-center gap-1" aria-label={`${song.title} teilen`}>
+          <button type="button" onClick={onShare} className="flex flex-col items-center gap-1" aria-label={t('feed.shareAria', { title: song.title })}>
             <Share2 className="h-8 w-8 fill-black/20 text-white drop-shadow-lg" strokeWidth={2.3} />
-            <span className="text-[11px] font-bold">Teilen</span>
+            <span className="text-[11px] font-bold">{t('feed.shareIcon')}</span>
           </button>
 
-          <button type="button" onClick={toggleMute} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md" aria-label={muted ? 'Ton einschalten' : 'Ton ausschalten'}>
+          <button type="button" onClick={toggleMute} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md" aria-label={muted ? t('feed.unmute') : t('feed.mute')}>
             {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
           </button>
         </div>
@@ -407,14 +409,14 @@ function FeedCard({
         <div className="absolute inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-10 p-5 pr-20 md:bottom-0" onPointerDown={(event) => event.stopPropagation()}>
           <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-violet-300">
             <Music2 className="h-4 w-4" />
-            Yoriax Hook
+            {t('feed.yoriaxHook')}
           </div>
           <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-sm font-bold text-white/80 transition-colors hover:text-white hover:underline">
             @{displayArtist}
           </Link>
           <h1 className="mt-1 truncate text-3xl font-black tracking-tight text-white">{song.title}</h1>
           <p className="mt-2 line-clamp-2 text-sm leading-5 text-white/70">
-            {song.description || `${song.genre || 'AI Music'} auf YORIAX entdecken.`}
+            {song.description || t('feed.defaultDescription', { genre: song.genre || 'AI Music' })}
           </p>
           <button
             type="button"
@@ -422,7 +424,7 @@ function FeedCard({
             className="mt-4 flex w-fit items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-black shadow-[0_0_30px_rgba(255,255,255,0.25)] transition-transform hover:scale-[1.02] sm:px-6 sm:py-3.5 sm:text-base"
           >
             <Play className="h-4 w-4 fill-current" />
-            Ganzen Song hören
+            {t('feed.listenFull')}
           </button>
         </div>
       </div>
@@ -431,6 +433,7 @@ function FeedCard({
 }
 
 export default function FeedPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { pausePlayback, playSong, setQueue } = usePlayer();
   const [songs, setSongs] = useState<FeedSong[]>([]);
@@ -687,7 +690,7 @@ export default function FeedPage() {
     }
 
     if (error) {
-      setActionError('Like konnte nicht gespeichert werden.');
+      setActionError(t('feed.errors.like'));
       emitLikedSongChange(song.id, currentlyLiked);
       setLikedSongIds((currentIds) => {
         const nextIds = new Set(currentIds);
@@ -716,7 +719,7 @@ export default function FeedPage() {
       : await supabase.from('follows').insert({ user_id: userId, artist_name: artist });
 
     if (error) {
-      setActionError('Folgen ist fehlgeschlagen.');
+      setActionError(t('feed.errors.follow'));
       setFollowedArtists((currentArtists) => {
         const nextArtists = new Set(currentArtists);
         if (currentlyFollowing) nextArtists.add(artist);
@@ -740,7 +743,7 @@ export default function FeedPage() {
     const url = `${window.location.origin}/song/${song.id}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: song.title, text: `${song.title} auf YORIAX`, url });
+        await navigator.share({ title: song.title, text: t('feed.shareText', { title: song.title }), url });
       } else {
         await navigator.clipboard.writeText(url);
       }
@@ -785,11 +788,11 @@ export default function FeedPage() {
       : Math.max(Number(hookEnd) || 0, normalizedStart + 1);
 
     if (normalizedEnd <= normalizedStart) {
-      setSaveError('Das Hook-Ende muss nach dem Start liegen.');
+      setSaveError(t('feed.errors.hookEnd'));
       return;
     }
     if (durationLimit && normalizedEnd > durationLimit) {
-      setSaveError(`Der Song ist nur ${editingSong.duration} Sekunden lang.`);
+      setSaveError(t('feed.errors.songLength', { duration: editingSong.duration }));
       return;
     }
 
@@ -839,9 +842,9 @@ export default function FeedPage() {
   };
 
   const modeOptions: Array<{ id: FeedMode; label: string; icon: typeof Sparkles }> = [
-    { id: 'for-you', label: 'Für dich', icon: Sparkles },
-    { id: 'following', label: 'Gefolgt', icon: Users },
-    { id: 'explore', label: 'Entdecken', icon: Compass },
+    { id: 'for-you', label: t('feed.modes.forYou'), icon: Sparkles },
+    { id: 'following', label: t('feed.modes.following'), icon: Users },
+    { id: 'explore', label: t('feed.modes.explore'), icon: Compass },
   ];
 
   const activeSong = displayedSongs[activeIndex];
@@ -911,11 +914,11 @@ export default function FeedPage() {
       ) : displayedSongs.length === 0 ? (
         <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
           <Users className="h-12 w-12 text-white/25" />
-          <h1 className="text-2xl font-black text-white">{mode === 'following' ? 'Noch keine gefolgten Künstler' : 'Noch keine Songs verfügbar'}</h1>
-          <p className="max-w-sm text-sm text-white/50">{mode === 'following' ? 'Folge Künstlern über das Plus im Feed. Ihre Hooks erscheinen anschließend hier.' : 'Sobald Songs veröffentlicht wurden, erscheinen ihre Hooks hier automatisch.'}</p>
+          <h1 className="text-2xl font-black text-white">{mode === 'following' ? t('feed.empty.followingTitle') : t('feed.empty.songsTitle')}</h1>
+          <p className="max-w-sm text-sm text-white/50">{mode === 'following' ? t('feed.empty.followingDesc') : t('feed.empty.songsDesc')}</p>
           {mode === 'following' ? (
             <button type="button" onClick={() => changeMode('explore')} className="mt-2 rounded-full bg-white px-5 py-3 text-sm font-black text-black">
-              Künstler entdecken
+              {t('feed.empty.discoverButton')}
             </button>
           ) : null}
         </div>
@@ -960,10 +963,10 @@ export default function FeedPage() {
           </div>
 
           <div className="absolute left-4 top-1/2 z-30 flex -translate-y-1/2 flex-col gap-3 md:left-auto md:right-5">
-            <button type="button" onClick={() => scrollToIndex(activeIndex - 1)} disabled={activeIndex === 0} className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 disabled:opacity-25" aria-label="Vorheriger Hook">
+            <button type="button" onClick={() => scrollToIndex(activeIndex - 1)} disabled={activeIndex === 0} className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 disabled:opacity-25" aria-label={t('feed.nav.prev')}>
               <ChevronUp className="h-6 w-6" />
             </button>
-            <button type="button" onClick={() => scrollToIndex(activeIndex + 1)} disabled={activeIndex === displayedSongs.length - 1} className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 disabled:opacity-25" aria-label="Nächster Hook">
+            <button type="button" onClick={() => scrollToIndex(activeIndex + 1)} disabled={activeIndex === displayedSongs.length - 1} className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 disabled:opacity-25" aria-label={t('feed.nav.next')}>
               <ChevronDown className="h-6 w-6" />
             </button>
           </div>
@@ -981,21 +984,21 @@ export default function FeedPage() {
           <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#181818] p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-400">Für-dich-Hook bearbeiten</p>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-400">{t('feed.admin.eyebrow')}</p>
                 <h2 className="mt-1 text-2xl font-black text-white">{editingSong.title}</h2>
               </div>
-              <button type="button" onClick={() => setEditingSong(null)} className="text-white/45 transition-colors hover:text-white" aria-label="Editor schließen">
+              <button type="button" onClick={() => setEditingSong(null)} className="text-white/45 transition-colors hover:text-white" aria-label={t('feed.admin.close')}>
                 <X className="h-6 w-6" />
               </button>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <label className="text-xs font-bold uppercase tracking-wider text-white/55">
-                Start in Sekunden
+                {t('feed.admin.startSec')}
                 <input type="number" min="0" max={editingSong.duration || undefined} value={hookStart} onChange={(event) => setHookStart(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-base text-white outline-none focus:border-violet-400/70" />
               </label>
               <label className="text-xs font-bold uppercase tracking-wider text-white/55">
-                Ende in Sekunden
+                {t('feed.admin.endSec')}
                 <input type="number" min="1" max={editingSong.duration || undefined} value={hookEnd} onChange={(event) => setHookEnd(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-base text-white outline-none focus:border-violet-400/70" />
               </label>
             </div>
@@ -1004,21 +1007,21 @@ export default function FeedPage() {
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-bold text-white">Optionales 9:16-Video</p>
-                    <p className="mt-1 text-xs text-white/45">Spielt als Loop im Feed ab.</p>
+                    <p className="text-sm font-bold text-white">{t('feed.admin.optVideoTitle')}</p>
+                    <p className="mt-1 text-xs text-white/45">{t('feed.admin.optVideoDesc')}</p>
                   </div>
                   <label className="flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-black transition-transform hover:scale-105">
                     <Upload className="h-4 w-4" />
-                    Video wählen
+                    {t('feed.admin.chooseVideo')}
                     <input type="file" accept="video/*" className="hidden" onChange={(event) => setVideoFile(event.target.files?.[0] || null)} />
                   </label>
                 </div>
                 {videoFile ? <p className="truncate text-xs text-violet-300">{videoFile.name}</p> : null}
                 {videoUrl && !videoFile ? (
                   <div className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2">
-                    <span className="truncate text-xs text-white/55">Video hinterlegt</span>
+                    <span className="truncate text-xs text-white/55">{t('feed.admin.videoSet')}</span>
                     <button type="button" onClick={() => setVideoUrl(null)} className="text-xs font-bold text-red-300 transition-colors hover:text-red-200">
-                      Entfernen
+                      {t('feed.admin.remove')}
                     </button>
                   </div>
                 ) : null}
@@ -1027,21 +1030,21 @@ export default function FeedPage() {
 
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-bold text-white">Spezielles 9:16-Cover</p>
-                    <p className="mt-1 text-xs text-white/45">Fallback-Bild, wenn kein Video hinterlegt ist.</p>
+                    <p className="text-sm font-bold text-white">{t('feed.admin.optCoverTitle')}</p>
+                    <p className="mt-1 text-xs text-white/45">{t('feed.admin.optCoverDesc')}</p>
                   </div>
                   <label className="flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-black transition-transform hover:scale-105">
                     <Upload className="h-4 w-4" />
-                    Cover wählen
+                    {t('feed.admin.chooseCover')}
                     <input type="file" accept="image/*" className="hidden" onChange={(event) => setCoverFile(event.target.files?.[0] || null)} />
                   </label>
                 </div>
                 {coverFile ? <p className="truncate text-xs text-violet-300">{coverFile.name}</p> : null}
                 {coverUrl && !coverFile ? (
                   <div className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2">
-                    <span className="truncate text-xs text-white/55">Spezial-Cover hinterlegt</span>
+                    <span className="truncate text-xs text-white/55">{t('feed.admin.coverSet')}</span>
                     <button type="button" onClick={() => setCoverUrl(null)} className="text-xs font-bold text-red-300 transition-colors hover:text-red-200">
-                      Entfernen
+                      {t('feed.admin.remove')}
                     </button>
                   </div>
                 ) : null}
@@ -1052,13 +1055,13 @@ export default function FeedPage() {
 
             <button type="button" onClick={saveClip} disabled={saving} className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-violet-500 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-violet-400 disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Hook speichern
+              {t('feed.admin.saveHook')}
             </button>
           </div>
         </div>
       ) : null}
 
-      {!loading && activeSong ? <span className="sr-only">Aktueller Hook: {activeSong.title}</span> : null}
+      {!loading && activeSong ? <span className="sr-only">{t('feed.currentHook', { title: activeSong.title })}</span> : null}
     </div>
   );
 }

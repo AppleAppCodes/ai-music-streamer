@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
 import { usePlayer } from '@/lib/player-context';
+import { useTranslation } from 'react-i18next';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import { isAdminUser, isModUser } from '@/lib/admin';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -58,6 +59,7 @@ function ChartPanel({
   onRemoveSong,
   onAddSongClick,
 }: ChartPanelProps) {
+  const { t } = useTranslation();
   const songs = rankedSongs;
   const isChartPlaying = isPlaying && songs.some((song) => song.id === currentSong?.id);
   const accentClasses = accent === 'orange'
@@ -93,7 +95,7 @@ function ChartPanel({
           onClick={() => onPlayChart(songs)}
           disabled={songs.length === 0}
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${accentClasses.icon} shadow-lg transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40`}
-          aria-label={`${title} abspielen`}
+          aria-label={isChartPlaying ? t('player.pause', { title }) : t('player.play', { title })}
         >
           {isChartPlaying ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current" />}
         </button>
@@ -164,7 +166,7 @@ function ChartPanel({
                   className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 p-3 text-sm font-bold text-white/50 transition-colors hover:border-white/40 hover:text-white"
                 >
                   <Plus className="h-4 w-4" />
-                  Song zu Charts hinzufügen
+                  {t('charts.viral.addSong')}
                 </button>
               ) : null}
             </>
@@ -223,29 +225,30 @@ function ChartPanel({
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 p-3 text-sm font-bold text-white/50 transition-colors hover:border-white/40 hover:text-white"
             >
               <Plus className="h-4 w-4" />
-              Song zu Charts hinzufügen
+              {t('charts.viral.addSong')}
             </button>
           ) : null}
         </div>
       ) : (
-        <div className="p-8 text-center text-sm text-white/45">Für diese Charts sind noch keine Songs vorhanden.</div>
+        <div className="p-8 text-center text-sm text-white/45">{t('charts.emptySongs')}</div>
       )}
     </section>
   );
 }
 
 function ArtistChartPanel({ rankedArtists }: { rankedArtists: ArtistChartItem[] }) {
+  const { t } = useTranslation();
   return (
     <section className="relative min-w-0 overflow-hidden rounded-2xl border border-teal-300/20 bg-white/[0.035] shadow-2xl shadow-black/20">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-br from-teal-400/20 via-cyan-400/5 to-transparent" />
       <div className="relative border-b border-white/10 p-4 sm:p-5">
         <div className="mb-2 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-teal-200/80">
           <Mic2 className="h-4 w-4" />
-          Top 20
+          {t('charts.artist.eyebrow')}
         </div>
-        <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">Artist Charts</h2>
+        <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">{t('charts.artist.title')}</h2>
         <p className="mt-1 text-xs text-white/50 sm:text-sm">
-          Die aktuell angesagtesten Künstler der Community.
+          {t('charts.artist.description')}
         </p>
       </div>
 
@@ -270,7 +273,7 @@ function ArtistChartPanel({ rankedArtists }: { rankedArtists: ArtistChartItem[] 
                   {artist.name}
                 </div>
                 <div className="truncate text-xs text-white/45">
-                  {artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}
+                  {artist.songsCount} {artist.songsCount === 1 ? t('charts.artist.song') : t('charts.artist.songs')}
                 </div>
               </div>
               <div className="flex items-center gap-2 text-right">
@@ -280,13 +283,14 @@ function ArtistChartPanel({ rankedArtists }: { rankedArtists: ArtistChartItem[] 
           ))}
         </div>
       ) : (
-        <div className="p-8 text-center text-sm text-white/45">Für diese Charts sind noch keine Künstler vorhanden.</div>
+        <div className="p-8 text-center text-sm text-white/45">{t('charts.artist.empty')}</div>
       )}
     </section>
   );
 }
 
 export default function ViralChartsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   const [songs, setSongs] = useState<Song[]>([]);
@@ -539,7 +543,7 @@ export default function ViralChartsPage() {
       setVideoUrl(`${data.publicUrl}?t=${Date.now()}`);
     } catch (err: unknown) {
       console.error('Error uploading video:', err);
-      alert('Fehler beim Hochladen des Videos: ' + getErrorMessage(err));
+      alert(`${t('charts.admin.videoUploadError')}` + getErrorMessage(err));
     } finally {
       setIsUploadingVideo(false);
     }
@@ -557,7 +561,7 @@ export default function ViralChartsPage() {
       setVideoUrl(null);
     } catch (err: unknown) {
       console.error('Error removing video:', err);
-      alert('Fehler beim Entfernen des Videos: ' + getErrorMessage(err));
+      alert(`${t('charts.admin.videoRemoveError')}` + getErrorMessage(err));
     } finally {
       setIsUploadingVideo(false);
     }
@@ -619,7 +623,7 @@ export default function ViralChartsPage() {
                 ) : (
                   <Trash2 className="w-4 h-4" />
                 )}
-                Video entfernen
+                {t('charts.admin.removeVideo')}
               </button>
             )}
             <button 
@@ -632,7 +636,7 @@ export default function ViralChartsPage() {
               ) : (
                 <Edit2 className="w-4 h-4" />
               )}
-              {videoUrl ? 'Video ändern' : 'Hintergrundvideo setzen'}
+              {videoUrl ? t('charts.admin.changeVideo') : t('charts.admin.setVideo')}
             </button>
           </div>
         </div>
@@ -641,7 +645,7 @@ export default function ViralChartsPage() {
         type="button"
         onClick={() => router.back()}
         className="absolute left-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 hover:text-white md:left-8 md:top-6"
-        aria-label="Zurück"
+        aria-label={t('charts.back')}
       >
         <ArrowLeft className="h-6 w-6" />
       </button>
@@ -649,19 +653,19 @@ export default function ViralChartsPage() {
         <div className="mb-7 flex flex-col gap-2">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-primary">
             <TrendingUp className="h-4 w-4" />
-            Yoriax Rankings
+            {t('charts.rankingsEyebrow')}
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">Charts</h1>
+          <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">{t('charts.pageTitle')}</h1>
           <p className="max-w-2xl text-sm text-white/55">
-            Entdecke, welche Tracks langfristig viral gehen, welche Songs heute besonders oft gehört werden und welche Artists gerade vorne liegen.
+            {t('charts.pageSubtitle')}
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
           <ChartPanel
-            title="Viral Charts"
-            eyebrow="Neu & Angesagt"
-            description="Die beliebtesten Songs der letzten Woche."
+            title={t('charts.viral.title')}
+            eyebrow={t('charts.viral.eyebrow')}
+            description={t('charts.viral.description')}
             accent="orange"
             icon={<Flame className="h-4 w-4" />}
             rankedSongs={isAdmin ? adminViralSongs : viralSongs}
@@ -675,9 +679,9 @@ export default function ViralChartsPage() {
             onAddSongClick={isAdmin ? () => setIsAddSongModalOpen(true) : undefined}
           />
           <ChartPanel
-            title="Daily Charts"
-            eyebrow="Top 50"
-            description="Die meistgestreamten Songs des letzten Tages."
+            title={t('charts.daily.title')}
+            eyebrow={t('charts.daily.eyebrow')}
+            description={t('charts.daily.description')}
             accent="violet"
             icon={<CalendarDays className="h-4 w-4" />}
             rankedSongs={dailySongs}
@@ -695,8 +699,8 @@ export default function ViralChartsPage() {
           <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#181818] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-400">Viral Charts bearbeiten</p>
-                <h2 className="mt-1 text-2xl font-black text-white">Neuen Song suchen</h2>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-400">{t('charts.admin.modal.eyebrow')}</p>
+                <h2 className="mt-1 text-2xl font-black text-white">{t('charts.admin.modal.title')}</h2>
               </div>
               <button onClick={() => setIsAddSongModalOpen(false)} className="text-white/45 transition-colors hover:text-white">
                 <X className="h-6 w-6" />
@@ -708,7 +712,7 @@ export default function ViralChartsPage() {
                 type="text" 
                 value={searchQuery} 
                 onChange={(e) => setSearchQuery(e.target.value)} 
-                placeholder="Song oder Artist eingeben..." 
+                placeholder={t('charts.admin.modal.searchPlaceholder')} 
                 className="w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 py-3 text-base text-white outline-none focus:border-orange-400/70"
                 autoFocus
               />
@@ -726,14 +730,14 @@ export default function ViralChartsPage() {
                     </div>
                     <button onClick={() => handleAddSongToViral(song)} className="flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20">
                       <Plus className="h-3 w-3" />
-                      Hinzufügen
+                      {t('charts.admin.modal.addButton')}
                     </button>
                   </div>
                 ))
               ) : searchQuery.trim() !== '' ? (
-                <p className="text-center text-sm text-white/45 py-4">Keine passenden Songs gefunden.</p>
+                <p className="text-center text-sm text-white/45 py-4">{t('charts.admin.modal.noResults')}</p>
               ) : (
-                <p className="text-center text-sm text-white/45 py-4">Tippe oben, um Katalog zu durchsuchen.</p>
+                <p className="text-center text-sm text-white/45 py-4">{t('charts.admin.modal.typeToSearch')}</p>
               )}
             </div>
           </div>
