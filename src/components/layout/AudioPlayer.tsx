@@ -331,9 +331,21 @@ export default function AudioPlayer() {
   return (
     <>
       <div 
-        className={`fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-50 h-16 items-center justify-between border-t border-white/10 bg-surface/95 px-2 backdrop-blur-xl md:bottom-0 md:flex md:h-24 md:border-white/5 md:bg-surface md:px-4 ${currentSong ? 'flex' : 'hidden'}`}
+        className={`fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-50 h-16 items-center justify-between border-t border-white/10 bg-black/60 backdrop-blur-2xl px-2 md:bottom-0 md:flex md:h-24 md:border-white/5 md:px-4 overflow-hidden transition-all duration-1000 ${currentSong ? 'flex' : 'hidden'}`}
         onClick={() => setIsMobilePlayerOpen(true)}
       >
+        {currentSong?.cover_url && (
+          <div 
+            className="absolute inset-0 -z-10 pointer-events-none opacity-40 blur-[40px] saturate-200 mix-blend-screen transition-all duration-1000"
+            style={{ 
+              backgroundImage: `url(${currentSong.cover_url})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }} 
+          />
+        )}
+        <div className="absolute inset-0 -z-10 pointer-events-none bg-gradient-to-t from-black/90 via-black/40 to-black/10" />
+
         {currentSong ? (
         <input
           type="range"
@@ -342,7 +354,7 @@ export default function AudioPlayer() {
           step="any"
           value={progressPercent}
           aria-label="Song position"
-          className="player-slider absolute inset-x-0 top-0 h-1 w-full md:hidden"
+          className="player-slider absolute inset-x-0 top-0 z-20 h-1 w-full md:hidden"
           style={{
             background: `linear-gradient(to right, #ffffff 0%, #ffffff ${progressPercent}%, rgba(255,255,255,0.18) ${progressPercent}%, rgba(255,255,255,0.18) 100%)`,
           }}
@@ -354,7 +366,7 @@ export default function AudioPlayer() {
       ) : null}
       
       {/* Song Info */}
-      <div className="flex min-w-0 flex-1 items-center gap-2 md:w-[30%] md:min-w-[180px] md:flex-none md:gap-4">
+      <div className="relative z-10 flex min-w-0 flex-1 items-center gap-2 md:w-[30%] md:min-w-[180px] md:flex-none md:gap-4">
         {currentSong ? (
           <>
             <img src={currentSong.cover_url} alt={currentSong.title} className="h-11 w-11 shrink-0 rounded-md object-cover shadow-md md:h-14 md:w-14" />
@@ -393,7 +405,7 @@ export default function AudioPlayer() {
       </div>
 
       {/* Controls */}
-      <div className={`hidden flex-1 flex-col items-center px-4 md:flex md:max-w-2xl ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`}>
+      <div className={`relative z-10 hidden flex-1 flex-col items-center px-4 md:flex md:max-w-2xl ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="flex items-center gap-6 mb-2">
           <button 
             onClick={toggleShuffle}
@@ -453,7 +465,7 @@ export default function AudioPlayer() {
       </div>
 
       {/* Extra Controls */}
-      <div className={`relative flex shrink-0 items-center justify-end gap-1 md:w-[30%] md:min-w-[180px] md:gap-3 ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`} ref={mobileMenuRef}>
+      <div className={`relative z-10 flex shrink-0 items-center justify-end gap-1 md:w-[30%] md:min-w-[180px] md:gap-3 ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`} ref={mobileMenuRef}>
         <button
           type="button"
           onClick={(event) => {
