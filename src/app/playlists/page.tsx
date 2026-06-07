@@ -23,7 +23,9 @@ interface SavedPlaylist {
   is_official: boolean;
   profiles: {
     username: string;
-  } | null;
+  } | {
+    username: string;
+  }[] | null;
 }
 
 export default function PlaylistsPage() {
@@ -44,7 +46,7 @@ export default function PlaylistsPage() {
         return;
       }
 
-      const [{ data: playlistData }, { data: savedData }, { count }] = await Promise.all([
+      const [playlistsRes, savedRes, likedRes] = await Promise.all([
         supabase
           .from('playlists')
           .select('id, title, cover_url, created_at')
@@ -60,14 +62,18 @@ export default function PlaylistsPage() {
           .eq('user_id', session.user.id),
       ]);
 
-      if (playlistData) setPlaylists(playlistData);
-      if (savedData) {
-        const mapped = savedData
+      if (playlistsRes.error) console.error('Error loading playlists:', playlistsRes.error);
+      if (savedRes.error) console.error('Error loading saved playlists:', savedRes.error);
+      if (likedRes.error) console.error('Error loading liked songs count:', likedRes.error);
+
+      if (playlistsRes.data) setPlaylists(playlistsRes.data);
+      if (savedRes.data) {
+        const mapped = savedRes.data
           .map((item: any) => item.playlist)
           .filter(Boolean) as SavedPlaylist[];
         setSavedPlaylists(mapped);
       }
-      setLikedSongsCount(count || 0);
+      setLikedSongsCount(likedRes.count || 0);
       setLoading(false);
     }
     loadPlaylists();
@@ -168,7 +174,9 @@ export default function PlaylistsPage() {
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                 {savedPlaylists.map((playlist) => {
-                  const rawCreator = playlist.profiles?.username;
+                  const rawProfiles = playlist.profiles;
+                  const profileObj = Array.isArray(rawProfiles) ? rawProfiles[0] : rawProfiles;
+                  const rawCreator = profileObj?.username;
                   const creatorName =
                     playlist.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111'
                       ? 'YORIAX Team'
