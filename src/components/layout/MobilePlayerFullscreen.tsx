@@ -2,11 +2,12 @@
 
 import { useEffect } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
-import { ChevronDown, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Share2, Timer } from 'lucide-react';
+import { ChevronDown, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Share2, Timer, Music } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import PlayerSaveButton from '@/components/ui/PlayerSaveButton';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
+import Image from 'next/image';
 
 interface MobilePlayerFullscreenProps {
   isOpen: boolean;
@@ -83,11 +84,16 @@ export default function MobilePlayerFullscreen({ isOpen, onClose }: MobilePlayer
         >
           {/* Blurred Background from Cover */}
           <div className="absolute inset-0 z-0">
-            <img 
-              src={currentSong.cover_url} 
-              alt="Background" 
-              className="w-full h-full object-cover opacity-30 blur-3xl scale-110" 
-            />
+            {currentSong.cover_url ? (
+              <Image 
+                src={currentSong.cover_url} 
+                alt="Background" 
+                fill
+                sizes="10vw"
+                className="object-cover opacity-30 blur-3xl scale-110" 
+                priority
+              />
+            ) : null}
             <div className="absolute inset-0 bg-black/60 bg-gradient-to-t from-black via-black/80 to-transparent" />
           </div>
 
@@ -108,11 +114,22 @@ export default function MobilePlayerFullscreen({ isOpen, onClose }: MobilePlayer
             
             {/* Cover Art */}
             <div className="flex-1 flex items-center justify-center py-4 min-h-0">
-              <img 
-                src={currentSong.cover_url} 
-                alt={currentSong.title} 
-                className="w-full max-w-[320px] aspect-square object-cover rounded-xl shadow-2xl"
-              />
+              {currentSong.cover_url ? (
+                <div className="relative w-full max-w-[320px] aspect-square overflow-hidden rounded-xl shadow-2xl">
+                  <Image 
+                    src={currentSong.cover_url} 
+                    alt={currentSong.title} 
+                    fill
+                    sizes="(max-width: 640px) 100vw, 320px"
+                    className="object-cover" 
+                    priority
+                  />
+                </div>
+              ) : (
+                <div className="w-full max-w-[320px] aspect-square bg-[#282828] flex items-center justify-center rounded-xl shadow-2xl">
+                  <Music className="w-24 h-24 text-white/20" />
+                </div>
+              )}
             </div>
 
             {/* Title & Artist & Actions */}

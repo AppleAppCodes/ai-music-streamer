@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
@@ -14,6 +14,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { isAdminUser, isModUser } from '@/lib/admin';
+import Image from 'next/image';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -23,6 +24,10 @@ function formatDuration(seconds: number | null | undefined): string {
 }
 
 const ARTIST_SONG_PAGE_SIZE = 1000;
+
+// Only fetch the columns we actually use – reduces payload significantly
+const SONG_SELECT_COLUMNS = 'id,title,cover_url,artist_name,audio_url,plays,duration,created_at,album_id,genre' as const;
+const ALBUM_SELECT_COLUMNS = 'id,title,cover_url,created_at,type' as const;
 
 const InstagramIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -150,13 +155,14 @@ export default function ArtistPage() {
       setUser(session?.user || null);
       
       // 1. Fetch all songs by exactly this artist name, ordered by popularity.
+      //    Using specific columns instead of SELECT * to reduce payload.
       const artistSongs: Song[] = [];
       let rangeStart = 0;
 
       while (true) {
         const { data: songsData, error } = await supabase
           .from('songs')
-          .select('*')
+          .select(SONG_SELECT_COLUMNS)
           .ilike('artist_name', artistName)
           .order('plays', { ascending: false })
           .range(rangeStart, rangeStart + ARTIST_SONG_PAGE_SIZE - 1);
@@ -196,7 +202,7 @@ export default function ArtistPage() {
       if (albumIds.length > 0) {
         const { data: albumsData } = await supabase
           .from('albums')
-          .select('*')
+          .select(ALBUM_SELECT_COLUMNS)
           .in('id', albumIds);
         if (albumsData) {
           fetchedAlbums = albumsData.map(a => ({
@@ -220,56 +226,46 @@ export default function ArtistPage() {
         setAlbumFilter('singles');
       }
       
-      // 2. Check if a custom banner exists
+      // 2–4. Run banner, follow-check, and socials fetch in PARALLEL
+      //       since they are independent of each other.
       const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const { data: files } = await supabase.storage
-        .from('covers')
-        .list('banners', {
-          search: sanitizedName
-        });
-        
+
+      const [bannerResult, followResult, socialsResult] = await Promise.all([
+        // 2. Check if a custom banner exists
+        supabase.storage.from('covers').list('banners', { search: sanitizedName }),
+        // 3. Check if user follows this artist
+        session?.user
+          ? supabase.from('follows').select('id').eq('user_id', session.user.id).eq('artist_name', artistName).maybeSingle()
+          : Promise.resolve({ data: null }),
+        // 4. Fetch artist socials (only the columns we need)
+        supabase.from('artist_profiles').select('instagram_url,tiktok_url,youtube_url').eq('artist_name', artistName).maybeSingle(),
+      ]);
+
+      // Process banner files
+      const files = bannerResult.data;
       if (files && files.length > 0) {
-        // Find background banner matches (not video)
         const bannerFiles = files.filter(f => f.name.startsWith(sanitizedName) && !f.name.includes('_video'));
         if (bannerFiles.length > 0) {
           bannerFiles.sort((a, b) => new Date(getStorageCacheKey(b)).getTime() - new Date(getStorageCacheKey(a)).getTime());
           const bannerFile = bannerFiles[0];
-          
-          const { data } = supabase.storage
-            .from('covers')
-            .getPublicUrl(`banners/${bannerFile.name}`);
+          const { data } = supabase.storage.from('covers').getPublicUrl(`banners/${bannerFile.name}`);
           setBannerUrl(withCacheBust(data.publicUrl, getStorageCacheKey(bannerFile)));
         }
 
-        // Find artist video matches
         const videoFiles = files.filter(f => f.name.startsWith(sanitizedName + '_video'));
         if (videoFiles.length > 0) {
           videoFiles.sort((a, b) => new Date(getStorageCacheKey(b)).getTime() - new Date(getStorageCacheKey(a)).getTime());
           const videoFile = videoFiles[0];
-          
-          const { data } = supabase.storage
-            .from('covers')
-            .getPublicUrl(`banners/${videoFile.name}`);
+          const { data } = supabase.storage.from('covers').getPublicUrl(`banners/${videoFile.name}`);
           setArtistVideoUrl(withCacheBust(data.publicUrl, getStorageCacheKey(videoFile)));
         }
       }
-      
-      // 3. Check if user follows this artist
-      if (session?.user) {
-        const { data: followData } = await supabase
-          .from('follows')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .eq('artist_name', artistName)
-          .maybeSingle();
-        setIsFollowing(!!followData);
-      }
-      // 4. Fetch artist socials
-      const { data: socialsData } = await supabase
-        .from('artist_profiles')
-        .select('*')
-        .eq('artist_name', artistName)
-        .maybeSingle();
+
+      // Process follow status
+      setIsFollowing(!!followResult.data);
+
+      // Process socials
+      const socialsData = socialsResult.data;
       if (socialsData) {
         const normalizedSocials = normalizeArtistSocials(socialsData);
         setSocials(normalizedSocials);
@@ -286,7 +282,7 @@ export default function ArtistPage() {
     loadArtistData();
   }, [artistName, supabase]);
 
-  const handlePlayAll = () => {
+  const handlePlayAll = useCallback(() => {
     if (songs.length === 0) return;
     
     if (currentSong?.id === songs[0].id) {
@@ -296,9 +292,9 @@ export default function ArtistPage() {
       setQueue(queue, 0);
       playSong(queue[0]);
     }
-  };
+  }, [songs, currentSong?.id, artistName, togglePlayPause, setQueue, playSong]);
 
-  const handleShuffle = () => {
+  const handleShuffle = useCallback(() => {
     if (songs.length === 0) return;
 
     toggleShuffle();
@@ -308,7 +304,7 @@ export default function ArtistPage() {
       setQueue(queue, startIndex);
       playSong(queue[startIndex]);
     }
-  };
+  }, [songs, artistName, toggleShuffle, isShuffling, setQueue, playSong]);
 
   const handleShareArtist = async () => {
     const artistUrl = `${window.location.origin}/artist/${encodeURIComponent(artistName)}`;
@@ -469,11 +465,11 @@ export default function ArtistPage() {
 
   const isAnyPlaying = songs.some(s => s.id === currentSong?.id) && isPlaying;
   
-  // Total Plays Calculation instead of Monthly Listeners
-  let totalPlays = 0;
-  if (songs.length > 0) {
-    totalPlays = songs.reduce((sum, song) => sum + (song.plays || 0), 0);
-  }
+  // Total Plays Calculation – memoized to avoid recalculation on every render
+  const totalPlays = useMemo(
+    () => songs.reduce((sum, song) => sum + (song.plays || 0), 0),
+    [songs]
+  );
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
@@ -790,7 +786,7 @@ export default function ArtistPage() {
                     </div>
                     
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <img src={song.cover_url} alt={song.title} className="w-10 h-10 object-cover rounded shadow-md" />
+                      <Image src={song.cover_url} alt={song.title} width={40} height={40} className="w-10 h-10 object-cover rounded shadow-md" loading="lazy" />
                       <span className={`text-base font-medium truncate ${currentSong?.id === song.id ? 'text-primary' : 'text-white/90'}`}>
                         {song.title}
                       </span>
@@ -880,7 +876,7 @@ export default function ArtistPage() {
                        className="group flex flex-col gap-3 p-4 bg-[#181818] hover:bg-[#282828] transition-colors rounded-xl cursor-pointer"
                      >
                        <div className="relative aspect-square w-full rounded-md shadow-lg overflow-hidden bg-[#333]">
-                          <img src={release.cover_url} alt={release.title} className="w-full h-full object-cover" />
+                          <Image src={release.cover_url} alt={release.title} fill sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw" className="object-cover" loading="lazy" />
                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2">
                              {release.is_song && (
                                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-105 transition-transform">

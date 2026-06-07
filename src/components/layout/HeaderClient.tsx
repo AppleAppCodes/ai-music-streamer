@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { usePlayer } from '@/lib/player-context';
 import { Song } from '@/lib/types';
-import { Loader2, Play, Mic2 } from 'lucide-react';
+import { Loader2, Play, Mic2, Music } from 'lucide-react';
 
 interface HeaderClientProps {
   user: SupabaseUser | null;
@@ -208,7 +208,13 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
                             className="group flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-white/[0.07]"
                           >
                             <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg">
-                              <img src={song.cover_url} alt={song.title} className="h-full w-full object-cover" />
+                              {song.cover_url ? (
+                                <Image src={song.cover_url} alt={song.title} fill sizes="40px" className="object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-[#282828] flex items-center justify-center">
+                                  <Music className="w-5 h-5 text-white/20" />
+                                </div>
+                              )}
                               <div className="absolute inset-0 hidden items-center justify-center bg-black/40 group-hover:flex">
                                 <Play className="h-4 w-4 fill-white text-white" />
                               </div>

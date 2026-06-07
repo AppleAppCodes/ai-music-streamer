@@ -1,11 +1,12 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
 import Link from 'next/link';
 import { Mic2, Music, Search } from 'lucide-react';
+import Image from 'next/image';
 
 interface PlaylistResult {
   id: string;
@@ -24,7 +25,8 @@ function SearchResults() {
   const searchParams = useSearchParams();
   const query = searchParams?.get('q') || '';
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+  const searchTimeoutRef = useRef<number | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [songs, setSongs] = useState<SearchSong[]>([]);
@@ -60,7 +62,7 @@ function SearchResults() {
           .limit(20),
         supabase
           .from('playlists')
-          .select('*, profiles(username)')
+          .select('id, title, cover_url, is_public, profiles(username)')
           .eq('is_public', true)
           .ilike('title', `%${trimmedQuery}%`)
           .limit(10),
@@ -76,8 +78,8 @@ function SearchResults() {
           .map(s => s.artist_name)
       )).map(name => ({ artist_name: name }));
 
-      setSongs((songsData || []) as SearchSong[]);
-      setPlaylists((playlistsData || []) as PlaylistResult[]);
+      setSongs((songsData || []) as unknown as SearchSong[]);
+      setPlaylists((playlistsData || []) as unknown as PlaylistResult[]);
       setArtists(uniqueArtists);
       setIsAuthenticated(!!session);
       setLoading(false);
@@ -108,11 +110,14 @@ function SearchResults() {
         autoFocus
         onChange={(e) => {
           const q = e.target.value;
-          if (q.trim()) {
-            router.replace(`/search?q=${encodeURIComponent(q.trim())}`);
-          } else {
-            router.replace(`/search`);
-          }
+          if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+          searchTimeoutRef.current = window.setTimeout(() => {
+            if (q.trim()) {
+              router.replace(`/search?q=${encodeURIComponent(q.trim())}`);
+            } else {
+              router.replace(`/search`);
+            }
+          }, 300);
         }}
         className="block w-full rounded-full border border-white/10 bg-white/10 py-3 pl-12 pr-4 text-base text-white placeholder-white/50 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30 transition-all"
         placeholder="Was möchtest du hören?"
@@ -177,8 +182,12 @@ function SearchResults() {
                     </Link>
                   ) : (
                     <Link href={isAuthenticated ? `/song/${songs[0].id}` : '/login'} className="group flex flex-col gap-4 p-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all duration-300 relative overflow-hidden h-[240px] justify-end">
-                      <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shadow-lg overflow-hidden mb-2">
-                        <img src={songs[0].cover_url} alt={songs[0].title} className="w-full h-full object-cover" />
+                      <div className="relative w-24 h-24 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shadow-lg overflow-hidden mb-2">
+                        {songs[0].cover_url ? (
+                          <Image src={songs[0].cover_url} alt={songs[0].title} fill sizes="96px" className="object-cover" />
+                        ) : (
+                          <Music className="w-12 h-12 text-white/20" />
+                        )}
                       </div>
                       <div className="flex flex-col">
                         <span className="text-3xl font-black text-white truncate">{songs[0].title}</span>
@@ -205,7 +214,13 @@ function SearchResults() {
                           className="flex items-center gap-4 p-2 rounded-md hover:bg-white/10 group cursor-pointer transition-colors"
                         >
                           <div className="relative w-12 h-12 shrink-0 rounded overflow-hidden">
-                            <img src={song.cover_url} alt={song.title} className="w-full h-full object-cover" />
+                            {song.cover_url ? (
+                              <Image src={song.cover_url} alt={song.title} fill sizes="48px" className="object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-[#282828] flex items-center justify-center">
+                                <Music className="w-6 h-6 text-white/20" />
+                              </div>
+                            )}
                           </div>
                           <div className="flex flex-col flex-1 min-w-0">
                             <span className="text-base font-semibold truncate text-white">{song.title}</span>
@@ -254,10 +269,12 @@ function SearchResults() {
                     >
                       <div className="relative aspect-square w-full rounded-lg overflow-hidden shadow-lg bg-[#282828] flex items-center justify-center">
                         {playlist.cover_url ? (
-                          <img
+                          <Image
                             src={playlist.cover_url}
                             alt={playlist.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            fill
+                            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 150px"
+                            className="object-cover transition-transform duration-500 group-hover:scale-105"
                           />
                         ) : (
                           <Music className="w-16 h-16 text-white/20" />

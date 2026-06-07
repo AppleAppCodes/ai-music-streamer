@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import type { MouseEvent } from 'react';
 import type { CSSProperties } from 'react';
 import SongCard from '@/components/ui/SongCard';
@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { usePlayer } from '@/lib/player-context';
+import Image from 'next/image';
 
 import { GENRES } from '@/lib/constants';
 import { Song } from '@/lib/types';
@@ -66,11 +67,13 @@ function ImageSlideshow({ images, currentIndex }: { images: string[], currentInd
   return (
     <>
       {images.map((img, idx) => (
-        <img
+        <Image
           key={img}
           src={img}
           alt={`Slide ${idx}`}
-          className={`w-full h-full object-cover absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+          fill
+          sizes="(max-width: 640px) 56px, 72px"
+          className={`object-cover absolute inset-0 transition-opacity duration-1000 ease-in-out ${
             idx === currentIndex ? 'opacity-100' : 'opacity-0'
           }`}
         />
@@ -112,16 +115,16 @@ export default function AuthenticatedHome() {
   const lastDragXRef = useRef(0);
   const dragTimeRef = useRef(0);
 
-  const handleDragStart = (clientX: number) => {
+  const handleDragStart = useCallback((clientX: number) => {
     isDraggingRef.current = true;
     isHoveredRef.current = true;
     dragStartXRef.current = clientX;
     dragStartPosRef.current = positionRef.current;
     lastDragXRef.current = clientX;
     dragTimeRef.current = performance.now();
-  };
+  }, []);
 
-  const handleDragMove = (clientX: number) => {
+  const handleDragMove = useCallback((clientX: number) => {
     if (!isDraggingRef.current) return;
     const delta = dragStartXRef.current - clientX;
     let newPos = dragStartPosRef.current + delta;
@@ -145,12 +148,12 @@ export default function AuthenticatedHome() {
     if (genresScrollRef.current) {
       genresScrollRef.current.style.transform = `translate3d(-${positionRef.current}px, 0, 0)`;
     }
-  };
+  }, []);
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     isDraggingRef.current = false;
     isHoveredRef.current = false;
-  };
+  }, []);
 
   const [dailyTrendingSongs, setDailyTrendingSongs] = useState<Song[]>([]);
   const [recommendedSongs, setRecommendedSongs] = useState<Song[]>([]);
@@ -223,23 +226,23 @@ export default function AuthenticatedHome() {
     };
   }, [targetSpeed]);
 
-  const scrollGenres = (direction: 'left' | 'right') => {
+  const scrollGenres = useCallback((direction: 'left' | 'right') => {
     // Boost speed temporarily for a smooth "push"
     speedRef.current = direction === 'right' ? 10 : -10;
     setTargetSpeed(direction === 'right' ? 0.3 : -0.3);
-  };
+  }, []);
 
   useEffect(() => {
     async function loadMusic() {
       const [{ data: allSongs }, { data: { session } }] = await Promise.all([
         supabase
           .from('songs')
-          .select('*, profiles!songs_creator_id_fkey(username)')
+          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, profiles!songs_creator_id_fkey(username)')
           .limit(200),
         supabase.auth.getSession(),
       ]);
 
-      const songs = ((allSongs || []) as SongWithProfile[]).map(song => ({
+      const songs = ((allSongs || []) as unknown as SongWithProfile[]).map(song => ({
         ...song,
         creatorName: song.profiles?.username || song.artist_name || 'Unknown'
       }));
@@ -356,7 +359,7 @@ export default function AuthenticatedHome() {
     return Array.from(new Set(quickAccessItems.flatMap(item => item.images || [])));
   }, [quickAccessItems]);
 
-  const startSongQueue = (songs: Song[], itemTitle: string) => {
+  const startSongQueue = useCallback((songs: Song[], itemTitle: string) => {
     if (songs.length === 0) return;
 
     const queue = songs.map((song): Song => ({
@@ -375,9 +378,9 @@ export default function AuthenticatedHome() {
     setActiveQuickAccessSongIds(songIds);
     setQueue(queue, 0);
     playSong(queue[0]);
-  };
+  }, [currentSong, activeQuickAccessTitle, t, togglePlayPause, setQueue, playSong]);
 
-  const handleQuickAccessPlay = async (event: MouseEvent<HTMLButtonElement>, itemTitle: string) => {
+  const handleQuickAccessPlay = useCallback(async (event: MouseEvent<HTMLButtonElement>, itemTitle: string) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -393,7 +396,7 @@ export default function AuthenticatedHome() {
           .from('liked_songs')
           .select(`
             created_at,
-            songs (*)
+            songs (id, title, artist_name, cover_url, plays, audio_url, duration, genre)
           `)
           .eq('user_id', session.user.id)
           .order('created_at', { ascending: false });
@@ -408,16 +411,16 @@ export default function AuthenticatedHome() {
       if (itemTitle === t('home.quickAccess.charts')) {
         const { data } = await supabase
           .from('songs')
-          .select('*')
+          .select('id, title, artist_name, cover_url, plays, audio_url, duration, genre')
           .order('plays', { ascending: false })
           .limit(100);
 
-        startSongQueue((data || []) as Song[], itemTitle);
+        startSongQueue((data || []) as unknown as Song[], itemTitle);
       }
     } finally {
       setQuickPlayLoading(null);
     }
-  };
+  }, [quickPlayLoading, supabase, t, startSongQueue]);
 
   return (
     <div className="relative flex min-h-screen flex-col gap-8 overflow-hidden pb-12 pt-4 sm:gap-12 sm:pt-6">

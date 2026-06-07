@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CalendarDays, ChevronRight, Flame, Mic2, Pause, Play, TrendingUp, Edit2, Loader2, Trash2, Plus, Search, X } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ChevronRight, Flame, Mic2, Pause, Play, TrendingUp, Edit2, Loader2, Trash2, Plus, Search, X, Music } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
 import { usePlayer } from '@/lib/player-context';
@@ -128,7 +129,13 @@ function ChartPanel({
                           <span>{index + 1}</span>
                         )}
                       </div>
-                      <img src={song.cover_url} alt={song.title} className="h-10 w-10 rounded-md object-cover shadow-md pointer-events-none" />
+                      {song.cover_url ? (
+                        <Image src={song.cover_url} alt={song.title} width={40} height={40} className="rounded-md object-cover shadow-md pointer-events-none" />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white/5 shadow-md pointer-events-none">
+                          <Music className="h-5 w-5 text-white/30" />
+                        </div>
+                      )}
                       <div className="min-w-0 pointer-events-none">
                         <Link
                           href={`/song/${song.id}`}
@@ -192,7 +199,13 @@ function ChartPanel({
                       <span>{index + 1}</span>
                     )}
                   </div>
-                  <img src={song.cover_url} alt={song.title} className="h-10 w-10 rounded-md object-cover shadow-md" />
+                  {song.cover_url ? (
+                    <Image src={song.cover_url} alt={song.title} width={40} height={40} className="rounded-md object-cover shadow-md" />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white/5 shadow-md">
+                      <Music className="h-5 w-5 text-white/30" />
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <Link
                       href={`/song/${song.id}`}
@@ -263,11 +276,19 @@ function ArtistChartPanel({ rankedArtists }: { rankedArtists: ArtistChartItem[] 
               <div className="flex justify-center text-xs font-bold text-white/45">
                 <span className={index < 3 ? 'text-teal-200' : undefined}>{index + 1}</span>
               </div>
-              <img
-                src={artist.coverUrl}
-                alt={artist.name}
-                className="h-10 w-10 rounded-md object-cover shadow-md"
-              />
+              {artist.coverUrl ? (
+                <Image
+                  src={artist.coverUrl}
+                  alt={artist.name}
+                  width={40}
+                  height={40}
+                  className="rounded-md object-cover shadow-md"
+                />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white/5 shadow-md">
+                  <Mic2 className="h-5 w-5 text-white/30" />
+                </div>
+              )}
               <div className="min-w-0">
                 <div className={`truncate text-sm font-bold ${index < 3 ? 'text-teal-200' : 'text-white/90'}`}>
                   {artist.name}
@@ -301,7 +322,7 @@ export default function ViralChartsPage() {
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const isAdmin = isModUser(user);
   const [adminViralSongs, setAdminViralSongs] = useState<Song[]>([]);
   const [isAddSongModalOpen, setIsAddSongModalOpen] = useState(false);
@@ -321,7 +342,7 @@ export default function ViralChartsPage() {
         { data: weeklyData, error: weeklyError },
         { data: authData }
       ] = await Promise.all([
-        supabase.from('songs').select('*'),
+        supabase.from('songs').select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, viral_sort_order, profiles!songs_creator_id_fkey(username)').limit(200),
         supabase.from('song_daily_plays').select('song_id, plays').eq('play_date', todayUtc),
         supabase.from('song_daily_plays').select('song_id, plays').gte('play_date', sevenDaysAgoUtc),
         supabase.auth.getSession(),
@@ -340,7 +361,7 @@ export default function ViralChartsPage() {
         }
       }
 
-      if (songsData) setSongs(songsData as Song[]);
+      if (songsData) setSongs(songsData as unknown as Song[]);
       if (dailyData) setDailyPlays(dailyData as DailyPlay[]);
       if (weeklyData) setWeeklyPlays(weeklyData as DailyPlay[]);
       if (dailyError) console.error('Failed to load daily charts:', dailyError);
@@ -499,7 +520,7 @@ export default function ViralChartsPage() {
       }));
   }, [songs]);
 
-  const handlePlayChart = (chartSongs: Song[]) => {
+  const handlePlayChart = useCallback((chartSongs: Song[]) => {
     if (chartSongs.length === 0) return;
 
     if (isPlaying && chartSongs.some((song) => song.id === currentSong?.id)) {
@@ -511,9 +532,9 @@ export default function ViralChartsPage() {
     const startIndex = Math.max(0, queue.findIndex((song) => song.id === currentSong?.id));
     setQueue(queue, startIndex);
     playSong(queue[startIndex]);
-  };
+  }, [isPlaying, currentSong?.id, togglePlayPause, setQueue, playSong]);
 
-  const handlePlaySong = (chartSongs: Song[], index: number) => {
+  const handlePlaySong = useCallback((chartSongs: Song[], index: number) => {
     const song = chartSongs[index];
     if (!song) return;
 
@@ -525,7 +546,7 @@ export default function ViralChartsPage() {
     const queue = chartSongs.map((queueSong): Song => ({ ...queueSong, creatorName: queueSong.artist_name || 'Creator' }));
     setQueue(queue, index);
     playSong(queue[index]);
-  };
+  }, [currentSong?.id, togglePlayPause, setQueue, playSong]);
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!isAdmin) return;
@@ -722,7 +743,13 @@ export default function ViralChartsPage() {
                 searchResults.map(song => (
                   <div key={song.id} className="flex items-center justify-between rounded-xl p-2 hover:bg-white/5">
                     <div className="flex items-center gap-3 min-w-0">
-                      <img src={song.cover_url} alt="" className="h-10 w-10 rounded-md object-cover" />
+                      {song.cover_url ? (
+                        <Image src={song.cover_url} alt="" width={40} height={40} className="rounded-md object-cover" />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white/5">
+                          <Music className="h-5 w-5 text-white/30" />
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold text-white">{song.title}</p>
                         <p className="truncate text-xs text-white/50">{song.artist_name || 'Creator'}</p>

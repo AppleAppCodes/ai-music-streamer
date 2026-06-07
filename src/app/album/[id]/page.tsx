@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
 import { isAdminUser } from '@/lib/admin';
+import Image from 'next/image';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -250,7 +251,7 @@ export default function AlbumPage() {
           onClick={() => isOwner && fileInputRef.current?.click()}
         >
           {album.cover_url ? (
-            <img src={album.cover_url} alt={album.title} className="w-full h-full object-cover" />
+            <Image src={album.cover_url} alt={album.title} fill sizes="(max-width: 768px) 192px, 224px" className="object-cover" priority />
           ) : (
             <Music className="w-20 h-20 text-white/20" />
           )}
@@ -399,7 +400,13 @@ export default function AlbumPage() {
                     </div>
                     
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <img src={song.cover_url} alt={song.title} className="w-10 h-10 object-cover rounded shadow-md" />
+                      {song.cover_url ? (
+                        <Image src={song.cover_url} alt={song.title} width={40} height={40} className="object-cover rounded shadow-md" />
+                      ) : (
+                        <div className="w-10 h-10 bg-white/5 flex items-center justify-center rounded shadow-md shrink-0">
+                          <Music className="w-5 h-5 text-white/30" />
+                        </div>
+                      )}
                       <div className="flex flex-col overflow-hidden">
                         <span className={`text-base font-medium truncate ${currentSong?.id === song.id ? 'text-primary' : 'text-white/90'}`}>
                           {song.title}
@@ -476,7 +483,7 @@ export default function AlbumPage() {
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {album.cover_url ? (
-                    <img src={album.cover_url} alt="Cover" className="w-full h-full object-cover" />
+                    <Image src={album.cover_url} alt="Cover" fill sizes="176px" className="object-cover" />
                   ) : (
                     <Music className="w-16 h-16 text-white/20" />
                   )}

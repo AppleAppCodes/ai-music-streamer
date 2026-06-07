@@ -6,6 +6,7 @@ import { ArrowLeft, Heart, Library, Music, Plus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
+import Image from 'next/image';
 
 interface Playlist {
   id: string;
@@ -173,7 +174,7 @@ export default function PlaylistsPage() {
                 <h2 className="text-2xl font-black tracking-tight text-white">{t('playlists.savedTitle')}</h2>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                {savedPlaylists.map((playlist) => {
+                {savedPlaylists.map((playlist, index) => {
                   const rawProfiles = playlist.profiles;
                   const profileObj = Array.isArray(rawProfiles) ? rawProfiles[0] : rawProfiles;
                   const rawCreator = profileObj?.username;
@@ -201,10 +202,13 @@ export default function PlaylistsPage() {
                             <Sparkles className="h-8 w-8 text-white sm:h-16 sm:w-16" />
                           </div>
                         ) : playlist.cover_url ? (
-                          <img
+                          <Image
                             src={playlist.cover_url}
                             alt={playlist.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            fill
+                            sizes="(max-width: 640px) 64px, 200px"
+                            className="object-cover transition-transform duration-500 group-hover:scale-105"
+                            priority={index < 6}
                           />
                         ) : (
                           <Music className="h-8 w-8 text-white/20 sm:h-16 sm:w-16" />
@@ -253,7 +257,7 @@ export default function PlaylistsPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                {playlists.map((playlist) => (
+                {playlists.map((playlist, index) => (
                   <Link
                     key={playlist.id}
                     href={`/playlist/${playlist.id}`}
@@ -261,10 +265,13 @@ export default function PlaylistsPage() {
                   >
                     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#282828] flex items-center justify-center shadow-lg sm:aspect-square sm:h-auto sm:w-full sm:rounded-lg">
                       {playlist.cover_url ? (
-                        <img
+                        <Image
                           src={playlist.cover_url}
                           alt={playlist.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          fill
+                          sizes="(max-width: 640px) 64px, 200px"
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                          priority={index < 6}
                         />
                       ) : (
                         <Music className="h-8 w-8 text-white/20 sm:h-16 sm:w-16" />

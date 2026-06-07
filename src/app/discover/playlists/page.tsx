@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { ArrowLeft, ListMusic, Music, Search, Sparkles, Users } from 'lucide-react';
 import Link from 'next/link';
@@ -26,7 +26,7 @@ type PlaylistRow = Omit<Playlist, 'profiles'> & {
 };
 
 export default function DiscoverPlaylistsPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
@@ -41,9 +41,10 @@ export default function DiscoverPlaylistsPage() {
 
       let query = supabase
         .from('playlists')
-        .select('*, profiles(username)')
+        .select('id, title, description, cover_url, created_at, is_official, profiles(username)')
         .eq('is_public', true)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (searchQuery.trim() !== '') {
         query = query.ilike('title', `%${searchQuery}%`);
@@ -99,8 +100,8 @@ export default function DiscoverPlaylistsPage() {
     return () => clearTimeout(timer);
   }, [supabase, searchQuery]);
 
-  const officialPlaylists = playlists.filter((playlist) => playlist.is_official);
-  const communityPlaylists = playlists.filter((playlist) => !playlist.is_official);
+  const officialPlaylists = useMemo(() => playlists.filter((playlist) => playlist.is_official), [playlists]);
+  const communityPlaylists = useMemo(() => playlists.filter((playlist) => !playlist.is_official), [playlists]);
   const hasResults = playlists.length > 0;
 
   return (
@@ -255,10 +256,12 @@ function PlaylistCard({ official, playlist }: { official: boolean; playlist: Pla
             <Sparkles className="h-16 w-16 text-white" />
           </div>
         ) : playlist.cover_url ? (
-          <img
+          <Image
             src={playlist.cover_url}
             alt={playlist.title}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 200px"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <Music className="h-16 w-16 text-white/20" />

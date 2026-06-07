@@ -1,7 +1,9 @@
 'use client';
 
 import { PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   Check,
@@ -139,7 +141,7 @@ function getForYouScore(song: FeedSong, likedGenres: Set<string>, followedArtist
   );
 }
 
-function FeedCard({
+const FeedCard = React.memo(function FeedCard({
   song,
   active,
   muted,
@@ -334,7 +336,7 @@ function FeedCard({
         onPointerUp={handlePointerUp}
       >
         <div className="absolute inset-0">
-          <img src={song.clip.cover_url || song.cover_url} alt="" className="h-full w-full scale-110 object-cover opacity-45 blur-2xl" />
+          <Image src={song.clip.cover_url || song.cover_url} alt="" fill sizes="100vw" className="h-full w-full scale-110 object-cover opacity-45 blur-2xl" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/90" />
         </div>
 
@@ -354,7 +356,7 @@ function FeedCard({
             className="relative h-full w-full object-cover"
           />
         ) : (
-          <img src={song.clip.cover_url || song.cover_url} alt={song.title} className="relative h-full w-full object-cover" />
+          <Image src={song.clip.cover_url || song.cover_url} alt={song.title} fill sizes="(max-width: 768px) 100vw, 470px" className="relative h-full w-full object-cover" />
         )}
 
         <audio
@@ -384,7 +386,7 @@ function FeedCard({
         <div className="absolute bottom-[calc(9.5rem+env(safe-area-inset-bottom))] right-3 z-20 flex flex-col items-center gap-4 text-white md:bottom-28" onPointerDown={(event) => event.stopPropagation()}>
           <button type="button" onClick={onFollow} className="group relative" aria-label={following ? t('feed.unfollow', { artist: displayArtist }) : t('feed.follow', { artist: displayArtist })}>
             <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-violet-950 text-sm font-black shadow-lg">
-              {avatarUrl ? <img src={avatarUrl} alt={displayArtist} className="h-full w-full object-cover" /> : displayArtist.slice(0, 1).toUpperCase()}
+              {avatarUrl ? <Image src={avatarUrl} alt={displayArtist} width={48} height={48} className="h-full w-full object-cover" /> : displayArtist.slice(0, 1).toUpperCase()}
             </span>
             <span className={`absolute -bottom-2 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border-2 border-[#111] ${following ? 'bg-white text-black' : 'bg-rose-500 text-white'}`}>
               {following ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" strokeWidth={4} />}
@@ -430,7 +432,7 @@ function FeedCard({
       </div>
     </article>
   );
-}
+});
 
 export default function FeedPage() {
   const { t } = useTranslation();
@@ -462,7 +464,7 @@ export default function FeedPage() {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Array<HTMLElement | null>>([]);
   const scrollRafRef = useRef<number | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     pausePlayback();
@@ -474,7 +476,7 @@ export default function FeedPage() {
       const [{ data: songData, error }, { data: sessionData }] = await Promise.all([
         supabase
           .from('songs')
-          .select('*, profiles!songs_creator_id_fkey(username, avatar_url), song_feed_clips(song_id, video_url, cover_url, hook_start_seconds, hook_end_seconds), song_feed_stats(song_id, likes_count)')
+          .select('id, title, artist_name, cover_url, plays, genre, created_at, creator_id, duration, audio_url, profiles!songs_creator_id_fkey(username, avatar_url), song_feed_clips(song_id, video_url, cover_url, hook_start_seconds, hook_end_seconds), song_feed_stats(song_id, likes_count)')
           .order('plays', { ascending: false })
           .limit(80),
         supabase.auth.getSession(),
@@ -482,7 +484,7 @@ export default function FeedPage() {
 
       if (error) console.error('Failed to load feed:', error);
 
-      const feedSongs = ((songData || []) as FeedSongRecord[]).map((song) => ({
+      const feedSongs = ((songData || []) as unknown as FeedSongRecord[]).map((song) => ({
         ...song,
         clip: getClip(song),
         stats: getStats(song),
@@ -636,21 +638,21 @@ export default function FeedPage() {
     return () => window.removeEventListener('keydown', handleArrowNavigation);
   }, [activeIndex, scrollToIndex]);
 
-  const updateSongStats = (songId: string, key: StatsKey, delta: number) => {
+  const updateSongStats = useCallback((songId: string, key: StatsKey, delta: number) => {
     setSongs((currentSongs) => currentSongs.map((song) => (
       song.id === songId
         ? { ...song, stats: { ...song.stats, [key]: Math.max(0, song.stats[key] + delta) } }
         : song
     )));
-  };
+  }, []);
 
-  const requireLogin = () => {
+  const requireLogin = useCallback(() => {
     if (userId) return true;
     router.push('/login');
     return false;
-  };
+  }, [userId, router]);
 
-  const toggleLike = async (song: FeedSong, forceLike = false) => {
+  const toggleLike = useCallback(async (song: FeedSong, forceLike = false) => {
     if (!requireLogin()) return;
     const currentlyLiked = likedSongIds.has(song.id);
     if (currentlyLiked && forceLike) return;
@@ -700,9 +702,9 @@ export default function FeedPage() {
       });
       updateSongStats(song.id, 'likes_count', nextLiked ? -1 : 1);
     }
-  };
+  }, [likedSongIds, requireLogin, supabase, t, updateSongStats, userId]);
 
-  const toggleFollow = async (song: FeedSong) => {
+  const toggleFollow = useCallback(async (song: FeedSong) => {
     if (!requireLogin()) return;
     const artist = song.artist_name || song.creatorName || 'Creator';
     const currentlyFollowing = followedArtists.has(artist);
@@ -727,9 +729,9 @@ export default function FeedPage() {
         return nextArtists;
       });
     }
-  };
+  }, [followedArtists, requireLogin, supabase, t, userId]);
 
-  const listenToFullSong = (song: FeedSong, index: number) => {
+  const listenToFullSong = useCallback((song: FeedSong, index: number) => {
     const queue = displayedSongs.map((queueSong): Song => ({
       ...queueSong,
       creatorName: queueSong.artist_name || 'Creator',
@@ -737,9 +739,9 @@ export default function FeedPage() {
     setQueue(queue, index);
     playSong({ ...song, creatorName: song.artist_name || 'Creator' });
     router.push(`/song/${song.id}`);
-  };
+  }, [displayedSongs, playSong, router, setQueue]);
 
-  const shareSong = async (song: FeedSong) => {
+  const shareSong = useCallback(async (song: FeedSong) => {
     const url = `${window.location.origin}/song/${song.id}`;
     try {
       if (navigator.share) {
@@ -750,7 +752,7 @@ export default function FeedPage() {
     } catch {
       // Closing the native share sheet is not an error the UI needs to surface.
     }
-  };
+  }, [t]);
 
   const handleAutoplayBlocked = useCallback(() => {
     if (soundUnlocked) return;
@@ -765,7 +767,7 @@ export default function FeedPage() {
     setMuted(false);
   }, [autoplayMuted, muted]);
 
-  const openEditor = (song: FeedSong) => {
+  const openEditor = useCallback((song: FeedSong) => {
     setEditingSong(song);
     setHookStart(song.clip.hook_start_seconds);
     setHookEnd(song.clip.hook_end_seconds);
@@ -774,7 +776,7 @@ export default function FeedPage() {
     setCoverUrl(song.clip.cover_url);
     setCoverFile(null);
     setSaveError('');
-  };
+  }, []);
 
   const saveClip = async () => {
     if (!editingSong) return;

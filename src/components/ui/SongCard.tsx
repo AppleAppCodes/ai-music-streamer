@@ -1,9 +1,10 @@
 import Link from 'next/link';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, Music } from 'lucide-react';
 import { Song } from '@/lib/types';
 import { usePlayer } from '@/lib/player-context';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import MobileSongMenu from '@/components/ui/MobileSongMenu';
+import Image from 'next/image';
 
 interface SongCardProps {
   song: Song;
@@ -22,11 +23,19 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
     <div className={`group relative flex flex-col rounded-xl hover:bg-white/5 transition-colors cursor-pointer ${compact ? 'gap-2 p-2.5' : 'gap-3 p-4'} ${className}`}>
       {/* Cover Image Container */}
       <div className="relative aspect-square w-full rounded-md overflow-hidden shadow-lg mb-2">
-        <img 
-          src={song.cover_url} 
-          alt={song.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+        {song.cover_url ? (
+          <Image 
+            src={song.cover_url} 
+            alt={song.title}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 180px"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full bg-[#282828] flex items-center justify-center">
+            <Music className="h-12 w-12 text-white/20" />
+          </div>
+        )}
         
         {/* Play Button Overlay */}
         <div className={`absolute inset-0 flex items-center justify-center bg-black/15 transition-opacity md:bg-black/40 ${currentSong?.id === song.id ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>

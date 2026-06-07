@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState, useMemo } from 'react';
 import { Song } from '@/lib/types';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
@@ -446,7 +446,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     setCurrentSong(song);
     loadSongIntoAudio(song);
     startPlayback();
-  }, [currentSong?.id, loadSongIntoAudio, startPlayback, user, isPro, songsPlayed]);
+  }, [currentSong?.id, loadSongIntoAudio, startPlayback, user, isPro, songsPlayed, adFrequency, availableAds.length]);
 
   const setQueue = useCallback((songs: Song[], startIndex = 0) => {
     setQueueState(songs);
@@ -558,49 +558,59 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     audioRef.current.pause();
   }, [isPlaying]);
 
-  const setVolume = (val: number) => {
+  const setVolume = useCallback((val: number) => {
     if (!audioRef.current) return;
     const clamped = Math.max(0, Math.min(1, val));
     audioRef.current.volume = clamped;
     setVolumeState(clamped);
-  };
+  }, []);
 
-  const seekTo = (percentage: number) => {
+  const seekTo = useCallback((percentage: number) => {
     if (!audioRef.current || !currentSong) return;
     const time = (percentage / 100) * duration;
     audioRef.current.currentTime = time;
     setCurrentTime(time);
     setProgress(percentage);
-  };
+  }, [currentSong, duration]);
+
+  const toggleShuffle = useCallback(() => setIsShuffling(s => !s), []);
+  
+  const toggleRepeat = useCallback(() => {
+    setRepeatMode(r => r === 'none' ? 'all' : r === 'all' ? 'one' : 'none');
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    currentSong,
+    isPlaying,
+    progress,
+    currentTime,
+    duration,
+    volume,
+    queue,
+    queueIndex,
+    playSong,
+    togglePlayPause,
+    pausePlayback,
+    setVolume,
+    seekTo,
+    setQueue,
+    playNext,
+    playPrevious,
+    isShuffling,
+    toggleShuffle,
+    repeatMode,
+    toggleRepeat,
+    user,
+    isPro,
+    isAdPlaying,
+  }), [
+    currentSong, isPlaying, progress, currentTime, duration, volume, queue, queueIndex,
+    playSong, togglePlayPause, pausePlayback, setVolume, seekTo, setQueue, playNext,
+    playPrevious, isShuffling, toggleShuffle, repeatMode, toggleRepeat, user, isPro, isAdPlaying
+  ]);
 
   return (
-    <PlayerContext.Provider value={{
-      currentSong,
-      isPlaying,
-      progress,
-      currentTime,
-      duration,
-      volume,
-      queue,
-      queueIndex,
-      playSong,
-      togglePlayPause,
-      pausePlayback,
-      setVolume,
-      seekTo,
-      setQueue,
-      playNext,
-      playPrevious,
-      isShuffling,
-      toggleShuffle: () => setIsShuffling(s => !s),
-      repeatMode,
-      toggleRepeat: () => {
-        setRepeatMode(r => r === 'none' ? 'all' : r === 'all' ? 'one' : 'none');
-      },
-      user,
-      isPro,
-      isAdPlaying,
-    }}>
+    <PlayerContext.Provider value={contextValue}>
       {children}
       
       {showAuthModal && (

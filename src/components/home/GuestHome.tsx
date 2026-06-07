@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { Mic2, Music2, Sparkles } from 'lucide-react';
+import { Mic2, Music2, Sparkles, Music } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Song } from '@/lib/types';
+import Image from 'next/image';
 
 type GuestSong = Pick<Song, 'id' | 'title' | 'artist_name' | 'cover_url' | 'plays'>;
 
@@ -65,8 +66,18 @@ export default function GuestHome({ songs }: { songs: GuestSong[] }) {
                   href="/login"
                   className="group min-w-0 rounded-2xl border border-white/5 bg-white/[0.035] p-3 transition-all hover:-translate-y-1 hover:border-white/12 hover:bg-white/[0.075]"
                 >
-                  <div className="aspect-square overflow-hidden rounded-xl bg-white/5 shadow-xl">
-                    <img src={song.cover_url} alt={song.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <div className="relative aspect-square overflow-hidden rounded-xl bg-white/5 shadow-xl flex items-center justify-center">
+                    {song.cover_url ? (
+                      <Image 
+                        src={song.cover_url} 
+                        alt={song.title} 
+                        fill 
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 20vw, 150px"
+                        className="object-cover transition-transform duration-500 group-hover:scale-105" 
+                      />
+                    ) : (
+                      <Music className="h-12 w-12 text-white/20" />
+                    )}
                   </div>
                   <h3 className="mt-3 truncate text-sm font-bold text-white">{song.title}</h3>
                   <p className="mt-1 truncate text-xs text-white/48">{song.artist_name || t('guestHome.unknownArtist')}</p>
@@ -88,9 +99,15 @@ export default function GuestHome({ songs }: { songs: GuestSong[] }) {
                   href="/login"
                   className="group min-w-0 rounded-2xl p-2 text-center transition-colors hover:bg-white/[0.055]"
                 >
-                  <div className="aspect-square overflow-hidden rounded-full border border-white/10 bg-white/5 shadow-xl">
+                  <div className="relative aspect-square overflow-hidden rounded-full border border-white/10 bg-white/5 shadow-xl flex items-center justify-center">
                     {artist.coverUrl ? (
-                      <img src={artist.coverUrl} alt={artist.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <Image 
+                        src={artist.coverUrl} 
+                        alt={artist.name} 
+                        fill 
+                        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 120px"
+                        className="object-cover transition-transform duration-500 group-hover:scale-105" 
+                      />
                     ) : (
                       <div className="flex h-full items-center justify-center">
                         <Mic2 className="h-10 w-10 text-white/20" />

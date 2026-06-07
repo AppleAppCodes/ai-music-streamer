@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { ArrowLeft, Play, Pause, Clock3, Heart, Shuffle, List, Check, Menu } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Clock3, Heart, Shuffle, List, Check, Menu, Music } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import { useTranslation } from 'react-i18next';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import { useRouter } from 'next/navigation';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import Image from 'next/image';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -37,7 +38,7 @@ export default function LikedSongsPage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     const fetchLikedSongs = async () => {
@@ -56,7 +57,7 @@ export default function LikedSongsPage() {
         .from('liked_songs')
         .select(`
           created_at,
-          songs (*)
+          songs (id, title, artist_name, cover_url, plays, audio_url, duration, genre)
         `)
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
@@ -89,8 +90,17 @@ export default function LikedSongsPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handlePlayAll = () => {
-    if (songs.length === 0) return;
+  const sortedSongs = useMemo(() => {
+    return [...songs].sort((a, b) => {
+      if (sortBy === 'title') return a.title.localeCompare(b.title);
+      if (sortBy === 'artist') return (a.artist_name || '').localeCompare(b.artist_name || '');
+      if (sortBy === 'date') return new Date(b.liked_at).getTime() - new Date(a.liked_at).getTime();
+      return 0;
+    });
+  }, [songs, sortBy]);
+
+  const handlePlayAll = useCallback(() => {
+    if (sortedSongs.length === 0) return;
     
     // Check if the first liked song is already playing
     if (currentSong?.id === sortedSongs[0].id) {
@@ -101,14 +111,7 @@ export default function LikedSongsPage() {
       setQueue(queue, 0);
       playSong(queue[0]);
     }
-  };
-
-  const sortedSongs = [...songs].sort((a, b) => {
-    if (sortBy === 'title') return a.title.localeCompare(b.title);
-    if (sortBy === 'artist') return (a.artist_name || '').localeCompare(b.artist_name || '');
-    if (sortBy === 'date') return new Date(b.liked_at).getTime() - new Date(a.liked_at).getTime();
-    return 0;
-  });
+  }, [sortedSongs, currentSong?.id, t, togglePlayPause, setQueue, playSong]);
 
   if (loading) {
     return (
@@ -266,7 +269,13 @@ export default function LikedSongsPage() {
                   
                   <div className="flex items-center gap-3 overflow-hidden">
                     {viewMode === 'list' && (
-                      <img src={song.cover_url} alt={song.title} className="w-10 h-10 object-cover rounded shadow-md" />
+                       song.cover_url ? (
+                         <Image src={song.cover_url} alt={song.title} width={40} height={40} className="object-cover rounded shadow-md" />
+                       ) : (
+                         <div className="w-10 h-10 bg-white/5 flex items-center justify-center rounded shadow-md">
+                           <Music className="w-5 h-5 text-white/30" />
+                         </div>
+                       )
                     )}
                     <div className="flex flex-col truncate">
                       <span className={`text-base font-medium truncate ${currentSong?.id === song.id ? 'text-primary' : 'text-white/90'}`}>

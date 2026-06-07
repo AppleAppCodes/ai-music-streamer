@@ -5,10 +5,11 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, Clock3, Edit2, Save, X, Plus } from 'lucide-react';
+import { Play, Pause, Clock3, Edit2, Save, X, Plus, Music } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import { useTranslation } from 'react-i18next';
 import SongCard from '@/components/ui/SongCard';
+import Image from 'next/image';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -147,8 +148,12 @@ export default function SongDetailPage() {
       
       {/* Header Content */}
       <div className="relative flex flex-col items-center gap-5 px-5 pb-6 pt-20 text-center md:flex-row md:items-end md:gap-8 md:px-10 md:pt-24 md:text-left">
-        <div className="h-44 w-44 flex-shrink-0 overflow-hidden rounded-md shadow-2xl shadow-black/50 sm:h-48 sm:w-48 md:h-60 md:w-60">
-          <img src={song.cover_url} alt={song.title} className="w-full h-full object-cover" />
+        <div className="relative h-44 w-44 flex-shrink-0 overflow-hidden rounded-md shadow-2xl shadow-black/50 sm:h-48 sm:w-48 md:h-60 md:w-60 flex items-center justify-center bg-[#282828]">
+          {song.cover_url ? (
+            <Image src={song.cover_url} alt={song.title} fill sizes="(max-width: 768px) 192px, 240px" className="object-cover" priority />
+          ) : (
+            <Music className="w-20 h-20 text-white/20" />
+          )}
         </div>
         <div className="flex w-full min-w-0 flex-col items-center gap-2 md:mt-0 md:items-start md:gap-4">
           <span className="text-sm font-semibold text-white/90 drop-shadow-md tracking-wider uppercase">

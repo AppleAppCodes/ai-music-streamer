@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Check, ChevronRight, Image as ImageIcon, Info, Loader2, MoreHorizontal, Pause, Play, Repeat, Share2, Shuffle, SkipBack, SkipForward, Timer, Volume2, Repeat1 } from 'lucide-react';
+import { Check, ChevronRight, Image as ImageIcon, Info, Loader2, MoreHorizontal, Pause, Play, Repeat, Share2, Shuffle, SkipBack, SkipForward, Timer, Volume2, Repeat1, Music } from 'lucide-react';
+import Image from 'next/image';
 import { usePlayer } from '@/lib/player-context';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -371,7 +372,13 @@ export default function AudioPlayer() {
       <div className="relative z-10 flex min-w-0 flex-1 items-center gap-2 md:w-[30%] md:min-w-[180px] md:flex-none md:gap-4">
         {currentSong ? (
           <>
-            <img src={currentSong.cover_url} alt={currentSong.title} className="h-11 w-11 shrink-0 rounded-md object-cover shadow-md md:h-14 md:w-14" />
+            {currentSong.cover_url ? (
+              <Image src={currentSong.cover_url} alt={currentSong.title} width={56} height={56} className="h-11 w-11 shrink-0 rounded-md object-cover shadow-md md:h-14 md:w-14" />
+            ) : (
+              <div className="h-11 w-11 shrink-0 rounded-md bg-[#282828] flex items-center justify-center md:h-14 md:w-14 shadow-md">
+                <Music className="w-5 h-5 text-white/20 md:w-6 md:h-6" />
+              </div>
+            )}
             <div className="flex min-w-0 flex-col">
               <Link href={`/song/${currentSong.id}`} onClick={(e) => e.stopPropagation()} className="text-sm font-semibold text-white hover:underline cursor-pointer truncate">{currentSong.title}</Link>
               <Link href={`/artist/${encodeURIComponent(displayArtist)}`} onClick={(e) => e.stopPropagation()} className="text-xs text-muted hover:text-white hover:underline cursor-pointer truncate">{displayArtist}</Link>

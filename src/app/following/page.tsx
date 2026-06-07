@@ -9,6 +9,7 @@ import MobileSongMenu from '@/components/ui/MobileSongMenu';
 import { usePlayer } from '@/lib/player-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface ArtistWithSongs {
   name: string;
@@ -147,11 +148,19 @@ export default function FollowingPage() {
                         >
                           {/* Cover */}
                           <div className="relative aspect-square w-full rounded-lg overflow-hidden shadow-lg">
-                            <img
-                              src={song.cover_url}
-                              alt={song.title}
-                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                            />
+                             {song.cover_url ? (
+                               <Image
+                                 src={song.cover_url}
+                                 alt={song.title}
+                                 fill
+                                 sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 150px"
+                                 className="object-cover transition-transform duration-500 group-hover:scale-105"
+                               />
+                             ) : (
+                               <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                                 <Music className="w-12 h-12 text-white/20" />
+                                </div>
+                             )}
                             {/* Play overlay */}
                             <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${isThisSongPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                               <button

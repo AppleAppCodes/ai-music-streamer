@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
@@ -55,7 +55,7 @@ export default function PlaylistPage() {
   const shouldOpenAddSearch = searchParams?.get('add') === '1';
   
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   
   const [playlist, setPlaylist] = useState<PlaylistData | null>(null);
   const [songs, setSongs] = useState<(Song & { added_at?: string })[]>([]);
@@ -134,7 +134,7 @@ export default function PlaylistPage() {
         
         const { data: latestSongs, error } = await supabase
           .from('songs')
-          .select('*, album:albums(id, title)')
+          .select('id, title, artist_name, cover_url, plays, audio_url, duration, genre, album:albums(id, title)')
           .order('created_at', { ascending: false })
           .limit(20);
           
@@ -148,7 +148,7 @@ export default function PlaylistPage() {
       // 1. Fetch Playlist details
       const { data: playlistData, error: playlistError } = await supabase
         .from('playlists')
-        .select('*, profiles(username, avatar_url)')
+        .select('id, user_id, title, description, cover_url, is_public, is_official, created_at, profiles(username, avatar_url)')
         .eq('id', playlistId)
         .single();
         
@@ -158,7 +158,7 @@ export default function PlaylistPage() {
         return;
       }
       
-      setPlaylist(playlistData);
+      setPlaylist(playlistData as unknown as PlaylistData);
       setEditTitle(playlistData.title);
       setEditDescription(playlistData.description || '');
       
@@ -181,7 +181,7 @@ export default function PlaylistPage() {
         const songIds = mappingData.map(m => m.song_id);
         const { data: songsData } = await supabase
           .from('songs')
-          .select('*, album:albums(id, title)')
+          .select('id, title, artist_name, cover_url, plays, audio_url, duration, genre, album:albums(id, title)')
           .in('id', songIds);
           
         if (songsData) {
@@ -192,7 +192,7 @@ export default function PlaylistPage() {
               return { ...s, added_at: m.added_at };
             }
             return null;
-          }).filter(Boolean) as (Song & { added_at?: string })[];
+          }).filter(Boolean) as unknown as (Song & { added_at?: string })[];
           setSongs(orderedSongs);
         }
       }
@@ -223,7 +223,7 @@ export default function PlaylistPage() {
       const searchPattern = `%${trimmedQuery}%`;
       const { data, error } = await supabase
         .from('songs')
-        .select('*')
+        .select('id, title, artist_name, cover_url, plays')
         .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern}`)
         .order('plays', { ascending: false })
         .limit(12);
@@ -233,7 +233,7 @@ export default function PlaylistPage() {
         console.error('Song search failed:', error);
         setSongSearchResults([]);
       } else {
-        setSongSearchResults((data || []) as Song[]);
+        setSongSearchResults((data || []) as unknown as Song[]);
       }
       setSongSearchLoading(false);
     }
@@ -254,9 +254,9 @@ export default function PlaylistPage() {
     
     const handleAdded = async (pid: string, sid: string) => {
       if (pid === playlistId) {
-        const { data } = await supabase.from('songs').select('*').eq('id', sid).single();
+        const { data } = await supabase.from('songs').select('id, title, artist_name, cover_url, plays, audio_url, duration, genre').eq('id', sid).single();
         if (data) {
-          setSongs(prev => [data, ...prev]);
+          setSongs(prev => [data as unknown as Song, ...prev]);
         }
       }
     };
@@ -271,14 +271,14 @@ export default function PlaylistPage() {
     };
   }, [playlistId, supabase]);
 
-  const handlePlayAll = () => {
+  const handlePlayAll = useCallback(() => {
     if (songs.length === 0) return;
     const queueWithNames = songs.map(s => ({ ...s, creatorName: s.artist_name || 'Creator' }));
     setQueue(queueWithNames, 0);
     playSong({ ...songs[0], creatorName: songs[0].artist_name || 'Creator' });
-  };
+  }, [songs, setQueue, playSong]);
 
-  const handleToggleSave = async () => {
+  const handleToggleSave = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -319,9 +319,9 @@ export default function PlaylistPage() {
       console.error('Error toggling save status:', err);
       alert(t('playlist.addError') + getErrorMessage(err));
     }
-  };
+  }, [playlistId, isSaved, supabase, router, t]);
 
-  const handleSaveTitle = async () => {
+  const handleSaveTitle = useCallback(async () => {
     if (!playlist || !isOwner || editTitle.trim() === playlist.title) {
       setIsEditingTitle(false);
       setEditTitle(playlist?.title || '');
@@ -344,9 +344,9 @@ export default function PlaylistPage() {
     } finally {
       setIsEditingTitle(false);
     }
-  };
+  }, [playlist, isOwner, editTitle, playlistId, supabase]);
 
-  const handleSaveDetails = async () => {
+  const handleSaveDetails = useCallback(async () => {
     if (!playlist || !isOwner) return;
     const newTitle = editTitle.trim() || 'Unbenannte Playlist';
     try {
@@ -362,9 +362,9 @@ export default function PlaylistPage() {
       console.error('Error updating details:', err);
       alert('Fehler beim Aktualisieren: ' + getErrorMessage(err));
     }
-  };
+  }, [playlist, isOwner, editTitle, editDescription, playlistId, supabase]);
 
-  const handleTogglePublic = async () => {
+  const handleTogglePublic = useCallback(async () => {
     if (!playlist) return;
     
     const newStatus = !playlist.is_public;
@@ -376,9 +376,9 @@ export default function PlaylistPage() {
     if (!error) {
       setPlaylist({ ...playlist, is_public: newStatus });
     }
-  };
+  }, [playlist, supabase]);
 
-  const handleToggleOfficial = async () => {
+  const handleToggleOfficial = useCallback(async () => {
     if (!playlist) return;
     
     const newStatus = !playlist.is_official;
@@ -390,9 +390,9 @@ export default function PlaylistPage() {
     if (!error) {
       setPlaylist({ ...playlist, is_official: newStatus });
     }
-  };
+  }, [playlist, supabase]);
 
-  const handleDeletePlaylist = async () => {
+  const handleDeletePlaylist = useCallback(async () => {
     if (!playlist || !isOwner) return;
     const confirmed = window.confirm(t('playlist.deleteConfirm'));
     if (!confirmed) return;
@@ -409,9 +409,9 @@ export default function PlaylistPage() {
       console.error('Error deleting playlist:', err);
       alert(t('playlist.deleteError') + getErrorMessage(err));
     }
-  };
+  }, [playlist, isOwner, t, playlistId, supabase, router]);
 
-  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     let file = e.target.files?.[0];
     if (!file || !isOwner || !playlist) return;
 
@@ -446,18 +446,18 @@ export default function PlaylistPage() {
     } finally {
       setIsUploadingCover(false);
     }
-  };
+  }, [isOwner, playlist, playlistId, supabase]);
 
-  const handleSongSearchQueryChange = (value: string) => {
+  const handleSongSearchQueryChange = useCallback((value: string) => {
     setSongSearchQuery(value);
 
     if (value.trim().length < 2) {
       setSongSearchResults([]);
       setSongSearchLoading(false);
     }
-  };
+  }, []);
 
-  const handleAddSongFromSearch = async (song: Song) => {
+  const handleAddSongFromSearch = useCallback(async (song: Song) => {
     if (!isOwner || addingSongId) return;
 
     setAddingSongId(song.id);
@@ -478,9 +478,9 @@ export default function PlaylistPage() {
     } finally {
       setAddingSongId(null);
     }
-  };
+  }, [isOwner, addingSongId, playlistId, supabase, t]);
 
-  const removeSongFromPlaylist = async (songId: string) => {
+  const removeSongFromPlaylist = useCallback(async (songId: string) => {
     if (!confirm(t('playlist.removeConfirm'))) return;
     
     try {
@@ -495,7 +495,7 @@ export default function PlaylistPage() {
       console.error(err);
       alert(t('playlist.removeError') + getErrorMessage(err));
     }
-  };
+  }, [t, playlistId, supabase, songs]);
 
   if (loading) {
     return (
@@ -536,7 +536,14 @@ export default function PlaylistPage() {
               <Sparkles className="w-20 h-20 text-white" />
             </div>
           ) : playlist.cover_url ? (
-            <img src={playlist.cover_url} alt={playlist.title} className="w-full h-full object-cover" />
+            <Image
+              src={playlist.cover_url}
+              alt={playlist.title}
+              fill
+              sizes="(max-width: 768px) 176px, (max-width: 1024px) 192px, 224px"
+              className="object-cover"
+              priority
+            />
           ) : (
             <Music className="w-20 h-20 text-white/20" />
           )}
@@ -584,7 +591,7 @@ export default function PlaylistPage() {
             {playlist.profiles?.username === 'YORIAX Team' ? (
               <Image src="/brand/yoriax-symbol.png" alt="YORIAX" width={24} height={24} className="h-6 w-6 object-contain" />
             ) : playlist.profiles?.avatar_url ? (
-              <img src={playlist.profiles.avatar_url} alt={playlist.profiles.username} className="w-6 h-6 rounded-full object-cover" />
+              <Image src={playlist.profiles.avatar_url} alt={playlist.profiles.username} width={24} height={24} className="rounded-full object-cover" />
             ) : (
               <div className="w-6 h-6 rounded-full bg-gradient-primary flex items-center justify-center text-xs text-white">
                 {playlist.profiles?.username?.[0]?.toUpperCase() || 'U'}
@@ -771,7 +778,13 @@ export default function PlaylistPage() {
                         disabled={alreadyAdded || addingSongId !== null}
                         className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] p-3 text-left transition-colors hover:border-primary/40 hover:bg-white/[0.07] disabled:cursor-default disabled:opacity-60 disabled:hover:border-white/10 disabled:hover:bg-white/[0.025]"
                       >
-                        <img src={song.cover_url} alt={song.title} className="h-12 w-12 rounded-xl object-cover" />
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-[#282828] flex items-center justify-center">
+                          {song.cover_url ? (
+                            <Image src={song.cover_url} alt={song.title} fill sizes="48px" className="object-cover" loading="lazy" />
+                          ) : (
+                            <Music className="w-5 h-5 text-white/20" />
+                          )}
+                        </div>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-bold text-white">{song.title}</div>
                           <div className="truncate text-xs font-semibold text-white/45">{song.artist_name || 'Creator'}</div>
@@ -843,7 +856,20 @@ export default function PlaylistPage() {
                     </div>
                     
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <img src={song.cover_url} alt={song.title} className="w-10 h-10 object-cover rounded shadow-md" />
+                      <div className="relative w-10 h-10 shrink-0 bg-[#282828] rounded flex items-center justify-center overflow-hidden">
+                        {song.cover_url ? (
+                          <Image
+                            src={song.cover_url}
+                            alt={song.title}
+                            fill
+                            sizes="40px"
+                            className="object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <Music className="w-5 h-5 text-white/20" />
+                        )}
+                      </div>
                       <div className="flex flex-col overflow-hidden">
                         <span className={`text-base font-medium truncate ${currentSong?.id === song.id ? 'text-primary' : 'text-white/90'}`}>
                           {song.title}
@@ -932,7 +958,7 @@ export default function PlaylistPage() {
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {playlist.cover_url ? (
-                    <img src={playlist.cover_url} alt="Cover" className="w-full h-full object-cover" />
+                    <Image src={playlist.cover_url} alt="Cover" fill sizes="176px" className="object-cover" />
                   ) : (
                     <Music className="w-16 h-16 text-white/20" />
                   )}
