@@ -61,7 +61,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
       const { data, error } = await supabase
         .from('songs')
         .select('*')
-        .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern}`)
+        .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern},genre.ilike.${searchPattern}`)
         .order('plays', { ascending: false })
         .limit(10);
 
