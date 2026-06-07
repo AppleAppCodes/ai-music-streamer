@@ -17,6 +17,20 @@
     "datenschutz": "Privacy Policy",
     "agb": "Terms of Service"
   },
+  "library": {
+    "eyebrow": "Your Library",
+    "title": "Library",
+    "create": "Create",
+    "favorites": "Favorite Songs",
+    "open": "Open",
+    "ownPlaylists": "Your Playlists",
+    "noPlaylists": "No playlists yet",
+    "noPlaylistsDesc": "Create your first playlist and collect songs according to your taste.",
+    "createBtn": "Create Playlist",
+    "byYou": "By You",
+    "byYoriax": "By YORIAX Team",
+    "byCreator": "By {{creator}}"
+  },
   "home": {
     "greetings": {
       "morning": "Good morning",
@@ -196,7 +210,9 @@
     "byCreator": "By {{creator}}",
     "publicPlaylist": "Public Playlist",
     "playlistCount_one": "1 Playlist",
-    "playlistCount_other": "{{count}} Playlists"
+    "playlistCount_other": "{{count}} Playlists",
+    "savedTitle": "Saved Playlists",
+    "savedEmpty": "No saved playlists yet. Explore the discover page to add playlists to your library."
   },
   "playlist": {
     "deleteConfirm": "Are you sure you want to delete this playlist? This action cannot be undone.",
@@ -237,6 +253,8 @@
     "official": "Official",
     "private": "Private",
     "clickToEdit": "Click to edit",
-    "save": "Save"
+    "save": "Save",
+    "savePlaylist": "Save Playlist",
+    "unsavePlaylist": "Remove from Saved"
   }
 }

@@ -17,6 +17,20 @@
     "datenschutz": "Datenschutz",
     "agb": "AGB"
   },
+  "library": {
+    "eyebrow": "Deine Bibliothek",
+    "title": "Bibliothek",
+    "create": "Erstellen",
+    "favorites": "Lieblingssongs",
+    "open": "Öffnen",
+    "ownPlaylists": "Deine Playlists",
+    "noPlaylists": "Noch keine Playlists",
+    "noPlaylistsDesc": "Erstelle deine erste Playlist und sammle Songs nach deinem Geschmack.",
+    "createBtn": "Playlist erstellen",
+    "byYou": "Von Dir",
+    "byYoriax": "Von YORIAX Team",
+    "byCreator": "Von {{creator}}"
+  },
   "home": {
     "greetings": {
       "morning": "Guten Morgen",
@@ -196,7 +210,9 @@
     "byCreator": "Von {{creator}}",
     "publicPlaylist": "Öffentliche Playlist",
     "playlistCount_one": "1 Playlist",
-    "playlistCount_other": "{{count}} Playlists"
+    "playlistCount_other": "{{count}} Playlists",
+    "savedTitle": "Gespeicherte Playlists",
+    "savedEmpty": "Noch keine gespeicherten Playlists. Erkunde die Entdecken-Seite, um welche zu deiner Bibliothek hinzuzufügen."
   },
   "playlist": {
     "deleteConfirm": "Möchtest du diese Playlist wirklich löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.",
@@ -237,6 +253,8 @@
     "official": "Offiziell",
     "private": "Privat",
     "clickToEdit": "Klicken zum Bearbeiten",
-    "save": "Speichern"
+    "save": "Speichern",
+    "savePlaylist": "Playlist speichern",
+    "unsavePlaylist": "Aus Gespeichert entfernen"
   }
 }

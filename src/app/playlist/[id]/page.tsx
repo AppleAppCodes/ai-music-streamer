@@ -62,6 +62,7 @@ export default function PlaylistPage() {
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [songSearchQuery, setSongSearchQuery] = useState('');
   const [songSearchResults, setSongSearchResults] = useState<Song[]>([]);
   const [songSearchLoading, setSongSearchLoading] = useState(false);
@@ -95,6 +96,22 @@ export default function PlaylistPage() {
       if (!playlistId) return;
       
       const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        const dbPlaylistId = playlistId === 'daily-new-releases'
+          ? 'da114eeb-ecea-5e55-9ee1-ea5e5da11111'
+          : playlistId;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(dbPlaylistId)) {
+          const { data: saveRelation } = await supabase
+            .from('playlist_saves')
+            .select('playlist_id')
+            .eq('user_id', session.user.id)
+            .eq('playlist_id', dbPlaylistId)
+            .maybeSingle();
+          setIsSaved(!!saveRelation);
+        }
+      }
       
       // Handle dynamic "Daily New Releases" playlist
       if (playlistId === 'daily-new-releases') {
@@ -259,6 +276,49 @@ export default function PlaylistPage() {
     const queueWithNames = songs.map(s => ({ ...s, creatorName: s.artist_name || 'Creator' }));
     setQueue(queueWithNames, 0);
     playSong({ ...songs[0], creatorName: songs[0].artist_name || 'Creator' });
+  };
+
+  const handleToggleSave = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+      
+      const dbPlaylistId = playlistId === 'daily-new-releases'
+        ? 'da114eeb-ecea-5e55-9ee1-ea5e5da11111'
+        : playlistId;
+        
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(dbPlaylistId)) {
+        return;
+      }
+
+      if (isSaved) {
+        const { error } = await supabase
+          .from('playlist_saves')
+          .delete()
+          .eq('user_id', session.user.id)
+          .eq('playlist_id', dbPlaylistId);
+          
+        if (error) throw error;
+        setIsSaved(false);
+      } else {
+        const { error } = await supabase
+          .from('playlist_saves')
+          .insert({
+            user_id: session.user.id,
+            playlist_id: dbPlaylistId
+          });
+          
+        if (error) throw error;
+        setIsSaved(true);
+      }
+    } catch (err) {
+      console.error('Error toggling save status:', err);
+      alert(t('playlist.addError') + getErrorMessage(err));
+    }
   };
 
   const handleSaveTitle = async () => {
@@ -575,6 +635,19 @@ export default function PlaylistPage() {
               <Play className="w-6 h-6 fill-current" />
             )}
           </button>
+
+          {!isOwner && (
+            <button
+              onClick={handleToggleSave}
+              className={`flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-bold shadow-xl transition-transform hover:scale-105 ${
+                isSaved
+                  ? 'border-white/10 bg-white/10 text-white hover:bg-white/20'
+                  : 'border-white/20 bg-white text-black hover:bg-gray-200'
+              }`}
+            >
+              {isSaved ? t('playlist.unsavePlaylist') : t('playlist.savePlaylist')}
+            </button>
+          )}
           
           <div className="relative" ref={menuRef}>
             <button 
