@@ -15,6 +15,7 @@ import Image from 'next/image';
 import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
 import { isAdminUser, isModUser } from '@/lib/admin';
+import { useTranslation } from 'react-i18next';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -49,6 +50,7 @@ export default function PlaylistPage() {
   const params = useParams();
   const playlistId = params?.id as string;
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const shouldOpenAddSearch = searchParams?.get('add') === '1';
   
@@ -99,8 +101,8 @@ export default function PlaylistPage() {
         setPlaylist({
           id: 'daily-new-releases',
           user_id: 'system',
-          title: 'Daily New Releases',
-          description: 'Die neuesten 20 Songs auf Yoriax. Täglich aktualisiert.',
+          title: t('playlists.dailyNewReleases.title'),
+          description: t('playlists.dailyNewReleases.description'),
           cover_url: null, // Will render standard icon or we can provide an image
           is_public: true,
           is_official: true,
@@ -332,7 +334,7 @@ export default function PlaylistPage() {
 
   const handleDeletePlaylist = async () => {
     if (!playlist || !isOwner) return;
-    const confirmed = window.confirm("Möchtest du diese Playlist wirklich löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.");
+    const confirmed = window.confirm(t('playlist.deleteConfirm'));
     if (!confirmed) return;
     
     try {
@@ -345,7 +347,7 @@ export default function PlaylistPage() {
       router.push('/playlists');
     } catch (err: unknown) {
       console.error('Error deleting playlist:', err);
-      alert('Fehler beim Löschen: ' + getErrorMessage(err));
+      alert(t('playlist.deleteError') + getErrorMessage(err));
     }
   };
 
@@ -412,14 +414,14 @@ export default function PlaylistPage() {
       });
     } catch (err: unknown) {
       console.error('Error adding song to playlist:', err);
-      alert('Fehler beim Hinzufügen: ' + getErrorMessage(err));
+      alert(t('playlist.addError') + getErrorMessage(err));
     } finally {
       setAddingSongId(null);
     }
   };
 
   const removeSongFromPlaylist = async (songId: string) => {
-    if (!confirm('Song aus der Playlist entfernen?')) return;
+    if (!confirm(t('playlist.removeConfirm'))) return;
     
     try {
       await supabase
@@ -431,6 +433,7 @@ export default function PlaylistPage() {
       setSongs(songs.filter(s => s.id !== songId));
     } catch (err) {
       console.error(err);
+      alert(t('playlist.removeError') + getErrorMessage(err));
     }
   };
 
@@ -455,7 +458,7 @@ export default function PlaylistPage() {
         type="button"
         onClick={() => router.back()}
         className="absolute left-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 hover:text-white md:left-8 md:top-8"
-        aria-label="Zurück"
+        aria-label={t('charts.back')}
       >
         <ArrowLeft className="h-6 w-6" />
       </button>
@@ -485,7 +488,7 @@ export default function PlaylistPage() {
               ) : (
                 <>
                   <Edit2 className="w-8 h-8 text-white mb-2" />
-                  <span className="text-sm font-medium text-white">Cover ändern</span>
+                  <span className="text-sm font-medium text-white">{t('playlist.changeCover')}</span>
                 </>
               )}
             </div>
@@ -511,7 +514,7 @@ export default function PlaylistPage() {
             <h1 
               className={`max-w-full break-words text-center text-4xl font-black tracking-tighter text-white sm:text-5xl md:text-left md:text-7xl md:truncate ${isOwner ? 'cursor-pointer hover:underline' : ''}`}
               onClick={() => isOwner && setIsEditingTitle(true)}
-              title={isOwner ? "Klicken zum Bearbeiten" : ""}
+              title={isOwner ? t('playlist.clickToEdit') || "Click to edit" : ""}
             >
               {playlist.title}
             </h1>
@@ -528,28 +531,28 @@ export default function PlaylistPage() {
               </div>
             )}
             <span className="text-white hover:underline cursor-pointer flex items-center gap-1">
-              {playlist.profiles?.username || 'Unbekannt'}
+              {playlist.profiles?.username === 'Unbekannt' || !playlist.profiles?.username ? t('guestHome.unknownArtist') : playlist.profiles.username}
               {playlist.profiles?.username === 'YORIAX Team' && (
                 <ShieldCheck className="h-4 w-4 text-teal-300" />
               )}
             </span>
             <span>•</span>
-            <span>{songs.length} {songs.length === 1 ? 'Song' : 'Songs'}</span>
+            <span>{t('playlist.songCount', { count: songs.length })}</span>
             <span>•</span>
             {playlist.is_official ? (
               <span className="inline-flex items-center gap-1.5 rounded-md bg-teal-500/10 px-2 py-0.5 text-xs font-semibold text-teal-300 border border-teal-500/20">
                 <Globe className="h-3 w-3" />
-                Offiziell
+                {t('playlist.official') || 'Official'}
               </span>
             ) : playlist.is_public ? (
               <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-0.5 text-xs font-medium text-white/80 border border-white/5">
                 <Globe className="h-3 w-3" />
-                Öffentlich
+                {t('playlist.public')}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-0.5 text-xs font-medium text-white/50 border border-white/5">
                 <Lock className="h-3 w-3" />
-                Privat
+                {t('playlist.private') || 'Private'}
               </span>
             )}
           </div>
@@ -590,7 +593,7 @@ export default function PlaylistPage() {
                       onClick={() => { setIsMenuOpen(false); setIsEditModalOpen(true); }}
                     >
                       <Edit2 className="w-4 h-4 text-white/70" />
-                      Details bearbeiten
+                      {t('playlist.editDetails')}
                     </button>
                     {isOwner && (
                       <button 
@@ -598,9 +601,9 @@ export default function PlaylistPage() {
                         onClick={() => { setIsMenuOpen(false); handleTogglePublic(); }}
                       >
                         {playlist.is_public ? (
-                          <><Lock className="w-4 h-4 text-white/70" /> Als privat markieren</>
+                          <><Lock className="w-4 h-4 text-white/70" /> {t('playlist.markPrivate')}</>
                         ) : (
-                          <><Globe className="w-4 h-4 text-white/70" /> Als öffentlich markieren</>
+                          <><Globe className="w-4 h-4 text-white/70" /> {t('playlist.markPublic')}</>
                         )}
                       </button>
                     )}
@@ -610,9 +613,9 @@ export default function PlaylistPage() {
                         onClick={() => { setIsMenuOpen(false); handleToggleOfficial(); }}
                       >
                         {playlist.is_official ? (
-                          <><Lock className="w-4 h-4 text-teal-300/70" /> Offiziell entfernen</>
+                          <><Lock className="w-4 h-4 text-teal-300/70" /> {t('playlist.removeOfficial')}</>
                         ) : (
-                          <><Globe className="w-4 h-4 text-teal-300/70" /> Als offiziell markieren</>
+                          <><Globe className="w-4 h-4 text-teal-300/70" /> {t('playlist.markOfficial')}</>
                         )}
                       </button>
                     )}
@@ -622,7 +625,7 @@ export default function PlaylistPage() {
                       onClick={() => { setIsMenuOpen(false); handleDeletePlaylist(); }}
                     >
                       <Trash2 className="w-4 h-4" />
-                      Playlist löschen
+                      {t('playlist.deletePlaylist')}
                     </button>
                     <div className="h-px w-full bg-white/10 my-1"></div>
                   </>
@@ -635,7 +638,7 @@ export default function PlaylistPage() {
                   trigger={
                     <button className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-white/10 flex items-center gap-3 transition-colors">
                       <Flag className="w-4 h-4" />
-                      Playlist melden
+                      {t('playlist.report')}
                     </button>
                   }
                 />
@@ -648,9 +651,9 @@ export default function PlaylistPage() {
           <div className="mb-10 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035] shadow-2xl shadow-black/20">
             <div className="border-b border-white/10 px-5 py-4 md:px-6">
               <div className="flex flex-col gap-1">
-                <h2 className="text-xl font-black text-white">Songs hinzufügen</h2>
+                <h2 className="text-xl font-black text-white">{t('playlist.addSongsTitle')}</h2>
                 <p className="text-sm font-medium text-white/45">
-                  Suche direkt nach Songs und füge sie mit einem Klick dieser Playlist hinzu.
+                  {t('playlist.addSongsDesc')}
                 </p>
               </div>
             </div>
@@ -663,24 +666,24 @@ export default function PlaylistPage() {
                   type="search"
                   value={songSearchQuery}
                   onChange={(event) => handleSongSearchQueryChange(event.target.value)}
-                  placeholder="Song oder Künstler suchen..."
+                  placeholder={t('playlist.searchSongsPlaceholder')}
                   className="w-full rounded-2xl border border-white/10 bg-black/35 py-3.5 pl-12 pr-4 text-sm font-semibold text-white outline-none placeholder:text-white/35 focus:border-primary/60 focus:bg-black/50"
-                  aria-label="Songs für diese Playlist suchen"
+                  aria-label={t('playlist.searchSongsAria')}
                 />
               </label>
 
               {songSearchQuery.trim().length > 0 && songSearchQuery.trim().length < 2 ? (
-                <p className="mt-3 text-sm font-medium text-white/40">Gib mindestens 2 Zeichen ein.</p>
+                <p className="mt-3 text-sm font-medium text-white/40">{t('playlist.minCharacters')}</p>
               ) : null}
 
               {songSearchLoading ? (
                 <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-4 text-sm font-semibold text-white/55">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Suche läuft...
+                  {t('playlist.searching')}
                 </div>
               ) : songSearchQuery.trim().length >= 2 && songSearchResults.length === 0 ? (
                 <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-5 text-sm font-semibold text-white/45">
-                  Keine Songs gefunden.
+                  {t('playlist.noSongsFound')}
                 </div>
               ) : songSearchResults.length > 0 ? (
                 <div className="mt-4 grid gap-2">
@@ -705,12 +708,12 @@ export default function PlaylistPage() {
                         ) : alreadyAdded ? (
                           <span className="inline-flex items-center gap-2 rounded-full bg-green-500/10 px-3 py-1.5 text-xs font-black text-green-400">
                             <CheckCircle2 className="h-4 w-4" />
-                            Hinzugefügt
+                            {t('playlist.added')}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-black text-black">
                             <Plus className="h-4 w-4" />
-                            Hinzufügen
+                            {t('playlist.add')}
                           </span>
                         )}
                       </button>
@@ -730,15 +733,15 @@ export default function PlaylistPage() {
               {/* Table Header */}
               <div className="grid grid-cols-[16px_1fr_50px] md:grid-cols-[24px_2fr_1.5fr_1fr_120px] gap-4 px-4 py-2 border-b border-white/10 text-xs text-white/40 uppercase tracking-wider mb-2">
                 <div>#</div>
-                <div>Titel</div>
+                <div>{t('song.title')}</div>
                 <div className="hidden md:block">Album</div>
-                <div className="hidden md:block">Hinzugefügt am</div>
+                <div className="hidden md:block">{t('playlist.addedAtCol')}</div>
                 <div className="text-right flex items-center justify-end"><Clock3 className="w-4 h-4" /></div>
               </div>
 
               {songs.map((song, index) => {
                 const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
-                const displayArtist = song.artist_name || 'Unbekannt';
+                const displayArtist = song.artist_name || t('guestHome.unknownArtist');
                 
                 return (
                   <div 
@@ -815,15 +818,15 @@ export default function PlaylistPage() {
               <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
                 <Music className="w-8 h-8 text-white/20" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">Lass uns etwas Musik finden für deine Playlist</h3>
+              <h3 className="text-xl font-bold text-white mb-2">{t('playlist.findMusicTitle')}</h3>
               <p className="text-white/50 text-sm mb-6">
                 {isOwner
-                  ? 'Nutze die Suche oben, um Songs direkt zu dieser Playlist hinzuzufügen.'
-                  : 'Gehe auf Entdecken, um Songs zu finden und sie mit dem Plus-Icon hinzuzufügen.'}
+                  ? t('playlist.findMusicSearchDesc')
+                  : t('playlist.findMusicDiscoverDesc')}
               </p>
               {!isOwner ? (
                 <Link href="/charts/viral" className="px-6 py-2.5 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform">
-                  Charts durchstöbern
+                  {t('playlist.browseCharts')}
                 </Link>
               ) : null}
             </div>
@@ -839,7 +842,7 @@ export default function PlaylistPage() {
             <div className="p-6 flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">Details bearbeiten</h2>
+                <h2 className="text-2xl font-bold text-white">{t('playlist.editDetails')}</h2>
                 <button 
                   onClick={() => setIsEditModalOpen(false)}
                   className="text-white/50 hover:text-white transition-colors p-1"
@@ -867,7 +870,7 @@ export default function PlaylistPage() {
                     ) : (
                       <>
                         <Edit2 className="w-8 h-8 text-white mb-2" />
-                        <span className="text-sm font-medium text-white text-center px-2">Foto auswählen</span>
+                        <span className="text-sm font-medium text-white text-center px-2">{t('playlist.selectPhoto')}</span>
                       </>
                     )}
                   </div>
@@ -880,13 +883,13 @@ export default function PlaylistPage() {
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     className="w-full bg-[#3E3E3E] text-white text-sm rounded p-3 outline-none focus:bg-[#4a4a4a] transition-colors"
-                    placeholder="Name hinzufügen"
+                    placeholder={t('playlist.addNamePlaceholder')}
                   />
                   <textarea 
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     className="w-full bg-[#3E3E3E] text-white text-sm rounded p-3 outline-none focus:bg-[#4a4a4a] transition-colors resize-none flex-1 min-h-[100px]"
-                    placeholder="Optionale Beschreibung hinzufügen"
+                    placeholder={t('playlist.addDescPlaceholder')}
                   />
                 </div>
               </div>
@@ -897,13 +900,13 @@ export default function PlaylistPage() {
                   onClick={handleSaveDetails}
                   className="bg-white text-black font-bold px-8 py-3 rounded-full hover:scale-105 transition-transform"
                 >
-                  Speichern
+                  {t('playlist.save')}
                 </button>
               </div>
 
               {/* Disclaimer */}
               <p className="text-[11px] font-bold text-white/90">
-                Wenn du fortfährst, stimmst du zu, dass die Plattform auf dein hochgeladenes Bild zugreift. Stell bitte sicher, dass du berechtigt bist, dieses Bild hochzuladen.
+                {t('playlist.consentText')}
               </p>
             </div>
           </div>

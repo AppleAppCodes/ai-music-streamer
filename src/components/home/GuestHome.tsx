@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { Mic2, Music2, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';

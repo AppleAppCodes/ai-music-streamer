@@ -37,15 +37,15 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
         <nav className="space-y-1">
           <Link href="/" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
             <Home className="w-5 h-5 group-hover:text-primary transition-colors" />
-            Home
+            {t('nav.home')}
           </Link>
           <Link href="/feed" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
             <Sparkles className="w-5 h-5 group-hover:text-primary transition-colors" />
-            Für dich
+            {t('nav.feed')}
           </Link>
           <Link href="/charts/viral" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
             <TrendingUp className="w-5 h-5 group-hover:text-primary transition-colors" />
-            Viral Charts
+            {t('nav.viralCharts')}
           </Link>
           <Link href="/artists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
             <Mic2 className="w-5 h-5 group-hover:text-primary transition-colors" />
@@ -53,7 +53,7 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
           </Link>
           <Link href="/discover/playlists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
             <ListMusic className="w-5 h-5 group-hover:text-primary transition-colors" />
-            Playlists Entdecken
+            {t('nav.discoverPlaylists')}
           </Link>
         </nav>
       </div>
@@ -63,15 +63,15 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
         <nav className="space-y-1">
           <Link href="/playlists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
             <Library className="w-5 h-5 group-hover:text-primary transition-colors" />
-            Meine Playlists
+            {t('nav.myPlaylists')}
           </Link>
           <Link href="/collection/tracks" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
             <Heart className="w-5 h-5 group-hover:text-primary transition-colors" />
-            Liked Songs
+            {t('nav.likedSongs')}
           </Link>
           <Link href="/following" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
             <UserCheck className="w-5 h-5 group-hover:text-primary transition-colors" />
-            Folge ich
+            {t('nav.following')}
           </Link>
         </nav>
       </div>
@@ -89,13 +89,13 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
         </CookieSettingsButton>
         <div className="mt-3 flex flex-col gap-2 px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-white/25">
           <Link href="/impressum" className="transition-colors hover:text-white/60">
-            Impressum
+            {t('nav.impressum')}
           </Link>
           <Link href="/datenschutz" className="transition-colors hover:text-white/60">
-            Datenschutz
+            {t('nav.datenschutz')}
           </Link>
           <Link href="/agb" className="transition-colors hover:text-white/60">
-            AGB
+            {t('nav.agb')}
           </Link>
         </div>
       </div>

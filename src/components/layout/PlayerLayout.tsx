@@ -14,19 +14,19 @@ interface PlayerLayoutProps {
 
 export default function PlayerLayout({ children, isAuthenticated }: PlayerLayoutProps) {
   useEffect(() => {
-    if (!hasPreferenceStorageConsent()) return;
+    let languageToSet: string | null = null;
 
-    const savedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    if (savedLanguage) {
-      if (savedLanguage !== i18n.language) {
-        i18n.changeLanguage(savedLanguage);
-      }
-    } else {
+    if (hasPreferenceStorageConsent()) {
+      languageToSet = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    }
+
+    if (!languageToSet) {
       const browserLang = window.navigator.language || '';
-      const autoLang = browserLang.toLowerCase().startsWith('de') ? 'de' : 'en';
-      if (autoLang !== i18n.language) {
-        i18n.changeLanguage(autoLang);
-      }
+      languageToSet = browserLang.toLowerCase().startsWith('de') ? 'de' : 'en';
+    }
+
+    if (languageToSet && languageToSet !== i18n.language) {
+      i18n.changeLanguage(languageToSet);
     }
   }, []);
 
