@@ -906,9 +906,11 @@ export default function FeedPage() {
             </button>
           </div>
 
-          <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-[11px] font-bold text-white/60 backdrop-blur-md">
-            {activeIndex + 1} / {displayedSongs.length}
-          </div>
+          {isAdmin && (
+            <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-[11px] font-bold text-white/60 backdrop-blur-md">
+              {activeIndex + 1} / {displayedSongs.length}
+            </div>
+          )}
         </>
       )}
 
