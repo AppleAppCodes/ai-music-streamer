@@ -341,6 +341,8 @@ export default function AudioPlayer() {
               backgroundImage: `url(${currentSong.cover_url})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
+              maskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 75%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 75%, transparent 100%)'
             }} 
           />
         )}
