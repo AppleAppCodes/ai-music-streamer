@@ -415,7 +415,7 @@ export default function ArtistsPage() {
                         setArtists(prev => prev.map(a => a.name === artist.name ? { ...a, isOriginal: !a.isOriginal } : a));
                       }}
                       className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${artist.isOriginal ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-white/5 text-white/40 border border-transparent hover:bg-white/10 hover:text-white'}`}
-                      title="Yoriax Original Status umschalten"
+                      title="Yoriax Spotlight Status umschalten"
                     >
                       <Users className="w-5 h-5" />
                     </button>
@@ -428,14 +428,14 @@ export default function ArtistsPage() {
             </Reorder.Group>
           ) : (
             <div className="flex flex-col gap-16">
-              {/* Yoriax Originals */}
+              {/* Yoriax Spotlight */}
               {artists.filter(a => a.isOriginal).length > 0 && (
                 <section>
                   <div className="flex items-center gap-3 mb-8">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.4)]">
                       <Users className="w-5 h-5 text-white" />
                     </div>
-                    <h2 className="text-3xl font-black text-white tracking-tight">Yoriax Originals</h2>
+                    <h2 className="text-3xl font-black text-white tracking-tight">Yoriax Spotlight</h2>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {artists.filter(a => a.isOriginal).slice(0, 12).map((artist) => (
