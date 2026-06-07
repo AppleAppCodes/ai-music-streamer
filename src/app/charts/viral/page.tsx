@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CalendarDays, ChevronRight, Flame, Mic2, Pause, Play, TrendingUp, Edit2, Loader2, Trash2 } from 'lucide-react';
+import { Reorder } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
@@ -35,6 +36,8 @@ interface ChartPanelProps {
   isPlaying: boolean;
   onPlayChart: (songs: Song[]) => void;
   onPlaySong: (songs: Song[], index: number) => void;
+  isReorderable?: boolean;
+  onReorder?: (songs: Song[]) => void;
 }
 
 function ChartPanel({
@@ -48,6 +51,8 @@ function ChartPanel({
   isPlaying,
   onPlayChart,
   onPlaySong,
+  isReorderable,
+  onReorder,
 }: ChartPanelProps) {
   const songs = rankedSongs;
   const isChartPlaying = isPlaying && songs.some((song) => song.id === currentSong?.id);
@@ -92,53 +97,106 @@ function ChartPanel({
 
       {rankedSongs.length > 0 ? (
         <div className="max-h-[68vh] overflow-y-auto overscroll-contain p-2">
-          {rankedSongs.map((song, index) => {
-            const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
-            const displayArtist = song.artist_name || 'Creator';
+          {isReorderable && onReorder ? (
+            <Reorder.Group axis="y" values={songs} onReorder={onReorder} className="flex flex-col">
+              {songs.map((song, index) => {
+                const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
+                const displayArtist = song.artist_name || 'Creator';
 
-            return (
-              <div
-                key={song.id}
-                onClick={() => onPlaySong(songs, index)}
-                className="group grid cursor-pointer grid-cols-[24px_40px_minmax(0,1fr)_auto_28px] items-center gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-white/[0.07]"
-              >
-                <div className="flex justify-center text-xs font-bold text-white/45">
-                  {isThisSongPlaying ? (
-                    <div className="flex h-4 w-4 items-end justify-between">
-                      <div className={`h-full w-1 animate-bounce ${accentClasses.bars}`} />
-                      <div className={`h-2/3 w-1 animate-bounce ${accentClasses.bars}`} style={{ animationDelay: '150ms' }} />
-                      <div className={`h-4/5 w-1 animate-bounce ${accentClasses.bars}`} style={{ animationDelay: '300ms' }} />
+                return (
+                  <Reorder.Item
+                    key={song.id}
+                    value={song}
+                    onClick={() => onPlaySong(songs, index)}
+                    className="group grid cursor-grab active:cursor-grabbing grid-cols-[24px_40px_minmax(0,1fr)_auto_28px] items-center gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-white/[0.07]"
+                  >
+                    <div className="flex justify-center text-xs font-bold text-white/45">
+                      {isThisSongPlaying ? (
+                        <div className="flex h-4 w-4 items-end justify-between">
+                          <div className={`h-full w-1 animate-bounce ${accentClasses.bars}`} />
+                          <div className={`h-2/3 w-1 animate-bounce ${accentClasses.bars}`} style={{ animationDelay: '150ms' }} />
+                          <div className={`h-4/5 w-1 animate-bounce ${accentClasses.bars}`} style={{ animationDelay: '300ms' }} />
+                        </div>
+                      ) : (
+                        <span>{index + 1}</span>
+                      )}
                     </div>
-                  ) : (
-                    <span>{index + 1}</span>
-                  )}
+                    <img src={song.cover_url} alt={song.title} className="h-10 w-10 rounded-md object-cover shadow-md pointer-events-none" />
+                    <div className="min-w-0 pointer-events-none">
+                      <Link
+                        href={`/song/${song.id}`}
+                        onClick={(event) => event.stopPropagation()}
+                        className={`block truncate text-sm font-bold hover:underline pointer-events-auto ${currentSong?.id === song.id ? accentClasses.active : 'text-white/90'}`}
+                      >
+                        {song.title}
+                      </Link>
+                      <Link
+                        href={`/artist/${encodeURIComponent(displayArtist)}`}
+                        onClick={(event) => event.stopPropagation()}
+                        className="block truncate text-xs text-white/45 transition-colors hover:text-white hover:underline pointer-events-auto"
+                      >
+                        {displayArtist}
+                      </Link>
+                    </div>
+                    <div className="flex items-center justify-end pr-2 text-white/20">
+                      <TrendingUp className="h-4 w-4" />
+                    </div>
+                    <div onClick={(event) => event.stopPropagation()} className="pointer-events-auto">
+                      <PlaylistAddButton songId={song.id} iconClassName="h-5 w-5" />
+                    </div>
+                  </Reorder.Item>
+                );
+              })}
+            </Reorder.Group>
+          ) : (
+            songs.map((song, index) => {
+              const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
+              const displayArtist = song.artist_name || 'Creator';
+
+              return (
+                <div
+                  key={song.id}
+                  onClick={() => onPlaySong(songs, index)}
+                  className="group grid cursor-pointer grid-cols-[24px_40px_minmax(0,1fr)_auto_28px] items-center gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-white/[0.07]"
+                >
+                  <div className="flex justify-center text-xs font-bold text-white/45">
+                    {isThisSongPlaying ? (
+                      <div className="flex h-4 w-4 items-end justify-between">
+                        <div className={`h-full w-1 animate-bounce ${accentClasses.bars}`} />
+                        <div className={`h-2/3 w-1 animate-bounce ${accentClasses.bars}`} style={{ animationDelay: '150ms' }} />
+                        <div className={`h-4/5 w-1 animate-bounce ${accentClasses.bars}`} style={{ animationDelay: '300ms' }} />
+                      </div>
+                    ) : (
+                      <span>{index + 1}</span>
+                    )}
+                  </div>
+                  <img src={song.cover_url} alt={song.title} className="h-10 w-10 rounded-md object-cover shadow-md" />
+                  <div className="min-w-0">
+                    <Link
+                      href={`/song/${song.id}`}
+                      onClick={(event) => event.stopPropagation()}
+                      className={`block truncate text-sm font-bold hover:underline ${currentSong?.id === song.id ? accentClasses.active : 'text-white/90'}`}
+                    >
+                      {song.title}
+                    </Link>
+                    <Link
+                      href={`/artist/${encodeURIComponent(displayArtist)}`}
+                      onClick={(event) => event.stopPropagation()}
+                      className="block truncate text-xs text-white/45 transition-colors hover:text-white hover:underline"
+                    >
+                      {displayArtist}
+                    </Link>
+                  </div>
+                  <div className="flex items-center justify-end pr-2 text-white/20">
+                    <TrendingUp className="h-4 w-4" />
+                  </div>
+                  <div onClick={(event) => event.stopPropagation()}>
+                    <PlaylistAddButton songId={song.id} iconClassName="h-5 w-5" />
+                  </div>
                 </div>
-                <img src={song.cover_url} alt={song.title} className="h-10 w-10 rounded-md object-cover shadow-md" />
-                <div className="min-w-0">
-                  <Link
-                    href={`/song/${song.id}`}
-                    onClick={(event) => event.stopPropagation()}
-                    className={`block truncate text-sm font-bold hover:underline ${currentSong?.id === song.id ? accentClasses.active : 'text-white/90'}`}
-                  >
-                    {song.title}
-                  </Link>
-                  <Link
-                    href={`/artist/${encodeURIComponent(displayArtist)}`}
-                    onClick={(event) => event.stopPropagation()}
-                    className="block truncate text-xs text-white/45 transition-colors hover:text-white hover:underline"
-                  >
-                    {displayArtist}
-                  </Link>
-                </div>
-                <div className="flex items-center justify-end pr-2 text-white/20">
-                  <TrendingUp className="h-4 w-4" />
-                </div>
-                <div onClick={(event) => event.stopPropagation()}>
-                  <PlaylistAddButton songId={song.id} iconClassName="h-5 w-5" />
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       ) : (
         <div className="p-8 text-center text-sm text-white/45">Für diese Charts sind noch keine Songs vorhanden.</div>
@@ -212,6 +270,7 @@ export default function ViralChartsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
   const isAdmin = isModUser(user);
+  const [adminViralSongs, setAdminViralSongs] = useState<Song[]>([]);
 
   useEffect(() => {
     const fetchCharts = async () => {
@@ -273,12 +332,41 @@ export default function ViralChartsPage() {
   const viralSongs = useMemo<Song[]>(
     () => [...songs]
       .sort((a, b) => {
+        const orderA = (a as any).viral_sort_order || 999999;
+        const orderB = (b as any).viral_sort_order || 999999;
+        if (orderA !== orderB) return orderA - orderB;
+
         const playDifference = (weeklyPlayMap.get(b.id) || 0) - (weeklyPlayMap.get(a.id) || 0);
         return playDifference || b.plays - a.plays;
       })
       .slice(0, 20),
     [weeklyPlayMap, songs],
   );
+
+  useEffect(() => {
+    setAdminViralSongs(viralSongs);
+  }, [viralSongs]);
+
+  const handleViralReorder = async (newOrder: Song[]) => {
+    if (!isAdmin) return;
+    setAdminViralSongs(newOrder);
+
+    const orderData = newOrder.map((song, index) => ({
+      id: song.id,
+      viral_sort_order: index + 1
+    }));
+
+    try {
+      await supabase.rpc('update_viral_song_order', { order_data: orderData });
+      setSongs(prev => prev.map(s => {
+        const ranked = orderData.find(o => o.id === s.id);
+        if (ranked) return { ...s, viral_sort_order: ranked.viral_sort_order } as Song;
+        return s;
+      }));
+    } catch (err) {
+      console.error('Failed to update viral order:', err);
+    }
+  };
 
   const dailySongs = useMemo<Song[]>(
     () => [...songs]
@@ -493,15 +581,17 @@ export default function ViralChartsPage() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
           <ChartPanel
             title="Viral Charts"
-            eyebrow="Top 20"
-            description="Die meistgestreamten Songs der letzten Woche."
+            eyebrow="Neu & Angesagt"
+            description="Die neuesten Trends und viralen Hits."
             accent="orange"
             icon={<Flame className="h-4 w-4" />}
-            rankedSongs={viralSongs}
+            rankedSongs={isAdmin ? adminViralSongs : viralSongs}
             currentSong={currentSong}
             isPlaying={isPlaying}
             onPlayChart={handlePlayChart}
             onPlaySong={handlePlaySong}
+            isReorderable={isAdmin}
+            onReorder={handleViralReorder}
           />
           <ChartPanel
             title="Daily Charts"
