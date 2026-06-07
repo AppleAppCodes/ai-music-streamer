@@ -29,11 +29,11 @@ const syncopate = Syncopate({
 
 export const metadata: Metadata = {
   title: "Yoriax | The AI Music Streamer",
-  description: "Entdecke, streame und teile die besten KI-generierten Songs. Yoriax ist die erste Streaming-Plattform speziell für AI-Native Music.",
+  description: "Discover, stream, and share the best AI-generated songs. Yoriax is the premier streaming platform built for AI-native music.",
   manifest: "/site.webmanifest",
   openGraph: {
     title: "Yoriax | The AI Music Streamer",
-    description: "Entdecke die besten KI-Songs der Welt. Werde zum Top-Künstler der neuen Ära.",
+    description: "Discover the world's best AI songs. Become a top artist in the new era.",
     url: "https://www.yoriax.com",
     siteName: "Yoriax",
     images: [
@@ -44,13 +44,13 @@ export const metadata: Metadata = {
         alt: "Yoriax - The AI Music Streamer",
       },
     ],
-    locale: "de_DE",
+    locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Yoriax | The AI Music Streamer",
-    description: "Die erste Streaming-Plattform speziell für AI-Native Music.",
+    description: "The premier streaming platform built for AI-native music.",
     images: ["/brand/yoriax-og.png"],
   },
   icons: {
@@ -73,7 +73,7 @@ export default async function RootLayout({
 
   return (
     <html
-      lang="de"
+      lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${syncopate.variable} h-full antialiased dark`}
     >
       <body className="flex min-h-full flex-col overflow-x-hidden bg-background text-foreground md:h-full md:overflow-hidden">
