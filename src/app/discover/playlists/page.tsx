@@ -60,16 +60,35 @@ export default function DiscoverPlaylistsPage() {
       }
 
       if (data) {
-        setPlaylists(
-          (data as PlaylistRow[]).map((playlist) => ({
-            ...playlist,
-            profiles: Array.isArray(playlist.profiles)
-              ? playlist.profiles[0] || { username: 'Unbekannt' }
-              : playlist.profiles || { username: 'Unbekannt' },
-          }))
-        );
+        const fetchedPlaylists = (data as PlaylistRow[]).map((playlist) => ({
+          ...playlist,
+          profiles: Array.isArray(playlist.profiles)
+            ? playlist.profiles[0] || { username: 'Unbekannt' }
+            : playlist.profiles || { username: 'Unbekannt' },
+        }));
+        
+        // Inject dynamic 'Daily New Releases' playlist
+        fetchedPlaylists.unshift({
+          id: 'daily-new-releases',
+          title: 'Daily New Releases',
+          description: 'Die neuesten 20 Songs auf Yoriax. Täglich aktualisiert.',
+          cover_url: null,
+          created_at: new Date().toISOString(),
+          is_official: true,
+          profiles: { username: 'YORIAX Team' }
+        });
+
+        setPlaylists(fetchedPlaylists);
       } else {
-        setPlaylists([]);
+        setPlaylists([{
+          id: 'daily-new-releases',
+          title: 'Daily New Releases',
+          description: 'Die neuesten 20 Songs auf Yoriax. Täglich aktualisiert.',
+          cover_url: null,
+          created_at: new Date().toISOString(),
+          is_official: true,
+          profiles: { username: 'YORIAX Team' }
+        }]);
       }
       setLoading(false);
     }
@@ -228,7 +247,11 @@ function PlaylistCard({ official, playlist }: { official: boolean; playlist: Pla
       }`}
     >
       <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[#282828] shadow-lg flex items-center justify-center">
-        {playlist.cover_url ? (
+        {playlist.id === 'daily-new-releases' ? (
+          <div className="w-full h-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 flex items-center justify-center">
+            <Sparkles className="h-16 w-16 text-white" />
+          </div>
+        ) : playlist.cover_url ? (
           <img
             src={playlist.cover_url}
             alt={playlist.title}
