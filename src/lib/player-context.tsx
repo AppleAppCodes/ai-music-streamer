@@ -504,6 +504,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
         setSongsPlayed(0);
 
         // Fetch global ad frequency
+        const supabase = createClient();
         supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single().then(({ data }) => {
           if (data) setAdFrequency(data.ad_frequency);
         });
