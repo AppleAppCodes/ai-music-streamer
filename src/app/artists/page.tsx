@@ -410,10 +410,53 @@ export default function ArtistsPage() {
               ))}
             </Reorder.Group>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {artists.map((artist) => (
-                <ArtistCard key={artist.name} artist={artist} />
-              ))}
+            <div className="flex flex-col gap-16">
+              {/* Yoriax Originals */}
+              {artists.filter(a => a.videoUrl).length > 0 && (
+                <section>
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+                      <Users className="w-5 h-5 text-white" />
+                    </div>
+                    <h2 className="text-3xl font-black text-white tracking-tight">Yoriax Originals</h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {artists.filter(a => a.videoUrl).slice(0, 12).map((artist) => (
+                      <ArtistCard key={artist.name} artist={artist} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Alle Künstler Liste */}
+              <section>
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/5">
+                    <Mic2 className="w-5 h-5 text-white/50" />
+                  </div>
+                  <h2 className="text-3xl font-black text-white tracking-tight">Alle Künstler</h2>
+                </div>
+                <div className="flex flex-col gap-2 max-w-4xl">
+                  {artists.map((artist) => (
+                    <Link 
+                      key={artist.name}
+                      href={`/artist/${encodeURIComponent(artist.name)}`}
+                      className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/[0.05] transition-colors group"
+                    >
+                      <div className="w-14 h-14 rounded-full overflow-hidden bg-white/5 shrink-0 relative shadow-md">
+                        <img src={artist.coverUrl} alt={artist.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <span className="text-lg font-bold text-white group-hover:text-purple-400 transition-colors">{artist.name}</span>
+                        <span className="text-sm text-white/50">{artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}</span>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
+                        <Play className="w-4 h-4 text-white ml-1" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
             </div>
           )
         ) : (
