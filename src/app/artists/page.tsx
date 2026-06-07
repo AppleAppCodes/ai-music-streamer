@@ -19,6 +19,7 @@ interface ArtistStat {
   videoUrl?: string;
   createdAt: string;
   sortOrder?: number;
+  isOriginal?: boolean;
 }
 
 function ArtistVideo({ src, artistName, play }: { src: string; artistName: string; play: boolean }) {
@@ -197,12 +198,14 @@ export default function ArtistsPage() {
           });
         }
         
-        // Fetch sort orders
-        const { data: profilesData } = await supabase.from('artist_profiles').select('artist_name, sort_order');
-        const profileMap = new Map((profilesData || []).map(p => [p.artist_name, p.sort_order]));
+        // Fetch sort orders and is_original flag
+        const { data: profilesData } = await supabase.from('artist_profiles').select('artist_name, sort_order, is_original');
+        const profileMap = new Map((profilesData || []).map(p => [p.artist_name, { sort: p.sort_order, original: p.is_original }]));
         
         artistArray.forEach(artist => {
-          artist.sortOrder = profileMap.get(artist.name) || 0;
+          const profile = profileMap.get(artist.name);
+          artist.sortOrder = profile?.sort || 0;
+          artist.isOriginal = profile?.original || false;
         });
         
         setArtists(artistArray.sort((a, b) => {
@@ -223,6 +226,7 @@ export default function ArtistsPage() {
       const orderData = artists.map((artist, index) => ({
         artist_name: artist.name,
         sort_order: index,
+        is_original: artist.isOriginal || false,
       }));
       const { error } = await supabase.rpc('update_artist_order', { order_data: orderData });
       if (error) throw error;
@@ -403,8 +407,21 @@ export default function ArtistsPage() {
                       <p className="text-sm text-white/50">{artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}</p>
                     </div>
                   </div>
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-colors">
-                    <GripHorizontal className="w-5 h-5" />
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setArtists(prev => prev.map(a => a.name === artist.name ? { ...a, isOriginal: !a.isOriginal } : a));
+                      }}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${artist.isOriginal ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-white/5 text-white/40 border border-transparent hover:bg-white/10 hover:text-white'}`}
+                      title="Yoriax Original Status umschalten"
+                    >
+                      <Users className="w-5 h-5" />
+                    </button>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-colors cursor-grab active:cursor-grabbing">
+                      <GripHorizontal className="w-5 h-5" />
+                    </div>
                   </div>
                 </Reorder.Item>
               ))}
@@ -412,7 +429,7 @@ export default function ArtistsPage() {
           ) : (
             <div className="flex flex-col gap-16">
               {/* Yoriax Originals */}
-              {artists.filter(a => a.videoUrl).length > 0 && (
+              {artists.filter(a => a.isOriginal).length > 0 && (
                 <section>
                   <div className="flex items-center gap-3 mb-8">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.4)]">
@@ -421,7 +438,7 @@ export default function ArtistsPage() {
                     <h2 className="text-3xl font-black text-white tracking-tight">Yoriax Originals</h2>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {artists.filter(a => a.videoUrl).slice(0, 12).map((artist) => (
+                    {artists.filter(a => a.isOriginal).slice(0, 12).map((artist) => (
                       <ArtistCard key={artist.name} artist={artist} />
                     ))}
                   </div>
