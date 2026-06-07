@@ -102,72 +102,73 @@ function ChartPanel({
       {rankedSongs.length > 0 ? (
         <div className="max-h-[68vh] overflow-y-auto overscroll-contain p-2">
           {isReorderable && onReorder ? (
-            <Reorder.Group axis="y" values={songs} onReorder={onReorder} className="flex flex-col">
-              {songs.map((song, index) => {
-                const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
-                const displayArtist = song.artist_name || 'Creator';
+            <>
+              <Reorder.Group axis="y" values={songs} onReorder={onReorder} className="flex flex-col">
+                {songs.map((song, index) => {
+                  const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
+                  const displayArtist = song.artist_name || 'Creator';
 
-                return (
-                  <Reorder.Item
-                    key={song.id}
-                    value={song}
-                    onClick={() => onPlaySong(songs, index)}
-                    className="group grid cursor-grab active:cursor-grabbing grid-cols-[24px_40px_minmax(0,1fr)_auto_28px] items-center gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-white/[0.07]"
-                  >
-                    <div className="flex justify-center text-xs font-bold text-white/45">
-                      {isThisSongPlaying ? (
-                        <div className="flex h-4 w-4 items-end justify-between">
-                          <div className={`h-full w-1 animate-bounce ${accentClasses.bars}`} />
-                          <div className={`h-2/3 w-1 animate-bounce ${accentClasses.bars}`} style={{ animationDelay: '150ms' }} />
-                          <div className={`h-4/5 w-1 animate-bounce ${accentClasses.bars}`} style={{ animationDelay: '300ms' }} />
-                        </div>
-                      ) : (
-                        <span>{index + 1}</span>
-                      )}
-                    </div>
-                    <img src={song.cover_url} alt={song.title} className="h-10 w-10 rounded-md object-cover shadow-md pointer-events-none" />
-                    <div className="min-w-0 pointer-events-none">
-                      <Link
-                        href={`/song/${song.id}`}
-                        onClick={(event) => event.stopPropagation()}
-                        className={`block truncate text-sm font-bold hover:underline pointer-events-auto ${currentSong?.id === song.id ? accentClasses.active : 'text-white/90'}`}
-                      >
-                        {song.title}
-                      </Link>
-                      <Link
-                        href={`/artist/${encodeURIComponent(displayArtist)}`}
-                        onClick={(event) => event.stopPropagation()}
-                        className="block truncate text-xs text-white/45 transition-colors hover:text-white hover:underline pointer-events-auto"
-                      >
-                        {displayArtist}
-                      </Link>
-                    </div>
-                    <div className="flex items-center justify-end pr-2 text-white/20 gap-2">
-                      {onRemoveSong ? (
-                        <button type="button" className="pointer-events-auto text-white/20 hover:text-red-400 p-1 transition-colors" onClick={(e) => { e.stopPropagation(); onRemoveSong(song.id); }}>
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      ) : null}
-                      <TrendingUp className="h-4 w-4" />
-                    </div>
-                    <div onClick={(event) => event.stopPropagation()} className="pointer-events-auto">
-                      <PlaylistAddButton songId={song.id} iconClassName="h-5 w-5" />
-                    </div>
-                  </Reorder.Item>
-                );
-              })}
-            </Reorder.Group>
-            {onAddSongClick ? (
-              <button
-                onClick={onAddSongClick}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 p-3 text-sm font-bold text-white/50 transition-colors hover:border-white/40 hover:text-white"
-              >
-                <Plus className="h-4 w-4" />
-                Song zu Charts hinzufügen
-              </button>
-            ) : null}
-          </div>
-        ) : (
+                  return (
+                    <Reorder.Item
+                      key={song.id}
+                      value={song}
+                      onClick={() => onPlaySong(songs, index)}
+                      className="group grid cursor-grab active:cursor-grabbing grid-cols-[24px_40px_minmax(0,1fr)_auto_28px] items-center gap-2 rounded-xl px-2 py-2 transition-colors hover:bg-white/[0.07]"
+                    >
+                      <div className="flex justify-center text-xs font-bold text-white/45">
+                        {isThisSongPlaying ? (
+                          <div className="flex h-4 w-4 items-end justify-between">
+                            <div className={`h-full w-1 animate-bounce ${accentClasses.bars}`} />
+                            <div className={`h-2/3 w-1 animate-bounce ${accentClasses.bars}`} style={{ animationDelay: '150ms' }} />
+                            <div className={`h-4/5 w-1 animate-bounce ${accentClasses.bars}`} style={{ animationDelay: '300ms' }} />
+                          </div>
+                        ) : (
+                          <span>{index + 1}</span>
+                        )}
+                      </div>
+                      <img src={song.cover_url} alt={song.title} className="h-10 w-10 rounded-md object-cover shadow-md pointer-events-none" />
+                      <div className="min-w-0 pointer-events-none">
+                        <Link
+                          href={`/song/${song.id}`}
+                          onClick={(event) => event.stopPropagation()}
+                          className={`block truncate text-sm font-bold hover:underline pointer-events-auto ${currentSong?.id === song.id ? accentClasses.active : 'text-white/90'}`}
+                        >
+                          {song.title}
+                        </Link>
+                        <Link
+                          href={`/artist/${encodeURIComponent(displayArtist)}`}
+                          onClick={(event) => event.stopPropagation()}
+                          className="block truncate text-xs text-white/45 transition-colors hover:text-white hover:underline pointer-events-auto"
+                        >
+                          {displayArtist}
+                        </Link>
+                      </div>
+                      <div className="flex items-center justify-end pr-2 text-white/20 gap-2">
+                        {onRemoveSong ? (
+                          <button type="button" className="pointer-events-auto text-white/20 hover:text-red-400 p-1 transition-colors" onClick={(e) => { e.stopPropagation(); onRemoveSong(song.id); }}>
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        ) : null}
+                        <TrendingUp className="h-4 w-4" />
+                      </div>
+                      <div onClick={(event) => event.stopPropagation()} className="pointer-events-auto">
+                        <PlaylistAddButton songId={song.id} iconClassName="h-5 w-5" />
+                      </div>
+                    </Reorder.Item>
+                  );
+                })}
+              </Reorder.Group>
+              {onAddSongClick ? (
+                <button
+                  onClick={onAddSongClick}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 p-3 text-sm font-bold text-white/50 transition-colors hover:border-white/40 hover:text-white"
+                >
+                  <Plus className="h-4 w-4" />
+                  Song zu Charts hinzufügen
+                </button>
+              ) : null}
+            </>
+          ) : (
             songs.map((song, index) => {
               const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
               const displayArtist = song.artist_name || 'Creator';
