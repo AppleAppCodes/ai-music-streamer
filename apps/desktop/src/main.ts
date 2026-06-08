@@ -27,6 +27,7 @@ function createMainWindow() {
     minWidth: 1040,
     minHeight: 680,
     backgroundColor: '#050505',
+    titleBarStyle: 'hiddenInset',
     title: 'YORIAX',
     show: false,
     icon: path.join(__dirname, '../assets/icon.png'),
