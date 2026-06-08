@@ -64,6 +64,14 @@ function createMainWindow() {
     callback(false);
   });
 
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow?.webContents.insertCSS(`
+      body { -webkit-app-region: drag; }
+      a, button, input, textarea, select, [role="button"], [tabindex="0"], .no-drag { -webkit-app-region: no-drag; }
+      .w-52.bg-black { padding-top: 44px !important; }
+    `);
+  });
+
   void mainWindow.loadURL(YORIAX_URL);
 }
 
