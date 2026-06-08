@@ -89,7 +89,7 @@ export default async function RootLayout({
             {user ? <Sidebar user={user} /> : null}
             <div className="flex-1 flex flex-col relative min-w-0">
               <Header user={user} />
-              <main className={`bg-gradient-to-b from-surface to-background md:flex-1 md:overflow-y-auto md:no-scrollbar ${
+              <main className={`no-drag bg-gradient-to-b from-surface to-background md:flex-1 md:overflow-y-auto md:no-scrollbar ${
                 user
                   ? 'pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-28'
                   : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
