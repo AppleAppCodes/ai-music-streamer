@@ -1,5 +1,5 @@
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo, useCallback } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { loadLibraryMusic, type LibraryMusicData } from '../lib/music-data';
@@ -46,6 +46,12 @@ export function LibraryScreen() {
   }, [user]);
 
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { activeSong, isPlaying, playSong, setQueue } = usePlayer();
+
+  const handlePlaySong = useCallback((song: Song, index: number, list: Song[]) => {
+    setQueue(list, index);
+    void playSong(song);
+  }, [setQueue, playSong]);
 
   return (
     <View style={[styles.stack, { paddingTop: insets.top + 18 }]}>
@@ -92,9 +98,20 @@ export function LibraryScreen() {
           <SectionTitle title="Zuletzt gehört" />
           {data.likedSongs.length > 0 ? (
             <View style={styles.list}>
-              {data.likedSongs.slice(0, 8).map((song, index, arr) => (
-                <SongRow key={song.id} song={song} index={index} list={arr} />
-              ))}
+              {data.likedSongs.slice(0, 8).map((song, index, arr) => {
+                const isActive = activeSong?.id === song.id;
+                return (
+                  <SongRow 
+                    key={song.id} 
+                    song={song} 
+                    index={index} 
+                    list={arr} 
+                    isActive={isActive}
+                    isPlaying={isActive ? isPlaying : false}
+                    onPlay={handlePlaySong}
+                  />
+                );
+              })}
             </View>
           ) : (
             <EmptyBlock title="Noch keine Songs gehört" copy="Deine zuletzt gehörten Songs erscheinen hier." />
@@ -105,21 +122,29 @@ export function LibraryScreen() {
   );
 }
 
-function SectionTitle({ title }: { title: string }) {
+const SectionTitle = memo(function SectionTitle({ title }: { title: string }) {
   return <Text style={styles.sectionTitle}>{title}</Text>;
-}
+});
 
-function SongRow({ song, index, list }: { song: Song; index: number; list: Song[] }) {
-  const { activeSong, isPlaying, playSong, setQueue } = usePlayer();
-  const isActive = activeSong?.id === song.id;
-
+const SongRow = memo(function SongRow({ 
+  song, 
+  index, 
+  list, 
+  isActive, 
+  isPlaying, 
+  onPlay 
+}: { 
+  song: Song; 
+  index: number; 
+  list: Song[]; 
+  isActive: boolean; 
+  isPlaying: boolean; 
+  onPlay: (song: Song, index: number, list: Song[]) => void; 
+}) {
   return (
     <TouchableOpacity
       accessibilityRole="button"
-      onPress={() => {
-        setQueue(list, index);
-        void playSong(song);
-      }}
+      onPress={() => onPlay(song, index, list)}
       style={[styles.itemRow, isActive && styles.itemRowActive]}
     >
       {song.cover_url ? (
@@ -140,9 +165,9 @@ function SongRow({ song, index, list }: { song: Song; index: number; list: Song[
       <Text style={styles.rowPlayState}>{isActive && isPlaying ? 'II' : '▶'}</Text>
     </TouchableOpacity>
   );
-}
+});
 
-function PlaylistRow({ playlist }: { playlist: Playlist }) {
+const PlaylistRow = memo(function PlaylistRow({ playlist }: { playlist: Playlist }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   return (
@@ -165,7 +190,7 @@ function PlaylistRow({ playlist }: { playlist: Playlist }) {
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 function EmptyBlock({ title, copy }: { title: string; copy: string }) {
   return (

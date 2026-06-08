@@ -1,5 +1,5 @@
 import { ActivityIndicator, Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View, ViewToken } from 'react-native';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, memo } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { loadFeedPreview } from '../lib/music-data';
 import { usePlayer } from '../lib/player-context';
@@ -60,6 +60,72 @@ function FeedVisual({ item, active }: { item: FeedPreviewSong; active: boolean }
 
   return <View style={[styles.coverImage, styles.fallbackCover]} />;
 }
+
+const FeedItem = memo(function FeedItem({
+  item,
+  isActive,
+  isPlaying,
+  onPlayFull,
+  onTogglePlay,
+  onStartHook
+}: {
+  item: FeedPreviewSong;
+  isActive: boolean;
+  isPlaying: boolean;
+  onPlayFull: (item: FeedPreviewSong) => void;
+  onTogglePlay: () => void;
+  onStartHook: (item: FeedPreviewSong, force: boolean) => void;
+}) {
+  return (
+    <View style={styles.feedItem}>
+      <FeedVisual item={item} active={isActive} />
+
+      {/* Dark gradient overlay at bottom could go here, for now just a dark shadow overlay */}
+      <View style={styles.overlay} />
+
+      <View style={styles.contentContainer}>
+        <View style={styles.textContainer}>
+          <Text style={[styles.artistName, { color: theme.colors.primary }]}>
+            {item.artist_name || item.creatorName || 'Creator'}
+          </Text>
+          <Text style={styles.songTitle}>{item.title}</Text>
+          <TouchableOpacity 
+            style={styles.fullSongButton}
+            onPress={() => onPlayFull(item)}
+          >
+            <Ionicons name="musical-notes" size={14} color="#000" />
+            <Text style={styles.fullSongText}>Ganzen Song hören</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.actionsContainer}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => {
+            if (isActive) {
+              onTogglePlay();
+            } else {
+              onStartHook(item, true);
+            }
+          }}
+        >
+          <Ionicons name={isActive && isPlaying ? "pause-circle" : "play-circle"} size={44} color="white" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton}>
+          <Ionicons name="heart" size={32} color={isActive ? theme.colors.primary : "white"} />
+          <Text style={styles.actionText}>{item.likes_count ?? 0}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton}>
+          <Ionicons name="share-social" size={32} color="white" />
+          <Text style={styles.actionText}>Teilen</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+});
 
 export function ForYouScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -126,63 +192,25 @@ export function ForYouScreen() {
   // Usually TikTok pauses when you go to another tab, but for a music app maybe not.
   // We'll leave it playing for now.
 
-  const renderItem = ({ item }: { item: FeedPreviewSong }) => {
+  const handlePlayFull = useCallback((item: FeedPreviewSong) => {
+    setQueue([item], 0);
+    void playSong(item);
+    navigation.navigate('FullscreenPlayer');
+  }, [setQueue, playSong, navigation]);
+
+  const renderItem = useCallback(({ item }: { item: FeedPreviewSong }) => {
     const isActive = activeSong?.id === item.id;
-
     return (
-      <View style={styles.feedItem}>
-        <FeedVisual item={item} active={isActive} />
-
-        {/* Dark gradient overlay at bottom could go here, for now just a dark shadow overlay */}
-        <View style={styles.overlay} />
-
-        <View style={styles.contentContainer}>
-          <View style={styles.textContainer}>
-            <Text style={[styles.artistName, { color: theme.colors.primary }]}>
-              {item.artist_name || item.creatorName || 'Creator'}
-            </Text>
-            <Text style={styles.songTitle}>{item.title}</Text>
-            <TouchableOpacity 
-              style={styles.fullSongButton}
-              onPress={() => {
-                setQueue([item], 0);
-                void playSong(item);
-                navigation.navigate('FullscreenPlayer');
-              }}
-            >
-              <Ionicons name="musical-notes" size={14} color="#000" />
-              <Text style={styles.fullSongText}>Ganzen Song hören</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => {
-              if (isActive) {
-                toggle();
-              } else {
-                startHookPlayback(item, true);
-              }
-            }}
-          >
-            <Ionicons name={isActive && isPlaying ? "pause-circle" : "play-circle"} size={44} color="white" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="heart" size={32} color={isActive ? theme.colors.primary : "white"} />
-            <Text style={styles.actionText}>{item.likes_count ?? 0}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="share-social" size={32} color="white" />
-            <Text style={styles.actionText}>Teilen</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <FeedItem
+        item={item}
+        isActive={isActive}
+        isPlaying={isActive ? isPlaying : false}
+        onPlayFull={handlePlayFull}
+        onTogglePlay={toggle}
+        onStartHook={startHookPlayback}
+      />
     );
-  };
+  }, [activeSong?.id, isPlaying, handlePlayFull, toggle, startHookPlayback]);
 
   if (loading) {
     return (

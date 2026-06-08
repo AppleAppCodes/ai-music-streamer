@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,7 +35,52 @@ const ACCENTS: Record<Accent, string> = {
   teal: theme.colors.accent,
 };
 
-function ChartPanel({
+const ChartPanelItem = memo(function ChartPanelItem({
+  song,
+  index,
+  accentColor,
+  active,
+  isPlaying,
+  metricLabel,
+  onPlaySong,
+  songs
+}: {
+  song: Song;
+  index: number;
+  accentColor: string;
+  active: boolean;
+  isPlaying: boolean;
+  metricLabel: string;
+  onPlaySong: (songs: Song[], index: number) => void;
+  songs: Song[];
+}) {
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      onPress={() => onPlaySong(songs, index)}
+      style={[
+        styles.row,
+        active && {
+          backgroundColor: `${accentColor}22`,
+          borderColor: `${accentColor}66`,
+        },
+      ]}
+    >
+      <Text style={[styles.rank, index < 3 && { color: accentColor }]}>{index + 1}</Text>
+      <CoverArt uri={song.cover_url} size={50} radius={12} />
+      <View style={styles.rowText}>
+        <Text style={[styles.rowTitle, active && { color: accentColor }]} numberOfLines={1}>{song.title}</Text>
+        <Text style={styles.rowMeta} numberOfLines={1}>{song.artist_name || song.creatorName || 'Creator'}</Text>
+      </View>
+      <View style={styles.rowRight}>
+        <Text style={styles.metric}>{metricLabel}</Text>
+        <Ionicons name={active && isPlaying ? 'pause' : 'play'} size={18} color={active ? accentColor : theme.colors.muted} />
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+const ChartPanel = memo(function ChartPanel({
   accent,
   activeSongId,
   iconName,
@@ -84,36 +129,24 @@ function ChartPanel({
             const active = activeSongId === song.id;
 
             return (
-              <TouchableOpacity
-                accessibilityRole="button"
+              <ChartPanelItem
                 key={song.id}
-                onPress={() => onPlaySong(songs, index)}
-                style={[
-                  styles.row,
-                  active && {
-                    backgroundColor: `${accentColor}22`,
-                    borderColor: `${accentColor}66`,
-                  },
-                ]}
-              >
-                <Text style={[styles.rank, index < 3 && { color: accentColor }]}>{index + 1}</Text>
-                <CoverArt uri={song.cover_url} size={50} radius={12} />
-                <View style={styles.rowText}>
-                  <Text style={[styles.rowTitle, active && { color: accentColor }]} numberOfLines={1}>{song.title}</Text>
-                  <Text style={styles.rowMeta} numberOfLines={1}>{song.artist_name || song.creatorName || 'Creator'}</Text>
-                </View>
-                <View style={styles.rowRight}>
-                  <Text style={styles.metric}>{metricLabel}</Text>
-                  <Ionicons name={active && isPlaying ? 'pause' : 'play'} size={18} color={active ? accentColor : theme.colors.muted} />
-                </View>
-              </TouchableOpacity>
+                song={song}
+                index={index}
+                accentColor={accentColor}
+                active={active}
+                isPlaying={isPlaying}
+                metricLabel={metricLabel}
+                onPlaySong={onPlaySong}
+                songs={songs}
+              />
             );
           })
         )}
       </View>
     </View>
   );
-}
+});
 
 function ArtistChartPanel({
   artists,
@@ -205,7 +238,7 @@ export function ChartsScreen({ navigation }: Props) {
     };
   }, []);
 
-  const handlePlayChart = (chartSongs: Song[]) => {
+  const handlePlayChart = useCallback((chartSongs: Song[]) => {
     if (chartSongs.length === 0) return;
     if (activeSong && chartSongs.some((song) => song.id === activeSong.id) && isPlaying) {
       toggle();
@@ -213,12 +246,12 @@ export function ChartsScreen({ navigation }: Props) {
     }
     setQueue(chartSongs, 0);
     void playSong(chartSongs[0]);
-  };
+  }, [activeSong, isPlaying, setQueue, playSong, toggle]);
 
-  const handlePlaySong = (chartSongs: Song[], index: number) => {
+  const handlePlaySong = useCallback((chartSongs: Song[], index: number) => {
     setQueue(chartSongs, index);
     void playSong(chartSongs[index]);
-  };
+  }, [setQueue, playSong]);
 
   const currentSongs = activeTab === 'viral' ? data?.viralSongs ?? [] : activeTab === 'daily' ? data?.dailySongs ?? [] : [];
   const currentAccent: Accent = activeTab === 'viral' ? 'orange' : activeTab === 'daily' ? 'violet' : 'teal';

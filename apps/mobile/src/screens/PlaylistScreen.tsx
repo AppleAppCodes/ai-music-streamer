@@ -1,5 +1,5 @@
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo, useCallback } from 'react';
 import { theme } from '../theme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -11,6 +11,54 @@ import { formatPlays } from '../lib/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
+const MemoizedSongRow = memo(function SongRow({
+  song,
+  index,
+  songs,
+  isActive,
+  isPlaying,
+  onPlay
+}: {
+  song: Song;
+  index: number;
+  songs: Song[];
+  isActive: boolean;
+  isPlaying: boolean;
+  onPlay: (song: Song, index: number, songs: Song[]) => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.songRow, isActive && styles.songRowActive]}
+      onPress={() => onPlay(song, index, songs)}
+    >
+      {song.cover_url ? (
+        <Image source={{ uri: song.cover_url }} style={styles.songCover} alt="" />
+      ) : (
+        <View style={[styles.songCover, styles.songFallback]}>
+          <Text style={styles.songFallbackText}>Y</Text>
+        </View>
+      )}
+
+      <View style={styles.songInfo}>
+        <Text style={[styles.songTitle, isActive && styles.activeText]} numberOfLines={1}>
+          {song.title}
+        </Text>
+        <Text style={styles.songArtist} numberOfLines={1}>
+          {song.artist_name || song.creatorName || 'Creator'}
+        </Text>
+      </View>
+
+      <Text style={styles.songMeta}>{formatPlays(song.plays)}</Text>
+
+      {isActive && isPlaying && (
+        <View style={styles.playingIndicator}>
+          <Text style={styles.playingText}>▶</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+});
+
 export function PlaylistScreen({ route, navigation }: Props) {
   const { playlistId } = route.params;
   
@@ -20,6 +68,11 @@ export function PlaylistScreen({ route, navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const { activeSong, isPlaying, playSong, setQueue } = usePlayer();
+
+  const handlePlaySong = useCallback((song: Song, index: number, songsList: Song[]) => {
+    setQueue(songsList, index);
+    void playSong(song);
+  }, [setQueue, playSong]);
 
   useEffect(() => {
     let mounted = true;
@@ -88,10 +141,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
             {songs.length > 0 && (
               <TouchableOpacity 
                 style={styles.playAllButton}
-                onPress={() => {
-                  setQueue(songs, 0);
-                  void playSong(songs[0]);
-                }}
+                onPress={() => handlePlaySong(songs[0], 0, songs)}
               >
                 <Text style={styles.playAllText}>Abspielen</Text>
               </TouchableOpacity>
@@ -108,39 +158,15 @@ export function PlaylistScreen({ route, navigation }: Props) {
                 const isActive = activeSong?.id === song.id;
 
                 return (
-                  <TouchableOpacity
+                  <MemoizedSongRow
                     key={`${song.id}-${index}`}
-                    style={[styles.songRow, isActive && styles.songRowActive]}
-                    onPress={() => {
-                      setQueue(songs, index);
-                      void playSong(song);
-                    }}
-                  >
-                    {song.cover_url ? (
-                      <Image source={{ uri: song.cover_url }} style={styles.songCover} alt="" />
-                    ) : (
-                      <View style={[styles.songCover, styles.songFallback]}>
-                        <Text style={styles.songFallbackText}>Y</Text>
-                      </View>
-                    )}
-
-                    <View style={styles.songInfo}>
-                      <Text style={[styles.songTitle, isActive && styles.activeText]} numberOfLines={1}>
-                        {song.title}
-                      </Text>
-                      <Text style={styles.songArtist} numberOfLines={1}>
-                        {song.artist_name || song.creatorName || 'Creator'}
-                      </Text>
-                    </View>
-
-                    <Text style={styles.songMeta}>{formatPlays(song.plays)}</Text>
-
-                    {isActive && isPlaying && (
-                      <View style={styles.playingIndicator}>
-                        <Text style={styles.playingText}>▶</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
+                    song={song}
+                    index={index}
+                    songs={songs}
+                    isActive={isActive}
+                    isPlaying={isActive ? isPlaying : false}
+                    onPlay={handlePlaySong}
+                  />
                 );
               })
             )}

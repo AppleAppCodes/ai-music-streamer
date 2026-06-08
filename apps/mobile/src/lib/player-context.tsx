@@ -57,11 +57,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [availableAds, setAvailableAds] = useState<any[]>([]);
 
   useEffect(() => {
-    if (user) {
+    if (user && supabase) {
       supabase.from('profiles').select('subscription_tier').eq('id', user.id).single()
         .then(({ data }) => setIsPro(data?.subscription_tier === 'pro'));
     }
     const loadAdsAndConfig = async () => {
+      if (!supabase) return;
       const { data } = await supabase.storage.from('ads').list();
       if (data) {
         setAvailableAds(data.filter(f => f.name !== '.emptyFolderPlaceholder'));
@@ -105,10 +106,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setIsAdPlaying(true);
 
         let selectedAdUrl = '';
-        if (availableAds.length > 0) {
+        if (availableAds.length > 0 && supabase) {
           const randomAd = availableAds[Math.floor(Math.random() * availableAds.length)];
           selectedAdUrl = supabase.storage.from('ads').getPublicUrl(randomAd.name).data.publicUrl;
-        } else {
+        } else if (supabase) {
           selectedAdUrl = supabase.storage.from('ads').getPublicUrl('yoriax-ad.mp3').data.publicUrl;
         }
 
@@ -125,8 +126,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         player.replace({ name: adSong.title, uri: adSong.audio_url });
         setActiveSong(adSong);
         player.setActiveForLockScreen(true, {
-          artist: adSong.artist_name,
-          artworkUrl: adSong.cover_url,
+          artist: adSong.artist_name || undefined,
+          artworkUrl: adSong.cover_url || undefined,
           title: adSong.title,
         });
         player.play();
@@ -257,9 +258,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setSongsPlayed(0);
         
         // Refetch config
-        supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single().then(({ data }) => {
-          if (data) setAdFrequency(data.ad_frequency);
-        });
+        if (supabase) {
+          supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single().then(({ data }) => {
+            if (data) setAdFrequency(data.ad_frequency);
+          });
+        }
 
         if (pendingSongToPlayAfterAd) {
           void playSong(pendingSongToPlayAfterAd);

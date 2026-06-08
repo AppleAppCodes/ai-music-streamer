@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, memo, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -155,8 +155,57 @@ export function HomeScreen() {
   );
 }
 
-function SongRail({ title, songs }: { title: string; songs: Song[] }) {
+const SongRailItem = memo(function SongRailItem({
+  song,
+  index,
+  list,
+  isActive,
+  isPlaying,
+  onPlay,
+  onToggle
+}: {
+  song: Song;
+  index: number;
+  list: Song[];
+  isActive: boolean;
+  isPlaying: boolean;
+  onPlay: (song: Song, list: Song[], index: number) => void;
+  onToggle: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      onPress={() => {
+        if (isActive) {
+          onToggle();
+        } else {
+          onPlay(song, list, index);
+        }
+      }}
+      style={[styles.songCard, isActive && styles.songCardActive]}
+    >
+      <CoverArt uri={song.cover_url} size={132} radius={18} />
+      <View style={[styles.playBadge, isActive && styles.playBadgeActive]}>
+        <Ionicons name={isActive && isPlaying ? 'pause' : 'play'} size={16} color={isActive ? theme.colors.text : theme.colors.background} />
+      </View>
+      <Text style={[styles.songTitle, isActive && styles.songTitleActive]} numberOfLines={1}>
+        {song.title}
+      </Text>
+      <Text style={styles.songArtist} numberOfLines={1}>
+        {song.artist_name || song.creatorName || 'Creator'}
+      </Text>
+      <Text style={styles.songMeta}>{formatPlays(song.plays)} Streams</Text>
+    </TouchableOpacity>
+  );
+});
+
+const SongRail = memo(function SongRail({ title, songs }: { title: string; songs: Song[] }) {
   const { activeSong, isPlaying, playSong, setQueue, toggle } = usePlayer();
+
+  const handlePlay = useCallback((song: Song, list: Song[], index: number) => {
+    setQueue(list, index);
+    void playSong(song);
+  }, [setQueue, playSong]);
 
   if (songs.length === 0) return null;
 
@@ -165,40 +214,25 @@ function SongRail({ title, songs }: { title: string; songs: Song[] }) {
       <Text style={styles.sectionTitle}>{title}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.songRail}>
         {songs.map((song, index, arr) => {
-          const active = activeSong?.id === song.id;
+          const isActive = activeSong?.id === song.id;
 
           return (
-            <TouchableOpacity
-              accessibilityRole="button"
+            <SongRailItem
               key={song.id}
-              onPress={() => {
-                if (active) {
-                  toggle();
-                } else {
-                  setQueue(arr, index);
-                  void playSong(song);
-                }
-              }}
-              style={[styles.songCard, active && styles.songCardActive]}
-            >
-              <CoverArt uri={song.cover_url} size={132} radius={18} />
-              <View style={[styles.playBadge, active && styles.playBadgeActive]}>
-                <Ionicons name={active && isPlaying ? 'pause' : 'play'} size={16} color={active ? theme.colors.text : theme.colors.background} />
-              </View>
-              <Text style={[styles.songTitle, active && styles.songTitleActive]} numberOfLines={1}>
-                {song.title}
-              </Text>
-              <Text style={styles.songArtist} numberOfLines={1}>
-                {song.artist_name || song.creatorName || 'Creator'}
-              </Text>
-              <Text style={styles.songMeta}>{formatPlays(song.plays)} Streams</Text>
-            </TouchableOpacity>
+              song={song}
+              index={index}
+              list={arr}
+              isActive={isActive}
+              isPlaying={isActive ? isPlaying : false}
+              onPlay={handlePlay}
+              onToggle={toggle}
+            />
           );
         })}
       </ScrollView>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

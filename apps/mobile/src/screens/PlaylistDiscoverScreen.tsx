@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -52,6 +52,10 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
   const officialPlaylists = data?.officialPlaylists ?? [];
   const communityPlaylists = data?.communityPlaylists ?? [];
   const totalPlaylists = officialPlaylists.length + communityPlaylists.length;
+
+  const handleOpenPlaylist = useCallback((playlistId: string) => {
+    navigation.navigate('Playlist', { playlistId });
+  }, [navigation]);
 
   return (
     <View style={styles.container}>
@@ -109,7 +113,7 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
               accent="teal"
               emptyText="Noch keine kuratierten offiziellen Playlists."
               icon="sparkles"
-              onOpen={(playlistId) => navigation.navigate('Playlist', { playlistId })}
+              onOpen={handleOpenPlaylist}
               playlists={officialPlaylists}
               subtitle="Von YORIAX ausgewählte Sammlungen."
               title="Kuratierte offizielle Playlists"
@@ -118,7 +122,7 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
               accent="purple"
               emptyText="Noch keine Community Playlists."
               icon="people"
-              onOpen={(playlistId) => navigation.navigate('Playlist', { playlistId })}
+              onOpen={handleOpenPlaylist}
               playlists={communityPlaylists}
               subtitle="Öffentliche Playlists anderer Nutzer."
               title="Community Playlists"
@@ -130,7 +134,7 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
   );
 }
 
-function PlaylistSection({
+const PlaylistSection = memo(function PlaylistSection({
   accent,
   emptyText,
   icon,
@@ -180,9 +184,9 @@ function PlaylistSection({
       )}
     </View>
   );
-}
+});
 
-function PlaylistCard({
+const PlaylistCard = memo(function PlaylistCard({
   accent,
   onPress,
   playlist,
@@ -216,7 +220,7 @@ function PlaylistCard({
       <Ionicons name="chevron-forward" size={18} color={theme.colors.subtle} />
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
