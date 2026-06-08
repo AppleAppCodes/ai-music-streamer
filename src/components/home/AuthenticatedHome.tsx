@@ -157,6 +157,7 @@ export default function AuthenticatedHome() {
 
   const [dailyTrendingSongs, setDailyTrendingSongs] = useState<Song[]>([]);
   const [recommendedSongs, setRecommendedSongs] = useState<Song[]>([]);
+  const [artistCovers, setArtistCovers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -246,6 +247,10 @@ export default function AuthenticatedHome() {
         ...song,
         creatorName: song.profiles?.username || song.artist_name || 'Unknown'
       }));
+      
+      const covers = Array.from(new Set(songs.map(s => s.cover_url).filter(Boolean))).slice(0, 4) as string[];
+      setArtistCovers(covers);
+
       const dailySongs = getDailyTrendingSongs(songs, 8);
       setDailyTrendingSongs(dailySongs);
 
@@ -328,7 +333,7 @@ export default function AuthenticatedHome() {
     {
       title: t('home.quickAccess.artists'),
       color: "bg-white/20 backdrop-blur-md border border-white/30",
-      images: ["/kuenstler.jpeg", "/kuenstler2.jpeg", "/kuenstler3.jpeg", "/kuenstler4.jpeg"],
+      images: artistCovers.length > 0 ? artistCovers : ["/kuenstler.jpeg", "/kuenstler2.jpeg", "/kuenstler3.jpeg", "/kuenstler4.jpeg"],
       link: "/artists"
     },
     {
@@ -338,7 +343,7 @@ export default function AuthenticatedHome() {
       images: ["linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)"],
       link: "/playlists"
     }
-  ], [t]);
+  ], [t, artistCovers]);
 
   useEffect(() => {
     const item = quickAccessItems.find(i => i.title === hoveredItem);
