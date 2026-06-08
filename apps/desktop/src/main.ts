@@ -69,6 +69,8 @@ function createMainWindow() {
       body { -webkit-app-region: drag; }
       a, button, input, textarea, select, [role="button"], [tabindex="0"], .no-drag { -webkit-app-region: no-drag; }
       .w-52.bg-black { padding-top: 44px !important; }
+      /* Hide 'Für dich' feed since it's meant for mobile */
+      a[href="/feed"] { display: none !important; }
     `);
   });
 
