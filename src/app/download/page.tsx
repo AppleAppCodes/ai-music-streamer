@@ -37,8 +37,7 @@ export default function DownloadPage() {
               </p>
               
               <Link 
-                href="https://github.com/AppleAppCodes/ai-music-streamer/releases/latest"
-                target="_blank"
+                href="https://github.com/AppleAppCodes/ai-music-streamer/releases/latest/download/YORIAX-0.1.0-mac-arm64.dmg"
                 className="inline-flex items-center justify-center gap-3 bg-white text-black px-8 py-4 rounded-full font-bold text-lg hover:scale-105 hover:bg-gray-50 transition-all shadow-xl"
               >
                 <Download className="w-5 h-5" />
