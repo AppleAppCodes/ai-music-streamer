@@ -48,6 +48,11 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "AppleAppCodes",
+      "repo": "ai-music-streamer"
     }
   },
   "devDependencies": {
@@ -55,5 +60,8 @@
     "electron": "^42.3.3",
     "electron-builder": "^26.8.1",
     "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

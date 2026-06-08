@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu, shell } from 'electron';
 import path from 'node:path';
+import { autoUpdater } from 'electron-updater';
 
 const YORIAX_URL = process.env.YORIAX_DESKTOP_URL || 'https://www.yoriax.com';
 const YORIAX_HOSTS = new Set(['www.yoriax.com', 'yoriax.com']);
@@ -146,6 +147,9 @@ app.setName('YORIAX');
 app.whenReady().then(() => {
   createMenu();
   createMainWindow();
+  
+  // Check for updates silently in the background
+  autoUpdater.checkForUpdatesAndNotify();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
