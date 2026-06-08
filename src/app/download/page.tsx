@@ -12,7 +12,7 @@ export default function DownloadPage() {
       {/* Hero Section similar to the screenshot */}
       <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24 mt-10">
         
-        <div className="relative rounded-[2.5rem] overflow-hidden bg-gradient-to-r from-[#F472B6] via-[#C084FC] to-[#34D399] shadow-2xl">
+        <div className="relative rounded-[2.5rem] overflow-hidden bg-gradient-to-br from-violet-600 via-fuchsia-600 to-teal-400 shadow-2xl">
           
           {/* Glass Overlay for depth */}
           <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px] pointer-events-none"></div>
@@ -88,24 +88,24 @@ export default function DownloadPage() {
             <div className="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mb-6">
               <Zap className="w-8 h-8 fill-primary/50" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">Pfeilschnell</h3>
-            <p className="text-white/60">Dank SWR-Caching und nativer Mac-Performance laden deine Songs und Playlists ohne jede Verzögerung in 0.0 Sekunden.</p>
+            <h3 className="text-xl font-bold text-white mb-3">Ohne Verzögerung</h3>
+            <p className="text-white/60">Deine Musik startet auf Knopfdruck. Keine Ladezeiten, kein Buffering – bleib einfach im Flow und genieße jeden Beat.</p>
           </div>
           
           <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-white/5 border border-white/10">
             <div className="w-16 h-16 bg-purple-500/20 text-purple-400 rounded-full flex items-center justify-center mb-6">
               <Monitor className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">Nahtlos Integriert</h3>
-            <p className="text-white/60">Steuere deine Musik direkt über die Mac-Medientasten. Die App läuft ressourcenschonend im Hintergrund.</p>
+            <h3 className="text-xl font-bold text-white mb-3">Perfekt für Mac</h3>
+            <p className="text-white/60">Steuere deine Lieblingssongs bequem über die Medientasten deines Macs. YORIAX läuft flüssig und unauffällig im Hintergrund.</p>
           </div>
           
           <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-white/5 border border-white/10">
             <div className="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center mb-6">
               <ShieldCheck className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">Immer Aktuell</h3>
-            <p className="text-white/60">Der integrierte Auto-Updater sorgt dafür, dass du neue Features und Designs automatisch erhältst, ohne etwas zu tun.</p>
+            <h3 className="text-xl font-bold text-white mb-3">Immer Top-Aktuell</h3>
+            <p className="text-white/60">Lehn dich zurück: Die App aktualisiert sich völlig unsichtbar von selbst. So hast du immer die neuesten Features, ohne dich um Updates kümmern zu müssen.</p>
           </div>
         </div>
 
