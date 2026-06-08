@@ -46,7 +46,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
     }
     
     if (typeof navigator !== 'undefined') {
-      setIsElectron(navigator.userAgent.toLowerCase().includes(' electron/'));
+      setIsElectron(navigator.userAgent.toLowerCase().includes('electron'));
     }
   }, [user]);
 

@@ -863,12 +863,7 @@ export default function ArtistPage() {
                        key={release.id} 
                        onClick={() => {
                          if (release.is_song) {
-                           const song = songs.find(s => s.id === release.id);
-                           if (song) {
-                             const queueWithNames = [{ ...song, creatorName: artistName }];
-                             setQueue(queueWithNames, 0);
-                             playSong(queueWithNames[0]);
-                           }
+                           router.push(`/song/${release.id}`);
                          } else {
                            router.push(`/album/${release.id}`);
                          }
