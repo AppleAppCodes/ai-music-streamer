@@ -114,8 +114,8 @@ interface Release {
 export default function ArtistPage() {
   const params = useParams();
   const router = useRouter();
-  // Ensure we decode the URL encoded name properly
-  const artistName = decodeURIComponent(params?.name as string);
+  // useParams already returns decoded strings in Next.js
+  const artistName = params?.name as string;
   
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue, isShuffling, toggleShuffle } = usePlayer();
   const supabase = createClient();

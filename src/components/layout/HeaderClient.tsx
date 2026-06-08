@@ -32,6 +32,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
   const [searchArtistsResult, setSearchArtistsResult] = useState<{artist_name: string}[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isElectron, setIsElectron] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
   const { playSong, setQueue } = usePlayer();
@@ -42,6 +43,10 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
       fetch('/api/user/track', { method: 'POST' }).catch(() => {});
     } else {
       notifyPlayerForceSignOut();
+    }
+    
+    if (typeof navigator !== 'undefined') {
+      setIsElectron(navigator.userAgent.toLowerCase().includes(' electron/'));
     }
   }, [user]);
 
@@ -250,13 +255,15 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
 
       {/* Right side */}
       <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 md:w-1/3 md:gap-4">
-        <Link 
-          href="/download" 
-          className="hidden lg:flex h-8 items-center gap-2 rounded-full border border-white/20 bg-black/40 px-4 text-xs font-bold text-white transition-colors hover:scale-105 hover:bg-white/10"
-        >
-          <Download className="h-4 w-4" />
-          <span>App installieren</span>
-        </Link>
+        {!isElectron && (
+          <Link 
+            href="/download" 
+            className="hidden lg:flex h-8 items-center gap-2 rounded-full border border-white/20 bg-black/40 px-4 text-xs font-bold text-white transition-colors hover:scale-105 hover:bg-white/10"
+          >
+            <Download className="w-3.5 h-3.5" />
+            App installieren
+          </Link>
+        )}
         <div className="hidden lg:block h-6 w-px bg-white/20 mx-1"></div>
         {user ? (
           <div className="hidden sm:block">
