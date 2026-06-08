@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, LogIn, Search } from 'lucide-react';
+import { Bell, LogIn, Search, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ProfileDropdown from '@/components/ui/ProfileDropdown';
 import NotificationsDropdown from '@/components/ui/NotificationsDropdown';
@@ -250,6 +250,15 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
 
       {/* Right side */}
       <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 md:w-1/3 md:gap-4">
+        <Link 
+          href="https://github.com/AppleAppCodes/ai-music-streamer/releases" 
+          target="_blank"
+          className="hidden lg:flex h-8 items-center gap-2 rounded-full border border-white/20 bg-black/40 px-4 text-xs font-bold text-white transition-colors hover:scale-105 hover:bg-white/10"
+        >
+          <Download className="h-4 w-4" />
+          <span>App installieren</span>
+        </Link>
+        <div className="hidden lg:block h-6 w-px bg-white/20 mx-1"></div>
         {user ? (
           <div className="hidden sm:block">
             <NotificationsDropdown user={user} />
