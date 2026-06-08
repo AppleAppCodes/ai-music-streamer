@@ -36,13 +36,22 @@ export default function DownloadPage() {
                 Genieße hochwertiges Audio, blitzschnelle Ladezeiten durch lokales SWR-Caching und nahtlose Mac-Integration. Entdecke neue Künstler und speichere deine Lieblingssongs direkt auf deinem Computer.
               </p>
               
-              <Link 
-                href="https://github.com/AppleAppCodes/ai-music-streamer/releases/latest/download/YORIAX-0.1.0-mac-arm64.dmg"
-                className="inline-flex items-center justify-center gap-3 bg-white text-black px-8 py-4 rounded-full font-bold text-lg hover:scale-105 hover:bg-gray-50 transition-all shadow-xl"
-              >
-                <Download className="w-5 h-5" />
-                Gratis-App herunterladen
-              </Link>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link 
+                  href="https://github.com/AppleAppCodes/ai-music-streamer/releases/latest/download/YORIAX-0.1.0-mac-arm64.dmg"
+                  className="inline-flex items-center justify-center gap-3 bg-white text-black px-8 py-4 rounded-full font-bold text-lg hover:scale-105 hover:bg-gray-50 transition-all shadow-xl w-full sm:w-auto"
+                >
+                  <Download className="w-5 h-5" />
+                  Für Mac laden
+                </Link>
+                <Link 
+                  href="https://github.com/AppleAppCodes/ai-music-streamer/releases/latest/download/YORIAX-0.1.0-win-x64.exe"
+                  className="inline-flex items-center justify-center gap-3 bg-black/30 backdrop-blur-sm border border-white/20 text-white px-8 py-4 rounded-full font-bold text-lg hover:scale-105 hover:bg-black/50 transition-all shadow-xl w-full sm:w-auto"
+                >
+                  <Download className="w-5 h-5" />
+                  Für PC laden
+                </Link>
+              </div>
             </div>
             
             {/* CSS Laptop Mockup */}
