@@ -28,6 +28,15 @@ export default function PlayerLayout({ children, isAuthenticated }: PlayerLayout
     if (languageToSet && languageToSet !== i18n.language) {
       i18n.changeLanguage(languageToSet);
     }
+
+    // Apply saved zoom level globally
+    if (hasPreferenceStorageConsent()) {
+      const savedZoom = window.localStorage.getItem('ai-stream-zoom');
+      if (savedZoom) {
+        // @ts-ignore
+        document.documentElement.style.zoom = `${savedZoom}%`;
+      }
+    }
   }, []);
 
   return (

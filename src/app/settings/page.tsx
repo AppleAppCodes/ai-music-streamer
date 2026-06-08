@@ -22,6 +22,7 @@ export default function SettingsPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [zoom, setZoom] = useState(100);
   
   // Form State
   const [username, setUsername] = useState('');
@@ -46,6 +47,9 @@ export default function SettingsPage() {
       setUsername(meta.username || session.user.email?.split('@')[0] || 'User');
       setAvatarUrl(meta.avatar_url || '');
       setSubscription(meta.subscription || 'Free');
+      
+      const savedZoom = window.localStorage.getItem('ai-stream-zoom');
+      if (savedZoom) setZoom(Number(savedZoom));
       
       setLoading(false);
     }
@@ -167,6 +171,15 @@ export default function SettingsPage() {
     i18n.changeLanguage(nextLanguage);
   };
 
+  const handleZoomChange = (newZoom: number) => {
+    setZoom(newZoom);
+    // @ts-ignore - zoom is non-standard but widely supported
+    document.documentElement.style.zoom = `${newZoom}%`;
+    if (hasPreferenceStorageConsent()) {
+      window.localStorage.setItem('ai-stream-zoom', String(newZoom));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
@@ -176,7 +189,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
+    <div className="min-h-full bg-[#0A0A0A] relative pb-10">
       {/* Background Gradient */}
       <div className="absolute top-0 left-0 right-0 h-[400px] bg-gradient-to-br from-purple-900/20 via-indigo-900/10 to-[#0A0A0A] blur-3xl pointer-events-none" />
       
@@ -308,6 +321,33 @@ export default function SettingsPage() {
               >
                 {subscription === 'Free' ? 'Auf Premium upgraden' : 'Abo verwalten'}
               </button>
+            </div>
+          </section>
+
+          {/* View / Zoom Section */}
+          <section id="ansicht" className="bg-[#181818] border border-white/10 rounded-2xl p-6 md:p-8 scroll-mt-24">
+            <div className="flex items-center gap-3 mb-6">
+              <ImageIcon className="w-5 h-5 text-green-400" />
+              <h2 className="text-xl font-bold text-white">Ansicht & Zoom</h2>
+            </div>
+            
+            <div className="bg-gradient-to-r from-green-900/10 to-black/40 border border-green-500/10 rounded-xl p-6">
+               <div className="flex justify-between items-center mb-8">
+                 <p className="text-sm text-white/60">Passe die Größe der gesamten App an deinen Bildschirm an.</p>
+                 <button onClick={() => handleZoomChange(100)} className="px-4 py-1.5 text-xs font-bold rounded-full border border-white/20 hover:bg-white/10 hover:text-white text-white/70 transition-colors">Zurücksetzen</button>
+               </div>
+               
+               <div className="relative flex justify-between items-center max-w-2xl mx-auto mb-4">
+                 {/* Connecting Line */}
+                 <div className="absolute left-4 right-4 top-2 h-[1px] bg-white/10 -z-0" />
+                 
+                 {[70, 80, 90, 100, 110, 120, 130].map(level => (
+                    <div key={level} className="relative z-10 flex flex-col items-center gap-3 cursor-pointer group" onClick={() => handleZoomChange(level)}>
+                      <div className={`w-4 h-4 rounded-full border-[3px] transition-all ${zoom === level ? 'border-green-500 bg-black scale-125' : 'border-white/30 bg-[#181818] group-hover:border-white/50'}`} />
+                      <span className={`text-[11px] font-bold ${zoom === level ? 'text-green-400' : 'text-white/40 group-hover:text-white/60'}`}>{level} %</span>
+                    </div>
+                 ))}
+               </div>
             </div>
           </section>
 
