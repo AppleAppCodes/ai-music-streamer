@@ -1,5 +1,7 @@
 'use client';
 
+import useSWR from 'swr';
+
 import type { ReactNode } from 'react';
 import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
@@ -34,71 +36,78 @@ export default function DiscoverPlaylistsPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
   useEffect(() => {
-    async function loadPlaylists() {
-      setLoading(true);
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const fetchPlaylists = async (searchStr: string) => {
+    let query = supabase
+      .from('playlists')
+      .select('id, title, description, cover_url, created_at, is_official, profiles(username)')
+      .eq('is_public', true)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (searchStr.trim() !== '') {
+      query = query.ilike('title', `%${searchStr}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data as PlaylistRow[];
+  };
+
+  const { data: swrData, error: swrError, isLoading } = useSWR(
+    ['discover_playlists', debouncedSearchQuery],
+    ([_, query]) => fetchPlaylists(query as string),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60000
+    }
+  );
+
+  useEffect(() => {
+    if (swrData) {
+      const fetchedPlaylists = swrData.map((playlist) => ({
+        ...playlist,
+        profiles: Array.isArray(playlist.profiles)
+          ? playlist.profiles[0] || { username: 'Unbekannt' }
+          : playlist.profiles || { username: 'Unbekannt' },
+      }));
+      
+      // Inject dynamic 'Daily New Releases' playlist
+      fetchedPlaylists.unshift({
+        id: 'daily-new-releases',
+        title: t('playlists.dailyNewReleases.title'),
+        description: t('playlists.dailyNewReleases.description'),
+        cover_url: null,
+        created_at: new Date().toISOString(),
+        is_official: true,
+        profiles: { username: 'YORIAX Team' }
+      });
+
+      setPlaylists(fetchedPlaylists);
       setError(null);
-
-      let query = supabase
-        .from('playlists')
-        .select('id, title, description, cover_url, created_at, is_official, profiles(username)')
-        .eq('is_public', true)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (searchQuery.trim() !== '') {
-        query = query.ilike('title', `%${searchQuery}%`);
-      }
-
-      const { data, error: playlistError } = await query;
-      if (playlistError) {
-        setPlaylists([]);
-        setError(playlistError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (data) {
-        const fetchedPlaylists = (data as PlaylistRow[]).map((playlist) => ({
-          ...playlist,
-          profiles: Array.isArray(playlist.profiles)
-            ? playlist.profiles[0] || { username: 'Unbekannt' }
-            : playlist.profiles || { username: 'Unbekannt' },
-        }));
-        
-        // Inject dynamic 'Daily New Releases' playlist
-        fetchedPlaylists.unshift({
-          id: 'daily-new-releases',
-          title: t('playlists.dailyNewReleases.title'),
-          description: t('playlists.dailyNewReleases.description'),
-          cover_url: null,
-          created_at: new Date().toISOString(),
-          is_official: true,
-          profiles: { username: 'YORIAX Team' }
-        });
-
-        setPlaylists(fetchedPlaylists);
-      } else {
-        setPlaylists([{
-          id: 'daily-new-releases',
-          title: t('playlists.dailyNewReleases.title'),
-          description: t('playlists.dailyNewReleases.description'),
-          cover_url: null,
-          created_at: new Date().toISOString(),
-          is_official: true,
-          profiles: { username: 'YORIAX Team' }
-        }]);
-      }
+      setLoading(false);
+    } else if (swrError) {
+      setPlaylists([{
+        id: 'daily-new-releases',
+        title: t('playlists.dailyNewReleases.title'),
+        description: t('playlists.dailyNewReleases.description'),
+        cover_url: null,
+        created_at: new Date().toISOString(),
+        is_official: true,
+        profiles: { username: 'YORIAX Team' }
+      }]);
+      setError(swrError.message);
+      setLoading(false);
+    } else if (!isLoading) {
       setLoading(false);
     }
-    
-    // Add a small debounce for search
-    const timer = setTimeout(() => {
-      loadPlaylists();
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, [supabase, searchQuery]);
+  }, [swrData, swrError, isLoading, t]);
 
   const officialPlaylists = useMemo(() => playlists.filter((playlist) => playlist.is_official), [playlists]);
   const communityPlaylists = useMemo(() => playlists.filter((playlist) => !playlist.is_official), [playlists]);

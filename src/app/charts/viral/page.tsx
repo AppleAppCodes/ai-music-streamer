@@ -1,5 +1,7 @@
 'use client';
 
+import useSWR from 'swr';
+
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CalendarDays, ChevronRight, Flame, Mic2, Pause, Play, TrendingUp, Edit2, Loader2, Trash2, Plus, Search, X, Music } from 'lucide-react';
@@ -328,49 +330,65 @@ export default function ViralChartsPage() {
   const [isAddSongModalOpen, setIsAddSongModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    const fetchCharts = async () => {
-      setLoading(true);
-      const todayUtc = new Date().toISOString().slice(0, 10);
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const sevenDaysAgoUtc = sevenDaysAgo.toISOString().slice(0, 10);
+  const fetchCharts = async () => {
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoUtc = sevenDaysAgo.toISOString().slice(0, 10);
 
-      const [
-        { data: songsData }, 
-        { data: dailyData, error: dailyError }, 
-        { data: weeklyData, error: weeklyError },
-        { data: authData }
-      ] = await Promise.all([
-        supabase.from('songs').select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, viral_sort_order, profiles!songs_creator_id_fkey(username)').limit(200),
-        supabase.from('song_daily_plays').select('song_id, plays').eq('play_date', todayUtc),
-        supabase.from('song_daily_plays').select('song_id, plays').gte('play_date', sevenDaysAgoUtc),
-        supabase.auth.getSession(),
-      ]);
+    const [
+      { data: songsData }, 
+      { data: dailyData, error: dailyError }, 
+      { data: weeklyData, error: weeklyError },
+      { data: authData }
+    ] = await Promise.all([
+      supabase.from('songs').select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, viral_sort_order, profiles!songs_creator_id_fkey(username)').limit(200),
+      supabase.from('song_daily_plays').select('song_id, plays').eq('play_date', todayUtc),
+      supabase.from('song_daily_plays').select('song_id, plays').gte('play_date', sevenDaysAgoUtc),
+      supabase.auth.getSession(),
+    ]);
 
-      setUser(authData.session?.user || null);
-
-      // Fetch background video
-      const { data: files } = await supabase.storage.from('covers').list('charts');
-      if (files && files.length > 0) {
-        const videoFile = files.find(f => f.name.startsWith('background-video'));
-        if (videoFile) {
-          const { data: urlData } = supabase.storage.from('covers').getPublicUrl(`charts/${videoFile.name}`);
-          const cacheKey = new Date(videoFile.updated_at || videoFile.created_at || 0).getTime();
-          setVideoUrl(`${urlData.publicUrl}?t=${cacheKey}`);
-        }
+    // Fetch background video
+    const { data: files } = await supabase.storage.from('covers').list('charts');
+    let fetchedVideoUrl = null;
+    if (files && files.length > 0) {
+      const videoFile = files.find(f => f.name.startsWith('background-video'));
+      if (videoFile) {
+        const { data: urlData } = supabase.storage.from('covers').getPublicUrl(`charts/${videoFile.name}`);
+        const cacheKey = new Date(videoFile.updated_at || videoFile.created_at || 0).getTime();
+        fetchedVideoUrl = `${urlData.publicUrl}?t=${cacheKey}`;
       }
+    }
 
-      if (songsData) setSongs(songsData as unknown as Song[]);
-      if (dailyData) setDailyPlays(dailyData as DailyPlay[]);
-      if (weeklyData) setWeeklyPlays(weeklyData as DailyPlay[]);
-      if (dailyError) console.error('Failed to load daily charts:', dailyError);
-      if (weeklyError) console.error('Failed to load weekly charts:', weeklyError);
-      setLoading(false);
+    if (dailyError) console.error('Failed to load daily charts:', dailyError);
+    if (weeklyError) console.error('Failed to load weekly charts:', weeklyError);
+
+    return {
+      songs: (songsData as unknown as Song[]) || [],
+      dailyPlays: (dailyData as DailyPlay[]) || [],
+      weeklyPlays: (weeklyData as DailyPlay[]) || [],
+      user: authData.session?.user || null,
+      videoUrl: fetchedVideoUrl
     };
+  };
 
-    fetchCharts();
-  }, [supabase]);
+  const { data: swrData, isLoading } = useSWR('viral_charts_data', fetchCharts, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000, // Cache for 1 minute
+  });
+
+  useEffect(() => {
+    if (swrData) {
+      setSongs(swrData.songs);
+      setDailyPlays(swrData.dailyPlays);
+      setWeeklyPlays(swrData.weeklyPlays);
+      setUser(swrData.user);
+      if (swrData.videoUrl) setVideoUrl(swrData.videoUrl);
+      setLoading(false);
+    } else if (!isLoading) {
+      setLoading(false);
+    }
+  }, [swrData, isLoading]);
 
   const dailyPlayMap = useMemo(
     () => new Map(dailyPlays.map(({ song_id, plays }) => [song_id, plays])),

@@ -1,5 +1,7 @@
 'use client';
 
+import useSWR from 'swr';
+
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { ArrowLeft, Mic2, Play, Users, Edit2, Loader2, Music, GripHorizontal, Save } from 'lucide-react';
@@ -127,98 +129,106 @@ export default function ArtistsPage() {
   const supabase = createClient();
   const isAdmin = isAdminUser(user);
 
-  useEffect(() => {
-    const fetchArtists = async () => {
-      setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
+  const fetchArtists = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUser = session?.user || null;
 
-      // Fetch background video
-      const { data: files } = await supabase.storage
-        .from('covers')
-        .list('discover');
-        
-      if (files && files.length > 0) {
-        const videoFile = files.find(f => f.name.startsWith('background-video'));
-        if (videoFile) {
-          const { data: urlData } = supabase.storage
-            .from('covers')
-            .getPublicUrl(`discover/${videoFile.name}`);
-          const cacheKey = new Date(videoFile.updated_at || videoFile.created_at || 0).getTime();
-          setVideoUrl(`${urlData.publicUrl}?t=${cacheKey}`);
-        }
+    // Fetch background video
+    const { data: files } = await supabase.storage.from('covers').list('discover');
+    let fetchedVideoUrl = null;
+    if (files && files.length > 0) {
+      const videoFile = files.find(f => f.name.startsWith('background-video'));
+      if (videoFile) {
+        const { data: urlData } = supabase.storage.from('covers').getPublicUrl(`discover/${videoFile.name}`);
+        const cacheKey = new Date(videoFile.updated_at || videoFile.created_at || 0).getTime();
+        fetchedVideoUrl = `${urlData.publicUrl}?t=${cacheKey}`;
       }
+    }
+    
+    const { data } = await supabase.from('songs').select('artist_name, plays, cover_url, created_at');
+    let fetchedArtists: ArtistStat[] = [];
       
-      const { data } = await supabase
-        .from('songs')
-        .select('artist_name, plays, cover_url, created_at');
+    if (data) {
+      const artistMap = new Map<string, ArtistStat>();
+      
+      data.forEach(song => {
+        const name = song.artist_name || 'Unbekannt';
+        if (name === 'Unbekannt') return; 
         
-      if (data) {
-        const artistMap = new Map<string, ArtistStat>();
-        
-        data.forEach(song => {
-          const name = song.artist_name || 'Unbekannt';
-          if (name === 'Unbekannt') return; // Skip unknown artists if desired, or keep them. Let's skip for discover page.
-          
-          if (!artistMap.has(name)) {
-            artistMap.set(name, { 
-              name, 
-              plays: 0, 
-              songsCount: 0, 
-              coverUrl: song.cover_url,
-              createdAt: song.created_at || new Date(0).toISOString()
-            });
-          }
-          const artist = artistMap.get(name)!;
-          artist.plays += (song.plays || 0);
-          artist.songsCount += 1;
-          
-          if (song.created_at && new Date(song.created_at).getTime() > new Date(artist.createdAt).getTime()) {
-            artist.createdAt = song.created_at;
-          }
-        });
-        
-        const artistArray = Array.from(artistMap.values());
-        
-        // Fetch all banners to see if there are videos
-        const { data: banners } = await supabase.storage.from('covers').list('banners', { limit: 100 });
-        if (banners) {
-          artistArray.forEach(artist => {
-            const sanitizedName = artist.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const videoFiles = banners.filter(f => f.name.startsWith(sanitizedName + '_video'));
-            if (videoFiles.length > 0) {
-              videoFiles.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-              const videoFile = videoFiles[0];
-              const { data: urlData } = supabase.storage
-                .from('covers')
-                .getPublicUrl(`banners/${videoFile.name}`);
-              const cacheKey = new Date(videoFile.updated_at || videoFile.created_at || 0).getTime();
-              artist.videoUrl = `${urlData.publicUrl}?t=${cacheKey}`;
-            }
+        if (!artistMap.has(name)) {
+          artistMap.set(name, { 
+            name, 
+            plays: 0, 
+            songsCount: 0, 
+            coverUrl: song.cover_url,
+            createdAt: song.created_at || new Date(0).toISOString()
           });
         }
+        const artist = artistMap.get(name)!;
+        artist.plays += (song.plays || 0);
+        artist.songsCount += 1;
         
-        // Fetch sort orders and is_original flag
-        const { data: profilesData } = await supabase.from('artist_profiles').select('artist_name, sort_order, is_original');
-        const profileMap = new Map((profilesData || []).map(p => [p.artist_name, { sort: p.sort_order, original: p.is_original }]));
-        
+        if (song.created_at && new Date(song.created_at).getTime() > new Date(artist.createdAt).getTime()) {
+          artist.createdAt = song.created_at;
+        }
+      });
+      
+      const artistArray = Array.from(artistMap.values());
+      
+      // Fetch all banners
+      const { data: banners } = await supabase.storage.from('covers').list('banners', { limit: 100 });
+      if (banners) {
         artistArray.forEach(artist => {
-          const profile = profileMap.get(artist.name);
-          artist.sortOrder = profile?.sort || 0;
-          artist.isOriginal = profile?.original || false;
+          const sanitizedName = artist.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+          const videoFiles = banners.filter(f => f.name.startsWith(sanitizedName + '_video'));
+          if (videoFiles.length > 0) {
+            videoFiles.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+            const videoFile = videoFiles[0];
+            const { data: urlData } = supabase.storage.from('covers').getPublicUrl(`banners/${videoFile.name}`);
+            const cacheKey = new Date(videoFile.updated_at || videoFile.created_at || 0).getTime();
+            artist.videoUrl = `${urlData.publicUrl}?t=${cacheKey}`;
+          }
         });
-        
-        setArtists(artistArray.sort((a, b) => {
-          if (a.sortOrder !== b.sortOrder) return (a.sortOrder || 0) - (b.sortOrder || 0);
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }));
       }
       
-      setLoading(false);
+      // Fetch sort orders
+      const { data: profilesData } = await supabase.from('artist_profiles').select('artist_name, sort_order, is_original');
+      const profileMap = new Map((profilesData || []).map(p => [p.artist_name, { sort: p.sort_order, original: p.is_original }]));
+      
+      artistArray.forEach(artist => {
+        const profile = profileMap.get(artist.name);
+        artist.sortOrder = profile?.sort || 0;
+        artist.isOriginal = profile?.original || false;
+      });
+      
+      fetchedArtists = artistArray.sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) return (a.sortOrder || 0) - (b.sortOrder || 0);
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+    }
+    
+    return {
+      artists: fetchedArtists,
+      user: currentUser,
+      videoUrl: fetchedVideoUrl
     };
+  };
 
-    fetchArtists();
-  }, [supabase]);
+  const { data: swrData, isLoading } = useSWR('artists_page_data', fetchArtists, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000
+  });
+
+  useEffect(() => {
+    if (swrData) {
+      setArtists(swrData.artists);
+      setUser(swrData.user);
+      if (swrData.videoUrl) setVideoUrl(swrData.videoUrl);
+      setLoading(false);
+    } else if (!isLoading) {
+      setLoading(false);
+    }
+  }, [swrData, isLoading]);
 
   const handleSaveOrder = async () => {
     setIsSavingOrder(true);

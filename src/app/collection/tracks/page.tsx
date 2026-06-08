@@ -1,5 +1,7 @@
 'use client';
 
+import useSWR from 'swr';
+
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
@@ -40,44 +42,50 @@ export default function LikedSongsPage() {
   
   const supabase = useMemo(() => createClient(), []);
 
-  useEffect(() => {
-    const fetchLikedSongs = async () => {
-      setLoading(true);
+  const fetchLikedSongs = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.push('/login');
+      return { songs: [], user: null };
+    }
+    
+    // Fetch liked songs joined with songs table
+    const { data } = await supabase
+      .from('liked_songs')
+      .select(`
+        created_at,
+        songs (id, title, artist_name, cover_url, plays, audio_url, duration, genre)
+      `)
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
       
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-        return;
-      }
-      
-      setUser(session.user);
-      
-      // Fetch liked songs joined with songs table
-      const { data } = await supabase
-        .from('liked_songs')
-        .select(`
-          created_at,
-          songs (id, title, artist_name, cover_url, plays, audio_url, duration, genre)
-        `)
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false });
-        
-      if (data) {
-        const validSongs = data
-          .map(item => {
-            if (!item.songs) return null;
-            return { ...(item.songs as unknown as Song), liked_at: item.created_at } as LikedSong;
-          })
-          .filter(Boolean) as LikedSong[];
-          
-        setSongs(validSongs);
-      }
-      
-      setLoading(false);
-    };
+    let validSongs: LikedSong[] = [];
+    if (data) {
+      validSongs = data
+        .map(item => {
+          if (!item.songs) return null;
+          return { ...(item.songs as unknown as Song), liked_at: item.created_at } as LikedSong;
+        })
+        .filter(Boolean) as LikedSong[];
+    }
+    
+    return { songs: validSongs, user: session.user };
+  };
 
-    fetchLikedSongs();
-  }, [supabase, router]);
+  const { data: swrData, isLoading } = useSWR('liked_songs_data', fetchLikedSongs, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000
+  });
+
+  useEffect(() => {
+    if (swrData) {
+      setSongs(swrData.songs);
+      setUser(swrData.user);
+      setLoading(false);
+    } else if (!isLoading) {
+      setLoading(false);
+    }
+  }, [swrData, isLoading]);
 
   // Close dropdown on outside click
   useEffect(() => {
