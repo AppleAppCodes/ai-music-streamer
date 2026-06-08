@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { ListMusic, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 
 export default function CreatePlaylistButton() {
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const handleCreate = async () => {
     setLoading(true);
@@ -62,7 +64,7 @@ export default function CreatePlaylistButton() {
       ) : (
         <ListMusic className="w-5 h-5" />
       )}
-      New Playlist
+      {t('nav.newPlaylist')}
     </button>
   );
 }
