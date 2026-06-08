@@ -874,8 +874,27 @@ export default function ArtistPage() {
                           <Image src={release.cover_url} alt={release.title} fill sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw" className="object-cover" loading="lazy" />
                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2">
                              {release.is_song && (
-                               <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-105 transition-transform">
-                                 <Play className="w-5 h-5 fill-current ml-1" />
+                               <div 
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   if (currentSong?.id === release.id) {
+                                     togglePlayPause();
+                                   } else {
+                                     const song = songs.find(s => s.id === release.id);
+                                     if (song) {
+                                       const queueWithNames = [{ ...song, creatorName: artistName }];
+                                       setQueue(queueWithNames, 0);
+                                       playSong(queueWithNames[0]);
+                                     }
+                                   }
+                                 }}
+                                 className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-105 transition-transform"
+                               >
+                                 {currentSong?.id === release.id && isPlaying ? (
+                                   <Pause className="w-5 h-5 fill-current" />
+                                 ) : (
+                                   <Play className="w-5 h-5 fill-current ml-1" />
+                                 )}
                                </div>
                              )}
                           </div>
