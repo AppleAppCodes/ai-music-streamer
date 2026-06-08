@@ -871,8 +871,8 @@ export default function FeedPage() {
       </div>
 
       {mode === 'explore' && availableGenres.length > 0 ? (
-        <div className="absolute left-0 right-0 top-[4.5rem] z-40 flex items-center justify-center">
-          <div className="flex max-w-full items-center gap-2 overflow-x-auto px-4 pb-2 no-scrollbar">
+        <div className="absolute left-0 right-0 top-[4.5rem] z-40">
+          <div className="flex w-full items-center gap-2 overflow-x-auto px-4 pb-2 no-scrollbar">
             {availableGenres.map((genre) => {
               const isActive = !inactiveGenres.has(genre);
               return (
