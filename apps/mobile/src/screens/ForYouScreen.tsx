@@ -198,6 +198,12 @@ export function ForYouScreen() {
     navigation.navigate('FullscreenPlayer');
   }, [setQueue, playSong, navigation]);
 
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: SCREEN_HEIGHT,
+    offset: SCREEN_HEIGHT * index,
+    index,
+  }), []);
+
   const renderItem = useCallback(({ item }: { item: FeedPreviewSong }) => {
     const isActive = activeSong?.id === item.id;
     return (
@@ -247,8 +253,12 @@ export function ForYouScreen() {
         decelerationRate="fast"
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={VIEWABILITY_CONFIG}
-        initialNumToRender={2}
+        initialNumToRender={1}
         windowSize={3}
+        maxToRenderPerBatch={2}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={true}
+        getItemLayout={getItemLayout}
       />
     </View>
   );
