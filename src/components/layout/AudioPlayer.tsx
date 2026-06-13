@@ -30,6 +30,23 @@ const SLEEP_TIMER_OPTIONS: Array<[number, string]> = [
   [60, '1 Stunde'],
 ];
 
+function getSafeCssImageUrl(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+
+  if (trimmed.startsWith('/')) {
+    return `url("${trimmed.replace(/"/g, '\\"')}")`;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return undefined;
+    return `url("${url.toString().replace(/"/g, '\\"')}")`;
+  } catch {
+    return undefined;
+  }
+}
+
 export default function AudioPlayer() {
   const pathname = usePathname();
   const {
@@ -46,7 +63,7 @@ export default function AudioPlayer() {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger if user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      
+
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlayPause();
@@ -74,6 +91,7 @@ export default function AudioPlayer() {
   const canPlayNext = queueIndex >= 0 && queueIndex < queue.length - 1;
   const progressPercent = Math.max(0, Math.min(100, Number.isFinite(progress) ? progress : 0));
   const volumePercent = Math.max(0, Math.min(100, Number.isFinite(volume) ? volume * 100 : 0));
+  const coverBackgroundImage = getSafeCssImageUrl(currentSong?.cover_url);
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -331,23 +349,26 @@ export default function AudioPlayer() {
 
   return (
     <>
-      <div 
-        className={`fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-50 h-16 items-center justify-between border-t border-white/10 bg-black/60 backdrop-blur-2xl px-2 md:bottom-0 md:flex md:h-24 md:border-white/5 md:px-4 overflow-hidden transition-all duration-1000 ${currentSong ? 'flex' : 'hidden'}`}
+      <div
+        className={`fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-50 h-16 items-center justify-between border-t border-white/10 bg-black/60 backdrop-blur-2xl px-2 md:bottom-0 md:flex md:h-24 md:border-white/5 md:px-4 transition-all duration-1000 ${currentSong ? 'flex' : 'hidden'}`}
         onClick={() => setIsMobilePlayerOpen(true)}
       >
-        {currentSong?.cover_url && (
-          <div 
-            className="absolute inset-0 -z-10 pointer-events-none opacity-40 blur-[40px] saturate-200 mix-blend-screen transition-all duration-1000"
-            style={{ 
-              backgroundImage: `url(${currentSong.cover_url})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              maskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 75%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 75%, transparent 100%)'
-            }} 
-          />
-        )}
-        <div className="absolute inset-0 -z-10 pointer-events-none bg-gradient-to-t from-black/90 via-black/40 to-black/10" />
+        {/* Background container with overflow-hidden to prevent blur bleed */}
+        <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+          {coverBackgroundImage && (
+            <div
+              className="absolute inset-0 opacity-40 blur-[40px] saturate-200 mix-blend-screen transition-all duration-1000"
+              style={{
+                backgroundImage: coverBackgroundImage,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                maskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 75%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 75%, transparent 100%)'
+              }}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10" />
+        </div>
 
         {currentSong ? (
         <input
@@ -367,7 +388,7 @@ export default function AudioPlayer() {
           }}
         />
       ) : null}
-      
+
       {/* Song Info */}
       <div className="relative z-10 flex min-w-0 flex-1 items-center gap-2 md:w-[30%] md:min-w-[180px] md:flex-none md:gap-4">
         {currentSong ? (
@@ -416,7 +437,7 @@ export default function AudioPlayer() {
       {/* Controls */}
       <div className={`relative z-10 hidden flex-1 flex-col items-center px-4 md:flex md:max-w-2xl ${!currentSong ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="flex items-center gap-6 mb-2">
-          <button 
+          <button
             onClick={toggleShuffle}
             className={`transition-colors ${isShuffling ? 'text-indigo-500' : 'text-muted hover:text-white'}`}
           >
@@ -429,7 +450,7 @@ export default function AudioPlayer() {
           >
             <SkipBack className="w-5 h-5 fill-current" />
           </button>
-          <button 
+          <button
             onClick={togglePlayPause}
             className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center transition-colors hover:bg-white/90"
           >
@@ -442,14 +463,14 @@ export default function AudioPlayer() {
           >
             <SkipForward className="w-5 h-5 fill-current" />
           </button>
-          <button 
+          <button
             onClick={toggleRepeat}
             className={`transition-colors ${repeatMode !== 'none' ? 'text-indigo-500' : 'text-muted hover:text-white'}`}
           >
             {repeatMode === 'one' ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
           </button>
         </div>
-        
+
         {/* Progress Bar */}
         <div className="flex items-center gap-2 w-full">
           <span className="text-xs text-muted font-medium w-10 text-right">{formatTime(currentTime)}</span>

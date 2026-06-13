@@ -7,7 +7,7 @@ import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft, Radio, UploadClou
 import Link from 'next/link';
 import { isAdminUser, isModUser } from '@/lib/admin';
 
-type AdminTab = 'users' | 'songs' | 'moderation' | 'ads' | 'bot';
+type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot';
 
 interface McpLog {
   id: string;
@@ -35,8 +35,23 @@ interface SongData {
   title: string;
   artist_name: string;
   plays: number;
-  ai_tool: string;
+  ai_tool?: string;
   created_at: string;
+  is_approved?: boolean;
+  audio_url?: string;
+  cover_url?: string;
+}
+
+function openTrustedExternalUrl(value?: string | null) {
+  if (!value) return;
+
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+    window.open(url.toString(), '_blank', 'noopener,noreferrer');
+  } catch {
+    // Ignore malformed URLs from pending creator submissions.
+  }
 }
 
 export default function AdminDashboard() {
@@ -53,12 +68,12 @@ export default function AdminDashboard() {
   const [adFiles, setAdFiles] = useState<any[]>([]);
   const [isReplacingAudio, setIsReplacingAudio] = useState<string | null>(null);
   const [mcpLogs, setMcpLogs] = useState<McpLog[]>([]);
-  
+
   // Analytics
   const [totalStreams, setTotalStreams] = useState(0);
   const [totalLikes, setTotalLikes] = useState(0);
   const [dailyActiveUsers, setDailyActiveUsers] = useState(0);
-  
+
   // Ad Settings
   const [adFrequency, setAdFrequency] = useState(3);
   const [isSavingAdFreq, setIsSavingAdFreq] = useState(false);
@@ -85,7 +100,7 @@ export default function AdminDashboard() {
       const adminCheck = isAdminUser(user);
       setIsAuthorized(true);
       setIsFullAdmin(adminCheck);
-      
+
       if (!adminCheck) {
         setActiveTab('moderation');
       }
@@ -96,20 +111,20 @@ export default function AdminDashboard() {
           .from('profiles')
           .select('id, username, created_at, subscription_tier, followers_count, email, country, last_active_at, avatar_url, is_banned, role')
           .order('created_at', { ascending: false });
-          
+
         if (profilesData) setProfiles(profilesData);
 
         // Load Songs & Streams
         const { data: songsData } = await supabase
           .from('songs')
-          .select('id, title, artist_name, plays, ai_tool, created_at')
+          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url')
           .order('created_at', { ascending: false });
 
         if (songsData) {
           setSongs(songsData);
           setTotalStreams(songsData.reduce((acc, song) => acc + (song.plays || 0), 0));
         }
-        
+
         // Load Analytics
         const { count: likesCount } = await supabase.from('liked_songs').select('*', { count: 'exact', head: true });
         if (likesCount) setTotalLikes(likesCount);
@@ -117,11 +132,11 @@ export default function AdminDashboard() {
         const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const { count: dauCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('last_active_at', yesterday);
         if (dauCount) setDailyActiveUsers(dauCount);
-        
+
         // Load Ad Frequency
         const { data: settingsData } = await supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single();
         if (settingsData) setAdFrequency(settingsData.ad_frequency);
-        
+
         // Load Ads
         const { data: adsData } = await supabase.storage.from('ads').list();
         if (adsData) {
@@ -195,10 +210,10 @@ export default function AdminDashboard() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id || 'admin';
-      
+
       const audioExt = file.name.split('.').pop();
       const audioPath = `${userId}/replaced_${Date.now()}_song.${audioExt}`;
-      
+
       const { error: uploadError } = await supabase.storage
         .from('songs')
         .upload(audioPath, file, { cacheControl: '3600', upsert: false });
@@ -238,7 +253,7 @@ export default function AdminDashboard() {
 
   const handleRoleChange = async (id: string, newRole: string, username: string) => {
     if (!window.confirm(`Möchtest du die Rolle von "${username}" wirklich zu "${newRole.toUpperCase()}" ändern?`)) return;
-    
+
     try {
       const { error } = await supabase.rpc('set_user_role', { target_user_id: id, new_role: newRole });
       if (error) throw error;
@@ -270,7 +285,7 @@ export default function AdminDashboard() {
     try {
       const extension = file.name.split('.').pop();
       const uniqueFileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
-      
+
       const { error } = await supabase.storage
         .from('ads')
         .upload(uniqueFileName, file, {
@@ -294,7 +309,7 @@ export default function AdminDashboard() {
 
   const handleAdDelete = async (fileName: string) => {
     if (!window.confirm(`Möchtest du die Werbung "${fileName}" wirklich löschen?`)) return;
-    
+
     try {
       const { error } = await supabase.storage.from('ads').remove([fileName]);
       if (error) throw error;
@@ -317,11 +332,32 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredProfiles = profiles.filter(p => p.username?.toLowerCase().includes(searchTerm.toLowerCase()));
-  const filteredSongs = songs.filter(s => 
-    s.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.artist_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleApproveSong = async (id: string, title: string) => {
+    const { error } = await supabase.from('songs').update({ is_approved: true }).eq('id', id);
+    if (!error) {
+      setSongs(songs.map(s => s.id === id ? { ...s, is_approved: true } : s));
+      alert(`Song "${title}" wurde freigegeben.`);
+    } else {
+      alert('Fehler beim Freigeben: ' + error.message);
+    }
+  };
+
+  const handleRejectSong = async (id: string, title: string) => {
+    if (confirm(`Möchtest du den Song "${title}" wirklich ablehnen und löschen?`)) {
+      const { error } = await supabase.from('songs').delete().eq('id', id);
+      if (!error) {
+        setSongs(songs.filter(s => s.id !== id));
+        alert(`Song "${title}" wurde gelöscht.`);
+      } else {
+        alert('Fehler beim Ablehnen: ' + error.message);
+      }
+    }
+  };
+
+  const filteredProfiles = profiles.filter(p => p.username?.toLowerCase().includes(searchTerm.toLowerCase()) || p.email?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const liveSongs = songs.filter(s => s.is_approved !== false);
+  const pendingSongs = songs.filter(s => s.is_approved === false);
+  const filteredSongs = liveSongs.filter(s => s.title?.toLowerCase().includes(searchTerm.toLowerCase()) || s.artist_name?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   if (isLoading) {
     return (
@@ -360,7 +396,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
+
         {/* KPI Cards */}
         {isFullAdmin && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -373,7 +409,7 @@ export default function AdminDashboard() {
                 <p className="text-2xl font-bold text-white">{totalStreams.toLocaleString('de-DE')}</p>
               </div>
             </div>
-            
+
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex items-center gap-4">
               <div className="w-12 h-12 bg-pink-500/20 text-pink-400 rounded-xl flex items-center justify-center">
                 <Heart className="w-6 h-6" />
@@ -414,8 +450,8 @@ export default function AdminDashboard() {
                 <button
                   onClick={() => setActiveTab('users')}
                   className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                    activeTab === 'users' 
-                      ? 'bg-indigo-500 text-white shadow-lg' 
+                    activeTab === 'users'
+                      ? 'bg-indigo-500 text-white shadow-lg'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
                   }`}
                 >
@@ -425,8 +461,8 @@ export default function AdminDashboard() {
                 <button
                   onClick={() => setActiveTab('songs')}
                   className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                    activeTab === 'songs' 
-                      ? 'bg-indigo-500 text-white shadow-lg' 
+                    activeTab === 'songs'
+                      ? 'bg-indigo-500 text-white shadow-lg'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
                   }`}
                 >
@@ -434,10 +470,24 @@ export default function AdminDashboard() {
                   Songs
                 </button>
                 <button
+                  onClick={() => setActiveTab('approvals')}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    activeTab === 'approvals'
+                      ? 'bg-indigo-500 text-white shadow-lg'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <ShieldAlert className="w-4 h-4" />
+                  Freigaben
+                  {pendingSongs.length > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1">{pendingSongs.length}</span>
+                  )}
+                </button>
+                <button
                   onClick={() => setActiveTab('ads')}
                   className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                    activeTab === 'ads' 
-                      ? 'bg-indigo-500 text-white shadow-lg' 
+                    activeTab === 'ads'
+                      ? 'bg-indigo-500 text-white shadow-lg'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
                   }`}
                 >
@@ -447,8 +497,8 @@ export default function AdminDashboard() {
                 <button
                   onClick={() => setActiveTab('bot')}
                   className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                    activeTab === 'bot' 
-                      ? 'bg-indigo-500 text-white shadow-lg' 
+                    activeTab === 'bot'
+                      ? 'bg-indigo-500 text-white shadow-lg'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
                   }`}
                 >
@@ -460,8 +510,8 @@ export default function AdminDashboard() {
             <button
               onClick={() => setActiveTab('moderation')}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                activeTab === 'moderation' 
-                  ? 'bg-red-500 text-white shadow-lg' 
+                activeTab === 'moderation'
+                  ? 'bg-red-500 text-white shadow-lg'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -477,9 +527,9 @@ export default function AdminDashboard() {
 
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-            <input 
-              type="text" 
-              placeholder="Suchen..." 
+            <input
+              type="text"
+              placeholder="Suchen..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
@@ -518,14 +568,15 @@ export default function AdminDashboard() {
                           {profile.username || 'Unbekannt'}
                           {(profile as any).role === 'admin' && <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase">Admin</span>}
                           {(profile as any).role === 'mod' && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-bold uppercase">Mod</span>}
+                          {(profile as any).role === 'creator' && <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-bold uppercase">Creator</span>}
                           {profile.is_banned && <span className="text-[10px] bg-red-500/20 text-red-500 px-2 py-0.5 rounded-full font-bold uppercase">Gesperrt</span>}
                         </span>
                       </td>
                       <td className="px-6 py-4">{profile.email || '-'}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wider ${
-                          profile.subscription_tier === 'pro' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' : 
-                          profile.subscription_tier === 'premium' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 
+                          profile.subscription_tier === 'pro' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' :
+                          profile.subscription_tier === 'premium' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
                           'bg-white/10 text-white/60'
                         }`}>
                           {(profile.subscription_tier || 'Free').toUpperCase()}
@@ -541,14 +592,15 @@ export default function AdminDashboard() {
                           onChange={(e) => handleRoleChange(profile.id, e.target.value, profile.username)}
                         >
                           <option value="user">User</option>
+                          <option value="creator">Creator</option>
                           <option value="mod">MOD</option>
                           <option value="admin">Admin</option>
                         </select>
                         <button
                           onClick={() => handleToggleBan(profile.id, !!profile.is_banned, profile.username)}
                           className={`text-xs px-3 py-1.5 rounded-md font-bold transition-colors ${
-                            profile.is_banned 
-                              ? 'bg-white/10 hover:bg-white/20 text-white' 
+                            profile.is_banned
+                              ? 'bg-white/10 hover:bg-white/20 text-white'
                               : 'bg-red-500/10 hover:bg-red-500/20 text-red-500'
                           }`}
                         >
@@ -565,7 +617,7 @@ export default function AdminDashboard() {
               </table>
             </div>
           )}
-          
+
           {activeTab === 'songs' && (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-white/70">
@@ -594,7 +646,7 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                        <label 
+                        <label
                           className="p-2 cursor-pointer text-white/40 hover:text-green-400 hover:bg-green-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                           title="Audiodatei austauschen"
                         >
@@ -603,22 +655,22 @@ export default function AdminDashboard() {
                           ) : (
                             <FileAudio className="w-4 h-4" />
                           )}
-                          <input 
-                            type="file" 
-                            accept="audio/*" 
-                            className="hidden" 
+                          <input
+                            type="file"
+                            accept="audio/*"
+                            className="hidden"
                             onChange={(e) => handleReplaceAudio(e, song.id, song.title)}
                             disabled={isReplacingAudio === song.id}
                           />
                         </label>
-                        <button 
+                        <button
                           onClick={() => handleEditSongTitle(song.id, song.title)}
                           className="p-2 text-white/40 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                           title="Song umbenennen"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDeleteSong(song.id, song.title)}
                           className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                           title="Song endgültig löschen"
@@ -630,6 +682,59 @@ export default function AdminDashboard() {
                   )) : (
                     <tr>
                       <td colSpan={5} className="px-6 py-12 text-center text-white/40">Keine Songs gefunden.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {activeTab === 'approvals' && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-white/70">
+                <thead className="text-xs uppercase bg-black/40 text-white/50">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold">Titel</th>
+                    <th className="px-6 py-4 font-semibold">Künstler</th>
+                    <th className="px-6 py-4 font-semibold">Datum</th>
+                    <th className="px-6 py-4 font-semibold text-right">Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {pendingSongs.length > 0 ? pendingSongs.map((song) => (
+                    <tr key={song.id} className="hover:bg-white/5 transition-colors">
+                      <td className="px-6 py-4 font-medium text-white max-w-[200px] truncate" title={song.title}>
+                        {song.title}
+                      </td>
+                      <td className="px-6 py-4 max-w-[150px] truncate" title={song.artist_name}>{song.artist_name || 'Unbekannt'}</td>
+                      <td className="px-6 py-4">{new Date(song.created_at).toLocaleDateString('de-DE')}</td>
+                      <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                        {song.audio_url && (
+                          <button
+                            onClick={() => openTrustedExternalUrl(song.audio_url)}
+                            className="p-2 text-blue-400 hover:text-white hover:bg-blue-500 rounded-lg transition-all"
+                            title="Song anhören"
+                          >
+                            <Play className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleApproveSong(song.id, song.title)}
+                          className="px-3 py-1.5 text-xs font-bold text-green-400 bg-green-500/10 hover:bg-green-500/20 rounded-md transition-all"
+                        >
+                          Freigeben
+                        </button>
+                        <button
+                          onClick={() => handleRejectSong(song.id, song.title)}
+                          className="px-3 py-1.5 text-xs font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded-md transition-all"
+                        >
+                          Ablehnen
+                        </button>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-12 text-center text-white/40">Keine ausstehenden Freigaben.</td>
                     </tr>
                   )}
                 </tbody>
@@ -675,7 +780,7 @@ export default function AdminDashboard() {
                           {new Date(report.created_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}
                         </td>
                         <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                          <button 
+                          <button
                             onClick={async () => {
                               await supabase.from('reports').update({ status: 'resolved' }).eq('id', report.id);
                               setReports(prev => prev.map(r => r.id === report.id ? { ...r, status: 'resolved' } : r));
@@ -701,7 +806,7 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
-          
+
           {activeTab === 'ads' && isFullAdmin && (
             <div className="p-8">
               <div className="max-w-2xl mx-auto text-center">
@@ -710,7 +815,7 @@ export default function AdminDashboard() {
                 </div>
                 <h2 className="text-2xl font-bold text-white mb-4">Eigenwerbung Verwalten</h2>
                 <p className="text-white/60 mb-8">
-                  Lade hier eine neue Audiodatei hoch (.mp3, .m4a), die den Free-Nutzern nach jedem 3. Song abgespielt wird. 
+                  Lade hier eine neue Audiodatei hoch (.mp3, .m4a), die den Free-Nutzern nach jedem 3. Song abgespielt wird.
                   Die neue Datei überschreibt automatisch die alte Werbung und ist sofort live.
                 </p>
 
@@ -740,8 +845,8 @@ export default function AdminDashboard() {
 
                 {uploadAdStatus && (
                   <div className={`mt-6 p-4 rounded-xl text-sm font-medium border ${
-                    uploadAdStatus.includes('Erfolgreich') 
-                      ? 'bg-green-500/10 text-green-400 border-green-500/20' 
+                    uploadAdStatus.includes('Erfolgreich')
+                      ? 'bg-green-500/10 text-green-400 border-green-500/20'
                       : uploadAdStatus.includes('Fehler')
                         ? 'bg-red-500/10 text-red-400 border-red-500/20'
                         : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
@@ -754,27 +859,27 @@ export default function AdminDashboard() {
                 <div className="mt-12 text-left bg-white/5 border border-white/10 rounded-2xl p-6">
                   <h3 className="text-xl font-bold text-white mb-2">Werbe-Intervall</h3>
                   <p className="text-white/60 mb-6 text-sm">
-                    Stelle hier ein, nach wie vielen Songs die Basic-Nutzer eine Werbung hören sollen. 
+                    Stelle hier ein, nach wie vielen Songs die Basic-Nutzer eine Werbung hören sollen.
                     (Bisher war dieser Wert fest auf 3 eingestellt).
                   </p>
-                  
+
                   <div className="flex items-center gap-4">
                     <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 flex items-center justify-between">
                       <span className="text-white font-medium">Werbung abspielen nach jedem:</span>
                       <div className="flex items-center gap-3">
-                        <button 
+                        <button
                           onClick={() => setAdFrequency(Math.max(1, adFrequency - 1))}
                           className="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
                         >-</button>
                         <span className="text-xl font-bold text-white w-8 text-center">{adFrequency}</span>
-                        <button 
+                        <button
                           onClick={() => setAdFrequency(adFrequency + 1)}
                           className="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
                         >+</button>
                         <span className="text-white/60 font-medium ml-2">. Song</span>
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={handleSaveAdFrequency}
                       disabled={isSavingAdFreq}
                       className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl transition-colors disabled:opacity-50"

@@ -11,7 +11,18 @@ import { GENRES, MOODS } from '@/lib/constants';
 import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { compressImage } from '@/lib/imageCompression';
-import { isAdminUser } from '@/lib/admin';
+import { isAdminUser, isCreatorUser } from '@/lib/admin';
+import {
+  ALLOWED_AUDIO_EXTENSIONS,
+  ALLOWED_AUDIO_TYPES,
+  ALLOWED_COVER_IMAGE_EXTENSIONS,
+  ALLOWED_COVER_IMAGE_TYPES,
+  extensionForMimeType,
+  getUploadFileExtension,
+  MAX_AUDIO_BYTES,
+  MAX_COVER_IMAGE_BYTES,
+  validateUploadFile,
+} from '@/lib/upload-validation';
 
 export default function UploadPage() {
   const { t } = useTranslation();
@@ -31,13 +42,13 @@ export default function UploadPage() {
   const [humanEdit, setHumanEdit] = useState<number>(0);
   const [vocalsType, setVocalsType] = useState<string>('AI');
   const [credits, setCredits] = useState<{ role: string; name: string }[]>([]);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  
+
   const [user, setUser] = useState<SupabaseUser | null>(null);
-  
+
   const router = useRouter();
   const supabase = createClient();
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -50,14 +61,14 @@ export default function UploadPage() {
         router.push('/login');
         return;
       }
-      
-      const adminCheck = isAdminUser(session.user);
-      
-      if (!adminCheck) {
+
+      const isAllowed = isCreatorUser(session.user);
+
+      if (!isAllowed) {
         router.push('/');
         return;
       }
-      
+
       setUser(session.user);
     };
     getUserAndCheckTier();
@@ -157,35 +168,58 @@ export default function UploadPage() {
       setError('Bitte melde dich erneut an, bevor du etwas hochlädst.');
       return;
     }
-    
+
     setLoading(true);
     setError(null);
 
     try {
+      const coverValidationError = validateUploadFile(coverFile, {
+        allowedExtensions: ALLOWED_COVER_IMAGE_EXTENSIONS,
+        allowedMimeTypes: ALLOWED_COVER_IMAGE_TYPES,
+        label: 'Cover',
+        maxBytes: MAX_COVER_IMAGE_BYTES,
+      });
+      if (coverValidationError) throw new Error(coverValidationError);
+
+      const audioFilesToValidate = uploadMode === 'single' && audioFile
+        ? [{ file: audioFile, title }]
+        : albumFiles;
+
+      for (const item of audioFilesToValidate) {
+        const audioValidationError = validateUploadFile(item.file, {
+          allowedExtensions: ALLOWED_AUDIO_EXTENSIONS,
+          allowedMimeTypes: ALLOWED_AUDIO_TYPES,
+          label: item.title ? `Audio-Datei "${item.title}"` : 'Audio-Datei',
+          maxBytes: MAX_AUDIO_BYTES,
+        });
+
+        if (audioValidationError) throw new Error(audioValidationError);
+      }
+
       // 1. Upload Cover Image
       const compressedCover = await compressImage(coverFile);
-      const coverExt = compressedCover.name.split('.').pop();
+      const coverExt = extensionForMimeType(compressedCover.type, getUploadFileExtension(compressedCover) || 'jpg');
       const coverPath = `${user.id}/${Date.now()}_cover.${coverExt}`;
       const { error: coverError } = await supabase.storage
         .from('covers')
         .upload(coverPath, compressedCover);
-        
+
       if (coverError) throw new Error('Cover-Upload fehlgeschlagen: ' + coverError.message);
-      
+
       const { data: { publicUrl: coverUrl } } = supabase.storage
         .from('covers')
         .getPublicUrl(coverPath);
 
       if (uploadMode === 'single' && audioFile) {
         // --- SINGLE UPLOAD ---
-        const audioExt = audioFile.name.split('.').pop();
+        const audioExt = extensionForMimeType(audioFile.type, getUploadFileExtension(audioFile) || 'mp3');
         const audioPath = `${user.id}/${Date.now()}_song.${audioExt}`;
         const { error: audioError } = await supabase.storage
           .from('songs')
           .upload(audioPath, audioFile);
-          
+
         if (audioError) throw new Error('Song-Upload fehlgeschlagen: ' + audioError.message);
-        
+
         const { data: { publicUrl: audioUrl } } = supabase.storage
           .from('songs')
           .getPublicUrl(audioPath);
@@ -204,7 +238,8 @@ export default function UploadPage() {
             vocals_type: vocalsType,
             credits,
             duration: audioDuration || null,
-            plays: 0
+            plays: 0,
+            is_approved: isAdminUser(user)
           });
         if (dbError) throw new Error('Datenbank-Fehler: ' + dbError.message);
 
@@ -218,20 +253,20 @@ export default function UploadPage() {
             cover_url: coverUrl,
             type: albumType
           }).select().single();
-          
+
         if (albumError || !albumData) throw new Error('Fehler beim Erstellen des Albums.');
 
         // Upload all songs
         for (let i = 0; i < albumFiles.length; i++) {
           const item = albumFiles[i];
-          const audioExt = item.file.name.split('.').pop();
+          const audioExt = extensionForMimeType(item.file.type, getUploadFileExtension(item.file) || 'mp3');
           const audioPath = `${user.id}/${Date.now()}_albumsong_${i}.${audioExt}`;
           const { error: audioError } = await supabase.storage
             .from('songs')
             .upload(audioPath, item.file);
-            
+
           if (audioError) throw new Error(`Upload fehlgeschlagen für ${item.title}`);
-          
+
           const { data: { publicUrl: audioUrl } } = supabase.storage
             .from('songs')
             .getPublicUrl(audioPath);
@@ -252,9 +287,10 @@ export default function UploadPage() {
               duration: item.duration || null,
               plays: 0,
               album_id: albumData.id,
-              track_number: i + 1
+              track_number: i + 1,
+              is_approved: isAdminUser(user)
             });
-            
+
           if (dbError) throw new Error(`Fehler beim Speichern von ${item.title}`);
         }
       }
@@ -272,14 +308,16 @@ export default function UploadPage() {
   };
 
   if (!user) return null; // Wait for auth redirect
-  const creatorDisplayName = user.user_metadata?.username || user.email?.split('@')[0] || 'Creator';
-
   if (success) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-full">
         <CheckCircle2 className="w-24 h-24 text-green-500 mb-6 animate-pulse" />
         <h1 className="text-3xl font-bold text-white mb-2">{t('upload.successTitle')}</h1>
-        <p className="text-white/60">{t('upload.successText')}</p>
+        <p className="text-white/60">
+          {isAdminUser(user)
+            ? t('upload.successText')
+            : 'Dein Upload war erfolgreich! Er wird nun von unserem Team geprüft und in Kürze freigeschaltet.'}
+        </p>
       </div>
     );
   }
@@ -319,10 +357,10 @@ export default function UploadPage() {
 
           {/* Form Fields Container */}
           <div className="bg-white/5 border border-white/10 rounded-3xl p-8 space-y-6 backdrop-blur-md">
-            
-            <ArtistAutocomplete 
-              value={artistName} 
-              onChange={setArtistName} 
+
+            <ArtistAutocomplete
+              value={artistName}
+              onChange={setArtistName}
             />
 
             {uploadMode === 'album' && (
@@ -330,9 +368,9 @@ export default function UploadPage() {
                 <label className="block text-sm font-semibold text-white/80 mb-2">Release Typ *</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="albumType" 
+                    <input
+                      type="radio"
+                      name="albumType"
                       value="album"
                       checked={albumType === 'album'}
                       onChange={() => setAlbumType('album')}
@@ -341,9 +379,9 @@ export default function UploadPage() {
                     <span className="text-white/80 text-sm">Album</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="albumType" 
+                    <input
+                      type="radio"
+                      name="albumType"
                       value="ep"
                       checked={albumType === 'ep'}
                       onChange={() => setAlbumType('ep')}
@@ -390,11 +428,11 @@ export default function UploadPage() {
 
             <div>
               <label className="block text-sm font-semibold text-white/80 mb-2">Human Edit Anteil: {humanEdit}%</label>
-              <input 
-                type="range" 
-                min="0" 
-                max="100" 
-                value={humanEdit} 
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={humanEdit}
                 onChange={(e) => setHumanEdit(parseInt(e.target.value))}
                 className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
               />
@@ -409,9 +447,9 @@ export default function UploadPage() {
               <div className="flex gap-4">
                 {['AI', 'Human', 'Hybrid', 'Instrumental'].map((type) => (
                   <label key={type} className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="vocalsType" 
+                    <input
+                      type="radio"
+                      name="vocalsType"
                       value={type}
                       checked={vocalsType === type}
                       onChange={(e) => setVocalsType(e.target.value)}
@@ -438,7 +476,7 @@ export default function UploadPage() {
                   </button>
                 )}
               </div>
-              
+
               <div className="space-y-3">
                 {credits.map((credit, index) => (
                   <div key={index} className="flex gap-3 items-center">
@@ -483,20 +521,20 @@ export default function UploadPage() {
 
           {/* File Uploads */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             {/* Audio Upload */}
-            <div 
+            <div
               onClick={() => audioInputRef.current?.click()}
               onDragOver={(e) => { e.preventDefault(); setIsDraggingAudio(true); }}
               onDragLeave={(e) => { e.preventDefault(); setIsDraggingAudio(false); }}
               onDrop={handleAudioDrop}
               className={`border-2 border-dashed ${isDraggingAudio ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 hover:border-indigo-500/50 bg-white/5'} rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors group`}
             >
-              <input 
-                type="file" 
-                accept="audio/*" 
+              <input
+                type="file"
+                accept="audio/*"
                 multiple={uploadMode === 'album'}
-                className="hidden" 
+                className="hidden"
                 ref={audioInputRef}
                 onChange={(e) => {
                   if (uploadMode === 'single') {
@@ -524,21 +562,21 @@ export default function UploadPage() {
             </div>
 
             {/* Cover Upload */}
-            <div 
+            <div
               onClick={() => coverInputRef.current?.click()}
               onDragOver={(e) => { e.preventDefault(); setIsDraggingCover(true); }}
               onDragLeave={(e) => { e.preventDefault(); setIsDraggingCover(false); }}
               onDrop={handleCoverDrop}
               className={`border-2 border-dashed ${isDraggingCover ? 'border-pink-500 bg-pink-500/10' : 'border-white/10 hover:border-pink-500/50 bg-white/5'} rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors group relative overflow-hidden`}
             >
-              <input 
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
                 ref={coverInputRef}
                 onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
               />
-              
+
               {coverFile ? (
                 <div className="absolute inset-0 z-0 opacity-40">
                   <img src={URL.createObjectURL(coverFile)} alt="Cover preview" className="w-full h-full object-cover blur-sm" />
@@ -565,9 +603,9 @@ export default function UploadPage() {
                 {albumFiles.map((af, i) => (
                   <div key={i} className="flex gap-4 items-center bg-black/40 p-3 rounded-xl border border-white/5">
                     <span className="text-white/50 w-6 text-center">{i+1}</span>
-                    <input 
-                      type="text" 
-                      value={af.title} 
+                    <input
+                      type="text"
+                      value={af.title}
                       onChange={e => {
                         const newFiles = [...albumFiles];
                         newFiles[i].title = e.target.value;
@@ -575,7 +613,7 @@ export default function UploadPage() {
                       }}
                       className="flex-1 bg-transparent text-white focus:outline-none"
                     />
-                    <button 
+                    <button
                       type="button"
                       onClick={() => setAlbumFiles(albumFiles.filter((_, idx) => idx !== i))}
                       className="text-white/30 hover:text-red-400"

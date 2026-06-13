@@ -4,11 +4,11 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { Song } from '@/lib/types';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { RealtimeChannel, User as SupabaseUser } from '@supabase/supabase-js';
 import { clearNowPlayingMetadata, setNowPlayingMetadata } from '@/lib/media-session';
 import { PLAYER_FORCE_SIGN_OUT_EVENT } from '@/lib/player-events';
 import { COOKIE_CONSENT_CHANGED_EVENT, hasPreferenceStorageConsent } from '@/lib/cookie-consent';
-import { initAuthChannel, initPlayerChannel, broadcastSignOut, broadcastPlaybackStarted } from '@/lib/cross-tab';
+import { initAuthChannel, initPlayerChannel, broadcastSignOut, broadcastPlaybackStarted, getTabId } from '@/lib/cross-tab';
 
 interface PlayerContextType {
   currentSong: Song | null;
@@ -55,6 +55,10 @@ const PLAYER_STORAGE_KEYS = [
   'player_isShuffling',
 ] as const;
 
+type StorageObject = {
+  name: string;
+};
+
 function clearStoredPlayerState() {
   PLAYER_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
 }
@@ -82,12 +86,41 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [adFrequency, setAdFrequency] = useState(3);
   const [pendingSongToPlayAfterAd, setPendingSongToPlayAfterAd] = useState<Song | null>(null);
-  const [availableAds, setAvailableAds] = useState<any[]>([]);
+  const [availableAds, setAvailableAds] = useState<StorageObject[]>([]);
   const [authResolved, setAuthResolved] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const loadedSongIdRef = useRef<string | null>(null);
+  const syncChannelRef = useRef<RealtimeChannel | null>(null);
+
+  // Cross-device playback sync via Supabase Realtime
+  useEffect(() => {
+    if (!user?.id) return;
+    const supabase = createClient();
+    const channel = supabase.channel(`player_sync:${user.id}`);
+
+    channel
+      .on('broadcast', { event: 'PLAYBACK_STARTED' }, (payload) => {
+        if (payload.payload?.deviceId !== getTabId()) {
+          const audio = audioRef.current;
+          if (audio) {
+            audio.pause();
+          }
+          setIsPlaying(false);
+        }
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          syncChannelRef.current = channel;
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+      syncChannelRef.current = null;
+    };
+  }, [user?.id]);
 
   const resetPlayback = useCallback(() => {
     const audio = audioRef.current;
@@ -160,19 +193,19 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
       clearAuthenticatedPlayback();
       setAuthResolved(true);
     });
-    
+
     // Load available ads and global config when context initializes
     const loadAdsAndConfig = async () => {
       const { data: adsData } = await supabase.storage.from('ads').list();
       if (adsData) {
         setAvailableAds(adsData.filter(f => f.name !== '.emptyFolderPlaceholder'));
       }
-      
+
       const { data: configData } = await supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single();
       if (configData) setAdFrequency(configData.ad_frequency);
     };
     loadAdsAndConfig();
-    
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const nextUser = session?.user || null;
       if (nextUser) {
@@ -295,10 +328,8 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
 
   // Initialize audio element
   useEffect(() => {
-    audioRef.current = new Audio();
-    audioRef.current.volume = 1;
-
     const audio = audioRef.current;
+    if (!audio) return;
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
@@ -315,26 +346,38 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
       setIsPlaying(false);
       setProgress(0);
       setCurrentTime(0);
-      
-      // Future: we will trigger playNext here, but we need to do it outside of this closure 
+
+      // Future: we will trigger playNext here, but we need to do it outside of this closure
       // or use a ref for queue/queueIndex to have the latest state.
       // For now, let's dispatch a custom event that we can listen to in a separate effect.
       window.dispatchEvent(new Event('player-song-ended'));
     };
 
+    const handlePlayError = (e: Event) => {
+      console.error('Audio element error:', e);
+    };
+
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handlePlayError);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handlePlayError);
       audio.pause();
       audio.src = '';
       loadedSongIdRef.current = null;
     };
-  }, []);
+  }, []); // Note: listeners attach once to the stable audio ref.
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
 
   const loadSongIntoAudio = useCallback((song: Song, resetPosition = true) => {
     const audio = audioRef.current;
@@ -361,6 +404,15 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
 
     // Notify all other tabs to stop their playback
     broadcastPlaybackStarted();
+
+    // Cross-device: notify other devices to stop playback
+    if (syncChannelRef.current) {
+      syncChannelRef.current.send({
+        type: 'broadcast',
+        event: 'PLAYBACK_STARTED',
+        payload: { deviceId: getTabId() }
+      }).catch(console.error);
+    }
 
     setIsPlaying(true);
     audio.play().catch((error) => {
@@ -394,14 +446,14 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
       setShowAuthModal(true);
       return;
     }
-    
+
     if (!audioRef.current) return;
 
     // Ad Logic: Check if we should play an ad
     if (!isPro && song.id !== 'yoriax-audio-ad' && songsPlayed >= adFrequency && availableAds.length > 0) {
       setPendingSongToPlayAfterAd(song);
       setIsAdPlaying(true);
-      
+
       let selectedAdUrl = '';
       if (availableAds.length > 0) {
         const randomAd = availableAds[Math.floor(Math.random() * availableAds.length)];
@@ -410,7 +462,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
         // Fallback if bucket is empty or failed to load
         selectedAdUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ads/yoriax-ad.mp3?t=${Date.now()}`;
       }
-      
+
       const freshAdSong = {
         ...AD_SONG_TEMPLATE,
         audio_url: selectedAdUrl,
@@ -436,7 +488,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
         setSongsPlayed(prev => prev + 1);
       }
     }
-    
+
     if (currentSong?.id === song.id) {
       loadSongIntoAudio(song, false);
       startPlayback();
@@ -446,7 +498,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     setCurrentSong(song);
     loadSongIntoAudio(song);
     startPlayback();
-  }, [currentSong?.id, loadSongIntoAudio, startPlayback, user, isPro, songsPlayed, adFrequency, availableAds.length]);
+  }, [currentSong?.id, loadSongIntoAudio, startPlayback, user, isPro, songsPlayed, adFrequency, availableAds]);
 
   const setQueue = useCallback((songs: Song[], startIndex = 0) => {
     setQueueState(songs);
@@ -457,7 +509,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
 
   const playNext = useCallback(() => {
     if (queue.length === 0) return;
-    
+
     if (isShuffling && queue.length > 1) {
       let nextIndex = Math.floor(Math.random() * queue.length);
       while (nextIndex === queueIndex) {
@@ -574,7 +626,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
   }, [currentSong, duration]);
 
   const toggleShuffle = useCallback(() => setIsShuffling(s => !s), []);
-  
+
   const toggleRepeat = useCallback(() => {
     setRepeatMode(r => r === 'none' ? 'all' : r === 'all' ? 'one' : 'none');
   }, []);
@@ -612,7 +664,8 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
   return (
     <PlayerContext.Provider value={contextValue}>
       {children}
-      
+      <audio ref={audioRef} preload="metadata" playsInline className="hidden" />
+
       {showAuthModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-[#181818] rounded-xl p-8 max-w-md w-full text-center shadow-2xl border border-white/10 relative">

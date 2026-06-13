@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserCheck, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
-import { isAdminUser } from '@/lib/admin';
+import { isAdminUser, isCreatorUser } from '@/lib/admin';
 import CookieSettingsButton from '@/components/ui/CookieSettingsButton';
 
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -13,7 +13,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
   const { t } = useTranslation();
   
-  const isAdmin = isAdminUser(user);
+  const isCreator = isCreatorUser(user);
 
   if (!user) return null;
 
@@ -77,7 +77,7 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
       </div>
 
       <div className="px-3 mt-auto">
-        {isAdmin && (
+        {isCreator && (
           <Link href="/upload" className="flex items-center gap-4 px-3 py-2.5 mb-2 text-sm font-bold text-white bg-white/10 hover:bg-white/20 rounded-md transition-colors border border-white/10">
             <PlusCircle className="w-5 h-5" />
             {t('nav.upload')}

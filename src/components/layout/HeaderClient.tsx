@@ -45,9 +45,12 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
       notifyPlayerForceSignOut();
     }
     
-    if (typeof navigator !== 'undefined') {
-      setIsElectron(navigator.userAgent.toLowerCase().includes('electron'));
-    }
+    setIsElectron(
+      navigator.userAgent.toLowerCase().includes('electron') ||
+      ('process' in window && !!(window as any).process?.versions?.electron) ||
+      navigator.userAgent.toLowerCase().includes('yoriax') ||
+      window.matchMedia('(display-mode: standalone)').matches
+    );
   }, [user]);
 
   // Debounced search

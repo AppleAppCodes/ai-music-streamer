@@ -28,6 +28,7 @@ const syncopate = Syncopate({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.yoriax.com"),
   title: "Yoriax | The AI Music Streamer",
   description: "Discover, stream, and share the best AI-generated songs. Yoriax is the premier streaming platform built for AI-native music.",
   manifest: "/site.webmanifest",

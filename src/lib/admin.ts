@@ -7,3 +7,7 @@ export function isAdminUser(user: Pick<SupabaseUser, 'app_metadata'> | null | un
 export function isModUser(user: Pick<SupabaseUser, 'app_metadata'> | null | undefined) {
   return user?.app_metadata?.role === 'admin' || user?.app_metadata?.role === 'mod';
 }
+
+export function isCreatorUser(user: Pick<SupabaseUser, 'app_metadata'> | null | undefined) {
+  return user?.app_metadata?.role === 'admin' || user?.app_metadata?.role === 'creator';
+}

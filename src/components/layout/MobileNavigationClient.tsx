@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Library, Search, Sparkles, Upload } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { isAdminUser } from '@/lib/admin';
+import { isAdminUser, isCreatorUser } from '@/lib/admin';
 import { useState } from 'react';
 
 const BASE_NAV_ITEMS = [
@@ -18,11 +18,11 @@ export default function MobileNavigationClient({ user }: { user: SupabaseUser | 
   const pathname = usePathname();
   const [pendingNav, setPendingNav] = useState<{ href: string; from: string } | null>(null);
   
-  const isAdmin = isAdminUser(user);
+  const isCreator = isCreatorUser(user);
   
   const navItems = [
     ...BASE_NAV_ITEMS,
-    ...(isAdmin ? [{ href: '/upload', label: 'Upload', icon: Upload }] : [])
+    ...(isCreator ? [{ href: '/upload', label: 'Upload', icon: Upload }] : [])
   ];
 
   if (!user) return null;

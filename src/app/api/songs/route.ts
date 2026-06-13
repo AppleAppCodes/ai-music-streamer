@@ -276,6 +276,7 @@ export async function POST(request: NextRequest) {
         language,
         audio_url: audioUrl,
         cover_url: coverUrl,
+        is_approved: true,
       })
       .select()
       .single();

@@ -8,9 +8,32 @@ import { createClient } from "@supabase/supabase-js";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || "";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const MCP_TOKEN = process.env.YORIAX_MCP_TOKEN || "";
+const MCP_ALLOWED_ORIGIN = process.env.YORIAX_MCP_ALLOWED_ORIGIN || "https://www.yoriax.com";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+function isMcpEnabled() {
+  return Boolean(SUPABASE_URL && SUPABASE_SERVICE_KEY && MCP_TOKEN);
+}
+
+function getSupabaseAdmin() {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    throw new Error("MCP Supabase admin client is not configured");
+  }
+
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
+function getStringArgument(args: unknown, key: string) {
+  if (!args || typeof args !== "object") return "";
+  const value = (args as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : "";
+}
 
 const server = new Server(
   {
@@ -24,8 +47,9 @@ const server = new Server(
   }
 );
 
-async function logAction(toolName: string, args: any, summary: string) {
+async function logAction(toolName: string, args: unknown, summary: string) {
   try {
+    const supabase = getSupabaseAdmin();
     await supabase.from("mcp_logs").insert({
       tool_name: toolName,
       arguments: args || {},
@@ -101,28 +125,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   let resultText = "";
 
   try {
+    const supabase = getSupabaseAdmin();
+
     if (name === "get_user_info") {
+      const username = getStringArgument(args, "username");
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .ilike("username", (args as any).username)
+        .ilike("username", username)
         .limit(1);
 
       if (error) throw error;
       if (!data || data.length === 0) {
-        resultText = `Kein Nutzer namens '${(args as any).username}' gefunden.`;
+        resultText = `Kein Nutzer namens '${username}' gefunden.`;
       } else {
         resultText = `User gefunden: ${JSON.stringify(data[0], null, 2)}`;
       }
     } else if (name === "get_song_stats") {
+      const title = getStringArgument(args, "title");
       const { data, error } = await supabase
         .from("songs")
         .select("*")
-        .ilike("title", (args as any).title);
+        .ilike("title", title);
 
       if (error) throw error;
       if (!data || data.length === 0) {
-        resultText = `Kein Song namens '${(args as any).title}' gefunden.`;
+        resultText = `Kein Song namens '${title}' gefunden.`;
       } else {
         resultText = `Song(s) gefunden: ${JSON.stringify(data, null, 2)}`;
       }
@@ -131,14 +159,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { count: songCount } = await supabase.from("songs").select("*", { count: "exact", head: true });
       resultText = `Gesamtnutzer: ${userCount}, Gesamtsongs: ${songCount}`;
     } else if (name === "verify_artist") {
+      const username = getStringArgument(args, "username");
       const { data: user, error: findError } = await supabase
         .from("profiles")
         .select("id")
-        .ilike("username", (args as any).username)
+        .ilike("username", username)
         .single();
         
       if (findError || !user) {
-        resultText = `Fehler: Konnte Nutzer '${(args as any).username}' nicht finden.`;
+        resultText = `Fehler: Konnte Nutzer '${username}' nicht finden.`;
       } else {
         const { error: updateError } = await supabase
           .from("profiles")
@@ -146,26 +175,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           .eq("id", user.id);
           
         if (updateError) throw updateError;
-        resultText = `Nutzer '${(args as any).username}' wurde als Künstler verifiziert.`;
+        resultText = `Nutzer '${username}' wurde als Künstler verifiziert.`;
       }
     } else if (name === "rename_song") {
+      const oldTitle = getStringArgument(args, "old_title");
+      const newTitle = getStringArgument(args, "new_title");
       const { data: song, error: findError } = await supabase
         .from("songs")
         .select("id")
-        .ilike("title", (args as any).old_title)
+        .ilike("title", oldTitle)
         .limit(1)
         .single();
         
       if (findError || !song) {
-        resultText = `Fehler: Konnte den Song '${(args as any).old_title}' nicht finden. (Muss exakt geschrieben sein)`;
+        resultText = `Fehler: Konnte den Song '${oldTitle}' nicht finden. (Muss exakt geschrieben sein)`;
       } else {
         const { error: updateError } = await supabase
           .from("songs")
-          .update({ title: (args as any).new_title })
+          .update({ title: newTitle })
           .eq("id", song.id);
           
         if (updateError) throw updateError;
-        resultText = `Erfolg: Der Song wurde erfolgreich von '${(args as any).old_title}' in '${(args as any).new_title}' umbenannt!`;
+        resultText = `Erfolg: Der Song wurde erfolgreich von '${oldTitle}' in '${newTitle}' umbenannt!`;
       }
     } else {
       throw new Error("Tool not found");
@@ -176,8 +207,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return {
       content: [{ type: "text", text: resultText }]
     };
-  } catch (error: any) {
-    const errorText = `Error processing tool ${name}: ${error.message}`;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const errorText = `Error processing tool ${name}: ${message}`;
     await logAction(name, args, errorText);
     return {
       content: [{ type: "text", text: errorText }],
@@ -190,16 +222,29 @@ let transport: SSEServerTransport | null = null;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // CORS configuration
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin", MCP_ALLOWED_ORIGIN);
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Vary", "Origin");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
+  if (!isMcpEnabled()) {
+    return res.status(404).send("Not found");
+  }
+
+  const authorization = req.headers.authorization || "";
+  if (authorization !== `Bearer ${MCP_TOKEN}`) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   if (req.method === "GET") {
-    transport = new SSEServerTransport("/api/mcp/messages", res as any);
+    transport = new SSEServerTransport(
+      "/api/mcp/messages",
+      res as unknown as ConstructorParameters<typeof SSEServerTransport>[1],
+    );
     await server.connect(transport);
     
     // Do not end the response; keep SSE open
@@ -208,7 +253,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } else if (req.method === "POST" && req.url?.includes("/messages")) {
     if (transport) {
-      await transport.handlePostMessage(req as any, res as any);
+      await transport.handlePostMessage(
+        req as unknown as Parameters<typeof transport.handlePostMessage>[0],
+        res as unknown as Parameters<typeof transport.handlePostMessage>[1],
+      );
     } else {
       // In serverless, transport might be null if a different instance handles POST
       // We will try our best, but this is a known limitation.

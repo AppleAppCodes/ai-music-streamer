@@ -13,7 +13,7 @@ import ReportDialog from '@/components/ui/ReportDialog';
 import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { isAdminUser, isModUser } from '@/lib/admin';
+import { isModUser } from '@/lib/admin';
 import Image from 'next/image';
 
 function formatDuration(seconds: number | null | undefined): string {
@@ -24,6 +24,9 @@ function formatDuration(seconds: number | null | undefined): string {
 }
 
 const ARTIST_SONG_PAGE_SIZE = 1000;
+const MAX_ARTIST_VIDEO_BYTES = 150 * 1024 * 1024;
+const ALLOWED_ARTIST_VIDEO_TYPES = new Set(['video/mp4', 'video/webm', 'video/quicktime']);
+const ALLOWED_ARTIST_VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'webm']);
 
 // Only fetch the columns we actually use – reduces payload significantly
 const SONG_SELECT_COLUMNS = 'id,title,cover_url,artist_name,audio_url,plays,duration,created_at,album_id,genre' as const;
@@ -64,6 +67,14 @@ type StorageFileMeta = {
 
 function getStorageCacheKey(file: StorageFileMeta) {
   return file.updated_at || file.created_at || file.name;
+}
+
+function getStorageSortTime(file: StorageFileMeta) {
+  const metadataTime = Date.parse(file.updated_at || file.created_at || '');
+  if (!Number.isNaN(metadataTime)) return metadataTime;
+
+  const timestampMatch = file.name.match(/_(\d{10,})\.[^.]+$/);
+  return timestampMatch ? Number(timestampMatch[1]) : 0;
 }
 
 function withCacheBust(url: string, key: string | number) {
@@ -243,7 +254,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
       if (files && files.length > 0) {
         const bannerFiles = files.filter(f => f.name.startsWith(sanitizedName) && !f.name.includes('_video'));
         if (bannerFiles.length > 0) {
-          bannerFiles.sort((a, b) => new Date(getStorageCacheKey(b)).getTime() - new Date(getStorageCacheKey(a)).getTime());
+          bannerFiles.sort((a, b) => getStorageSortTime(b) - getStorageSortTime(a));
           const bannerFile = bannerFiles[0];
           const { data } = supabase.storage.from('covers').getPublicUrl(`banners/${bannerFile.name}`);
           setBannerUrl(withCacheBust(data.publicUrl, getStorageCacheKey(bannerFile)));
@@ -251,7 +262,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
 
         const videoFiles = files.filter(f => f.name.startsWith(sanitizedName + '_video'));
         if (videoFiles.length > 0) {
-          videoFiles.sort((a, b) => new Date(getStorageCacheKey(b)).getTime() - new Date(getStorageCacheKey(a)).getTime());
+          videoFiles.sort((a, b) => getStorageSortTime(b) - getStorageSortTime(a));
           const videoFile = videoFiles[0];
           const { data } = supabase.storage.from('covers').getPublicUrl(`banners/${videoFile.name}`);
           setArtistVideoUrl(withCacheBust(data.publicUrl, getStorageCacheKey(videoFile)));
@@ -425,11 +436,24 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const ext = file.name.split('?')[0]?.split('.').pop()?.toLowerCase() || '';
+    if (file.size > MAX_ARTIST_VIDEO_BYTES) {
+      alert('Das Video ist zu groß. Maximal erlaubt sind 150 MB.');
+      e.target.value = '';
+      return;
+    }
+    if (!ALLOWED_ARTIST_VIDEO_TYPES.has(file.type) && !ALLOWED_ARTIST_VIDEO_EXTENSIONS.has(ext)) {
+      alert('Bitte lade nur MP4-, MOV- oder WebM-Videos hoch.');
+      e.target.value = '';
+      return;
+    }
+
     setIsUploadingArtistVideo(true);
     const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const ext = file.name.split('.').pop();
     const cacheKey = Date.now();
-    const path = `banners/${sanitizedName}_video_${cacheKey}.${ext}`;
+    const uploadExt = ext || (file.type === 'video/webm' ? 'webm' : file.type === 'video/quicktime' ? 'mov' : 'mp4');
+    const videoFileName = `${sanitizedName}_video_${cacheKey}.${uploadExt}`;
+    const path = `banners/${videoFileName}`;
 
     try {
       const { error } = await supabase.storage
@@ -437,6 +461,20 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
         .upload(path, file, { upsert: true });
 
       if (error) throw error;
+
+      const { data: existingFiles } = await supabase.storage
+        .from('covers')
+        .list('banners', { search: `${sanitizedName}_video` });
+      const staleVideoPaths = (existingFiles || [])
+        .filter((existingFile) => existingFile.name.startsWith(`${sanitizedName}_video`) && existingFile.name !== videoFileName)
+        .map((existingFile) => `banners/${existingFile.name}`);
+
+      if (staleVideoPaths.length > 0) {
+        const { error: removeError } = await supabase.storage.from('covers').remove(staleVideoPaths);
+        if (removeError) {
+          console.warn('Failed to remove stale artist videos:', removeError.message);
+        }
+      }
 
       const { data } = supabase.storage
         .from('covers')
@@ -452,14 +490,6 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
   const isAnyPlaying = songs.some(s => s.id === currentSong?.id) && isPlaying;
   
   // Total Plays Calculation – memoized to avoid recalculation on every render
@@ -467,6 +497,14 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
     () => songs.reduce((sum, song) => sum + (song.plays || 0), 0),
     [songs]
   );
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">

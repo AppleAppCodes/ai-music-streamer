@@ -2,31 +2,38 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-// We need to use the service role key to bypass RLS in the webhook
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-  process.env.SUPABASE_SERVICE_ROLE_KEY as string || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string // Fallback for now if service key isn't provided yet
-);
-
 export async function POST(request: Request) {
   const body = await request.text();
   const signature = request.headers.get('stripe-signature') as string;
 
-  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: 'Stripe keys missing' }, { status: 500 });
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!stripeSecretKey || !stripeWebhookSecret || !supabaseUrl || !supabaseServiceRoleKey) {
+    return NextResponse.json({ error: 'Webhook configuration missing' }, { status: 500 });
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2023-10-16' as any,
+  const stripe = new Stripe(stripeSecretKey);
+
+  // The webhook must bypass user RLS, so it must fail closed when the
+  // service-role key is absent instead of falling back to a public key.
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
   });
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (err: any) {
-    console.error(`Webhook signature verification failed.`, err.message);
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    event = stripe.webhooks.constructEvent(body, signature, stripeWebhookSecret);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Invalid webhook signature';
+    console.error(`Webhook signature verification failed.`, message);
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 
   // Handle the checkout.session.completed event

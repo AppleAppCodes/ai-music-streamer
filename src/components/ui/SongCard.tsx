@@ -6,6 +6,8 @@ import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import MobileSongMenu from '@/components/ui/MobileSongMenu';
 import Image from 'next/image';
 
+import { useRouter } from 'next/navigation';
+
 interface SongCardProps {
   song: Song;
   creatorName?: string;
@@ -15,17 +17,21 @@ interface SongCardProps {
 }
 
 export default function SongCard({ song, creatorName = 'Creator', className = '', contextQueue, compact = false }: SongCardProps) {
+  const router = useRouter();
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
   const displayArtist = song.artist_name || creatorName;
 
   return (
-    <div className={`group relative flex flex-col rounded-xl hover:bg-white/5 transition-colors cursor-pointer ${compact ? 'gap-2 p-2.5' : 'gap-3 p-4'} ${className}`}>
+    <div
+      onClick={() => router.push(`/song/${song.id}`)}
+      className={`group relative flex flex-col rounded-xl hover:bg-white/5 transition-colors cursor-pointer ${compact ? 'gap-2 p-2.5' : 'gap-3 p-4'} ${className}`}
+    >
       {/* Cover Image Container */}
       <div className="relative aspect-square w-full rounded-md overflow-hidden shadow-lg mb-2">
         {song.cover_url ? (
-          <Image 
-            src={song.cover_url} 
+          <Image
+            src={song.cover_url}
             alt={song.title}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 180px"
@@ -36,10 +42,10 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
             <Music className="h-12 w-12 text-white/20" />
           </div>
         )}
-        
+
         {/* Play Button Overlay */}
         <div className={`absolute inset-0 flex items-center justify-center bg-black/15 transition-opacity md:bg-black/40 ${currentSong?.id === song.id ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
-          <button 
+          <button
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -65,7 +71,7 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
             )}
           </button>
         </div>
-        
+
         {/* Playlist Add Button Overlay */}
         <div className="absolute top-2 right-2 hidden items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100 md:flex">
           <PlaylistAddButton songId={song.id} iconClassName="w-4 h-4" className="bg-black/50 p-1.5 rounded-full hover:bg-black/80" />

@@ -333,7 +333,7 @@ export default function AuthenticatedHome() {
     {
       title: t('home.quickAccess.artists'),
       color: "bg-white/20 backdrop-blur-md border border-white/30",
-      images: artistCovers.length > 0 ? artistCovers : ["/kuenstler.jpeg", "/kuenstler2.jpeg", "/kuenstler3.jpeg", "/kuenstler4.jpeg"],
+      images: artistCovers.length > 0 ? artistCovers : ["linear-gradient(135deg, #7c3aed 0%, #2dd4bf 100%)"],
       link: "/artists"
     },
     {
