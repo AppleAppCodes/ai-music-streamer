@@ -13,6 +13,8 @@ import { Analytics } from "@vercel/analytics/react";
 import { isAdminUser } from "@/lib/admin";
 import { getAppVersionLabel } from "@/lib/app-version";
 import { isPrelaunchLockEnabled } from "@/lib/prelaunch";
+import { getLocaleFromAcceptLanguage } from "@/lib/locale";
+import { headers } from "next/headers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -73,16 +75,18 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const supabase = await createClient();
+  const headerStore = await headers();
   const { data: { user } } = await supabase.auth.getUser();
   const isAdmin = isAdminUser(user);
   const isPrelaunchLocked = isPrelaunchLockEnabled() && !isAdmin;
   const shouldRenderAppShell = Boolean(user) && !isPrelaunchLocked;
   const shouldRenderGuestBanner = !user && !isPrelaunchLocked;
   const appVersionLabel = getAppVersionLabel();
+  const locale = getLocaleFromAcceptLanguage(headerStore.get('accept-language'));
 
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} ${syncopate.variable} h-full antialiased dark`}
     >
       <body className="flex min-h-full flex-col overflow-x-hidden bg-background text-foreground md:h-full md:overflow-hidden">
