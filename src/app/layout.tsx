@@ -10,6 +10,9 @@ import MobileNavigation from "@/components/layout/MobileNavigation";
 import GuestPreviewBanner from "@/components/layout/GuestPreviewBanner";
 import { createClient } from "@/utils/supabase/server";
 import { Analytics } from "@vercel/analytics/react";
+import { isAdminUser } from "@/lib/admin";
+import { getAppVersionLabel } from "@/lib/app-version";
+import { isPrelaunchLockEnabled } from "@/lib/prelaunch";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -71,6 +74,11 @@ export default async function RootLayout({
 }>) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const isAdmin = isAdminUser(user);
+  const isPrelaunchLocked = isPrelaunchLockEnabled() && !isAdmin;
+  const shouldRenderAppShell = Boolean(user) && !isPrelaunchLocked;
+  const shouldRenderGuestBanner = !user && !isPrelaunchLocked;
+  const appVersionLabel = getAppVersionLabel();
 
   return (
     <html
@@ -78,7 +86,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${syncopate.variable} h-full antialiased dark`}
     >
       <body className="flex min-h-full flex-col overflow-x-hidden bg-background text-foreground md:h-full md:overflow-hidden">
-        <PlayerLayout isAuthenticated={Boolean(user)}>
+        <PlayerLayout isAuthenticated={shouldRenderAppShell}>
           {/* Global Film Grain Overlay */}
           <div 
             className="pointer-events-none fixed inset-0 z-[9999] h-full w-full opacity-[0.04]"
@@ -86,27 +94,33 @@ export default async function RootLayout({
               backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
             }}
           />
-          <div className="relative z-0 flex min-h-dvh w-full md:h-full md:min-h-0">
-            {user ? <Sidebar user={user} /> : null}
-            <div className="flex-1 flex flex-col relative min-w-0">
-              <Header user={user} />
-              <main className={`no-drag bg-gradient-to-b from-surface to-background md:flex-1 md:overflow-y-auto md:no-scrollbar ${
-                user
-                  ? 'pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-28'
-                  : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
-              }`}>
-                {children}
-              </main>
+          {isPrelaunchLocked ? (
+            <main className="relative z-0 min-h-dvh w-full">
+              {children}
+            </main>
+          ) : (
+            <div className="relative z-0 flex min-h-dvh w-full md:h-full md:min-h-0">
+              {user ? <Sidebar user={user} appVersionLabel={appVersionLabel} /> : null}
+              <div className="flex-1 flex flex-col relative min-w-0">
+                <Header user={user} />
+                <main className={`no-drag bg-gradient-to-b from-surface to-background md:flex-1 md:overflow-y-auto md:no-scrollbar ${
+                  user
+                    ? 'pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-28'
+                    : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
+                }`}>
+                  {children}
+                </main>
+              </div>
             </div>
-          </div>
-          {user ? (
+          )}
+          {shouldRenderAppShell ? (
             <>
               <AudioPlayer />
-              <MobileNavigation user={user} />
+              <MobileNavigation user={user!} />
             </>
-          ) : (
+          ) : shouldRenderGuestBanner ? (
             <GuestPreviewBanner />
-          )}
+          ) : null}
           <CookieConsent />
         </PlayerLayout>
         <Analytics />

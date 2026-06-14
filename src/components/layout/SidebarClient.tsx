@@ -10,10 +10,17 @@ import CookieSettingsButton from '@/components/ui/CookieSettingsButton';
 
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
+export default function SidebarClient({
+  user,
+  appVersionLabel,
+}: {
+  user: SupabaseUser | null;
+  appVersionLabel?: string;
+}) {
   const { t } = useTranslation();
   
   const isCreator = isCreatorUser(user);
+  const isAdmin = isAdminUser(user);
 
   if (!user) return null;
 
@@ -98,6 +105,11 @@ export default function SidebarClient({ user }: { user: SupabaseUser | null }) {
             {t('nav.agb')}
           </Link>
         </div>
+        {isAdmin && appVersionLabel ? (
+          <div className="mt-4 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-white/22">
+            Version {appVersionLabel}
+          </div>
+        ) : null}
       </div>
     </div>
   );

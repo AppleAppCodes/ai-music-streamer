@@ -59,6 +59,20 @@ type StorageObject = {
   name: string;
 };
 
+type PlaybackEntitlementProfile = {
+  subscription_tier?: string | null;
+  ad_free_until?: string | null;
+};
+
+function hasAdFreeAccess(profile: PlaybackEntitlementProfile | null | undefined) {
+  const tier = profile?.subscription_tier;
+  if (tier === 'pro' || tier === 'premium' || tier === 'artist') return true;
+  if (!profile?.ad_free_until) return false;
+
+  const bonusUntil = new Date(profile.ad_free_until).getTime();
+  return Number.isFinite(bonusUntil) && bonusUntil > Date.now();
+}
+
 function clearStoredPlayerState() {
   PLAYER_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
 }
@@ -152,6 +166,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
 
   const clearAuthenticatedPlayback = useCallback(() => {
     setUser(null);
+    setIsPro(false);
     resetPlayback();
   }, [resetPlayback]);
 
@@ -180,9 +195,9 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
         setUser(data.user);
-        supabase.from('profiles').select('subscription_tier').eq('id', data.user.id).single()
+        supabase.from('profiles').select('subscription_tier, ad_free_until').eq('id', data.user.id).single()
           .then(({ data: profileData }) => {
-            setIsPro(profileData?.subscription_tier === 'pro');
+            setIsPro(hasAdFreeAccess(profileData));
           });
       } else {
         clearAuthenticatedPlayback();
@@ -210,9 +225,9 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
       const nextUser = session?.user || null;
       if (nextUser) {
         setUser(nextUser);
-        supabase.from('profiles').select('subscription_tier').eq('id', nextUser.id).single()
+        supabase.from('profiles').select('subscription_tier, ad_free_until').eq('id', nextUser.id).single()
           .then(({ data: profileData }) => {
-            setIsPro(profileData?.subscription_tier === 'pro');
+            setIsPro(hasAdFreeAccess(profileData));
           });
       } else {
         clearAuthenticatedPlayback();

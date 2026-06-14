@@ -14,9 +14,14 @@ function getSafeNextPath(value: string | null) {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const earlyAccessMode = searchParams?.get('bonus') === 'early';
+  const shouldStartInRegisterMode = searchParams?.get('mode') === 'register' || earlyAccessMode;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(!shouldStartInRegisterMode);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
@@ -25,15 +30,12 @@ export default function LoginPage() {
   const captchaTokenRef = useRef<string | null>(null);
   const turnstileRef = useRef<TurnstileInstance>(null);
   
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const nextPath = useMemo(() => getSafeNextPath(searchParams?.get('next') || null), [searchParams]);
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
   const oauthError = searchParams?.get('error') === 'google_oauth_failed'
     ? 'Google Anmeldung fehlgeschlagen.' : null;
-  const isResetMode = searchParams?.get('type') === 'recovery' || searchParams?.get('mode') === 'reset';
   const visibleError = error || oauthError;
 
   useEffect(() => {
@@ -242,11 +244,19 @@ export default function LoginPage() {
             <p className="text-white/60 text-sm">
               {isLogin 
                 ? 'Melde dich an, um Musik in höchster Qualität zu hören.' 
-                : 'Tritt der Revolution der AI-Musik bei.'}
+                : earlyAccessMode
+                  ? 'Sichere dir deinen Early Access und 3 Monate werbefreies Hören.'
+                  : 'Tritt der Revolution der AI-Musik bei.'}
             </p>
           </div>
 
           <form onSubmit={handleAuth} className="space-y-5">
+            {earlyAccessMode && !isLogin ? (
+              <div className="rounded-2xl border border-teal-300/20 bg-teal-300/10 p-4 text-sm leading-6 text-teal-50">
+                <span className="font-black">Early-Access-Bonus:</span> Dein Account bekommt automatisch 3 Monate werbefreies Hören für den Start von YORIAX.
+              </div>
+            ) : null}
+
             <div>
               <label className="block text-xs font-semibold text-white/70 uppercase tracking-wider mb-2">E-Mail</label>
               <input
@@ -300,7 +310,7 @@ export default function LoginPage() {
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
                 ) : (
-                  isLogin ? 'Einloggen' : 'Registrieren'
+                  isLogin ? 'Einloggen' : earlyAccessMode ? 'Early Access sichern' : 'Registrieren'
                 )}
               </span>
             </button>
@@ -321,7 +331,7 @@ export default function LoginPage() {
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-black text-black">
               G
             </span>
-            {googleLoading ? 'Google wird geöffnet...' : 'Mit Google fortfahren'}
+            {googleLoading ? 'Google wird geöffnet...' : earlyAccessMode && !isLogin ? 'Mit Google Early Access sichern' : 'Mit Google fortfahren'}
           </button>
 
           <div className="mt-6 text-center">

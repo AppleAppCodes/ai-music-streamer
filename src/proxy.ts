@@ -1,5 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isAdminUser } from './lib/admin';
+import { isPrelaunchLockEnabled } from './lib/prelaunch';
 
 function isPublicPath(pathname: string) {
   return pathname === '/'
@@ -10,6 +12,18 @@ function isPublicPath(pathname: string) {
     || pathname.startsWith('/datenschutz')
     || pathname.startsWith('/agb')
     || pathname.startsWith('/auth');
+}
+
+function isPrelaunchAllowedPath(pathname: string) {
+  return pathname === '/'
+    || pathname === '/site.webmanifest'
+    || pathname === '/robots.txt'
+    || pathname.startsWith('/login')
+    || pathname.startsWith('/auth')
+    || pathname.startsWith('/api/auth')
+    || pathname.startsWith('/impressum')
+    || pathname.startsWith('/datenschutz')
+    || pathname.startsWith('/agb');
 }
 
 function getSafeSignedInRedirect(request: NextRequest) {
@@ -42,16 +56,22 @@ export async function proxy(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
+  const pathname = request.nextUrl.pathname;
+  const isAdmin = isAdminUser(user);
 
-  if (user && request.nextUrl.pathname.startsWith('/login')) {
+  if (isPrelaunchLockEnabled() && !isAdmin && !isPrelaunchAllowedPath(pathname)) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  if (user && pathname.startsWith('/login')) {
     const redirectPath = getSafeSignedInRedirect(request);
     return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 
-  if (!user && !isPublicPath(request.nextUrl.pathname)) {
+  if (!user && !isPublicPath(pathname)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/login';
-    redirectUrl.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
+    redirectUrl.searchParams.set('next', `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(redirectUrl);
   }
 

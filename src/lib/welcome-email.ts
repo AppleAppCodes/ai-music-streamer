@@ -34,6 +34,10 @@ function getUserDisplayName(user: User) {
   return 'du';
 }
 
+function isEarlyAccessBonusActive() {
+  return process.env.YORIAX_PRELAUNCH_LOCK !== 'false';
+}
+
 function createWelcomeEmailHtml({ displayName }: Pick<SendWelcomeEmailInput, 'displayName'>) {
   const safeDisplayName = displayName.replace(/[<>&"]/g, (char) => {
     const entities: Record<string, string> = {
@@ -44,6 +48,13 @@ function createWelcomeEmailHtml({ displayName }: Pick<SendWelcomeEmailInput, 'di
     };
     return entities[char] ?? char;
   });
+  const earlyAccessHtml = isEarlyAccessBonusActive()
+    ? `
+                <div style="margin:24px 0 0;border:1px solid rgba(45,212,191,.26);background:rgba(45,212,191,.1);border-radius:18px;padding:16px 18px;color:#ccfbf1;font-size:14px;line-height:1.55;">
+                  <strong style="color:#ffffff;">Early-Access-Bonus gesichert:</strong><br />
+                  Dein Account erhält zum Start von YORIAX 3 Monate werbefreies Hören.
+                </div>`
+    : '';
 
   return `
 <!doctype html>
@@ -65,6 +76,7 @@ function createWelcomeEmailHtml({ displayName }: Pick<SendWelcomeEmailInput, 'di
                 <p style="margin:0;color:rgba(255,255,255,.72);font-size:16px;line-height:1.6;">
                   Dein Account ist bereit. Entdecke neue Tracks, speichere deine Favoriten und folge Artists, die zu deinem Sound passen.
                 </p>
+                ${earlyAccessHtml}
               </td>
             </tr>
             <tr>
@@ -86,13 +98,19 @@ function createWelcomeEmailHtml({ displayName }: Pick<SendWelcomeEmailInput, 'di
 }
 
 function createWelcomeEmailText({ displayName }: Pick<SendWelcomeEmailInput, 'displayName'>) {
-  return [
+  const lines = [
     `Willkommen bei YORIAX, ${displayName}.`,
     '',
     'Dein Account ist bereit. Entdecke neue Tracks, speichere deine Favoriten und folge Artists, die zu deinem Sound passen.',
-    '',
-    'YORIAX öffnen: https://www.yoriax.com/',
-  ].join('\n');
+  ];
+
+  if (isEarlyAccessBonusActive()) {
+    lines.push('', 'Early-Access-Bonus gesichert: Dein Account erhält zum Start von YORIAX 3 Monate werbefreies Hören.');
+  }
+
+  lines.push('', 'YORIAX öffnen: https://www.yoriax.com/');
+
+  return lines.join('\n');
 }
 
 async function sendWelcomeEmail({ displayName, to }: SendWelcomeEmailInput) {
