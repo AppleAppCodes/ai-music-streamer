@@ -30,6 +30,8 @@ const copy = {
     ),
     registered: 'Du bist registriert. Dein Early-Bonus ist gesichert.',
     cta: 'Early Access sichern',
+    ctaHeadline: 'Sichere dir deinen Startvorteil',
+    ctaSubline: 'Registriere dich vor dem offiziellen Launch und höre die ersten 3 Monate werbefrei.',
     privacy: 'Datenschutz',
     signOut: 'Abmelden oder mit anderem Account registrieren',
     infoEyebrow: 'Was ist YORIAX?',
@@ -66,6 +68,8 @@ const copy = {
     ),
     registered: 'You are registered. Your early bonus is secured.',
     cta: 'Secure early access',
+    ctaHeadline: 'Secure your launch bonus',
+    ctaSubline: 'Register before the official launch and listen ad-free for the first 3 months.',
     privacy: 'Privacy',
     signOut: 'Sign out or register with another account',
     infoEyebrow: 'What is YORIAX?',
@@ -97,6 +101,8 @@ const copy = {
   description: ReactNode;
   registered: string;
   cta: string;
+  ctaHeadline: string;
+  ctaSubline: string;
   privacy: string;
   signOut: string;
   infoEyebrow: string;
@@ -160,6 +166,43 @@ export default function PrelaunchLanding({
               {t.description}
             </p>
 
+            <div className="mt-7 max-w-2xl">
+              {signedIn ? (
+                <div className="relative overflow-hidden rounded-3xl border border-teal-200/35 bg-gradient-to-r from-teal-300/18 via-white/[0.07] to-violet-500/10 px-5 py-5 shadow-[0_0_55px_rgba(45,212,191,0.18)] backdrop-blur-xl">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_70%_50%,rgba(45,212,191,0.22),transparent_60%)]" />
+                  <p className="relative flex items-center gap-3 text-base font-black text-teal-50">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-300/18 text-teal-100 ring-1 ring-teal-200/35">
+                      <CheckCircle2 className="h-5 w-5" />
+                    </span>
+                    {t.registered}
+                  </p>
+                </div>
+              ) : (
+                <div className="relative overflow-hidden rounded-[2rem] border border-violet-200/30 bg-white/[0.07] p-4 shadow-[0_0_80px_rgba(124,58,237,0.22)] backdrop-blur-xl sm:p-5">
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(168,85,247,0.35),transparent_36%),radial-gradient(circle_at_88%_55%,rgba(45,212,191,0.2),transparent_42%)]" />
+                  <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="mb-1 text-xs font-black uppercase tracking-[0.2em] text-teal-100">Early Access</p>
+                      <h2 className="text-2xl font-black tracking-tight text-white">{t.ctaHeadline}</h2>
+                      <p className="mt-2 text-sm leading-6 text-white/58">{t.ctaSubline}</p>
+                    </div>
+                    <Link
+                      href="/login?mode=register&bonus=early"
+                      className="inline-flex shrink-0 items-center justify-center rounded-full bg-white px-6 py-4 text-sm font-black uppercase tracking-[0.16em] text-black shadow-[0_0_36px_rgba(255,255,255,0.18)] transition hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      {t.cta}
+                    </Link>
+                  </div>
+                  <Link
+                    href="/datenschutz"
+                    className="relative mt-3 inline-flex text-[11px] font-bold uppercase tracking-[0.16em] text-white/34 underline-offset-4 transition hover:text-white/65 hover:underline"
+                  >
+                    {t.privacy}
+                  </Link>
+                </div>
+              )}
+            </div>
+
             <div className="mt-6 max-w-2xl rounded-3xl border border-white/10 bg-white/[0.045] p-5 backdrop-blur-xl">
               <p className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-teal-200">
                 <Radio className="h-4 w-4" />
@@ -175,30 +218,6 @@ export default function PrelaunchLanding({
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              {signedIn ? (
-                <div className="rounded-2xl border border-teal-300/20 bg-teal-300/10 px-5 py-4">
-                  <p className="flex items-center gap-2 text-sm font-black text-teal-100">
-                    <CheckCircle2 className="h-5 w-5" />
-                    {t.registered}
-                  </p>
-                </div>
-              ) : (
-                <Link
-                  href="/login?mode=register&bonus=early"
-                  className="inline-flex items-center justify-center rounded-full bg-white px-7 py-4 text-sm font-black uppercase tracking-[0.16em] text-black transition hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  {t.cta}
-                </Link>
-              )}
-              <Link
-                href="/datenschutz"
-                className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.05] px-7 py-4 text-sm font-black uppercase tracking-[0.16em] text-white/70 transition hover:border-white/20 hover:text-white"
-              >
-                {t.privacy}
-              </Link>
             </div>
 
             {signedIn ? (
