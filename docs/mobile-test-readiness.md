@@ -1,6 +1,6 @@
 # YORIAX Mobile Test Readiness
 
-Stand: 2026-06-05
+Stand: 2026-06-15
 
 ## Scope
 
@@ -71,6 +71,7 @@ Voraussetzungen:
 - App Store Connect App mit Bundle ID `com.yoriax.app`
 - EAS/Expo Account Login lokal: `cd apps/mobile && npx eas-cli login`
 - App Store Connect Zugriff für Build Uploads
+- App Store Connect Angaben: Support-URL, Datenschutz-URL, Screenshots, Altersfreigabe, Export-Compliance und Datenschutzfragebogen
 
 Vor jedem TestFlight Build:
 
@@ -95,6 +96,23 @@ Nach dem Upload muss Apple den Build verarbeiten. Danach erscheint er in App Sto
 
 Die TestFlight Builds verwenden die `production` EAS-Konfiguration und enthalten keinen Expo Dev Launcher.
 
+## Release Checks 2026-06-15
+
+Erledigt:
+
+- `npm run mobile:check` ist sauber.
+- `npm audit --omit=dev --audit-level=high` meldet keine High-/Critical-Probleme. Es bleiben moderate Expo-Tooling-Hinweise über `uuid`/`xcode`; `npm audit fix --force` würde Expo massiv downgraden und wird deshalb nicht verwendet.
+- iOS Native-Projekt ist auf Version `1.0.0`, Build `3`, Bundle ID `com.yoriax.app`, Team `3H83CGSR39` gesetzt.
+- App Store Icon liegt nativ und in Expo Assets als 1024x1024 PNG vor.
+- `PrivacyInfo.xcprivacy` ist vorhanden und deklariert Required-Reason-APIs ohne Tracking.
+
+Bekannt:
+
+- `expo-doctor` meldet 20/21 Checks. Die offene Warnung ist erwartbar, weil das iOS-Native-Projekt eingecheckt ist und `app.json`-Native-Felder dann nicht automatisch gespiegelt werden. Release-relevante iOS-Werte wurden deshalb bewusst auch direkt im Xcode-Projekt gesetzt.
+- EAS ist lokal aktuell nicht eingeloggt. Ohne `npx eas-cli login` oder EAS Token kann kein TestFlight Build hochgeladen werden.
+
+App Store Connect Datenschutz muss vor Einreichung passend zur echten Nutzung ausgefüllt werden. Mindestens prüfen: Account-Informationen, User-ID, Nutzungsdaten/Playback-Verlauf, User Content wie Profilbilder/Playlists, Diagnose-/Crashdaten und ob irgendein Tracking/Analytics-Dienst aktiv ist.
+
 ## Pflicht-Checks Auf Echten Geräten
 
 - Login, Logout und Session-Wiederherstellung
@@ -111,8 +129,8 @@ Die TestFlight Builds verwenden die `production` EAS-Konfiguration und enthalten
 
 - iOS Bundle ID: `com.yoriax.app`
 - Android Package: `com.yoriax.app`
-- Version: `0.1.0`
-- Buildnummer / VersionCode: `2`
+- Version: `1.0.0`
+- Buildnummer / VersionCode: `3`
 - Background-Audio ist für iOS aktiviert
-- Foto-Permission-Texte sind für iOS gesetzt
+- Foto-Permission-Texte sind für iOS auf Englisch gesetzt
 - Export-Compliance ist als keine nicht-ausgenommene Verschlüsselung markiert

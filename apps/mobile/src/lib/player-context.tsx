@@ -5,6 +5,10 @@ import type { Song } from './types';
 import { useAuth } from './auth-context';
 import { supabase } from './supabase';
 
+interface StorageListItem {
+  name: string;
+}
+
 interface PlayOptions {
   startAt?: number | null;
 }
@@ -54,7 +58,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [adFrequency, setAdFrequency] = useState(3);
   const [pendingSongToPlayAfterAd, setPendingSongToPlayAfterAd] = useState<Song | null>(null);
-  const [availableAds, setAvailableAds] = useState<any[]>([]);
+  const [availableAds, setAvailableAds] = useState<StorageListItem[]>([]);
 
   useEffect(() => {
     if (user && supabase) {
@@ -249,10 +253,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     await player.seekTo(seconds, 0, 0);
   }, [activeSong, player]);
 
-  // Handle auto play next when song finishes
-  // A simple hack to detect end of playback: if we are near the end and playing stops.
+  // Handle auto play next when song finishes.
   useEffect(() => {
-    if (activeSong && !status.playing && status.duration > 0 && Math.abs(status.currentTime - status.duration) < 1.0) {
+    const didReachEnd = activeSong && !status.playing && status.duration > 0 && Math.abs(status.currentTime - status.duration) < 1.0;
+    if (!didReachEnd) return;
+
+    const timeout = setTimeout(() => {
       if (isAdPlaying) {
         setIsAdPlaying(false);
         setSongsPlayed(0);
@@ -268,8 +274,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           void playSong(pendingSongToPlayAfterAd);
           setPendingSongToPlayAfterAd(null);
         } else {
-          const timeout = setTimeout(playNext, 0);
-          return () => clearTimeout(timeout);
+          playNext();
         }
         return;
       }
@@ -278,10 +283,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         void player.seekTo(0, 0, 0);
         player.play();
       } else {
-        const timeout = setTimeout(playNext, 0);
-        return () => clearTimeout(timeout);
+        playNext();
       }
-    }
+    }, 0);
+
+    return () => clearTimeout(timeout);
   }, [activeSong, status.playing, status.currentTime, status.duration, repeatMode, playNext, player, isAdPlaying, pendingSongToPlayAfterAd, playSong]);
 
   const value = useMemo<PlayerContextValue>(
@@ -308,7 +314,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       seekTo,
       toggle,
     }),
-    [activeSong, error, pause, playSong, playNext, playPrevious, queue, queueIndex, reset, isShuffling, repeatMode, setQueue, toggleShuffle, toggleRepeat, seekTo, status.currentTime, status.duration, status.error, status.isBuffering, status.playing, toggle],
+    [activeSong, error, isAdPlaying, pause, playSong, playNext, playPrevious, queue, queueIndex, reset, isShuffling, repeatMode, setQueue, toggleShuffle, toggleRepeat, seekTo, status.currentTime, status.duration, status.error, status.isBuffering, status.playing, toggle],
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;

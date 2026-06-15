@@ -198,7 +198,7 @@ export function ForYouScreen() {
     navigation.navigate('FullscreenPlayer');
   }, [setQueue, playSong, navigation]);
 
-  const getItemLayout = useCallback((_: any, index: number) => ({
+  const getItemLayout = useCallback((_: ArrayLike<FeedPreviewSong> | null | undefined, index: number) => ({
     length: SCREEN_HEIGHT,
     offset: SCREEN_HEIGHT * index,
     index,
