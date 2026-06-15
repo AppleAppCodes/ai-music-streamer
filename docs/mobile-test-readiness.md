@@ -97,20 +97,21 @@ Nach dem Upload muss Apple den Build verarbeiten. Danach erscheint er in App Sto
 
 Die TestFlight Builds verwenden die `production` EAS-Konfiguration und enthalten keinen Expo Dev Launcher.
 
-## Release Checks 2026-06-15
+## Release Checks 2026-06-16
 
 Erledigt:
 
 - `npm run mobile:check` ist sauber.
 - `npm audit --omit=dev --audit-level=high` meldet keine High-/Critical-Probleme. Es bleiben moderate Expo-Tooling-Hinweise über `uuid`/`xcode`; `npm audit fix --force` würde Expo massiv downgraden und wird deshalb nicht verwendet.
-- iOS Native-Projekt ist auf Version `1.0.0`, Build `3`, Bundle ID `com.yoriax.app`, Team `3H83CGSR39` gesetzt.
+- iOS Native-Projekt ist auf Version `1.0.0`, Build `5`, Bundle ID `com.yoriax.app`, Team `3H83CGSR39` gesetzt.
 - App Store Icon liegt nativ und in Expo Assets als 1024x1024 PNG vor.
 - `PrivacyInfo.xcprivacy` ist vorhanden und deklariert Required-Reason-APIs ohne Tracking.
+- EAS ist lokal eingeloggt und die iOS-Credentials liegen remote auf den Expo-Servern.
+- App Store Connect ist für `com.yoriax.app` vorbereitet; ASC App ID `6780680190`.
 
 Bekannt:
 
 - `expo-doctor` meldet 20/21 Checks. Die offene Warnung ist erwartbar, weil das iOS-Native-Projekt eingecheckt ist und `app.json`-Native-Felder dann nicht automatisch gespiegelt werden. Release-relevante iOS-Werte wurden deshalb bewusst auch direkt im Xcode-Projekt gesetzt.
-- EAS ist lokal aktuell nicht eingeloggt. Ohne `npx eas-cli login` oder EAS Token kann kein TestFlight Build hochgeladen werden.
 
 Lokaler Login:
 
@@ -141,7 +142,8 @@ App Store Connect Datenschutz muss vor Einreichung passend zur echten Nutzung au
 - iOS Bundle ID: `com.yoriax.app`
 - Android Package: `com.yoriax.app`
 - Version: `1.0.0`
-- Buildnummer / VersionCode: `3`
+- iOS Buildnummer: `5`
+- Android VersionCode: `3`
 - Background-Audio ist für iOS aktiviert
 - Foto-Permission-Texte sind für iOS auf Englisch gesetzt
 - Export-Compliance ist als keine nicht-ausgenommene Verschlüsselung markiert
