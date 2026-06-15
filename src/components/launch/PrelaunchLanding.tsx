@@ -129,11 +129,11 @@ export default function PrelaunchLanding({
   const t = copy[locale];
 
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-[#050506] text-white">
+    <div className="relative min-h-dvh overflow-x-hidden bg-[#050506] text-white">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(124,58,237,0.42),transparent_34%),radial-gradient(circle_at_80%_24%,rgba(45,212,191,0.2),transparent_30%),linear-gradient(180deg,rgba(8,7,20,0.98),#050506_58%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.05]" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/stardust.png")' }} />
 
-      <main className="relative mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 py-8 sm:px-8 md:px-10">
+      <main className="relative mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 pb-10 pt-8 sm:px-8 sm:pb-12 md:px-10 md:pb-14">
         <header className="flex items-center justify-between gap-4">
           <Link href="/" aria-label={t.homeAria} className="inline-flex items-center">
             <Image
@@ -153,7 +153,7 @@ export default function PrelaunchLanding({
           </Link>
         </header>
 
-        <section className="grid flex-1 items-center gap-10 py-16 md:grid-cols-[1.05fr_0.95fr] md:py-20">
+        <section className="grid flex-1 items-center gap-10 py-12 md:grid-cols-[1.05fr_0.95fr] md:py-14 lg:py-16">
           <div>
             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-violet-100">
               <LockKeyhole className="h-4 w-4" />
@@ -203,7 +203,7 @@ export default function PrelaunchLanding({
               )}
             </div>
 
-            <div className="mt-6 max-w-2xl rounded-3xl border border-white/10 bg-white/[0.045] p-5 backdrop-blur-xl">
+            <div className="mt-6 max-w-2xl rounded-3xl border border-white/10 bg-white/[0.045] p-5 backdrop-blur-xl md:mb-4">
               <p className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-teal-200">
                 <Radio className="h-4 w-4" />
                 {t.infoEyebrow}
