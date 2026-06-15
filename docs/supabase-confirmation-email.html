@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
   <body style="margin:0;background:#07070a;font-family:Arial,sans-serif;color:#ffffff;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#07070a;padding:32px 16px;">
       <tr>
@@ -8,21 +8,39 @@
             <tr>
               <td style="padding:32px;background:linear-gradient(135deg,#2e1065,#4c1d95 58%,#0f766e);">
                 <p style="margin:0;color:#ccfbf1;font-size:12px;font-weight:700;letter-spacing:4px;text-transform:uppercase;">YORIAX</p>
-                <h1 style="margin:18px 0 0;font-size:34px;line-height:1.1;">Best&auml;tige deine E-Mail-Adresse</h1>
+                <h1 style="margin:18px 0 0;font-size:34px;line-height:1.1;">Confirm your email address</h1>
               </td>
             </tr>
             <tr>
               <td style="padding:32px;">
                 <p style="margin:0;color:#d4d4d8;font-size:16px;line-height:1.6;">
-                  Willkommen bei YORIAX. Best&auml;tige deine E-Mail-Adresse, damit du Musik h&ouml;ren, Favoriten speichern und Playlists erstellen kannst.
+                  Welcome to YORIAX. Confirm your email address so you can listen to music, save favorites, and create playlists.
                 </p>
                 <p style="margin:28px 0;">
                   <a href="{{ .ConfirmationURL }}" style="display:inline-block;border-radius:999px;background:#ffffff;color:#09090b;padding:14px 22px;font-size:14px;font-weight:700;text-decoration:none;">
-                    E-Mail best&auml;tigen
+                    Confirm email
                   </a>
                 </p>
                 <p style="margin:0;color:#71717a;font-size:12px;line-height:1.6;">
-                  Falls du kein YORIAX Konto erstellt hast, kannst du diese E-Mail ignorieren.
+                  If you did not create a YORIAX account, you can ignore this email.
+                </p>
+
+                <div style="margin:28px 0 0;border-top:1px solid rgba(255,255,255,0.1);padding-top:24px;">
+                  <p style="margin:0;color:#a78bfa;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;">Deutsch</p>
+                  <p style="margin:12px 0 0;color:#d4d4d8;font-size:15px;line-height:1.6;">
+                    Willkommen bei YORIAX. Best&auml;tige deine E-Mail-Adresse, damit du Musik h&ouml;ren, Favoriten speichern und Playlists erstellen kannst.
+                  </p>
+                  <p style="margin:18px 0;">
+                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,0.22);color:#ffffff;padding:12px 18px;font-size:13px;font-weight:700;text-decoration:none;">
+                      E-Mail best&auml;tigen
+                    </a>
+                  </p>
+                  <p style="margin:0;color:#71717a;font-size:12px;line-height:1.6;">
+                    Falls du kein YORIAX Konto erstellt hast, kannst du diese E-Mail ignorieren.
+                  </p>
+                </div>
+                <p style="margin:28px 0 0;color:#52525b;font-size:11px;line-height:1.6;">
+                  You are receiving this security email because this address was used to create a YORIAX account.
                 </p>
               </td>
             </tr>

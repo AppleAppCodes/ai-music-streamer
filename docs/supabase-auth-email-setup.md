@@ -9,7 +9,7 @@ Google OAuth accounts do not receive a Supabase opt-in/confirmation email becaus
 1. Verify a YORIAX sending address such as `noreply@yoriax.com` with an SMTP provider.
 2. Open the Supabase project Authentication settings and enable custom SMTP.
 3. Enter the provider host, port, username, password, sender address, and sender name `YORIAX`.
-4. Open the Supabase email templates page, select the signup confirmation template, and paste the contents of `docs/supabase-confirmation-email.html`.
+4. Open the Supabase email templates page, select the signup confirmation template, set the subject to `Confirm your YORIAX email / E-Mail bestätigen`, and paste the contents of `docs/supabase-confirmation-email.html`.
 5. Send a test signup and confirm that the sender, subject, and confirmation link are correct.
 
 Project dashboard:
@@ -20,6 +20,8 @@ Project dashboard:
 ## YORIAX welcome email
 
 The app calls `POST /api/auth/welcome` after a successful session. The endpoint is idempotent and records sent emails in `public.user_welcome_emails`, so each account receives the welcome email once.
+
+The welcome email is localized from `Accept-Language`: German browsers receive German copy, all other browsers receive English copy. The Supabase signup confirmation template is English-first with German fallback text because Supabase Auth uses one dashboard template for this flow.
 
 Required server-side environment variables:
 

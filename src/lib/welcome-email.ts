@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
+import type { SupportedLocale } from '@/lib/locale';
 
 type WelcomeEmailResult =
   | { ok: true; sent: true }
@@ -6,10 +7,46 @@ type WelcomeEmailResult =
 
 type SendWelcomeEmailInput = {
   displayName: string;
+  locale: SupportedLocale;
   to: string;
 };
 
 const resendEndpoint = 'https://api.resend.com/emails';
+
+const welcomeEmailCopy = {
+  de: {
+    subject: 'Willkommen bei YORIAX',
+    title: 'Willkommen bei YORIAX',
+    heading: (displayName: string) => `Willkommen, ${displayName}.`,
+    body: 'Dein Account ist bereit. Entdecke neue Tracks, speichere deine Favoriten und folge Artists, die zu deinem Sound passen.',
+    earlyTitle: 'Early-Access-Bonus gesichert:',
+    earlyBody: 'Dein Account erhält zum Start von YORIAX 3 Monate werbefreies Hören.',
+    button: 'YORIAX öffnen',
+    reason: 'Du bekommst diese Mail, weil du dich bei YORIAX registriert oder angemeldet hast.',
+    fallbackName: 'du',
+  },
+  en: {
+    subject: 'Welcome to YORIAX',
+    title: 'Welcome to YORIAX',
+    heading: (displayName: string) => `Welcome, ${displayName}.`,
+    body: 'Your account is ready. Discover new tracks, save favorites, and follow artists that match your sound.',
+    earlyTitle: 'Early-access bonus secured:',
+    earlyBody: 'Your account gets 3 months of ad-free listening for the YORIAX launch.',
+    button: 'Open YORIAX',
+    reason: 'You received this email because you registered or signed in to YORIAX.',
+    fallbackName: 'there',
+  },
+} satisfies Record<SupportedLocale, {
+  subject: string;
+  title: string;
+  heading: (displayName: string) => string;
+  body: string;
+  earlyTitle: string;
+  earlyBody: string;
+  button: string;
+  reason: string;
+  fallbackName: string;
+}>;
 
 export class WelcomeEmailProviderNotConfiguredError extends Error {
   constructor() {
@@ -18,7 +55,7 @@ export class WelcomeEmailProviderNotConfiguredError extends Error {
   }
 }
 
-function getUserDisplayName(user: User) {
+function getUserDisplayName(user: User, locale: SupportedLocale) {
   const metadata = user.user_metadata ?? {};
   const name =
     typeof metadata.full_name === 'string'
@@ -31,14 +68,18 @@ function getUserDisplayName(user: User) {
 
   if (name.trim()) return name.trim();
   if (user.email?.includes('@')) return user.email.split('@')[0];
-  return 'du';
+  return welcomeEmailCopy[locale].fallbackName;
 }
 
 function isEarlyAccessBonusActive() {
   return process.env.YORIAX_PRELAUNCH_LOCK !== 'false';
 }
 
-function createWelcomeEmailHtml({ displayName }: Pick<SendWelcomeEmailInput, 'displayName'>) {
+function createWelcomeEmailHtml({
+  displayName,
+  locale,
+}: Pick<SendWelcomeEmailInput, 'displayName' | 'locale'>) {
+  const copy = welcomeEmailCopy[locale];
   const safeDisplayName = displayName.replace(/[<>&"]/g, (char) => {
     const entities: Record<string, string> = {
       '<': '&lt;',
@@ -51,18 +92,18 @@ function createWelcomeEmailHtml({ displayName }: Pick<SendWelcomeEmailInput, 'di
   const earlyAccessHtml = isEarlyAccessBonusActive()
     ? `
                 <div style="margin:24px 0 0;border:1px solid rgba(45,212,191,.26);background:rgba(45,212,191,.1);border-radius:18px;padding:16px 18px;color:#ccfbf1;font-size:14px;line-height:1.55;">
-                  <strong style="color:#ffffff;">Early-Access-Bonus gesichert:</strong><br />
-                  Dein Account erhält zum Start von YORIAX 3 Monate werbefreies Hören.
+                  <strong style="color:#ffffff;">${copy.earlyTitle}</strong><br />
+                  ${copy.earlyBody}
                 </div>`
     : '';
 
   return `
 <!doctype html>
-<html lang="de">
+<html lang="${locale}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Willkommen bei YORIAX</title>
+    <title>${copy.title}</title>
   </head>
   <body style="margin:0;background:#050506;color:#ffffff;font-family:Inter,Arial,sans-serif;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#050506;padding:32px 16px;">
@@ -72,9 +113,9 @@ function createWelcomeEmailHtml({ displayName }: Pick<SendWelcomeEmailInput, 'di
             <tr>
               <td style="padding:34px 32px 10px;">
                 <div style="letter-spacing:8px;font-weight:900;font-size:15px;color:#c4b5fd;">YORIAX</div>
-                <h1 style="margin:30px 0 12px;font-size:34px;line-height:1.05;color:#ffffff;">Willkommen, ${safeDisplayName}.</h1>
+                <h1 style="margin:30px 0 12px;font-size:34px;line-height:1.05;color:#ffffff;">${copy.heading(safeDisplayName)}</h1>
                 <p style="margin:0;color:rgba(255,255,255,.72);font-size:16px;line-height:1.6;">
-                  Dein Account ist bereit. Entdecke neue Tracks, speichere deine Favoriten und folge Artists, die zu deinem Sound passen.
+                  ${copy.body}
                 </p>
                 ${earlyAccessHtml}
               </td>
@@ -82,10 +123,10 @@ function createWelcomeEmailHtml({ displayName }: Pick<SendWelcomeEmailInput, 'di
             <tr>
               <td style="padding:26px 32px 34px;">
                 <a href="https://www.yoriax.com/" style="display:inline-block;background:#ffffff;color:#050506;text-decoration:none;font-weight:900;border-radius:999px;padding:14px 22px;">
-                  YORIAX öffnen
+                  ${copy.button}
                 </a>
                 <p style="margin:28px 0 0;color:rgba(255,255,255,.46);font-size:13px;line-height:1.55;">
-                  Du bekommst diese Mail, weil du dich bei YORIAX registriert oder angemeldet hast.
+                  ${copy.reason}
                 </p>
               </td>
             </tr>
@@ -97,23 +138,27 @@ function createWelcomeEmailHtml({ displayName }: Pick<SendWelcomeEmailInput, 'di
 </html>`;
 }
 
-function createWelcomeEmailText({ displayName }: Pick<SendWelcomeEmailInput, 'displayName'>) {
+function createWelcomeEmailText({
+  displayName,
+  locale,
+}: Pick<SendWelcomeEmailInput, 'displayName' | 'locale'>) {
+  const copy = welcomeEmailCopy[locale];
   const lines = [
-    `Willkommen bei YORIAX, ${displayName}.`,
+    copy.heading(displayName),
     '',
-    'Dein Account ist bereit. Entdecke neue Tracks, speichere deine Favoriten und folge Artists, die zu deinem Sound passen.',
+    copy.body,
   ];
 
   if (isEarlyAccessBonusActive()) {
-    lines.push('', 'Early-Access-Bonus gesichert: Dein Account erhält zum Start von YORIAX 3 Monate werbefreies Hören.');
+    lines.push('', `${copy.earlyTitle} ${copy.earlyBody}`);
   }
 
-  lines.push('', 'YORIAX öffnen: https://www.yoriax.com/');
+  lines.push('', `${copy.button}: https://www.yoriax.com/`);
 
   return lines.join('\n');
 }
 
-async function sendWelcomeEmail({ displayName, to }: SendWelcomeEmailInput) {
+async function sendWelcomeEmail({ displayName, locale, to }: SendWelcomeEmailInput) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.WELCOME_EMAIL_FROM;
   const replyTo = process.env.WELCOME_EMAIL_REPLY_TO;
@@ -131,9 +176,9 @@ async function sendWelcomeEmail({ displayName, to }: SendWelcomeEmailInput) {
     body: JSON.stringify({
       from,
       to: [to],
-      subject: 'Willkommen bei YORIAX',
-      html: createWelcomeEmailHtml({ displayName }),
-      text: createWelcomeEmailText({ displayName }),
+      subject: welcomeEmailCopy[locale].subject,
+      html: createWelcomeEmailHtml({ displayName, locale }),
+      text: createWelcomeEmailText({ displayName, locale }),
       ...(replyTo ? { reply_to: replyTo } : {}),
     }),
   });
@@ -146,6 +191,7 @@ async function sendWelcomeEmail({ displayName, to }: SendWelcomeEmailInput) {
 export async function sendWelcomeEmailForUser(
   supabase: SupabaseClient,
   user: User,
+  locale: SupportedLocale = 'en',
 ): Promise<WelcomeEmailResult> {
   if (!user.email) {
     throw new Error('Authenticated user has no email address');
@@ -161,7 +207,8 @@ export async function sendWelcomeEmailForUser(
   if (existing) return { ok: true, sent: false, reason: 'already_sent' };
 
   await sendWelcomeEmail({
-    displayName: getUserDisplayName(user),
+    displayName: getUserDisplayName(user, locale),
+    locale,
     to: user.email,
   });
 

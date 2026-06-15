@@ -3,6 +3,7 @@ import {
   sendWelcomeEmailForUser,
   WelcomeEmailProviderNotConfiguredError,
 } from '@/lib/welcome-email';
+import { getLocaleFromAcceptLanguage } from '@/lib/locale';
 import { createRouteClient } from '@/utils/supabase/route';
 
 const corsHeaders = {
@@ -30,7 +31,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await sendWelcomeEmailForUser(supabase, user);
+    const locale = getLocaleFromAcceptLanguage(request.headers.get('accept-language'));
+    const result = await sendWelcomeEmailForUser(supabase, user, locale);
     return NextResponse.json(result, { headers: corsHeaders });
   } catch (error) {
     if (error instanceof WelcomeEmailProviderNotConfiguredError) {

@@ -259,11 +259,13 @@ export default function LoginPageClient({ locale }: { locale: SupportedLocale })
     setError(null);
 
     try {
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+      const callbackUrl = new URL('/auth/callback', window.location.origin);
+      callbackUrl.searchParams.set('next', nextPath);
+      callbackUrl.searchParams.set('locale', locale);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo,
+          redirectTo: callbackUrl.toString(),
         },
       });
 
