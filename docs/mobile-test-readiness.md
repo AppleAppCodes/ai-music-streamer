@@ -70,6 +70,7 @@ Voraussetzungen:
 - Aktiver Apple Developer Program Account
 - App Store Connect App mit Bundle ID `com.yoriax.app`
 - EAS/Expo Account Login lokal: `cd apps/mobile && npx eas-cli login`
+- Expo-Projekt ist im Code über `extra.eas.projectId` mit `ca24776f-fea9-45f2-9d23-1dc5e26aed06` verbunden
 - App Store Connect Zugriff für Build Uploads
 - App Store Connect Angaben: Support-URL, Datenschutz-URL, Screenshots, Altersfreigabe, Export-Compliance und Datenschutzfragebogen
 
@@ -110,6 +111,16 @@ Bekannt:
 
 - `expo-doctor` meldet 20/21 Checks. Die offene Warnung ist erwartbar, weil das iOS-Native-Projekt eingecheckt ist und `app.json`-Native-Felder dann nicht automatisch gespiegelt werden. Release-relevante iOS-Werte wurden deshalb bewusst auch direkt im Xcode-Projekt gesetzt.
 - EAS ist lokal aktuell nicht eingeloggt. Ohne `npx eas-cli login` oder EAS Token kann kein TestFlight Build hochgeladen werden.
+
+Lokaler Login:
+
+```bash
+cd apps/mobile
+npx eas-cli login
+npx eas-cli whoami
+```
+
+Wenn `whoami` den Expo-Namen ausgibt, kann der TestFlight-Build gestartet werden.
 
 App Store Connect Datenschutz muss vor Einreichung passend zur echten Nutzung ausgefüllt werden. Mindestens prüfen: Account-Informationen, User-ID, Nutzungsdaten/Playback-Verlauf, User Content wie Profilbilder/Playlists, Diagnose-/Crashdaten und ob irgendein Tracking/Analytics-Dienst aktiv ist.
 

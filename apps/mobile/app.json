@@ -43,7 +43,10 @@
       "expo-asset"
     ],
     "extra": {
-      "yoriaxReleaseStage": "production"
+      "yoriaxReleaseStage": "production",
+      "eas": {
+        "projectId": "ca24776f-fea9-45f2-9d23-1dc5e26aed06"
+      }
     }
   }
 }
