@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayerStatus } from 'expo-audio';
-import type { AudioPlayer } from 'expo-audio';
+import type { AudioLockScreenOptions, AudioPlayer } from 'expo-audio';
 import type { Song } from './types';
 import { useAuth } from './auth-context';
 import { supabase } from './supabase';
@@ -49,13 +49,19 @@ interface PlayerControlsContextValue {
 const PlayerContext = createContext<PlayerContextValue | null>(null);
 const PlayerControlsContext = createContext<PlayerControlsContextValue | null>(null);
 
+const LOCK_SCREEN_OPTIONS: AudioLockScreenOptions = {
+  isLiveStream: false,
+  showSeekBackward: true,
+  showSeekForward: true,
+};
+
 function setLockScreenMetadata(player: AudioPlayer, song: Song) {
   try {
     player.setActiveForLockScreen(true, {
       artist: song.artist_name || song.creatorName || 'Yoriax',
       artworkUrl: song.cover_url || undefined,
       title: song.title,
-    });
+    }, LOCK_SCREEN_OPTIONS);
   } catch (metadataError) {
     console.warn('Could not update lock screen metadata.', metadataError);
   }

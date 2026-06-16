@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../lib/auth-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Artist'>;
 type StorageFile = { name: string; created_at?: string | null };
@@ -22,6 +23,7 @@ type ArtistSocials = {
 
 export function ArtistScreen({ route, navigation }: Props) {
   const { artistId: artistName } = route.params;
+  const insets = useSafeAreaInsets();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,7 +183,7 @@ export function ArtistScreen({ route, navigation }: Props) {
         accessibilityRole="button"
         activeOpacity={0.86}
         onPress={() => navigation.goBack()}
-        style={styles.floatingBackButton}
+        style={[styles.floatingBackButton, { top: insets.top + 10 }]}
       >
         <Ionicons name="chevron-back" size={18} color={theme.colors.text} />
         <Text style={styles.floatingBackText}>Zurück</Text>
