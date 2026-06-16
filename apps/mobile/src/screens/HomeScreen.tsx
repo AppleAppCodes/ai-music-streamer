@@ -10,8 +10,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CoverArt, IconButton, StateCard, YoriaxLogo } from '../components/YoriaxUI';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
-import { loadHomeMusic, type HomeMusicData } from '../lib/music-data';
+import { loadChartsData, loadHomeMusic, type HomeMusicData } from '../lib/music-data';
 import { usePlayerControls } from '../lib/player-context';
+import { preloadSongs } from '../lib/audio-preload';
 import type { Song } from '../lib/types';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
@@ -49,7 +50,11 @@ export function HomeScreen() {
 
       try {
         const nextData = await loadHomeMusic(user.id);
+        preloadSongs([...nextData.trendingSongs, ...nextData.recommendedSongs, ...nextData.latestSongs], 12);
         if (mounted) setData(nextData);
+        void loadChartsData()
+          .then((chartsData) => preloadSongs([...chartsData.viralSongs, ...chartsData.dailySongs], 12))
+          .catch(() => undefined);
       } catch (loadError) {
         if (mounted) {
           setError(loadError instanceof Error ? loadError.message : 'Home konnte nicht geladen werden.');

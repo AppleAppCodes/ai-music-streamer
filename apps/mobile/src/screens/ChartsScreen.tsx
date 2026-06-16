@@ -5,9 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
+import { preloadSongs } from '../lib/audio-preload';
 import { formatPlays } from '../lib/format';
 import { loadChartsData, type ArtistStat, type ChartsData } from '../lib/music-data';
-import { usePlayer } from '../lib/player-context';
+import { usePlayerControls } from '../lib/player-context';
 import type { Song } from '../lib/types';
 import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
@@ -214,7 +215,7 @@ export function ChartsScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ChartTab>('viral');
-  const { activeSong, isPlaying, playSong, setQueue, toggle } = usePlayer();
+  const { activeSong, isPlaying, playSong, setQueue, toggle } = usePlayerControls();
 
   useEffect(() => {
     let mounted = true;
@@ -224,6 +225,7 @@ export function ChartsScreen({ navigation }: Props) {
       setError(null);
       try {
         const fetchedData = await loadChartsData();
+        preloadSongs([...fetchedData.viralSongs, ...fetchedData.dailySongs], 12);
         if (mounted) setData(fetchedData);
       } catch {
         if (mounted) setError('Konnte Charts nicht laden.');

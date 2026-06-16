@@ -48,6 +48,11 @@ interface PlayerControlsContextValue {
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
 const PlayerControlsContext = createContext<PlayerControlsContextValue | null>(null);
+const LOCK_SCREEN_OPTIONS = {
+  isLiveStream: false,
+  showSeekBackward: true,
+  showSeekForward: true,
+};
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const player = useMemo<AudioPlayer>(() => createAudioPlayer(null, { updateInterval: 500 }), []);
@@ -143,7 +148,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           artist: adSong.artist_name || undefined,
           artworkUrl: adSong.cover_url || undefined,
           title: adSong.title,
-        });
+        }, LOCK_SCREEN_OPTIONS);
         player.play();
         return;
       }
@@ -167,7 +172,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         artist: song.artist_name || song.creatorName || 'Yoriax',
         artworkUrl: song.cover_url || undefined,
         title: song.title,
-      });
+      }, LOCK_SCREEN_OPTIONS);
 
       const shouldSeekBeforePlay = options.startAt != null && (startAt > 0 || isSameSong);
       if (shouldSeekBeforePlay) {
