@@ -77,7 +77,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [queueIndex, setQueueIndex] = useState(-1);
   const [isShuffling, setIsShuffling] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'none' | 'all' | 'one'>('none');
-  const handledFinishKeyRef = useRef<string | null>(null);
+  const finishEventConsumedRef = useRef(false);
   const playNextRef = useRef<() => void>(() => {});
   const playPreviousRef = useRef<() => void>(() => {});
 
@@ -128,7 +128,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    handledFinishKeyRef.current = null;
     setError(null);
 
     try {
@@ -208,6 +207,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setSongsPlayed(0);
     setIsAdPlaying(false);
     setPendingSongToPlayAfterAd(null);
+    finishEventConsumedRef.current = false;
   }, [player]);
 
   const toggle = useCallback(() => {
@@ -296,13 +296,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     await player.seekTo(seconds, 0, 0);
   }, [activeSong, player]);
 
-  // Handle native end-of-track notifications once per finished item.
+  // Handle native end-of-track notifications once. iOS keeps didJustFinish=true
+  // briefly after we swap to the next source, so this must not key off activeSong.
   useEffect(() => {
-    if (!activeSong || !status.didJustFinish) return;
+    if (!status.didJustFinish) {
+      finishEventConsumedRef.current = false;
+      return;
+    }
 
-    const finishKey = `${activeSong.id}:${queueIndex}:${Math.round(status.duration || 0)}`;
-    if (handledFinishKeyRef.current === finishKey) return;
-    handledFinishKeyRef.current = finishKey;
+    if (!activeSong || finishEventConsumedRef.current) return;
+    finishEventConsumedRef.current = true;
 
     if (isAdPlaying) {
       setIsAdPlaying(false);
@@ -325,14 +328,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     if (repeatMode === 'one') {
       void player.seekTo(0, 0, 0).then(() => {
-        handledFinishKeyRef.current = null;
         player.play();
       });
       return;
     }
 
     playNext();
-  }, [activeSong, status.didJustFinish, status.duration, repeatMode, playNext, player, isAdPlaying, pendingSongToPlayAfterAd, playSong, queueIndex]);
+  }, [activeSong, status.didJustFinish, repeatMode, playNext, player, isAdPlaying, pendingSongToPlayAfterAd, playSong]);
 
   const value = useMemo<PlayerContextValue>(
     () => ({
