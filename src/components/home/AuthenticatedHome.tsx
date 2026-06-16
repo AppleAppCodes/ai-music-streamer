@@ -239,7 +239,7 @@ export default function AuthenticatedHome() {
         supabase
           .from('songs')
           .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, profiles!songs_creator_id_fkey(username)')
-          .limit(50),
+          .limit(200),
         supabase.auth.getSession(),
       ]);
 
@@ -418,7 +418,7 @@ export default function AuthenticatedHome() {
           .from('songs')
           .select('id, title, artist_name, cover_url, plays, audio_url, duration, genre')
           .order('plays', { ascending: false })
-          .limit(50);
+          .limit(100);
 
         startSongQueue((data || []) as unknown as Song[], itemTitle);
       }
