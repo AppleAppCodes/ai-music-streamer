@@ -14,6 +14,9 @@ interface PlayOptions {
   startAt?: number | null;
 }
 
+const PLAYBACK_READY_TIMEOUT_MS = 2500;
+const PLAYBACK_READY_POLL_MS = 50;
+
 interface PlayerContextValue {
   activeSong: Song | null;
   currentTime: number;
@@ -54,6 +57,26 @@ const LOCK_SCREEN_OPTIONS: AudioLockScreenOptions = {
   isLiveStream: false,
 };
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForPlayerReady(player: AudioPlayer, isCurrentRequest: () => boolean) {
+  const startedAt = Date.now();
+
+  while (isCurrentRequest() && Date.now() - startedAt < PLAYBACK_READY_TIMEOUT_MS) {
+    const currentStatus = player.currentStatus;
+
+    if (currentStatus.isLoaded && !currentStatus.didJustFinish) {
+      return true;
+    }
+
+    await sleep(PLAYBACK_READY_POLL_MS);
+  }
+
+  return false;
+}
+
 function setLockScreenMetadata(player: AudioPlayer, song: Song) {
   try {
     player.setActiveForLockScreen(true, {
@@ -71,6 +94,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const status = useAudioPlayerStatus(player);
   const [activeSong, setActiveSong] = useState<Song | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isPreparingPlayback, setIsPreparingPlayback] = useState(false);
 
   // Queue State
   const [queue, setQueueState] = useState<Song[]>([]);
@@ -80,6 +104,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const finishEventConsumedRef = useRef(false);
   const playNextRef = useRef<() => void>(() => {});
   const playPreviousRef = useRef<() => void>(() => {});
+  const playRequestIdRef = useRef(0);
 
   // Ad & User State
   const { user } = useAuth();
@@ -128,7 +153,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const playRequestId = playRequestIdRef.current + 1;
+    playRequestIdRef.current = playRequestId;
+    const isCurrentRequest = () => playRequestIdRef.current === playRequestId;
+
     setError(null);
+    setIsPreparingPlayback(true);
 
     try {
       const isSameSong = activeSong?.id === song.id;
@@ -159,8 +189,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
         player.replace({ name: adSong.title, uri: adSong.audio_url });
         setActiveSong(adSong);
-        player.play();
         setLockScreenMetadata(player, adSong);
+        await waitForPlayerReady(player, isCurrentRequest);
+        if (!isCurrentRequest()) return;
+        player.play();
         return;
       }
 
@@ -177,6 +209,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           uri: song.audio_url,
         });
         setActiveSong(song);
+        setLockScreenMetadata(player, song);
+        await waitForPlayerReady(player, isCurrentRequest);
+        if (!isCurrentRequest()) return;
       }
 
       const shouldSeekBeforePlay = options.startAt != null && (startAt > 0 || isSameSong);
@@ -186,8 +221,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
       player.play();
       setLockScreenMetadata(player, song);
+
+      setTimeout(() => {
+        if (!isCurrentRequest()) return;
+        const currentStatus = player.currentStatus;
+        if (currentStatus.isLoaded && !currentStatus.playing && !currentStatus.didJustFinish) {
+          player.play();
+        }
+      }, 150);
     } catch (playError) {
       setError(playError instanceof Error ? playError.message : 'Playback konnte nicht gestartet werden.');
+    } finally {
+      if (isCurrentRequest()) {
+        setIsPreparingPlayback(false);
+      }
     }
   }, [activeSong, player, isPro, songsPlayed, availableAds, adFrequency]);
 
@@ -196,10 +243,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [player]);
 
   const reset = useCallback(() => {
+    playRequestIdRef.current += 1;
     player.pause();
     player.clearLockScreenControls();
     setActiveSong(null);
     setError(null);
+    setIsPreparingPlayback(false);
     setQueueState([]);
     setQueueIndex(-1);
     setIsShuffling(false);
@@ -339,10 +388,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const value = useMemo<PlayerContextValue>(
     () => ({
       activeSong,
-      currentTime: status.currentTime || 0,
+      currentTime: isPreparingPlayback ? 0 : Math.max(0, Math.min(status.currentTime || 0, status.duration || activeSong?.duration || 0)),
       duration: status.duration || activeSong?.duration || 0,
       error: error ?? status.error,
-      isBuffering: status.isBuffering,
+      isBuffering: isPreparingPlayback || status.isBuffering,
       isPlaying: status.playing,
       isAdPlaying,
       pause,
@@ -360,7 +409,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       seekTo,
       toggle,
     }),
-    [activeSong, error, isAdPlaying, pause, playSong, playNext, playPrevious, queue, queueIndex, reset, isShuffling, repeatMode, setQueue, toggleShuffle, toggleRepeat, seekTo, status.currentTime, status.duration, status.error, status.isBuffering, status.playing, toggle],
+    [activeSong, error, isAdPlaying, isPreparingPlayback, pause, playSong, playNext, playPrevious, queue, queueIndex, reset, isShuffling, repeatMode, setQueue, toggleShuffle, toggleRepeat, seekTo, status.currentTime, status.duration, status.error, status.isBuffering, status.playing, toggle],
   );
 
   const controlsValue = useMemo<PlayerControlsContextValue>(
