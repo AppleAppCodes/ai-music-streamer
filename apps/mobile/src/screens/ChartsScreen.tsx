@@ -7,6 +7,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
 import { formatPlays } from '../lib/format';
 import { loadChartsData, type ArtistStat, type ChartsData } from '../lib/music-data';
+import { readPersistedCache, writePersistedCache } from '../lib/persisted-cache';
 import { usePlayerControls } from '../lib/player-context';
 import type { Song } from '../lib/types';
 import type { RootStackParamList } from '../navigation/types';
@@ -34,6 +35,8 @@ const ACCENTS: Record<Accent, string> = {
   violet: theme.colors.primaryLight,
   teal: theme.colors.accent,
 };
+
+const CHARTS_CACHE_KEY = 'yoriax:charts:v1';
 
 const ChartPanelItem = memo(function ChartPanelItem({
   song,
@@ -220,15 +223,29 @@ export function ChartsScreen({ navigation }: Props) {
     let mounted = true;
 
     async function load() {
+      let hasCachedData = false;
       setLoading(true);
       setError(null);
+
+      const cachedData = await readPersistedCache<ChartsData>(CHARTS_CACHE_KEY);
+      if (mounted && cachedData) {
+        hasCachedData = true;
+        setData(cachedData);
+        setLoading(false);
+      }
+
       try {
         const fetchedData = await loadChartsData();
-        if (mounted) setData(fetchedData);
+        if (!mounted) return;
+        setData(fetchedData);
+        setError(null);
+        setLoading(false);
+        void writePersistedCache(CHARTS_CACHE_KEY, fetchedData);
       } catch {
-        if (mounted) setError('Konnte Charts nicht laden.');
-      } finally {
-        if (mounted) setLoading(false);
+        if (mounted && !hasCachedData) {
+          setError('Konnte Charts nicht laden.');
+          setLoading(false);
+        }
       }
     }
 
@@ -277,7 +294,7 @@ export function ChartsScreen({ navigation }: Props) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {loading ? (
+        {loading && !data ? (
           <StateCard title="Charts werden geladen" message="Wir holen die aktuellen YORIAX-Rankings." loading />
         ) : error ? (
           <StateCard icon="warning" title="Charts nicht verfügbar" message={error} />

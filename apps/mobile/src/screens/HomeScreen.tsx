@@ -11,6 +11,7 @@ import { CoverArt, IconButton, StateCard, YoriaxLogo } from '../components/Yoria
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
 import { loadHomeMusic, type HomeMusicData } from '../lib/music-data';
+import { readPersistedCache, writePersistedCache } from '../lib/persisted-cache';
 import { usePlayerControls } from '../lib/player-context';
 import type { Song } from '../lib/types';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
@@ -30,6 +31,8 @@ type QuickTile = {
   gradientColors: readonly [string, string, string];
 };
 
+const HOME_CACHE_PREFIX = 'yoriax:home:v1:';
+
 export function HomeScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<HomeNavigation>();
@@ -44,18 +47,30 @@ export function HomeScreen() {
     async function load() {
       if (!user) return;
 
+      const cacheKey = `${HOME_CACHE_PREFIX}${user.id}`;
+      let hasCachedData = false;
       setLoading(true);
       setError(null);
 
+      const cachedData = await readPersistedCache<HomeMusicData>(cacheKey);
+      if (mounted && cachedData) {
+        hasCachedData = true;
+        setData(cachedData);
+        setLoading(false);
+      }
+
       try {
         const nextData = await loadHomeMusic(user.id);
-        if (mounted) setData(nextData);
+        if (!mounted) return;
+        setData(nextData);
+        setError(null);
+        setLoading(false);
+        void writePersistedCache(cacheKey, nextData);
       } catch (loadError) {
-        if (mounted) {
+        if (mounted && !hasCachedData) {
           setError(loadError instanceof Error ? loadError.message : 'Home konnte nicht geladen werden.');
+          setLoading(false);
         }
-      } finally {
-        if (mounted) setLoading(false);
       }
     }
 
@@ -141,10 +156,10 @@ export function HomeScreen() {
         ))}
       </View>
 
-      {loading ? <StateCard title="Startseite wird vorbereitet" message="Deine YORIAX-Auswahl ist gleich bereit." loading /> : null}
+      {loading && !data ? <StateCard title="Startseite wird vorbereitet" message="Deine YORIAX-Auswahl ist gleich bereit." loading /> : null}
       {error ? <StateCard icon="warning" title="Home konnte nicht geladen werden" message={error} /> : null}
 
-      {data && !loading ? (
+      {data ? (
         <View style={styles.sections}>
           <SongRail title="Trending heute" songs={data.trendingSongs} />
           <SongRail title="Für dich ausgewählt" songs={data.recommendedSongs} />

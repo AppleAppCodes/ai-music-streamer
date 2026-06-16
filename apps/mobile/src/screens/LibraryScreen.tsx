@@ -3,12 +3,15 @@ import { useEffect, useState, memo, useCallback } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { loadLibraryMusic, type LibraryMusicData } from '../lib/music-data';
-import { usePlayer } from '../lib/player-context';
+import { readPersistedCache, writePersistedCache } from '../lib/persisted-cache';
+import { usePlayerControls } from '../lib/player-context';
 import type { Playlist, Song } from '../lib/types';
 import { theme } from '../theme';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+
+const LIBRARY_CACHE_PREFIX = 'yoriax:library:v1:';
 
 export function LibraryScreen() {
   const { user } = useAuth();
@@ -23,18 +26,30 @@ export function LibraryScreen() {
     async function load() {
       if (!user) return;
 
+      const cacheKey = `${LIBRARY_CACHE_PREFIX}${user.id}`;
+      let hasCachedData = false;
       setLoading(true);
       setError(null);
 
+      const cachedData = await readPersistedCache<LibraryMusicData>(cacheKey);
+      if (mounted && cachedData) {
+        hasCachedData = true;
+        setData(cachedData);
+        setLoading(false);
+      }
+
       try {
         const nextData = await loadLibraryMusic(user.id);
-        if (mounted) setData(nextData);
+        if (!mounted) return;
+        setData(nextData);
+        setError(null);
+        setLoading(false);
+        void writePersistedCache(cacheKey, nextData);
       } catch (loadError) {
-        if (mounted) {
+        if (mounted && !hasCachedData) {
           setError(loadError instanceof Error ? loadError.message : 'Bibliothek konnte nicht geladen werden.');
+          setLoading(false);
         }
-      } finally {
-        if (mounted) setLoading(false);
       }
     }
 
@@ -46,7 +61,7 @@ export function LibraryScreen() {
   }, [user]);
 
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { activeSong, isPlaying, playSong, setQueue } = usePlayer();
+  const { activeSong, isPlaying, playSong, setQueue } = usePlayerControls();
 
   const handlePlaySong = useCallback((song: Song, index: number, list: Song[]) => {
     setQueue(list, index);
@@ -69,7 +84,7 @@ export function LibraryScreen() {
         </View>
       </TouchableOpacity>
 
-      {loading ? (
+      {loading && !data ? (
         <View style={styles.stateBox}>
           <ActivityIndicator color={theme.colors.text} />
           <Text style={styles.stateText}>Bibliothek wird geladen</Text>
@@ -82,7 +97,7 @@ export function LibraryScreen() {
         </View>
       ) : null}
 
-      {data && !loading ? (
+      {data ? (
         <>
           <SectionTitle title="Meine Playlists" />
           {data.playlists.length > 0 ? (
