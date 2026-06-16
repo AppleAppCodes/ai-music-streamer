@@ -144,9 +144,11 @@ async function loadSongSignals(userId: string) {
 }
 
 export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
-  const songs = await loadSongs();
+  const [songs, signals] = await Promise.all([
+    loadSongs(),
+    loadSongSignals(userId),
+  ]);
   const trendingSongs = getDailyTrendingSongs(songs, 6);
-  const signals = await loadSongSignals(userId);
   const rankedRecommendations = getPersonalizedSongs(songs, signals, songs.length);
   const trendingIds = new Set(trendingSongs.map(({ id }) => id));
   const distinctRecommendations = rankedRecommendations.filter(({ id }) => !trendingIds.has(id));

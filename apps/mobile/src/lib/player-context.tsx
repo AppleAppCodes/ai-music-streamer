@@ -169,7 +169,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         title: song.title,
       });
 
-      if (!isSameSong || options.startAt != null) {
+      const shouldSeekBeforePlay = options.startAt != null && (startAt > 0 || isSameSong);
+      if (shouldSeekBeforePlay) {
         await player.seekTo(startAt, 0, 0);
       }
 

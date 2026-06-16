@@ -21,7 +21,7 @@ import { ChartsScreen } from '../screens/ChartsScreen';
 import { ArtistsScreen } from '../screens/ArtistsScreen';
 import { PlaylistDiscoverScreen } from '../screens/PlaylistDiscoverScreen';
 import { MiniPlayer } from '../components/MiniPlayer';
-import { usePlayer } from '../lib/player-context';
+import { usePlayerControls } from '../lib/player-context';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -107,7 +107,7 @@ function MainTabs() {
 }
 
 export function RootNavigator() {
-  const { activeSong } = usePlayer();
+  const { activeSong } = usePlayerControls();
   const [activeRoute, setActiveRoute] = useState<string>('Home');
 
   return (

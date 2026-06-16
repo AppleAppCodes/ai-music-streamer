@@ -212,23 +212,6 @@ export function ProfileScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
         </View>
-
-        <View style={styles.card}>
-          <View style={styles.subscriptionHeaderRow}>
-            <Ionicons name="card-outline" size={22} color={theme.colors.text} />
-            <Text style={styles.subscriptionTitle}>Abonnement</Text>
-          </View>
-
-          <View style={styles.planBox}>
-            <View style={styles.planInfo}>
-              <Text style={styles.planName}>Free Plan</Text>
-              <Text style={styles.planDesc}>Du nutzt aktuell die kostenlose Version mit eingeschränkten Funktionen.</Text>
-            </View>
-            <TouchableOpacity style={styles.upgradeButton} onPress={() => Alert.alert('Bald verfügbar', 'Premium kommt bald!')}>
-              <Text style={styles.upgradeText}>Auf Premium upgraden</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
     </View>
   );
@@ -396,54 +379,5 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '800',
     fontSize: 15,
-  },
-  subscriptionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 20,
-  },
-  subscriptionTitle: {
-    color: theme.colors.text,
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  planBox: {
-    backgroundColor: 'rgba(88,28,135,0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(88,28,135,0.4)',
-    borderRadius: 12,
-    padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  planInfo: {
-    flex: 1,
-    paddingRight: 20,
-  },
-  planName: {
-    color: theme.colors.text,
-    fontSize: 22,
-    fontWeight: '900',
-    marginBottom: 8,
-  },
-  planDesc: {
-    color: theme.colors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  upgradeButton: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 100,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  upgradeText: {
-    color: theme.colors.text,
-    fontWeight: '700',
-    fontSize: 14,
   },
 });

@@ -11,7 +11,7 @@ import { CoverArt, IconButton, StateCard, YoriaxLogo } from '../components/Yoria
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
 import { loadHomeMusic, type HomeMusicData } from '../lib/music-data';
-import { usePlayer } from '../lib/player-context';
+import { usePlayerControls } from '../lib/player-context';
 import type { Song } from '../lib/types';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
@@ -141,7 +141,7 @@ export function HomeScreen() {
         ))}
       </View>
 
-      {loading ? <StateCard title="Musik wird geladen" message="Wir holen deine YORIAX-Daten." loading /> : null}
+      {loading ? <StateCard title="Startseite wird vorbereitet" message="Deine YORIAX-Auswahl ist gleich bereit." loading /> : null}
       {error ? <StateCard icon="warning" title="Home konnte nicht geladen werden" message={error} /> : null}
 
       {data && !loading ? (
@@ -200,7 +200,7 @@ const SongRailItem = memo(function SongRailItem({
 });
 
 const SongRail = memo(function SongRail({ title, songs }: { title: string; songs: Song[] }) {
-  const { activeSong, isPlaying, playSong, setQueue, toggle } = usePlayer();
+  const { activeSong, isPlaying, playSong, setQueue, toggle } = usePlayerControls();
 
   const handlePlay = useCallback((song: Song, list: Song[], index: number) => {
     setQueue(list, index);
