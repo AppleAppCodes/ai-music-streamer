@@ -1,8 +1,20 @@
-import { ActivityIndicator, Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View, ViewToken } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  InteractionManager,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useCallback, useEffect, useRef, useState, memo } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { loadFeedPreview } from '../lib/music-data';
-import { usePlayer } from '../lib/player-context';
+import { usePlayerControls } from '../lib/player-context';
 import type { FeedPreviewSong } from '../lib/types';
 import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,24 +23,37 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
-const VIEWABILITY_CONFIG = {
-  itemVisiblePercentThreshold: 70,
-};
-
 function getHookStart(song: FeedPreviewSong | null) {
   return Math.max(0, song?.clip?.hook_start_seconds ?? 0);
 }
 
-function FeedVisual({ item, active }: { item: FeedPreviewSong; active: boolean }) {
+function getIndexFromOffset(offsetY: number, itemHeight: number, itemCount: number) {
+  if (itemHeight <= 0 || itemCount <= 0) return 0;
+  const nextIndex = Math.round(offsetY / itemHeight);
+  return Math.max(0, Math.min(itemCount - 1, nextIndex));
+}
+
+function FeedVisual({
+  active,
+  item,
+  itemHeight,
+  itemWidth,
+  shouldLoadVideo,
+}: {
+  active: boolean;
+  item: FeedPreviewSong;
+  itemHeight: number;
+  itemWidth: number;
+  shouldLoadVideo: boolean;
+}) {
   const videoUrl = item.clip?.video_url?.trim() || null;
-  const videoPlayer = useVideoPlayer(videoUrl ? { uri: videoUrl } : null, (player) => {
+  const videoPlayer = useVideoPlayer(shouldLoadVideo && videoUrl ? { uri: videoUrl } : null, (player) => {
     player.loop = true;
     player.muted = true;
   });
 
   useEffect(() => {
-    if (!videoUrl) return;
+    if (!videoUrl || !shouldLoadVideo) return;
 
     if (active) {
       videoPlayer.play();
@@ -39,13 +64,15 @@ function FeedVisual({ item, active }: { item: FeedPreviewSong; active: boolean }
     return () => {
       videoPlayer.pause();
     };
-  }, [active, videoPlayer, videoUrl]);
+  }, [active, shouldLoadVideo, videoPlayer, videoUrl]);
 
-  if (videoUrl) {
+  const mediaStyle = [styles.coverImage, { width: itemWidth, height: itemHeight }];
+
+  if (videoUrl && shouldLoadVideo) {
     return (
       <VideoView
         player={videoPlayer}
-        style={styles.coverImage}
+        style={mediaStyle}
         contentFit="cover"
         nativeControls={false}
         playsInline
@@ -55,30 +82,42 @@ function FeedVisual({ item, active }: { item: FeedPreviewSong; active: boolean }
   }
 
   if (item.cover_url) {
-    return <Image source={{ uri: item.cover_url }} style={styles.coverImage} resizeMode="cover" alt="" />;
+    return <Image source={{ uri: item.cover_url }} style={mediaStyle} resizeMode="cover" alt="" />;
   }
 
-  return <View style={[styles.coverImage, styles.fallbackCover]} />;
+  return <View style={[mediaStyle, styles.fallbackCover]} />;
 }
 
 const FeedItem = memo(function FeedItem({
+  itemHeight,
+  itemWidth,
   item,
   isActive,
+  isCurrentSong,
   isPlaying,
   onPlayFull,
   onTogglePlay,
-  onStartHook
+  shouldLoadVideo,
 }: {
+  itemHeight: number;
+  itemWidth: number;
   item: FeedPreviewSong;
   isActive: boolean;
+  isCurrentSong: boolean;
   isPlaying: boolean;
   onPlayFull: (item: FeedPreviewSong) => void;
   onTogglePlay: () => void;
-  onStartHook: (item: FeedPreviewSong, force: boolean) => void;
+  shouldLoadVideo: boolean;
 }) {
   return (
-    <View style={styles.feedItem}>
-      <FeedVisual item={item} active={isActive} />
+    <View style={[styles.feedItem, { width: itemWidth, height: itemHeight }]}>
+      <FeedVisual
+        active={isActive}
+        item={item}
+        itemHeight={itemHeight}
+        itemWidth={itemWidth}
+        shouldLoadVideo={shouldLoadVideo}
+      />
 
       {/* Dark gradient overlay at bottom could go here, for now just a dark shadow overlay */}
       <View style={styles.overlay} />
@@ -102,15 +141,9 @@ const FeedItem = memo(function FeedItem({
       <View style={styles.actionsContainer}>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => {
-            if (isActive) {
-              onTogglePlay();
-            } else {
-              onStartHook(item, true);
-            }
-          }}
+          onPress={onTogglePlay}
         >
-          <Ionicons name={isActive && isPlaying ? "pause-circle" : "play-circle"} size={44} color="white" />
+          <Ionicons name={isActive && isCurrentSong && isPlaying ? "pause-circle" : "play-circle"} size={44} color="white" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton}>
@@ -125,18 +158,32 @@ const FeedItem = memo(function FeedItem({
       </View>
     </View>
   );
-});
+}, (previous, next) => (
+  previous.item.id === next.item.id
+  && previous.item.likes_count === next.item.likes_count
+  && previous.itemHeight === next.itemHeight
+  && previous.itemWidth === next.itemWidth
+  && previous.isActive === next.isActive
+  && previous.isCurrentSong === next.isCurrentSong
+  && previous.isPlaying === next.isPlaying
+  && previous.shouldLoadVideo === next.shouldLoadVideo
+));
 
 export function ForYouScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
-  const { activeSong, isPlaying, playSong, toggle, setQueue } = usePlayer();
+  const { height: itemHeight, width: itemWidth } = useWindowDimensions();
+  const { activeSong, isPlaying, playSong, toggle, setQueue } = usePlayerControls();
   const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Track currently visible item to avoid playing the same song repeatedly
-  const currentVisibleId = useRef<string | null>(null);
+  const currentHookSongId = useRef<string | null>(null);
+  const dragSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hookStartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hookInteractionTask = useRef<ReturnType<typeof InteractionManager.runAfterInteractions> | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -149,7 +196,8 @@ export function ForYouScreen() {
       try {
         const nextSongs = await loadFeedPreview(user.id);
         if (mounted) {
-          currentVisibleId.current = null;
+          currentHookSongId.current = null;
+          setActiveIndex(0);
           setSongs(nextSongs);
         }
       } catch (loadError) {
@@ -166,27 +214,68 @@ export function ForYouScreen() {
   }, [user]);
 
   const startHookPlayback = useCallback((song: FeedPreviewSong, force = false) => {
-    if (!force && currentVisibleId.current === song.id && activeSong?.id === song.id) return;
-    currentVisibleId.current = song.id;
+    if (!force && currentHookSongId.current === song.id && activeSong?.id === song.id) return;
+    currentHookSongId.current = song.id;
 
     setQueue([song], 0);
     void playSong(song, { startAt: getHookStart(song) });
   }, [activeSong?.id, playSong, setQueue]);
 
-  useEffect(() => {
-    if (loading || songs.length === 0 || currentVisibleId.current) return;
-    startHookPlayback(songs[0]);
-  }, [loading, songs, startHookPlayback]);
+  const scheduleHookPlayback = useCallback((index: number, force = false) => {
+    if (songs.length === 0) return;
+    const nextIndex = Math.max(0, Math.min(songs.length - 1, index));
 
-  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    const visibleItem = viewableItems
-      .filter((item) => item.isViewable)
-      .sort((first, second) => (first.index ?? 0) - (second.index ?? 0))[0];
+    setActiveIndex((currentIndex) => currentIndex === nextIndex ? currentIndex : nextIndex);
 
-    if (visibleItem?.item) {
-      startHookPlayback(visibleItem.item as FeedPreviewSong);
+    if (hookStartTimer.current) {
+      clearTimeout(hookStartTimer.current);
     }
-  }, [startHookPlayback]);
+    hookInteractionTask.current?.cancel?.();
+
+    hookStartTimer.current = setTimeout(() => {
+      hookInteractionTask.current = InteractionManager.runAfterInteractions(() => {
+        startHookPlayback(songs[nextIndex], force);
+      });
+    }, 80);
+  }, [songs, startHookPlayback]);
+
+  const clearDragSettleTimer = useCallback(() => {
+    if (!dragSettleTimer.current) return;
+    clearTimeout(dragSettleTimer.current);
+    dragSettleTimer.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (loading || songs.length === 0 || currentHookSongId.current) return;
+    scheduleHookPlayback(0, true);
+  }, [loading, scheduleHookPlayback, songs.length]);
+
+  useEffect(() => () => {
+    clearDragSettleTimer();
+    if (hookStartTimer.current) {
+      clearTimeout(hookStartTimer.current);
+    }
+    hookInteractionTask.current?.cancel?.();
+  }, [clearDragSettleTimer]);
+
+  const handleMomentumScrollBegin = useCallback(() => {
+    clearDragSettleTimer();
+  }, [clearDragSettleTimer]);
+
+  const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    clearDragSettleTimer();
+    const nextIndex = getIndexFromOffset(event.nativeEvent.contentOffset.y, itemHeight, songs.length);
+    scheduleHookPlayback(nextIndex);
+  }, [clearDragSettleTimer, itemHeight, scheduleHookPlayback, songs.length]);
+
+  const handleScrollEndDrag = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    clearDragSettleTimer();
+    const nextIndex = getIndexFromOffset(event.nativeEvent.contentOffset.y, itemHeight, songs.length);
+
+    dragSettleTimer.current = setTimeout(() => {
+      scheduleHookPlayback(nextIndex);
+    }, 220);
+  }, [clearDragSettleTimer, itemHeight, scheduleHookPlayback, songs.length]);
 
   // We want to pause when leaving the ForYou tab?
   // Usually TikTok pauses when you go to another tab, but for a music app maybe not.
@@ -199,24 +288,37 @@ export function ForYouScreen() {
   }, [setQueue, playSong, navigation]);
 
   const getItemLayout = useCallback((_: ArrayLike<FeedPreviewSong> | null | undefined, index: number) => ({
-    length: SCREEN_HEIGHT,
-    offset: SCREEN_HEIGHT * index,
+    length: itemHeight,
+    offset: itemHeight * index,
     index,
-  }), []);
+  }), [itemHeight]);
 
-  const renderItem = useCallback(({ item }: { item: FeedPreviewSong }) => {
-    const isActive = activeSong?.id === item.id;
+  const renderItem = useCallback(({ item, index }: { item: FeedPreviewSong; index: number }) => {
+    const isActive = index === activeIndex;
+    const isCurrentSong = activeSong?.id === item.id;
+    const isSongPlaying = isActive && isCurrentSong && isPlaying;
+    const shouldLoadVideo = Math.abs(index - activeIndex) <= 1;
+
     return (
       <FeedItem
+        itemHeight={itemHeight}
+        itemWidth={itemWidth}
         item={item}
         isActive={isActive}
-        isPlaying={isActive ? isPlaying : false}
+        isCurrentSong={isCurrentSong}
+        isPlaying={isSongPlaying}
         onPlayFull={handlePlayFull}
-        onTogglePlay={toggle}
-        onStartHook={startHookPlayback}
+        onTogglePlay={() => {
+          if (activeSong?.id === item.id) {
+            toggle();
+          } else {
+            startHookPlayback(item, true);
+          }
+        }}
+        shouldLoadVideo={shouldLoadVideo}
       />
     );
-  }, [activeSong?.id, isPlaying, handlePlayFull, toggle, startHookPlayback]);
+  }, [activeIndex, activeSong?.id, handlePlayFull, isPlaying, itemHeight, itemWidth, startHookPlayback, toggle]);
 
   if (loading) {
     return (
@@ -246,18 +348,21 @@ export function ForYouScreen() {
         data={songs}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        extraData={`${activeIndex}:${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}:${itemHeight}:${itemWidth}`}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={SCREEN_HEIGHT}
+        snapToInterval={itemHeight}
         snapToAlignment="start"
         decelerationRate="fast"
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={VIEWABILITY_CONFIG}
-        initialNumToRender={1}
-        windowSize={3}
+        disableIntervalMomentum
+        onMomentumScrollBegin={handleMomentumScrollBegin}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        onScrollEndDrag={handleScrollEndDrag}
+        initialNumToRender={2}
+        windowSize={5}
         maxToRenderPerBatch={2}
-        updateCellsBatchingPeriod={50}
-        removeClippedSubviews={true}
+        updateCellsBatchingPeriod={16}
+        removeClippedSubviews={false}
         getItemLayout={getItemLayout}
       />
     </View>
@@ -301,8 +406,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   feedItem: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
     backgroundColor: '#140c23',
     justifyContent: 'flex-end', // content at bottom
   },
@@ -312,8 +415,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
   },
   fallbackCover: {
     backgroundColor: '#1a102d',

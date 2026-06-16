@@ -37,7 +37,17 @@ interface PlayerContextValue {
   toggle: () => void;
 }
 
+interface PlayerControlsContextValue {
+  activeSong: Song | null;
+  isPlaying: boolean;
+  pause: () => void;
+  playSong: (song: Song, options?: PlayOptions) => Promise<void>;
+  setQueue: (songs: Song[], startIndex?: number) => void;
+  toggle: () => void;
+}
+
 const PlayerContext = createContext<PlayerContextValue | null>(null);
+const PlayerControlsContext = createContext<PlayerControlsContextValue | null>(null);
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const player = useMemo<AudioPlayer>(() => createAudioPlayer(null, { updateInterval: 500 }), []);
@@ -317,7 +327,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [activeSong, error, isAdPlaying, pause, playSong, playNext, playPrevious, queue, queueIndex, reset, isShuffling, repeatMode, setQueue, toggleShuffle, toggleRepeat, seekTo, status.currentTime, status.duration, status.error, status.isBuffering, status.playing, toggle],
   );
 
-  return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
+  const controlsValue = useMemo<PlayerControlsContextValue>(
+    () => ({
+      activeSong,
+      isPlaying: status.playing,
+      pause,
+      playSong,
+      setQueue,
+      toggle,
+    }),
+    [activeSong, pause, playSong, setQueue, status.playing, toggle],
+  );
+
+  return (
+    <PlayerControlsContext.Provider value={controlsValue}>
+      <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
+    </PlayerControlsContext.Provider>
+  );
 }
 
 export function usePlayer() {
@@ -325,6 +351,16 @@ export function usePlayer() {
 
   if (!context) {
     throw new Error('usePlayer must be used within PlayerProvider.');
+  }
+
+  return context;
+}
+
+export function usePlayerControls() {
+  const context = useContext(PlayerControlsContext);
+
+  if (!context) {
+    throw new Error('usePlayerControls must be used within PlayerProvider.');
   }
 
   return context;
