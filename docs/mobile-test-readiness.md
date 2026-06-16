@@ -103,12 +103,13 @@ Erledigt:
 
 - `npm run mobile:check` ist sauber.
 - `npm audit --omit=dev --audit-level=high` meldet keine High-/Critical-Probleme. Es bleiben moderate Expo-Tooling-Hinweise über `uuid`/`xcode`; `npm audit fix --force` würde Expo massiv downgraden und wird deshalb nicht verwendet.
-- iOS Native-Projekt ist auf Version `1.0.0`, Build `6`, Bundle ID `com.yoriax.app`, Team `3H83CGSR39` gesetzt.
+- iOS Native-Projekt ist auf Version `1.0.0`, Build `7`, Bundle ID `com.yoriax.app`, Team `3H83CGSR39` gesetzt.
 - App Store Icon liegt nativ und in Expo Assets als 1024x1024 PNG vor.
 - `PrivacyInfo.xcprivacy` ist vorhanden und deklariert Required-Reason-APIs ohne Tracking.
 - EAS ist lokal eingeloggt und die iOS-Credentials liegen remote auf den Expo-Servern.
 - App Store Connect ist für `com.yoriax.app` vorbereitet; ASC App ID `6780680190`.
-- iOS Build `6` wurde mit EAS erfolgreich gebaut und zu App Store Connect/TestFlight hochgeladen.
+- iOS Build `7` wurde mit EAS erfolgreich gebaut und zu App Store Connect/TestFlight hochgeladen.
+- App Store Connect ID `6780680190` ist in `eas.json` hinterlegt, damit non-interactive TestFlight-Submits funktionieren.
 
 Bekannt:
 
