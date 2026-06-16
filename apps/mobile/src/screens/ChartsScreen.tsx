@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
-import { preloadSongs } from '../lib/audio-preload';
 import { formatPlays } from '../lib/format';
 import { loadChartsData, type ArtistStat, type ChartsData } from '../lib/music-data';
 import { usePlayerControls } from '../lib/player-context';
@@ -225,7 +224,6 @@ export function ChartsScreen({ navigation }: Props) {
       setError(null);
       try {
         const fetchedData = await loadChartsData();
-        preloadSongs([...fetchedData.viralSongs, ...fetchedData.dailySongs], 12);
         if (mounted) setData(fetchedData);
       } catch {
         if (mounted) setError('Konnte Charts nicht laden.');

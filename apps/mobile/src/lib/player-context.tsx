@@ -48,11 +48,18 @@ interface PlayerControlsContextValue {
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
 const PlayerControlsContext = createContext<PlayerControlsContextValue | null>(null);
-const LOCK_SCREEN_OPTIONS = {
-  isLiveStream: false,
-  showSeekBackward: true,
-  showSeekForward: true,
-};
+
+function setLockScreenMetadata(player: AudioPlayer, song: Song) {
+  try {
+    player.setActiveForLockScreen(true, {
+      artist: song.artist_name || song.creatorName || 'Yoriax',
+      artworkUrl: song.cover_url || undefined,
+      title: song.title,
+    });
+  } catch (metadataError) {
+    console.warn('Could not update lock screen metadata.', metadataError);
+  }
+}
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const player = useMemo<AudioPlayer>(() => createAudioPlayer(null, { updateInterval: 500 }), []);
@@ -144,12 +151,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
         player.replace({ name: adSong.title, uri: adSong.audio_url });
         setActiveSong(adSong);
-        player.setActiveForLockScreen(true, {
-          artist: adSong.artist_name || undefined,
-          artworkUrl: adSong.cover_url || undefined,
-          title: adSong.title,
-        }, LOCK_SCREEN_OPTIONS);
         player.play();
+        setLockScreenMetadata(player, adSong);
         return;
       }
 
@@ -168,18 +171,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setActiveSong(song);
       }
 
-      player.setActiveForLockScreen(true, {
-        artist: song.artist_name || song.creatorName || 'Yoriax',
-        artworkUrl: song.cover_url || undefined,
-        title: song.title,
-      }, LOCK_SCREEN_OPTIONS);
-
       const shouldSeekBeforePlay = options.startAt != null && (startAt > 0 || isSameSong);
       if (shouldSeekBeforePlay) {
         await player.seekTo(startAt, 0, 0);
       }
 
       player.play();
+      setLockScreenMetadata(player, song);
     } catch (playError) {
       setError(playError instanceof Error ? playError.message : 'Playback konnte nicht gestartet werden.');
     }
