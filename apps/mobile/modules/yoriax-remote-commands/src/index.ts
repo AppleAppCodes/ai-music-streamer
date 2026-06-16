@@ -6,10 +6,15 @@ type RemoteCommandEvents = {
 };
 
 declare class YoriaxRemoteCommandsNativeModule extends NativeModule<RemoteCommandEvents> {
+  activatePlaybackSession(): void;
   setEnabled(enabled: boolean): void;
 }
 
 const YoriaxRemoteCommands = requireOptionalNativeModule<YoriaxRemoteCommandsNativeModule>('YoriaxRemoteCommands');
+
+export function activateExclusivePlaybackSession() {
+  YoriaxRemoteCommands?.activatePlaybackSession();
+}
 
 export function setTrackRemoteCommandsEnabled(enabled: boolean) {
   YoriaxRemoteCommands?.setEnabled(enabled);

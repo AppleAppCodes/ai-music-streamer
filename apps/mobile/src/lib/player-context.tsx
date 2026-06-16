@@ -1,7 +1,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayerStatus } from 'expo-audio';
 import type { AudioLockScreenOptions, AudioPlayer } from 'expo-audio';
-import { addTrackRemoteCommandListeners, setTrackRemoteCommandsEnabled } from 'yoriax-remote-commands';
+import { activateExclusivePlaybackSession, addTrackRemoteCommandListeners, setTrackRemoteCommandsEnabled } from 'yoriax-remote-commands';
 import type { Song } from './types';
 import { useAuth } from './auth-context';
 import { supabase } from './supabase';
@@ -55,7 +55,17 @@ const PlayerControlsContext = createContext<PlayerControlsContextValue | null>(n
 
 const LOCK_SCREEN_OPTIONS: AudioLockScreenOptions = {
   isLiveStream: false,
+  showSeekBackward: false,
+  showSeekForward: false,
 };
+
+const EXCLUSIVE_AUDIO_MODE = {
+  allowsRecording: false,
+  interruptionMode: 'doNotMix',
+  playsInSilentMode: true,
+  shouldPlayInBackground: true,
+  shouldRouteThroughEarpiece: false,
+} as const;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -89,8 +99,18 @@ function setLockScreenMetadata(player: AudioPlayer, song: Song) {
   }
 }
 
+async function activateYoriaxPlaybackSession() {
+  activateExclusivePlaybackSession();
+  await setAudioModeAsync(EXCLUSIVE_AUDIO_MODE);
+  await setIsAudioActiveAsync(true);
+  activateExclusivePlaybackSession();
+}
+
 export function PlayerProvider({ children }: { children: ReactNode }) {
-  const player = useMemo<AudioPlayer>(() => createAudioPlayer(null, { updateInterval: 500 }), []);
+  const player = useMemo<AudioPlayer>(
+    () => createAudioPlayer(null, { keepAudioSessionActive: true, updateInterval: 500 }),
+    [],
+  );
   const status = useAudioPlayerStatus(player);
   const [activeSong, setActiveSong] = useState<Song | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -134,12 +154,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    void setAudioModeAsync({
-      interruptionMode: 'doNotMix',
-      playsInSilentMode: true,
-      shouldPlayInBackground: true,
-    });
-    void setIsAudioActiveAsync(true);
+    void activateYoriaxPlaybackSession();
 
     return () => {
       player.clearLockScreenControls();
@@ -161,6 +176,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setIsPreparingPlayback(true);
 
     try {
+      await activateYoriaxPlaybackSession();
+
       const isSameSong = activeSong?.id === song.id;
       const startAt = Math.max(0, options.startAt ?? 0);
 

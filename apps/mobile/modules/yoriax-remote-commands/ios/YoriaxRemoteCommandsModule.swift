@@ -1,5 +1,7 @@
 import ExpoModulesCore
+import AVFoundation
 import MediaPlayer
+import UIKit
 
 private let onNextTrack = "onNextTrack"
 private let onPreviousTrack = "onPreviousTrack"
@@ -13,6 +15,12 @@ public class YoriaxRemoteCommandsModule: Module {
 
     Events(onNextTrack, onPreviousTrack)
 
+    Function("activatePlaybackSession") {
+      DispatchQueue.main.async {
+        self.activatePlaybackSession()
+      }
+    }
+
     Function("setEnabled") { (enabled: Bool) in
       DispatchQueue.main.async {
         if enabled {
@@ -24,7 +32,20 @@ public class YoriaxRemoteCommandsModule: Module {
     }
   }
 
+  private func activatePlaybackSession() {
+    do {
+      let session = AVAudioSession.sharedInstance()
+      try session.setCategory(.playback, mode: .default, options: [])
+      try session.setActive(true)
+      UIApplication.shared.beginReceivingRemoteControlEvents()
+    } catch {
+      print("YoriaxRemoteCommands failed to activate playback session: \(error)")
+    }
+  }
+
   private func enableTrackCommands() {
+    activatePlaybackSession()
+
     let commandCenter = MPRemoteCommandCenter.shared()
 
     if nextTarget == nil {
