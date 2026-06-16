@@ -2234,6 +2234,8 @@ PODS:
     - ReactNativeDependencies
     - Yoga
   - Yoga (0.0.0)
+  - YoriaxRemoteCommands (0.1.0):
+    - ExpoModulesCore
 
 DEPENDENCIES:
   - EXApplication (from `../node_modules/expo-auth-session/node_modules/expo-application/ios`)
@@ -2343,6 +2345,7 @@ DEPENDENCIES:
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - RNScreens (from `../node_modules/react-native-screens`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
+  - YoriaxRemoteCommands (from `../modules/yoriax-remote-commands/ios`)
 
 EXTERNAL SOURCES:
   EXApplication:
@@ -2558,6 +2561,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-screens"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
+  YoriaxRemoteCommands:
+    :path: "../modules/yoriax-remote-commands/ios"
 
 SPEC CHECKSUMS:
   EXApplication: e6040c92edc5522accd62852342e6b14742d42c0
@@ -2666,6 +2671,7 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: 2ad919e88b8bc2cd80e8697ce66d04d006743283
   RNScreens: 991cc417cd396602a6cf59a42139e5a9d91462a9
   Yoga: 77dfa8673de2874e1855002ae59c68b8be9b007b
+  YoriaxRemoteCommands: 2bd58c08588254b4e0f485340e468eb031008407
 
 PODFILE CHECKSUM: e42af7f6b13dd886dab92973e5ae197ea9081a51
 

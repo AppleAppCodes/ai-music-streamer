@@ -1,0 +1,22 @@
+{
+  "name": "yoriax-remote-commands",
+  "version": "0.1.0",
+  "description": "YORIAX native lock screen track command bridge.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "private": true,
+  "expo-module": {
+    "platforms": [
+      "apple"
+    ],
+    "apple": {
+      "modules": [
+        "YoriaxRemoteCommandsModule"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "expo-modules-core": "*"
+  }
+}

@@ -1,6 +1,7 @@
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayerStatus } from 'expo-audio';
 import type { AudioLockScreenOptions, AudioPlayer } from 'expo-audio';
+import { addTrackRemoteCommandListeners, setTrackRemoteCommandsEnabled } from 'yoriax-remote-commands';
 import type { Song } from './types';
 import { useAuth } from './auth-context';
 import { supabase } from './supabase';
@@ -51,8 +52,6 @@ const PlayerControlsContext = createContext<PlayerControlsContextValue | null>(n
 
 const LOCK_SCREEN_OPTIONS: AudioLockScreenOptions = {
   isLiveStream: false,
-  showSeekBackward: true,
-  showSeekForward: true,
 };
 
 function setLockScreenMetadata(player: AudioPlayer, song: Song) {
@@ -78,6 +77,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [queueIndex, setQueueIndex] = useState(-1);
   const [isShuffling, setIsShuffling] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'none' | 'all' | 'one'>('none');
+  const handledFinishKeyRef = useRef<string | null>(null);
+  const playNextRef = useRef<() => void>(() => {});
+  const playPreviousRef = useRef<() => void>(() => {});
 
   // Ad & User State
   const { user } = useAuth();
@@ -126,6 +128,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    handledFinishKeyRef.current = null;
     setError(null);
 
     try {
@@ -224,6 +227,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const playQueueSong = useCallback((song: Song, index: number) => {
+    setQueueIndex(index);
+    void playSong(song, activeSong?.id === song.id ? { startAt: 0 } : undefined);
+  }, [activeSong?.id, playSong]);
+
   const playNext = useCallback(() => {
     if (queue.length === 0) return;
 
@@ -232,38 +240,53 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       while (nextIndex === queueIndex) {
         nextIndex = Math.floor(Math.random() * queue.length);
       }
-      setQueueIndex(nextIndex);
-      void playSong(queue[nextIndex]);
+      playQueueSong(queue[nextIndex], nextIndex);
       return;
     }
 
     const nextIndex = queueIndex + 1;
     if (nextIndex < queue.length) {
-      setQueueIndex(nextIndex);
-      void playSong(queue[nextIndex]);
+      playQueueSong(queue[nextIndex], nextIndex);
     } else if (repeatMode === 'all') {
-      setQueueIndex(0);
-      void playSong(queue[0]);
+      playQueueSong(queue[0], 0);
     } else {
       player.pause();
     }
-  }, [playSong, queue, queueIndex, isShuffling, repeatMode, player]);
+  }, [queue, isShuffling, queueIndex, repeatMode, player, playQueueSong]);
 
   const playPrevious = useCallback(() => {
     if (queue.length === 0) return;
-    if ((status.currentTime || 0) > 3) {
-      void player.seekTo(0, 0, 0);
-      return;
-    }
+
     const prevIndex = queueIndex - 1;
     if (prevIndex >= 0) {
-      setQueueIndex(prevIndex);
-      void playSong(queue[prevIndex]);
+      playQueueSong(queue[prevIndex], prevIndex);
     } else if (repeatMode === 'all') {
-      setQueueIndex(queue.length - 1);
-      void playSong(queue[queue.length - 1]);
+      playQueueSong(queue[queue.length - 1], queue.length - 1);
+    } else {
+      void player.seekTo(0, 0, 0);
     }
-  }, [playSong, queue, queueIndex, status.currentTime, repeatMode, player]);
+  }, [queue, queueIndex, repeatMode, player, playQueueSong]);
+
+  useEffect(() => {
+    playNextRef.current = playNext;
+  }, [playNext]);
+
+  useEffect(() => {
+    playPreviousRef.current = playPrevious;
+  }, [playPrevious]);
+
+  useEffect(() => {
+    setTrackRemoteCommandsEnabled(true);
+    const removeListeners = addTrackRemoteCommandListeners({
+      onNextTrack: () => playNextRef.current(),
+      onPreviousTrack: () => playPreviousRef.current(),
+    });
+
+    return () => {
+      removeListeners();
+      setTrackRemoteCommandsEnabled(false);
+    };
+  }, []);
 
   const toggleShuffle = useCallback(() => setIsShuffling(s => !s), []);
   const toggleRepeat = useCallback(() => setRepeatMode(r => r === 'none' ? 'all' : r === 'all' ? 'one' : 'none'), []);
@@ -273,42 +296,43 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     await player.seekTo(seconds, 0, 0);
   }, [activeSong, player]);
 
-  // Handle auto play next when song finishes.
+  // Handle native end-of-track notifications once per finished item.
   useEffect(() => {
-    const didReachEnd = activeSong && !status.playing && status.duration > 0 && Math.abs(status.currentTime - status.duration) < 1.0;
-    if (!didReachEnd) return;
+    if (!activeSong || !status.didJustFinish) return;
 
-    const timeout = setTimeout(() => {
-      if (isAdPlaying) {
-        setIsAdPlaying(false);
-        setSongsPlayed(0);
-        
-        // Refetch config
-        if (supabase) {
-          supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single().then(({ data }) => {
-            if (data) setAdFrequency(data.ad_frequency);
-          });
-        }
+    const finishKey = `${activeSong.id}:${queueIndex}:${Math.round(status.duration || 0)}`;
+    if (handledFinishKeyRef.current === finishKey) return;
+    handledFinishKeyRef.current = finishKey;
 
-        if (pendingSongToPlayAfterAd) {
-          void playSong(pendingSongToPlayAfterAd);
-          setPendingSongToPlayAfterAd(null);
-        } else {
-          playNext();
-        }
-        return;
+    if (isAdPlaying) {
+      setIsAdPlaying(false);
+      setSongsPlayed(0);
+
+      if (supabase) {
+        supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single().then(({ data }) => {
+          if (data) setAdFrequency(data.ad_frequency);
+        });
       }
 
-      if (repeatMode === 'one') {
-        void player.seekTo(0, 0, 0);
-        player.play();
+      if (pendingSongToPlayAfterAd) {
+        void playSong(pendingSongToPlayAfterAd);
+        setPendingSongToPlayAfterAd(null);
       } else {
         playNext();
       }
-    }, 0);
+      return;
+    }
 
-    return () => clearTimeout(timeout);
-  }, [activeSong, status.playing, status.currentTime, status.duration, repeatMode, playNext, player, isAdPlaying, pendingSongToPlayAfterAd, playSong]);
+    if (repeatMode === 'one') {
+      void player.seekTo(0, 0, 0).then(() => {
+        handledFinishKeyRef.current = null;
+        player.play();
+      });
+      return;
+    }
+
+    playNext();
+  }, [activeSong, status.didJustFinish, status.duration, repeatMode, playNext, player, isAdPlaying, pendingSongToPlayAfterAd, playSong, queueIndex]);
 
   const value = useMemo<PlayerContextValue>(
     () => ({
