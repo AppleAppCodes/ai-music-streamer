@@ -478,7 +478,7 @@ export default function FeedPage() {
           .from('songs')
           .select('id, title, artist_name, cover_url, plays, genre, created_at, creator_id, duration, audio_url, profiles!songs_creator_id_fkey(username, avatar_url), song_feed_clips(song_id, video_url, cover_url, hook_start_seconds, hook_end_seconds), song_feed_stats(song_id, likes_count)')
           .order('plays', { ascending: false })
-          .limit(80),
+          .limit(30),
         supabase.auth.getSession(),
       ]);
 

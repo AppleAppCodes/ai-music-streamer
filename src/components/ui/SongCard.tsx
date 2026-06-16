@@ -14,9 +14,10 @@ interface SongCardProps {
   className?: string;
   contextQueue?: Song[];
   compact?: boolean;
+  priority?: boolean;
 }
 
-export default function SongCard({ song, creatorName = 'Creator', className = '', contextQueue, compact = false }: SongCardProps) {
+export default function SongCard({ song, creatorName = 'Creator', className = '', contextQueue, compact = false, priority = false }: SongCardProps) {
   const router = useRouter();
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
   const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
@@ -36,6 +37,7 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 180px"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
+            priority={priority}
           />
         ) : (
           <div className="w-full h-full bg-[#282828] flex items-center justify-center">

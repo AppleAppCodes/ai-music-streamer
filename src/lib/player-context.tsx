@@ -105,7 +105,9 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const preloadRef = useRef<HTMLAudioElement | null>(null);
   const loadedSongIdRef = useRef<string | null>(null);
+  const preloadedSongIdRef = useRef<string | null>(null);
   const syncChannelRef = useRef<RealtimeChannel | null>(null);
 
   // Cross-device playback sync via Supabase Realtime
@@ -642,6 +644,25 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
 
   const toggleShuffle = useCallback(() => setIsShuffling(s => !s), []);
 
+  // Preload the next song in the queue for instant playback
+  useEffect(() => {
+    if (queue.length === 0 || !preloadRef.current) return;
+
+    let nextIdx = queueIndex + 1;
+    if (nextIdx >= queue.length) {
+      if (repeatMode === 'all') nextIdx = 0;
+      else return; // nothing to preload
+    }
+
+    const nextSong = queue[nextIdx];
+    if (!nextSong?.audio_url || nextSong.id === 'yoriax-audio-ad') return;
+    if (preloadedSongIdRef.current === nextSong.id) return; // already preloaded
+
+    preloadRef.current.src = nextSong.audio_url;
+    preloadRef.current.load();
+    preloadedSongIdRef.current = nextSong.id;
+  }, [queue, queueIndex, repeatMode]);
+
   const toggleRepeat = useCallback(() => {
     setRepeatMode(r => r === 'none' ? 'all' : r === 'all' ? 'one' : 'none');
   }, []);
@@ -680,6 +701,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     <PlayerContext.Provider value={contextValue}>
       {children}
       <audio ref={audioRef} preload="metadata" playsInline className="hidden" />
+      <audio ref={preloadRef} preload="auto" playsInline className="hidden" />
 
       {showAuthModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">

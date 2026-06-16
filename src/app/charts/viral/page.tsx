@@ -342,7 +342,7 @@ export default function ViralChartsPage() {
       { data: weeklyData, error: weeklyError },
       { data: authData }
     ] = await Promise.all([
-      supabase.from('songs').select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, viral_sort_order, profiles!songs_creator_id_fkey(username)').limit(200),
+      supabase.from('songs').select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, viral_sort_order, profiles!songs_creator_id_fkey(username)').limit(100),
       supabase.from('song_daily_plays').select('song_id, plays').eq('play_date', todayUtc),
       supabase.from('song_daily_plays').select('song_id, plays').gte('play_date', sevenDaysAgoUtc),
       supabase.auth.getSession(),

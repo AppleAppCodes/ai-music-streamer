@@ -239,7 +239,7 @@ export default function AuthenticatedHome() {
         supabase
           .from('songs')
           .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, profiles!songs_creator_id_fkey(username)')
-          .limit(200),
+          .limit(50),
         supabase.auth.getSession(),
       ]);
 
@@ -418,7 +418,7 @@ export default function AuthenticatedHome() {
           .from('songs')
           .select('id, title, artist_name, cover_url, plays, audio_url, duration, genre')
           .order('plays', { ascending: false })
-          .limit(100);
+          .limit(50);
 
         startSongQueue((data || []) as unknown as Song[], itemTitle);
       }
@@ -624,12 +624,13 @@ export default function AuthenticatedHome() {
           <SongGridSkeleton />
         ) : dailyTrendingSongs.length > 0 ? (
           <div className={HOME_SONG_GRID_CLASSES}>
-            {dailyTrendingSongs.map((song) => (
+            {dailyTrendingSongs.map((song, idx) => (
               <SongCard
                 key={`trending-${song.id}`}
                 song={song}
                 creatorName={song.creatorName}
                 compact
+                priority={idx < 4}
               />
             ))}
           </div>
@@ -646,12 +647,13 @@ export default function AuthenticatedHome() {
           <SongGridSkeleton />
         ) : recommendedSongs.length > 0 ? (
           <div className={HOME_SONG_GRID_CLASSES}>
-            {recommendedSongs.map((song) => (
+            {recommendedSongs.map((song, idx) => (
               <SongCard
                 key={`recommended-${song.id}`}
                 song={song}
                 creatorName={song.creatorName}
                 compact
+                priority={idx < 4}
               />
             ))}
           </div>

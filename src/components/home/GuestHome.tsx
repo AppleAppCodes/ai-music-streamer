@@ -60,7 +60,7 @@ export default function GuestHome({ songs }: { songs: GuestSong[] }) {
           <SectionTitle>{t('guestHome.trendingSongs')}</SectionTitle>
           {songs.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-              {songs.slice(0, 12).map((song) => (
+              {songs.slice(0, 12).map((song, idx) => (
                 <Link
                   key={song.id}
                   href="/login"
@@ -73,7 +73,8 @@ export default function GuestHome({ songs }: { songs: GuestSong[] }) {
                         alt={song.title} 
                         fill 
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 20vw, 150px"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105" 
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        priority={idx < 4}
                       />
                     ) : (
                       <Music className="h-12 w-12 text-white/20" />
