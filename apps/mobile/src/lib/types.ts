@@ -22,6 +22,7 @@ export interface FeedClip {
 export interface FeedPreviewSong extends Song {
   clip?: FeedClip | null;
   likes_count?: number;
+  isLiked?: boolean;
 }
 
 export interface Playlist {

@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useRef, useState, memo } from 'react';
 import { useAuth } from '../lib/auth-context';
-import { loadFeedPreview } from '../lib/music-data';
+import { loadFeedPreview, loadFollowingFeed, loadExploreFeed, toggleLike } from '../lib/music-data';
 import { usePlayerControls } from '../lib/player-context';
 import type { FeedPreviewSong } from '../lib/types';
 import { theme } from '../theme';
@@ -100,6 +100,8 @@ const FeedItem = memo(function FeedItem({
   onPlayFull,
   onTogglePlay,
   shouldLoadVideo,
+  isLiked,
+  onToggleLike,
 }: {
   itemHeight: number;
   itemWidth: number;
@@ -110,6 +112,8 @@ const FeedItem = memo(function FeedItem({
   onPlayFull: (item: FeedPreviewSong) => void;
   onTogglePlay: () => void;
   shouldLoadVideo: boolean;
+  isLiked: boolean;
+  onToggleLike: (item: FeedPreviewSong) => void;
 }) {
   return (
     <View style={[styles.feedItem, { width: itemWidth, height: itemHeight }]}>
@@ -148,8 +152,8 @@ const FeedItem = memo(function FeedItem({
           <Ionicons name={isActive && isCurrentSong && isPlaying ? "pause-circle" : "play-circle"} size={44} color="white" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="heart" size={32} color={isActive ? theme.colors.primary : "white"} />
+        <TouchableOpacity style={styles.actionButton} onPress={() => onToggleLike(item)}>
+          <Ionicons name="heart" size={32} color={isLiked ? theme.colors.primary : "white"} />
           <Text style={styles.actionText}>{item.likes_count ?? 0}</Text>
         </TouchableOpacity>
 
@@ -163,12 +167,11 @@ const FeedItem = memo(function FeedItem({
 }, (previous, next) => (
   previous.item.id === next.item.id
   && previous.item.likes_count === next.item.likes_count
-  && previous.itemHeight === next.itemHeight
-  && previous.itemWidth === next.itemWidth
   && previous.isActive === next.isActive
   && previous.isCurrentSong === next.isCurrentSong
   && previous.isPlaying === next.isPlaying
   && previous.shouldLoadVideo === next.shouldLoadVideo
+  && previous.isLiked === next.isLiked
 ));
 
 export function ForYouScreen() {
@@ -177,10 +180,12 @@ export function ForYouScreen() {
   const { user } = useAuth();
   const { height: itemHeight, width: itemWidth } = useWindowDimensions();
   const { activeSong, isPlaying, playSong, toggle, setQueue } = usePlayerControls();
+  const [activeFeed, setActiveFeed] = useState<'foryou' | 'following' | 'explore'>('foryou');
   const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [likedSongsMap, setLikedSongsMap] = useState<Record<string, boolean>>({});
 
   // Track currently visible item to avoid playing the same song repeatedly
   const currentHookSongId = useRef<string | null>(null);
@@ -197,15 +202,28 @@ export function ForYouScreen() {
       setError(null);
 
       try {
-        const nextSongs = await loadFeedPreview(user.id);
+        let nextSongs: FeedPreviewSong[] = [];
+        if (activeFeed === 'foryou') {
+          nextSongs = await loadFeedPreview(user.id);
+        } else if (activeFeed === 'following') {
+          nextSongs = await loadFollowingFeed(user.id);
+        } else if (activeFeed === 'explore') {
+          nextSongs = await loadExploreFeed(user.id);
+        }
+        
         if (mounted) {
+          const initialLikedMap: Record<string, boolean> = {};
+          nextSongs.forEach(s => {
+            if (s.isLiked) initialLikedMap[s.id] = true;
+          });
+          setLikedSongsMap(initialLikedMap);
           currentHookSongId.current = null;
           setActiveIndex(0);
           setSongs(nextSongs);
         }
       } catch (loadError) {
         if (mounted) {
-          setError(loadError instanceof Error ? loadError.message : 'Fuer dich konnte nicht geladen werden.');
+          setError(loadError instanceof Error ? loadError.message : 'Feed konnte nicht geladen werden.');
         }
       } finally {
         if (mounted) setLoading(false);
@@ -214,7 +232,7 @@ export function ForYouScreen() {
 
     load();
     return () => { mounted = false; };
-  }, [user]);
+  }, [user, activeFeed]);
 
   const startHookPlayback = useCallback((song: FeedPreviewSong, force = false) => {
     if (!force && currentHookSongId.current === song.id && activeSong?.id === song.id) return;
@@ -296,6 +314,22 @@ export function ForYouScreen() {
     index,
   }), [itemHeight]);
 
+  const handleToggleLike = useCallback(async (item: FeedPreviewSong) => {
+    if (!user) return;
+    const isCurrentlyLiked = !!likedSongsMap[item.id];
+    const newStatus = !isCurrentlyLiked;
+    
+    setLikedSongsMap(prev => ({ ...prev, [item.id]: newStatus }));
+    setSongs(prev => prev.map(s => s.id === item.id ? { ...s, likes_count: (s.likes_count ?? 0) + (newStatus ? 1 : -1) } : s));
+
+    try {
+      await toggleLike(user.id, item.id, newStatus);
+    } catch (e) {
+      setLikedSongsMap(prev => ({ ...prev, [item.id]: isCurrentlyLiked }));
+      setSongs(prev => prev.map(s => s.id === item.id ? { ...s, likes_count: (s.likes_count ?? 0) + (isCurrentlyLiked ? 1 : -1) } : s));
+    }
+  }, [user, likedSongsMap]);
+
   const renderItem = useCallback(({ item, index }: { item: FeedPreviewSong; index: number }) => {
     const isActive = index === activeIndex;
     const isCurrentSong = activeSong?.id === item.id;
@@ -319,9 +353,11 @@ export function ForYouScreen() {
           }
         }}
         shouldLoadVideo={shouldLoadVideo}
+        isLiked={!!likedSongsMap[item.id]}
+        onToggleLike={handleToggleLike}
       />
     );
-  }, [activeIndex, activeSong?.id, handlePlayFull, isPlaying, itemHeight, itemWidth, startHookPlayback, toggle]);
+  }, [activeIndex, activeSong?.id, handlePlayFull, isPlaying, itemHeight, itemWidth, startHookPlayback, toggle, likedSongsMap, handleToggleLike]);
 
   if (loading) {
     return (
@@ -342,14 +378,14 @@ export function ForYouScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.topTabs, { top: Math.max(insets.top + 10, 60) }]}>
-        <TouchableOpacity activeOpacity={0.8}>
-          <Text style={[styles.topTab, styles.topTabActive]}>Für dich</Text>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveFeed('foryou')}>
+          <Text style={[styles.topTab, activeFeed === 'foryou' && styles.topTabActive]}>Für dich</Text>
         </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.6} onPress={() => Alert.alert('Bald verfügbar', 'Dieser Feed kommt in einem der nächsten Updates.')}>
-          <Text style={styles.topTab}>Gefolgt</Text>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveFeed('following')}>
+          <Text style={[styles.topTab, activeFeed === 'following' && styles.topTabActive]}>Gefolgt</Text>
         </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.6} onPress={() => Alert.alert('Bald verfügbar', 'Dieser Feed kommt in einem der nächsten Updates.')}>
-          <Text style={styles.topTab}>Explore</Text>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveFeed('explore')}>
+          <Text style={[styles.topTab, activeFeed === 'explore' && styles.topTabActive]}>Explore</Text>
         </TouchableOpacity>
       </View>
 
@@ -357,7 +393,7 @@ export function ForYouScreen() {
         data={songs}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        extraData={`${activeIndex}:${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}:${itemHeight}:${itemWidth}`}
+        extraData={`${activeIndex}:${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}:${itemHeight}:${itemWidth}:${JSON.stringify(likedSongsMap)}`}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={itemHeight}
