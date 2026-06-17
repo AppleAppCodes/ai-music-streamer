@@ -281,22 +281,22 @@ export async function loadFollowingFeed(userId: string): Promise<FeedPreviewSong
   const signalsPromise = loadSongSignals(userId);
   
   const { data: followsData, error: followsError } = await client
-    .from('user_follows')
-    .select('following_id')
-    .eq('follower_id', userId);
+    .from('follows')
+    .select('artist_name')
+    .eq('user_id', userId);
     
   if (followsError) throw new Error(followsError.message);
   
-  const followingIds = (followsData || []).map(f => f.following_id);
+  const followingNames = (followsData || []).map(f => f.artist_name);
   
-  if (followingIds.length === 0) return [];
+  if (followingNames.length === 0) return [];
   
   const feedQuery = await client
     .from('songs')
     .select(
       `${SONG_SELECT_WITH_PROFILE}, song_feed_clips(song_id, video_url, hook_start_seconds, hook_end_seconds), song_feed_stats(song_id, likes_count)`,
     )
-    .in('creator_id', followingIds)
+    .in('artist_name', followingNames)
     .order('created_at', { ascending: false })
     .limit(30);
 
