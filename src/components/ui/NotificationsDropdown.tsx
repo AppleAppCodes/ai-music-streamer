@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Circle } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import Link from 'next/link';
+
 import { useRouter } from 'next/navigation';
 
 interface Notification {

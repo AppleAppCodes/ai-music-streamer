@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Library, Search, Sparkles, Upload } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { isAdminUser, isCreatorUser } from '@/lib/admin';
+import { isCreatorUser } from '@/lib/admin';
 import { useState } from 'react';
 
 const BASE_NAV_ITEMS = [

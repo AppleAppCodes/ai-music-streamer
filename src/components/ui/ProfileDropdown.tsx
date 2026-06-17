@@ -38,6 +38,7 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
         className="w-8 h-8 rounded-full overflow-hidden border border-purple-500/30 hover:border-purple-500 transition-all focus:outline-none focus:ring-2 focus:ring-purple-500/50"
       >
         {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-purple-900/40 flex items-center justify-center text-purple-300">

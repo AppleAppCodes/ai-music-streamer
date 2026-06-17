@@ -70,7 +70,7 @@ export default function PlaylistsPage() {
       if (playlistsRes.data) setPlaylists(playlistsRes.data);
       if (savedRes.data) {
         const mapped = savedRes.data
-          .map((item: any) => item.playlist)
+          .map((item: Record<string, unknown>) => item.playlist)
           .filter(Boolean) as SavedPlaylist[];
         setSavedPlaylists(mapped);
       }

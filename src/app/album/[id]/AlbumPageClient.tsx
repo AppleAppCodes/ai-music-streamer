@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X } from 'lucide-react';
+import { Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, X } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
@@ -230,8 +230,6 @@ export default function AlbumPageClient({ albumId }: { albumId: string }) {
   }
 
   if (!album) return null;
-
-  const isAnyPlaying = songs.some(s => s.id === currentSong?.id) && isPlaying;
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">

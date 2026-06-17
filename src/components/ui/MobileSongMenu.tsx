@@ -73,7 +73,8 @@ export default function MobileSongMenu({ song }: { song: Song }) {
 
               {/* Header */}
               <div className="flex items-center gap-4 px-6 py-4 border-b border-white/5">
-                <img src={song.cover_url} alt={song.title} className="w-14 h-14 rounded-md object-cover shadow-md" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={song.cover_url} alt={song.title} className="w-12 h-12 rounded object-cover shadow-md bg-[#282828]" />
                 <div className="flex flex-col min-w-0">
                   <span className="text-lg font-bold text-white truncate">{song.title}</span>
                   <span className="text-sm text-white/60 truncate">{displayArtist}</span>

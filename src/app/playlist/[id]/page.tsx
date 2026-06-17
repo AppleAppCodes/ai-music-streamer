@@ -14,7 +14,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
-import { isAdminUser, isModUser } from '@/lib/admin';
+import { isModUser } from '@/lib/admin';
 import { useTranslation } from 'react-i18next';
 
 function formatDuration(seconds: number | null | undefined): string {
@@ -139,7 +139,7 @@ export default function PlaylistPage() {
           .limit(20);
           
         if (!error && latestSongs) {
-          setSongs(latestSongs as any);
+          setSongs(latestSongs as unknown as Song[]);
         }
         setLoading(false);
         return;
@@ -201,7 +201,7 @@ export default function PlaylistPage() {
     }
     
     loadPlaylistData();
-  }, [playlistId, supabase, router]);
+  }, [playlistId, supabase, router, t]);
 
   useEffect(() => {
     if (!shouldOpenAddSearch || loading || !isOwner) return;

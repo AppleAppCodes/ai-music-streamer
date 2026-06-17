@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, Zap, Sparkles, AudioWaveform, ArrowRight, ShieldCheck, Headphones } from 'lucide-react';
-import Link from 'next/link';
+import { CheckCircle2, Sparkles, ArrowRight, ShieldCheck, Headphones } from 'lucide-react';
 
 export default function ProPricingPage() {
   const [isLoading, setIsLoading] = useState(false);

@@ -77,15 +77,17 @@ export default function LikedSongsPage() {
     dedupingInterval: 60000
   });
 
-  useEffect(() => {
+  const [prevSwrData, setPrevSwrData] = useState<unknown>(null);
+  if (swrData !== prevSwrData) {
+    setPrevSwrData(swrData);
     if (swrData) {
       setSongs(swrData.songs);
       setUser(swrData.user);
       setLoading(false);
-    } else if (!isLoading) {
-      setLoading(false);
     }
-  }, [swrData, isLoading]);
+  } else if (!swrData && !isLoading && loading) {
+    setLoading(false);
+  }
 
   // Close dropdown on outside click
   useEffect(() => {

@@ -187,7 +187,6 @@ export default function SettingsPage() {
 
   const handleZoomChange = (newZoom: number) => {
     setZoom(newZoom);
-    // @ts-ignore - zoom is non-standard but widely supported
     document.documentElement.style.zoom = `${newZoom}%`;
     if (hasPreferenceStorageConsent()) {
       window.localStorage.setItem('ai-stream-zoom', String(newZoom));
@@ -203,7 +202,7 @@ export default function SettingsPage() {
         try {
           const cacheNames = await window.caches.keys();
           await Promise.all(cacheNames.map(name => window.caches.delete(name)));
-        } catch (e) {}
+        } catch {}
       }
       
       alert('Der Cache wurde erfolgreich geleert. Die App wird nun neu geladen.');
@@ -243,6 +242,7 @@ export default function SettingsPage() {
               <div className="flex flex-col items-center gap-4">
                 <div className="relative w-32 h-32 rounded-full overflow-hidden bg-black border-4 border-[#282828] shadow-xl group">
                   {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={avatarUrl} alt="Profilbild" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-purple-900/20 flex flex-col items-center justify-center text-purple-400">

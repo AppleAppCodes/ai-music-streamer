@@ -241,6 +241,7 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
                     <Plus className="w-5 h-5 text-white" />
                   )}
                   {playlist.cover_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={playlist.cover_url} alt={playlist.title} className="w-12 h-12 rounded object-cover shadow-md bg-[#282828]" />
                   ) : (
                     <div className="w-12 h-12 rounded bg-[#282828] flex items-center justify-center shadow-md">

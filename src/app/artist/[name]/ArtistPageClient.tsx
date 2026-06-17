@@ -511,6 +511,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
       {/* Background Banner */}
       <div className="absolute top-0 left-0 right-0 h-[600px] overflow-hidden pointer-events-none z-0">
         {bannerUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img 
             src={bannerUrl} 
             alt="Banner" 

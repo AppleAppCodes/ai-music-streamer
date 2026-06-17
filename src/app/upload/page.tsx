@@ -579,6 +579,7 @@ export default function UploadPage() {
 
               {coverFile ? (
                 <div className="absolute inset-0 z-0 opacity-40">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={URL.createObjectURL(coverFile)} alt="Cover preview" className="w-full h-full object-cover blur-sm" />
                 </div>
               ) : null}

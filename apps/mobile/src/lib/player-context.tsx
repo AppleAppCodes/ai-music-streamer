@@ -373,33 +373,35 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!activeSong || finishEventConsumedRef.current) return;
     finishEventConsumedRef.current = true;
 
-    if (isAdPlaying) {
-      setIsAdPlaying(false);
-      setSongsPlayed(0);
+    setTimeout(() => {
+      if (isAdPlaying) {
+        setIsAdPlaying(false);
+        setSongsPlayed(0);
 
-      if (supabase) {
-        supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single().then(({ data }) => {
-          if (data) setAdFrequency(data.ad_frequency);
+        if (supabase) {
+          supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single().then(({ data }) => {
+            if (data) setAdFrequency(data.ad_frequency);
+          });
+        }
+
+        if (pendingSongToPlayAfterAd) {
+          void playSong(pendingSongToPlayAfterAd);
+          setPendingSongToPlayAfterAd(null);
+        } else {
+          playNext();
+        }
+        return;
+      }
+
+      if (repeatMode === 'one') {
+        void player.seekTo(0, 0, 0).then(() => {
+          player.play();
         });
+        return;
       }
 
-      if (pendingSongToPlayAfterAd) {
-        void playSong(pendingSongToPlayAfterAd);
-        setPendingSongToPlayAfterAd(null);
-      } else {
-        playNext();
-      }
-      return;
-    }
-
-    if (repeatMode === 'one') {
-      void player.seekTo(0, 0, 0).then(() => {
-        player.play();
-      });
-      return;
-    }
-
-    playNext();
+      playNext();
+    }, 0);
   }, [activeSong, status.didJustFinish, repeatMode, playNext, player, isAdPlaying, pendingSongToPlayAfterAd, playSong]);
 
   const value = useMemo<PlayerContextValue>(

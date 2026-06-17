@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, LogIn, Search, Download } from 'lucide-react';
+import { LogIn, Search, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ProfileDropdown from '@/components/ui/ProfileDropdown';
 import NotificationsDropdown from '@/components/ui/NotificationsDropdown';
@@ -44,22 +44,29 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
     } else {
       notifyPlayerForceSignOut();
     }
-    
-    setIsElectron(
-      navigator.userAgent.toLowerCase().includes('electron') ||
-      ('process' in window && !!(window as any).process?.versions?.electron) ||
-      navigator.userAgent.toLowerCase().includes('yoriax') ||
-      window.matchMedia('(display-mode: standalone)').matches
-    );
   }, [user]);
+
+  useEffect(() => {
+    const isElectronEnv = navigator.userAgent.toLowerCase().includes('electron') ||
+      ('process' in window && !!(window as unknown as { process?: { versions?: { electron?: string } } }).process?.versions?.electron) ||
+      navigator.userAgent.toLowerCase().includes('yoriax') ||
+      window.matchMedia('(display-mode: standalone)').matches;
+    
+    setTimeout(() => {
+      setIsElectron(isElectronEnv);
+    }, 0);
+  }, []);
 
   // Debounced search
   useEffect(() => {
     const trimmedQuery = searchQuery.trim();
     if (trimmedQuery.length < 2) {
-      setSearchSongsResult([]);
-      setSearchArtistsResult([]);
-      return;
+      // Use a timeout to avoid synchronous setState warning, or rely on onChange
+      const timer = setTimeout(() => {
+        setSearchSongsResult(prev => prev.length ? [] : prev);
+        setSearchArtistsResult(prev => prev.length ? [] : prev);
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     let isActive = true;

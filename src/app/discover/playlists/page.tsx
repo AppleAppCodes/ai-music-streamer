@@ -62,14 +62,16 @@ export default function DiscoverPlaylistsPage() {
 
   const { data: swrData, error: swrError, isLoading } = useSWR(
     ['discover_playlists', debouncedSearchQuery],
-    ([_, query]) => fetchPlaylists(query as string),
+    ([, query]) => fetchPlaylists(query as string),
     {
       revalidateOnFocus: false,
       dedupingInterval: 60000
     }
   );
 
-  useEffect(() => {
+  const [prevSwrData, setPrevSwrData] = useState<unknown>(null);
+  if (swrData !== prevSwrData) {
+    setPrevSwrData(swrData);
     if (swrData) {
       const fetchedPlaylists = swrData.map((playlist) => ({
         ...playlist,
@@ -87,27 +89,27 @@ export default function DiscoverPlaylistsPage() {
         created_at: new Date().toISOString(),
         is_official: true,
         profiles: { username: 'YORIAX Team' }
-      });
-
+      } as unknown as Playlist);
+      
       setPlaylists(fetchedPlaylists);
       setError(null);
       setLoading(false);
-    } else if (swrError) {
-      setPlaylists([{
-        id: 'daily-new-releases',
-        title: t('playlists.dailyNewReleases.title'),
-        description: t('playlists.dailyNewReleases.description'),
-        cover_url: null,
-        created_at: new Date().toISOString(),
-        is_official: true,
-        profiles: { username: 'YORIAX Team' }
-      }]);
-      setError(swrError.message);
-      setLoading(false);
-    } else if (!isLoading) {
-      setLoading(false);
     }
-  }, [swrData, swrError, isLoading, t]);
+  } else if (swrError && loading) {
+    setPlaylists([{
+      id: 'daily-new-releases',
+      title: t('playlists.dailyNewReleases.title'),
+      description: t('playlists.dailyNewReleases.description'),
+      cover_url: null,
+      created_at: new Date().toISOString(),
+      is_official: true,
+      profiles: { username: 'YORIAX Team' }
+    } as unknown as Playlist]);
+    setError(swrError.message);
+    setLoading(false);
+  } else if (!swrData && !isLoading && loading) {
+    setLoading(false);
+  }
 
   const officialPlaylists = useMemo(() => playlists.filter((playlist) => playlist.is_official), [playlists]);
   const communityPlaylists = useMemo(() => playlists.filter((playlist) => !playlist.is_official), [playlists]);

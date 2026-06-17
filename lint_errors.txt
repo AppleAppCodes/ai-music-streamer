@@ -1,0 +1,206 @@
+
+> ai-music-streamer@0.1.0 lint
+> eslint
+
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/apps/mobile/src/lib/player-context.tsx
+  377:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/apps/mobile/src/lib/player-context.tsx:377:7
+  375 |
+  376 |     if (isAdPlaying) {
+> 377 |       setIsAdPlaying(false);
+      |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  378 |       setSongsPlayed(0);
+  379 |
+  380 |       if (supabase) {  react-hooks/set-state-in-effect
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/admin/page.tsx
+   15:14  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+   64:42  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+   68:42  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  215:47  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/admin/page.tsx:215:47
+  213 |
+  214 |       const audioExt = file.name.split('.').pop();
+> 215 |       const audioPath = `${userId}/replaced_${Date.now()}_song.${audioExt}`;
+      |                                               ^^^^^^^^^^ Cannot call impure function
+  216 |
+  217 |       const { error: uploadError } = await supabase.storage
+  218 |         .from('songs')  react-hooks/purity
+  235:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  260:80  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  261:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  302:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  317:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  328:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  561:27  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @next/next/no-img-element
+  569:40  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  570:40  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  571:40  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  591:46  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/album/[id]/AlbumPageClient.tsx
+    7:78  warning  'Globe' is defined but never used                  @typescript-eslint/no-unused-vars
+    7:85  warning  'Lock' is defined but never used                   @typescript-eslint/no-unused-vars
+  234:9   warning  'isAnyPlaying' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/api/checkout/route.ts
+  22:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/artist/[name]/ArtistPageClient.tsx
+  514:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/artists/page.tsx
+  224:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/artists/page.tsx:224:7
+  222 |   useEffect(() => {
+  223 |     if (swrData) {
+> 224 |       setArtists(swrData.artists);
+      |       ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  225 |       setUser(swrData.user);
+  226 |       if (swrData.videoUrl) setVideoUrl(swrData.videoUrl);
+  227 |       setLoading(false);  react-hooks/set-state-in-effect
+  408:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @next/next/no-img-element
+  474:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @next/next/no-img-element
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/collection/tracks/page.tsx
+  82:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/collection/tracks/page.tsx:82:7
+  80 |   useEffect(() => {
+  81 |     if (swrData) {
+> 82 |       setSongs(swrData.songs);
+     |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  83 |       setUser(swrData.user);
+  84 |       setLoading(false);
+  85 |     } else if (!isLoading) {  react-hooks/set-state-in-effect
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/discover/playlists/page.tsx
+  65:7  warning  '_' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  92:7  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/discover/playlists/page.tsx:92:7
+  90 |       });
+  91 |
+> 92 |       setPlaylists(fetchedPlaylists);
+     |       ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  93 |       setError(null);
+  94 |       setLoading(false);
+  95 |     } else if (swrError) {  react-hooks/set-state-in-effect
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/download/page.tsx
+  3:29  warning  'Music' is defined but never used       @typescript-eslint/no-unused-vars
+  8:11  warning  't' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/playlist/[id]/page.tsx
+   17:10  warning  'isAdminUser' is defined but never used                                                               @typescript-eslint/no-unused-vars
+  142:35  error    Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  204:6   warning  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/playlists/page.tsx
+  73:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/pro/page.tsx
+  4:24  warning  'Zap' is defined but never used            @typescript-eslint/no-unused-vars
+  4:39  warning  'AudioWaveform' is defined but never used  @typescript-eslint/no-unused-vars
+  5:8   warning  'Link' is defined but never used           @typescript-eslint/no-unused-vars
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/settings/page.tsx
+  190:5   error    Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free                                                                                                                                                                      @typescript-eslint/ban-ts-comment
+  206:18  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  246:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/app/upload/page.tsx
+  582:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/components/layout/HeaderClient.tsx
+   6:10  warning  'Bell' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  48:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/components/layout/HeaderClient.tsx:48:5
+  46 |     }
+  47 |     
+> 48 |     setIsElectron(
+     |     ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  49 |       navigator.userAgent.toLowerCase().includes('electron') ||
+  50 |       ('process' in window && !!(window as any).process?.versions?.electron) ||
+  51 |       navigator.userAgent.toLowerCase().includes('yoriax') ||  react-hooks/set-state-in-effect
+  50:44  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  60:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/components/layout/HeaderClient.tsx:60:7
+  58 |     const trimmedQuery = searchQuery.trim();
+  59 |     if (trimmedQuery.length < 2) {
+> 60 |       setSearchSongsResult([]);
+     |       ^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  61 |       setSearchArtistsResult([]);
+  62 |       return;
+  63 |     }                                                               react-hooks/set-state-in-effect
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/components/layout/MobileNavigationClient.tsx
+  7:10  warning  'isAdminUser' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/components/layout/PlayerLayout.tsx
+  36:9  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/components/ui/AddToPlaylistModal.tsx
+  244:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/components/ui/MobileSongMenu.tsx
+  76:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/components/ui/NotificationsDropdown.tsx
+  7:8  warning  'Link' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/components/ui/ProfileDropdown.tsx
+  41:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/davidhein/.gemini/antigravity/scratch/ai-music-streamer/src/components/ui/ReportDialog.tsx
+   58:19  error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  100:37  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  100:50  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+✖ 54 problems (30 errors, 24 warnings)
+

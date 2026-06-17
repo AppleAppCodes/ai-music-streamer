@@ -1,11 +1,9 @@
 'use client';
 
-import { Download, Monitor, Music, Zap, ShieldCheck } from 'lucide-react';
+import { Download, Monitor, Zap, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
-import { useTranslation } from 'react-i18next';
 
 export default function DownloadPage() {
-  const { t } = useTranslation();
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#0A0A0A] pb-32">

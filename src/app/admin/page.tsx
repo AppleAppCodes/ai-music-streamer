@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft, Radio, UploadCloud, Loader2, Edit2, FileAudio, Terminal, Play, Heart, Activity, UserPlus } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { isAdminUser, isModUser } from '@/lib/admin';
 
 type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot';
@@ -12,7 +13,7 @@ type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot';
 interface McpLog {
   id: string;
   tool_name: string;
-  arguments: any;
+  arguments: Record<string, unknown>;
   response_summary: string;
   created_at: string;
 }
@@ -28,6 +29,7 @@ interface ProfileData {
   followers_count: number;
   avatar_url?: string;
   is_banned?: boolean;
+  role?: string;
 }
 
 interface SongData {
@@ -54,18 +56,36 @@ function openTrustedExternalUrl(value?: string | null) {
   }
 }
 
-export default function AdminDashboard() {
+interface Report {
+  id: string;
+  status: string;
+  entity_type: string;
+  entity_id: string;
+  reason: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+interface AdFile {
+  id?: string | number;
+  name: string;
+  created_at?: string;
+  metadata?: { size?: number; [key: string]: unknown };
+  [key: string]: unknown;
+}
+export default function AdminPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isFullAdmin, setIsFullAdmin] = useState(false);
   const [profiles, setProfiles] = useState<ProfileData[]>([]);
   const [songs, setSongs] = useState<SongData[]>([]);
-  const [reports, setReports] = useState<any[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isUploadingAd, setIsUploadingAd] = useState(false);
   const [uploadAdStatus, setUploadAdStatus] = useState<string | null>(null);
-  const [adFiles, setAdFiles] = useState<any[]>([]);
+  const [adFiles, setAdFiles] = useState<AdFile[]>([]);
   const [isReplacingAudio, setIsReplacingAudio] = useState<string | null>(null);
   const [mcpLogs, setMcpLogs] = useState<McpLog[]>([]);
 
@@ -78,7 +98,7 @@ export default function AdminDashboard() {
   const [adFrequency, setAdFrequency] = useState(3);
   const [isSavingAdFreq, setIsSavingAdFreq] = useState(false);
 
-  const router = useRouter();
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -141,7 +161,7 @@ export default function AdminDashboard() {
         const { data: adsData } = await supabase.storage.from('ads').list();
         if (adsData) {
           // Filter out hidden files like .emptyFolderPlaceholder
-          setAdFiles(adsData.filter(f => f.name !== '.emptyFolderPlaceholder'));
+          setAdFiles(adsData.filter(f => f.name !== '.emptyFolderPlaceholder') as unknown as AdFile[]);
         }
 
         // Load MCP Logs
@@ -212,6 +232,7 @@ export default function AdminDashboard() {
       const userId = session?.user?.id || 'admin';
 
       const audioExt = file.name.split('.').pop();
+      // eslint-disable-next-line react-hooks/purity
       const audioPath = `${userId}/replaced_${Date.now()}_song.${audioExt}`;
 
       const { error: uploadError } = await supabase.storage
@@ -232,8 +253,8 @@ export default function AdminDashboard() {
       if (updateError) throw updateError;
 
       alert('Audiodatei erfolgreich ausgetauscht!');
-    } catch (err: any) {
-      alert('Fehler beim Austauschen der Audiodatei: ' + err.message);
+    } catch (err: unknown) {
+      alert('Fehler beim Austauschen der Audiodatei: ' + (err as Error).message);
     } finally {
       setIsReplacingAudio(null);
       event.target.value = '';
@@ -257,16 +278,16 @@ export default function AdminDashboard() {
     try {
       const { error } = await supabase.rpc('set_user_role', { target_user_id: id, new_role: newRole });
       if (error) throw error;
-      setProfiles(prev => prev.map(p => p.id === id ? { ...p, role: newRole as any } : p));
-    } catch (err: any) {
-      alert('Fehler beim Ändern der Rolle: ' + err.message);
+      setProfiles(prev => prev.map(p => p.id === id ? { ...p, role: newRole } : p));
+    } catch (err: unknown) {
+      alert('Fehler beim Ändern der Rolle: ' + (err as Error).message);
     }
   };
 
   const loadAds = async () => {
     const { data: adsData } = await supabase.storage.from('ads').list();
     if (adsData) {
-      setAdFiles(adsData.filter(f => f.name !== '.emptyFolderPlaceholder'));
+      setAdFiles(adsData.filter(f => f.name !== '.emptyFolderPlaceholder') as unknown as AdFile[]);
     }
   };
 
@@ -299,9 +320,9 @@ export default function AdminDashboard() {
       event.target.value = '';
       await loadAds();
       setTimeout(() => setUploadAdStatus(null), 5000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setUploadAdStatus(null);
-      alert('Fehler beim Hochladen der Werbung: ' + err.message);
+      alert('Fehler beim Hochladen der Werbung: ' + (err as Error).message);
     } finally {
       setIsUploadingAd(false);
     }
@@ -314,8 +335,8 @@ export default function AdminDashboard() {
       const { error } = await supabase.storage.from('ads').remove([fileName]);
       if (error) throw error;
       await loadAds();
-    } catch (err: any) {
-      alert('Fehler beim Löschen der Werbung: ' + err.message);
+    } catch (err: unknown) {
+      alert('Fehler beim Löschen der Werbung: ' + (err as Error).message);
     }
   };
 
@@ -325,8 +346,8 @@ export default function AdminDashboard() {
       const { error } = await supabase.from('app_settings').update({ ad_frequency: adFrequency }).eq('id', 'global');
       if (error) throw error;
       alert('Werbe-Intervall erfolgreich gespeichert!');
-    } catch (err: any) {
-      alert('Fehler beim Speichern des Werbe-Intervalls: ' + err.message);
+    } catch (err: unknown) {
+      alert('Fehler beim Speichern des Werbe-Intervalls: ' + (err as Error).message);
     } finally {
       setIsSavingAdFreq(false);
     }
@@ -558,7 +579,7 @@ export default function AdminDashboard() {
                     <tr key={profile.id} className="hover:bg-white/5 transition-colors">
                       <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
                         {profile.avatar_url ? (
-                          <img src={profile.avatar_url} alt={profile.username} className="w-8 h-8 rounded-full object-cover shadow-md" />
+                          <Image src={profile.avatar_url} alt={profile.username} width={32} height={32} className="rounded-full object-cover shadow-md" />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shadow-md">
                             {profile.username?.[0]?.toUpperCase() || '?'}
@@ -566,9 +587,9 @@ export default function AdminDashboard() {
                         )}
                         <span className="flex items-center gap-2">
                           {profile.username || 'Unbekannt'}
-                          {(profile as any).role === 'admin' && <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase">Admin</span>}
-                          {(profile as any).role === 'mod' && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-bold uppercase">Mod</span>}
-                          {(profile as any).role === 'creator' && <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-bold uppercase">Creator</span>}
+                          {profile.role === 'admin' && <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase">Admin</span>}
+                          {profile.role === 'mod' && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-bold uppercase">Mod</span>}
+                          {profile.role === 'creator' && <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-bold uppercase">Creator</span>}
                           {profile.is_banned && <span className="text-[10px] bg-red-500/20 text-red-500 px-2 py-0.5 rounded-full font-bold uppercase">Gesperrt</span>}
                         </span>
                       </td>
@@ -588,7 +609,7 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
                         <select
                           className="bg-white/5 border border-white/10 rounded-md text-xs px-2 py-1.5 text-white/80 focus:outline-none focus:border-indigo-500"
-                          value={(profile as any).role || 'user'}
+                          value={profile.role || 'user'}
                           onChange={(e) => handleRoleChange(profile.id, e.target.value, profile.username)}
                         >
                           <option value="user">User</option>
@@ -908,7 +929,7 @@ export default function AdminDashboard() {
                               <div className="truncate">
                                 <p className="text-sm font-medium text-white truncate">{file.name}</p>
                                 <p className="text-xs text-white/50">
-                                  {new Date(file.created_at).toLocaleDateString('de-DE')} • {(file.metadata?.size / 1024 / 1024).toFixed(2)} MB
+                                  {file.created_at ? new Date(file.created_at).toLocaleDateString('de-DE') : 'Unbekannt'} • {(((file.metadata?.size as number) || 0) / 1024 / 1024).toFixed(2)} MB
                                 </p>
                               </div>
                             </div>

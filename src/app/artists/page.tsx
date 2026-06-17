@@ -219,16 +219,18 @@ export default function ArtistsPage() {
     dedupingInterval: 60000
   });
 
-  useEffect(() => {
+  const [prevSwrData, setPrevSwrData] = useState<unknown>(null);
+  if (swrData !== prevSwrData) {
+    setPrevSwrData(swrData);
     if (swrData) {
       setArtists(swrData.artists);
       setUser(swrData.user);
       if (swrData.videoUrl) setVideoUrl(swrData.videoUrl);
       setLoading(false);
-    } else if (!isLoading) {
-      setLoading(false);
     }
-  }, [swrData, isLoading]);
+  } else if (!swrData && !isLoading && loading) {
+    setLoading(false);
+  }
 
   const handleSaveOrder = async () => {
     setIsSavingOrder(true);
@@ -405,7 +407,10 @@ export default function ArtistsPage() {
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-black/50">
                       {artist.coverUrl ? (
-                        <img src={artist.coverUrl} className="w-full h-full object-cover" alt={artist.name} />
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={artist.coverUrl} className="w-full h-full object-cover" alt={artist.name} />
+                        </>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Mic2 className="w-8 h-8 text-white/30" />
@@ -471,6 +476,7 @@ export default function ArtistsPage() {
                       className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/[0.05] transition-colors group"
                     >
                       <div className="w-14 h-14 rounded-full overflow-hidden bg-white/5 shrink-0 relative shadow-md">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={artist.coverUrl} alt={artist.name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex flex-col flex-1 min-w-0">

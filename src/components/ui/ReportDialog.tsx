@@ -55,7 +55,7 @@ export default function ReportDialog({ entityType, entityId, entityName, trigger
         setSuccess(false);
         setSelectedReason('');
       }, 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error reporting:', err);
       alert('Fehler beim Senden der Meldung. Bitte später erneut versuchen.');
     } finally {
@@ -97,7 +97,7 @@ export default function ReportDialog({ entityType, entityId, entityName, trigger
                 </div>
                 <h4 className="text-lg font-bold text-white mb-2">Vielen Dank!</h4>
                 <p className="text-white/60 text-sm">
-                  Deine Meldung für "{entityName}" wurde eingereicht. Unser Team wird das schnellstmöglich prüfen.
+                  Deine Meldung für &quot;{entityName}&quot; wurde eingereicht. Unser Team wird das schnellstmöglich prüfen.
                 </p>
               </div>
             ) : (

@@ -19,7 +19,8 @@ export async function POST(request: Request) {
     }
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2023-10-16' as any,
+      // @ts-expect-error Stripe version string literal types might be newer
+      apiVersion: '2023-10-16',
     });
 
     const origin = request.headers.get('origin') || 'https://www.yoriax.com';
@@ -55,8 +56,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Stripe Checkout Error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
