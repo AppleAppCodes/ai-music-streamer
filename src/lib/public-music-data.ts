@@ -72,6 +72,7 @@ async function loadSongsByPopularity(client: SupabaseClient, limit: number) {
     .from('songs')
     .select(SONG_SELECT_WITH_PROFILE)
     .order('plays', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   if (error) throw new Error(error.message);
@@ -94,6 +95,7 @@ async function loadPublicChartSongsByPopularity(client: SupabaseClient, limit: n
     .from('songs')
     .select(PUBLIC_CHART_SONG_SELECT)
     .order('plays', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   if (error) throw new Error(error.message);
@@ -106,6 +108,8 @@ async function loadPublicCuratedViralSongs(client: SupabaseClient, limit: number
     .select(PUBLIC_CHART_SONG_SELECT)
     .not('viral_sort_order', 'is', null)
     .order('viral_sort_order', { ascending: true })
+    .order('plays', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   if (error) throw new Error(error.message);

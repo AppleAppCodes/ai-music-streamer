@@ -248,6 +248,7 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
           .from('songs')
           .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, profiles!songs_creator_id_fkey(username)')
           .order('plays', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(200),
         supabase.auth.getSession(),
       ]);
@@ -427,6 +428,7 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
           .from('songs')
           .select('id, title, artist_name, cover_url, plays, audio_url, duration, genre')
           .order('plays', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(100);
 
         startSongQueue((data || []) as unknown as Song[], itemTitle);
