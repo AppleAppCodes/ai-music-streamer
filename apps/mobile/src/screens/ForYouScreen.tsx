@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useRef, useState, memo } from 'react';
@@ -324,7 +323,7 @@ export function ForYouScreen() {
 
     try {
       await toggleLike(user.id, item.id, newStatus);
-    } catch (e) {
+    } catch {
       setLikedSongsMap(prev => ({ ...prev, [item.id]: isCurrentlyLiked }));
       setSongs(prev => prev.map(s => s.id === item.id ? { ...s, likes_count: (s.likes_count ?? 0) + (isCurrentlyLiked ? 1 : -1) } : s));
     }
