@@ -27,6 +27,7 @@ import type { FeedPreviewSong } from '../lib/types';
 import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { createAudioPlayer, preload, type AudioPlayer } from 'expo-audio';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -34,6 +35,30 @@ import type { RootStackParamList } from '../navigation/types';
 
 function getHookStart(song: FeedPreviewSong | null) {
   return Math.max(0, song?.clip?.hook_start_seconds ?? 0);
+}
+
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function easeInOut(value: number) {
+  const clamped = clamp01(value);
+  return clamped * clamped * (3 - 2 * clamped);
+}
+
+async function waitForFeedAudioReady(
+  player: AudioPlayer,
+  isCurrentRequest: () => boolean,
+  timeoutMs = 1300,
+) {
+  const startedAt = Date.now();
+
+  while (isCurrentRequest() && Date.now() - startedAt < timeoutMs) {
+    if (player.currentStatus.isLoaded) return true;
+    await new Promise((resolve) => setTimeout(resolve, 40));
+  }
+
+  return false;
 }
 
 function getIndexFromOffset(offsetY: number, itemHeight: number, itemCount: number) {
@@ -233,6 +258,14 @@ export function ForYouScreen() {
   const { user } = useAuth();
   const { height: itemHeight, width: itemWidth } = useWindowDimensions();
   const { activeSong, isPlaying, playSong, toggle, setQueue, setPreviewVolume } = usePlayerControls();
+  const crossfadePlayerRef = useRef<AudioPlayer | null>(null);
+  if (crossfadePlayerRef.current === null) {
+    crossfadePlayerRef.current = createAudioPlayer(null, {
+      keepAudioSessionActive: true,
+      preferredForwardBufferDuration: 4,
+      updateInterval: 250,
+    });
+  }
   const [activeFeed, setActiveFeed] = useState<'foryou' | 'following' | 'explore'>('foryou');
   const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -247,12 +280,102 @@ export function ForYouScreen() {
   const hookStartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollVolumeFrame = useRef<number | null>(null);
   const pendingScrollVolume = useRef(1);
+  const crossfadeSongId = useRef<string | null>(null);
+  const crossfadeIndex = useRef<number | null>(null);
+  const crossfadeVolume = useRef(0);
+  const crossfadePrepareToken = useRef(0);
+  const crossfadeFadeFrame = useRef<number | null>(null);
+
+  const setCrossfadePlayerVolume = useCallback((volume: number) => {
+    const nextVolume = clamp01(volume);
+    crossfadeVolume.current = nextVolume;
+    if (crossfadePlayerRef.current) {
+      crossfadePlayerRef.current.volume = nextVolume;
+    }
+  }, []);
+
+  const stopCrossfadePreview = useCallback((durationMs = 140) => {
+    crossfadePrepareToken.current += 1;
+
+    if (crossfadeFadeFrame.current != null) {
+      cancelAnimationFrame(crossfadeFadeFrame.current);
+      crossfadeFadeFrame.current = null;
+    }
+
+    const startVolume = crossfadeVolume.current;
+    const startedAt = Date.now();
+
+    const finish = () => {
+      setCrossfadePlayerVolume(0);
+      crossfadePlayerRef.current?.pause();
+      crossfadeSongId.current = null;
+      crossfadeIndex.current = null;
+    };
+
+    if (durationMs <= 0 || startVolume <= 0.01) {
+      finish();
+      return;
+    }
+
+    const fade = () => {
+      const progress = clamp01((Date.now() - startedAt) / durationMs);
+      setCrossfadePlayerVolume(startVolume * (1 - progress));
+
+      if (progress >= 1) {
+        finish();
+        return;
+      }
+
+      crossfadeFadeFrame.current = requestAnimationFrame(fade);
+    };
+
+    crossfadeFadeFrame.current = requestAnimationFrame(fade);
+  }, [setCrossfadePlayerVolume]);
+
+  const prepareCrossfadeSong = useCallback((index: number) => {
+    const nextSong = songs[index];
+    if (!nextSong?.audio_url || nextSong.id === currentHookSongId.current) return;
+    if (crossfadeSongId.current === nextSong.id && crossfadeIndex.current === index) return;
+
+    const token = crossfadePrepareToken.current + 1;
+    crossfadePrepareToken.current = token;
+    crossfadeSongId.current = nextSong.id;
+    crossfadeIndex.current = index;
+
+    if (crossfadeFadeFrame.current != null) {
+      cancelAnimationFrame(crossfadeFadeFrame.current);
+      crossfadeFadeFrame.current = null;
+    }
+
+    setCrossfadePlayerVolume(0);
+    const crossfadePlayer = crossfadePlayerRef.current;
+    if (!crossfadePlayer) return;
+    crossfadePlayer.pause();
+    crossfadePlayer.replace({ name: nextSong.title, uri: nextSong.audio_url });
+
+    void (async () => {
+      const isCurrentRequest = () => crossfadePrepareToken.current === token;
+      await waitForFeedAudioReady(crossfadePlayer, isCurrentRequest);
+      if (!isCurrentRequest()) return;
+
+      try {
+        await crossfadePlayer.seekTo(getHookStart(nextSong), 0, 0);
+      } catch {
+        // If a seek races the native loader, still let the preview play.
+      }
+
+      if (!isCurrentRequest()) return;
+      crossfadePlayer.play();
+      setCrossfadePlayerVolume(crossfadeVolume.current);
+    })();
+  }, [setCrossfadePlayerVolume, songs]);
 
   useEffect(() => {
     let mounted = true;
 
     async function load() {
       if (!user) return;
+      stopCrossfadePreview(0);
       setLoading(true);
       setError(null);
 
@@ -299,14 +422,29 @@ export function ForYouScreen() {
 
     load();
     return () => { mounted = false; };
-  }, [user, activeFeed]);
+  }, [user, activeFeed, stopCrossfadePreview]);
 
-  const startHookPlayback = useCallback((song: FeedPreviewSong, force = false, fadeInMs = 0) => {
+  const getCrossfadeHandoffStart = useCallback((song: FeedPreviewSong) => {
+    const fallbackStart = getHookStart(song);
+    if (crossfadeSongId.current !== song.id) return fallbackStart;
+
+    const previewTime = crossfadePlayerRef.current?.currentTime ?? 0;
+    if (!Number.isFinite(previewTime) || previewTime <= 0) return fallbackStart;
+
+    return Math.max(fallbackStart, previewTime);
+  }, []);
+
+  const startHookPlayback = useCallback((
+    song: FeedPreviewSong,
+    force = false,
+    fadeInMs = 0,
+    startAt = getHookStart(song),
+  ) => {
     if (!force && currentHookSongId.current === song.id && activeSong?.id === song.id) return;
     currentHookSongId.current = song.id;
 
     setQueue([song], 0);
-    void playSong(song, { startAt: getHookStart(song), fadeInMs });
+    return playSong(song, { startAt, fadeInMs });
   }, [activeSong?.id, playSong, setQueue]);
 
   const scheduleHookPlayback = useCallback((index: number, force = false) => {
@@ -321,11 +459,26 @@ export function ForYouScreen() {
 
     const nextSong = songs[nextIndex];
     const shouldFadeIn = Boolean(currentHookSongId.current && currentHookSongId.current !== nextSong.id);
+    const handoffStart = getCrossfadeHandoffStart(nextSong);
+    const hasAudibleCrossfade = crossfadeSongId.current === nextSong.id && crossfadeVolume.current > 0.04;
 
     hookStartTimer.current = setTimeout(() => {
-      startHookPlayback(nextSong, force, shouldFadeIn ? 260 : 0);
-    }, shouldFadeIn ? 12 : 0);
-  }, [songs, startHookPlayback]);
+      const playback = startHookPlayback(
+        nextSong,
+        force,
+        shouldFadeIn ? (hasAudibleCrossfade ? 180 : 260) : 0,
+        handoffStart,
+      );
+
+      if (playback) {
+        playback.finally(() => {
+          stopCrossfadePreview(hasAudibleCrossfade ? 220 : 120);
+        });
+      } else {
+        stopCrossfadePreview(120);
+      }
+    }, shouldFadeIn && !hasAudibleCrossfade ? 12 : 0);
+  }, [getCrossfadeHandoffStart, songs, startHookPlayback, stopCrossfadePreview]);
 
   const clearDragSettleTimer = useCallback(() => {
     if (!dragSettleTimer.current) return;
@@ -338,6 +491,24 @@ export function ForYouScreen() {
     scheduleHookPlayback(0, true);
   }, [loading, scheduleHookPlayback, songs.length]);
 
+  useEffect(() => {
+    if (!isPlaying) {
+      stopCrossfadePreview(120);
+    }
+  }, [isPlaying, stopCrossfadePreview]);
+
+  useEffect(() => {
+    const preloadCandidates = [songs[activeIndex - 1], songs[activeIndex + 1]]
+      .filter((song): song is FeedPreviewSong => Boolean(song));
+
+    preloadCandidates.forEach((song) => {
+      if (!song.audio_url) return;
+      void preload({ uri: song.audio_url }, { preferredForwardBufferDuration: 4 }).catch(() => {
+        // Preloading is opportunistic; playback still works if the cache misses.
+      });
+    });
+  }, [activeIndex, songs]);
+
   useEffect(() => () => {
     clearDragSettleTimer();
     if (hookStartTimer.current) {
@@ -346,24 +517,49 @@ export function ForYouScreen() {
     if (scrollVolumeFrame.current != null) {
       cancelAnimationFrame(scrollVolumeFrame.current);
     }
+    if (crossfadeFadeFrame.current != null) {
+      cancelAnimationFrame(crossfadeFadeFrame.current);
+    }
     setPreviewVolume(1);
+    crossfadePrepareToken.current += 1;
+    crossfadePlayerRef.current?.pause();
+    crossfadePlayerRef.current?.remove();
+    crossfadePlayerRef.current = null;
   }, [clearDragSettleTimer, setPreviewVolume]);
 
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!isPlaying || songs.length < 2 || itemHeight <= 0) return;
 
     const pageOffset = event.nativeEvent.contentOffset.y / itemHeight;
-    const distanceFromCurrentHook = Math.min(1, Math.abs(pageOffset - activeIndex));
-    const transitionProgress = Math.min(1, distanceFromCurrentHook / 0.85);
+    const deltaFromActive = pageOffset - activeIndex;
+    const distanceFromCurrentHook = Math.min(1, Math.abs(deltaFromActive));
+    const direction = deltaFromActive > 0 ? 1 : -1;
+    const crossfadeTargetIndex = activeIndex + direction;
+    const hasCrossfadeTarget = crossfadeTargetIndex >= 0 && crossfadeTargetIndex < songs.length;
+    const transitionProgress = easeInOut(Math.min(1, distanceFromCurrentHook / 0.82));
 
     pendingScrollVolume.current = 1 - transitionProgress;
+    if (hasCrossfadeTarget && transitionProgress > 0.03) {
+      prepareCrossfadeSong(crossfadeTargetIndex);
+      setCrossfadePlayerVolume(transitionProgress);
+    } else {
+      setCrossfadePlayerVolume(0);
+    }
 
     if (scrollVolumeFrame.current != null) return;
     scrollVolumeFrame.current = requestAnimationFrame(() => {
       scrollVolumeFrame.current = null;
       setPreviewVolume(pendingScrollVolume.current);
     });
-  }, [activeIndex, isPlaying, itemHeight, setPreviewVolume, songs.length]);
+  }, [
+    activeIndex,
+    isPlaying,
+    itemHeight,
+    prepareCrossfadeSong,
+    setCrossfadePlayerVolume,
+    setPreviewVolume,
+    songs.length,
+  ]);
 
   const handleMomentumScrollBegin = useCallback(() => {
     clearDragSettleTimer();
@@ -373,8 +569,11 @@ export function ForYouScreen() {
     clearDragSettleTimer();
     const nextIndex = getIndexFromOffset(event.nativeEvent.contentOffset.y, itemHeight, songs.length);
     setPreviewVolume(nextIndex === activeIndex ? 1 : 0);
+    if (nextIndex === activeIndex) {
+      stopCrossfadePreview(140);
+    }
     scheduleHookPlayback(nextIndex);
-  }, [activeIndex, clearDragSettleTimer, itemHeight, scheduleHookPlayback, setPreviewVolume, songs.length]);
+  }, [activeIndex, clearDragSettleTimer, itemHeight, scheduleHookPlayback, setPreviewVolume, songs.length, stopCrossfadePreview]);
 
   const handleScrollEndDrag = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     clearDragSettleTimer();
@@ -382,20 +581,24 @@ export function ForYouScreen() {
 
     dragSettleTimer.current = setTimeout(() => {
       setPreviewVolume(nextIndex === activeIndex ? 1 : 0);
+      if (nextIndex === activeIndex) {
+        stopCrossfadePreview(140);
+      }
       scheduleHookPlayback(nextIndex);
-    }, 220);
-  }, [activeIndex, clearDragSettleTimer, itemHeight, scheduleHookPlayback, setPreviewVolume, songs.length]);
+    }, 120);
+  }, [activeIndex, clearDragSettleTimer, itemHeight, scheduleHookPlayback, setPreviewVolume, songs.length, stopCrossfadePreview]);
 
   // We want to pause when leaving the ForYou tab?
   // Usually TikTok pauses when you go to another tab, but for a music app maybe not.
   // We'll leave it playing for now.
 
   const handlePlayFull = useCallback((item: FeedPreviewSong) => {
+    stopCrossfadePreview(0);
     setPreviewVolume(1);
     setQueue([item], 0);
     void playSong(item);
     navigation.navigate('FullscreenPlayer');
-  }, [setPreviewVolume, setQueue, playSong, navigation]);
+  }, [navigation, playSong, setPreviewVolume, setQueue, stopCrossfadePreview]);
 
   const getItemLayout = useCallback((_: ArrayLike<FeedPreviewSong> | null | undefined, index: number) => ({
     length: itemHeight,
