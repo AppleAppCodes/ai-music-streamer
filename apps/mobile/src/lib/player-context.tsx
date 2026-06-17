@@ -12,6 +12,7 @@ interface StorageListItem {
 
 interface PlayOptions {
   startAt?: number | null;
+  fadeInMs?: number;
 }
 
 const PLAYBACK_READY_TIMEOUT_MS = 2500;
@@ -46,6 +47,7 @@ interface PlayerControlsContextValue {
   isPlaying: boolean;
   pause: () => void;
   playSong: (song: Song, options?: PlayOptions) => Promise<void>;
+  setPreviewVolume: (volume: number) => void;
   setQueue: (songs: Song[], startIndex?: number) => void;
   toggle: () => void;
 }
@@ -69,6 +71,19 @@ const EXCLUSIVE_AUDIO_MODE = {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function clampVolume(volume: number) {
+  return Math.max(0, Math.min(1, volume));
+}
+
+function getPlayerVolume(player: AudioPlayer) {
+  const volume = Reflect.get(player, 'volume');
+  return typeof volume === 'number' ? clampVolume(volume) : 1;
+}
+
+function setAudioPlayerVolume(player: AudioPlayer, volume: number) {
+  Reflect.set(player, 'volume', clampVolume(volume));
 }
 
 async function waitForPlayerReady(player: AudioPlayer, isCurrentRequest: () => boolean) {
@@ -125,6 +140,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const playNextRef = useRef<() => void>(() => {});
   const playPreviousRef = useRef<() => void>(() => {});
   const playRequestIdRef = useRef(0);
+  const volumeRampRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Ad & User State
   const { user } = useAuth();
@@ -157,9 +173,47 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     void activateYoriaxPlaybackSession();
 
     return () => {
+      if (volumeRampRef.current) {
+        clearInterval(volumeRampRef.current);
+      }
       player.clearLockScreenControls();
       player.remove();
     };
+  }, [player]);
+
+  const setPlayerVolume = useCallback((volume: number) => {
+    if (volumeRampRef.current) {
+      clearInterval(volumeRampRef.current);
+      volumeRampRef.current = null;
+    }
+
+    setAudioPlayerVolume(player, volume);
+  }, [player]);
+
+  const rampPlayerVolume = useCallback((targetVolume: number, durationMs = 180) => {
+    if (volumeRampRef.current) {
+      clearInterval(volumeRampRef.current);
+      volumeRampRef.current = null;
+    }
+
+    const target = clampVolume(targetVolume);
+    const start = getPlayerVolume(player);
+
+    if (durationMs <= 0 || Math.abs(start - target) < 0.01) {
+      setAudioPlayerVolume(player, target);
+      return;
+    }
+
+    const startedAt = Date.now();
+    volumeRampRef.current = setInterval(() => {
+      const progress = Math.min(1, (Date.now() - startedAt) / durationMs);
+      setAudioPlayerVolume(player, start + (target - start) * progress);
+
+      if (progress >= 1 && volumeRampRef.current) {
+        clearInterval(volumeRampRef.current);
+        volumeRampRef.current = null;
+      }
+    }, 16);
   }, [player]);
 
   const playSong = useCallback(async (song: Song, options: PlayOptions = {}) => {
@@ -180,6 +234,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
       const isSameSong = activeSong?.id === song.id;
       const startAt = Math.max(0, options.startAt ?? 0);
+      const fadeInMs = Math.max(0, options.fadeInMs ?? 0);
 
       // AD LOGIC
       if (!isPro && song.id !== 'yoriax-audio-ad' && songsPlayed >= adFrequency && availableAds.length > 0) {
@@ -204,6 +259,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           created_at: new Date().toISOString(),
         } as Song;
 
+        setPlayerVolume(1);
         player.replace({ name: adSong.title, uri: adSong.audio_url });
         setActiveSong(adSong);
         setLockScreenMetadata(player, adSong);
@@ -221,6 +277,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
 
       if (!isSameSong) {
+        if (fadeInMs > 0) {
+          setPlayerVolume(0.08);
+        } else {
+          setPlayerVolume(1);
+        }
+
         player.replace({
           name: song.title,
           uri: song.audio_url,
@@ -237,6 +299,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
 
       player.play();
+      if (fadeInMs > 0) {
+        rampPlayerVolume(1, fadeInMs);
+      } else {
+        setPlayerVolume(1);
+      }
       setLockScreenMetadata(player, song);
 
       setTimeout(() => {
@@ -253,7 +320,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setIsPreparingPlayback(false);
       }
     }
-  }, [activeSong, player, isPro, songsPlayed, availableAds, adFrequency]);
+  }, [activeSong, player, isPro, songsPlayed, availableAds, adFrequency, rampPlayerVolume, setPlayerVolume]);
 
   const pause = useCallback(() => {
     player.pause();
@@ -261,6 +328,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const reset = useCallback(() => {
     playRequestIdRef.current += 1;
+    setPlayerVolume(1);
     player.pause();
     player.clearLockScreenControls();
     setActiveSong(null);
@@ -274,7 +342,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setIsAdPlaying(false);
     setPendingSongToPlayAfterAd(null);
     finishEventConsumedRef.current = false;
-  }, [player]);
+  }, [player, setPlayerVolume]);
 
   const toggle = useCallback(() => {
     if (!activeSong) return;
@@ -437,10 +505,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       isPlaying: status.playing,
       pause,
       playSong,
+      setPreviewVolume: setPlayerVolume,
       setQueue,
       toggle,
     }),
-    [activeSong, pause, playSong, setQueue, status.playing, toggle],
+    [activeSong, pause, playSong, setPlayerVolume, setQueue, status.playing, toggle],
   );
 
   return (

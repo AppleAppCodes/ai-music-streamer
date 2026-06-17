@@ -27,6 +27,7 @@ import { usePlayerControls } from '../lib/player-context';
 import type { FeedPreviewSong } from '../lib/types';
 import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -171,16 +172,25 @@ const FeedItem = memo(function FeedItem({
             accessibilityRole="button"
             accessibilityLabel={isFollowingArtist ? `${artistName} nicht mehr folgen` : `${artistName} folgen`}
           >
-            <View style={styles.followAvatar}>
-              <Ionicons name="person" size={26} color="white" />
+            <LinearGradient
+              colors={isFollowingArtist
+                ? ['rgba(45,212,191,0.36)', 'rgba(124,58,237,0.22)']
+                : ['rgba(124,58,237,0.34)', 'rgba(45,212,191,0.18)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.followAvatar}
+            >
+              <Ionicons
+                name={isFollowingArtist ? 'person' : 'person-add-outline'}
+                size={24}
+                color={isFollowingArtist ? theme.colors.accent : theme.colors.text}
+              />
               <View style={[styles.followBadge, isFollowingArtist && styles.followBadgeActive]}>
-                <Ionicons
-                  name={isFollowingArtist ? 'checkmark' : 'add'}
-                  size={14}
-                  color={isFollowingArtist ? '#000' : '#fff'}
-                />
+                <Text style={[styles.followBadgeText, isFollowingArtist && styles.followBadgeTextActive]}>
+                  {isFollowingArtist ? 'OK' : 'Y+'}
+                </Text>
               </View>
-            </View>
+            </LinearGradient>
             <Text style={styles.actionText}>{isFollowingArtist ? 'Gefolgt' : 'Folgen'}</Text>
           </TouchableOpacity>
         ) : null}
@@ -221,7 +231,7 @@ export function ForYouScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const { height: itemHeight, width: itemWidth } = useWindowDimensions();
-  const { activeSong, isPlaying, playSong, toggle, setQueue } = usePlayerControls();
+  const { activeSong, isPlaying, playSong, toggle, setQueue, setPreviewVolume } = usePlayerControls();
   const [activeFeed, setActiveFeed] = useState<'foryou' | 'following' | 'explore'>('foryou');
   const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -235,6 +245,8 @@ export function ForYouScreen() {
   const dragSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hookStartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hookInteractionTask = useRef<ReturnType<typeof InteractionManager.runAfterInteractions> | null>(null);
+  const scrollVolumeFrame = useRef<number | null>(null);
+  const pendingScrollVolume = useRef(1);
 
   useEffect(() => {
     let mounted = true;
@@ -289,12 +301,12 @@ export function ForYouScreen() {
     return () => { mounted = false; };
   }, [user, activeFeed]);
 
-  const startHookPlayback = useCallback((song: FeedPreviewSong, force = false) => {
+  const startHookPlayback = useCallback((song: FeedPreviewSong, force = false, fadeInMs = 0) => {
     if (!force && currentHookSongId.current === song.id && activeSong?.id === song.id) return;
     currentHookSongId.current = song.id;
 
     setQueue([song], 0);
-    void playSong(song, { startAt: getHookStart(song) });
+    void playSong(song, { startAt: getHookStart(song), fadeInMs });
   }, [activeSong?.id, playSong, setQueue]);
 
   const scheduleHookPlayback = useCallback((index: number, force = false) => {
@@ -308,9 +320,12 @@ export function ForYouScreen() {
     }
     hookInteractionTask.current?.cancel?.();
 
+    const nextSong = songs[nextIndex];
+    const shouldFadeIn = Boolean(currentHookSongId.current && currentHookSongId.current !== nextSong.id);
+
     hookStartTimer.current = setTimeout(() => {
       hookInteractionTask.current = InteractionManager.runAfterInteractions(() => {
-        startHookPlayback(songs[nextIndex], force);
+        startHookPlayback(nextSong, force, shouldFadeIn ? 220 : 0);
       });
     }, 80);
   }, [songs, startHookPlayback]);
@@ -332,7 +347,27 @@ export function ForYouScreen() {
       clearTimeout(hookStartTimer.current);
     }
     hookInteractionTask.current?.cancel?.();
-  }, [clearDragSettleTimer]);
+    if (scrollVolumeFrame.current != null) {
+      cancelAnimationFrame(scrollVolumeFrame.current);
+    }
+    setPreviewVolume(1);
+  }, [clearDragSettleTimer, setPreviewVolume]);
+
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!isPlaying || songs.length < 2 || itemHeight <= 0) return;
+
+    const pageOffset = event.nativeEvent.contentOffset.y / itemHeight;
+    const distanceToSnap = Math.min(0.5, Math.abs(pageOffset - Math.round(pageOffset)));
+    const transitionProgress = distanceToSnap / 0.5;
+
+    pendingScrollVolume.current = 1 - transitionProgress * 0.42;
+
+    if (scrollVolumeFrame.current != null) return;
+    scrollVolumeFrame.current = requestAnimationFrame(() => {
+      scrollVolumeFrame.current = null;
+      setPreviewVolume(pendingScrollVolume.current);
+    });
+  }, [isPlaying, itemHeight, setPreviewVolume, songs.length]);
 
   const handleMomentumScrollBegin = useCallback(() => {
     clearDragSettleTimer();
@@ -340,28 +375,31 @@ export function ForYouScreen() {
 
   const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     clearDragSettleTimer();
+    setPreviewVolume(1);
     const nextIndex = getIndexFromOffset(event.nativeEvent.contentOffset.y, itemHeight, songs.length);
     scheduleHookPlayback(nextIndex);
-  }, [clearDragSettleTimer, itemHeight, scheduleHookPlayback, songs.length]);
+  }, [clearDragSettleTimer, itemHeight, scheduleHookPlayback, setPreviewVolume, songs.length]);
 
   const handleScrollEndDrag = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     clearDragSettleTimer();
     const nextIndex = getIndexFromOffset(event.nativeEvent.contentOffset.y, itemHeight, songs.length);
 
     dragSettleTimer.current = setTimeout(() => {
+      setPreviewVolume(1);
       scheduleHookPlayback(nextIndex);
     }, 220);
-  }, [clearDragSettleTimer, itemHeight, scheduleHookPlayback, songs.length]);
+  }, [clearDragSettleTimer, itemHeight, scheduleHookPlayback, setPreviewVolume, songs.length]);
 
   // We want to pause when leaving the ForYou tab?
   // Usually TikTok pauses when you go to another tab, but for a music app maybe not.
   // We'll leave it playing for now.
 
   const handlePlayFull = useCallback((item: FeedPreviewSong) => {
+    setPreviewVolume(1);
     setQueue([item], 0);
     void playSong(item);
     navigation.navigate('FullscreenPlayer');
-  }, [setQueue, playSong, navigation]);
+  }, [setPreviewVolume, setQueue, playSong, navigation]);
 
   const getItemLayout = useCallback((_: ArrayLike<FeedPreviewSong> | null | undefined, index: number) => ({
     length: itemHeight,
@@ -518,7 +556,7 @@ export function ForYouScreen() {
           if (activeSong?.id === item.id) {
             toggle();
           } else {
-            startHookPlayback(item, true);
+            startHookPlayback(item, true, 180);
           }
         }}
         shouldLoadVideo={shouldLoadVideo}
@@ -593,7 +631,9 @@ export function ForYouScreen() {
         disableIntervalMomentum
         onMomentumScrollBegin={handleMomentumScrollBegin}
         onMomentumScrollEnd={handleMomentumScrollEnd}
+        onScroll={handleScroll}
         onScrollEndDrag={handleScrollEndDrag}
+        scrollEventThrottle={16}
         initialNumToRender={2}
         windowSize={5}
         maxToRenderPerBatch={2}
@@ -814,28 +854,42 @@ const styles = StyleSheet.create({
   },
   followAvatar: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderColor: 'rgba(255,255,255,0.28)',
-    borderRadius: 24,
+    borderColor: 'rgba(168,85,247,0.45)',
+    borderRadius: 18,
     borderWidth: 1,
     height: 48,
     justifyContent: 'center',
+    shadowColor: theme.colors.primaryLight,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
     width: 48,
   },
   followBadge: {
     alignItems: 'center',
-    backgroundColor: '#ff2f68',
+    backgroundColor: theme.colors.primaryLight,
     borderColor: '#050505',
-    borderRadius: 11,
+    borderRadius: 999,
     borderWidth: 2,
-    bottom: -5,
-    height: 22,
+    bottom: -7,
+    height: 23,
     justifyContent: 'center',
     position: 'absolute',
-    width: 22,
+    right: -7,
+    width: 27,
   },
   followBadgeActive: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.accent,
+  },
+  followBadgeText: {
+    color: theme.colors.text,
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+  },
+  followBadgeTextActive: {
+    color: theme.colors.background,
+    fontSize: 7,
   },
   actionText: {
     color: '#fff',
