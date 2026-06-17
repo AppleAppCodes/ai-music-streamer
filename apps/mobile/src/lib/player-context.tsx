@@ -278,7 +278,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
       if (!isSameSong) {
         if (fadeInMs > 0) {
-          setPlayerVolume(0.08);
+          setPlayerVolume(0);
         } else {
           setPlayerVolume(1);
         }

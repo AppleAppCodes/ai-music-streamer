@@ -2,7 +2,6 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
-  InteractionManager,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   StyleSheet,
@@ -186,9 +185,11 @@ const FeedItem = memo(function FeedItem({
                 color={isFollowingArtist ? theme.colors.accent : theme.colors.text}
               />
               <View style={[styles.followBadge, isFollowingArtist && styles.followBadgeActive]}>
-                <Text style={[styles.followBadgeText, isFollowingArtist && styles.followBadgeTextActive]}>
-                  {isFollowingArtist ? 'OK' : 'Y+'}
-                </Text>
+                <Ionicons
+                  name={isFollowingArtist ? 'checkmark' : 'add'}
+                  size={11}
+                  color={isFollowingArtist ? theme.colors.background : theme.colors.text}
+                />
               </View>
             </LinearGradient>
             <Text style={styles.actionText}>{isFollowingArtist ? 'Gefolgt' : 'Folgen'}</Text>
@@ -244,7 +245,6 @@ export function ForYouScreen() {
   const currentHookSongId = useRef<string | null>(null);
   const dragSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hookStartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hookInteractionTask = useRef<ReturnType<typeof InteractionManager.runAfterInteractions> | null>(null);
   const scrollVolumeFrame = useRef<number | null>(null);
   const pendingScrollVolume = useRef(1);
 
@@ -318,16 +318,13 @@ export function ForYouScreen() {
     if (hookStartTimer.current) {
       clearTimeout(hookStartTimer.current);
     }
-    hookInteractionTask.current?.cancel?.();
 
     const nextSong = songs[nextIndex];
     const shouldFadeIn = Boolean(currentHookSongId.current && currentHookSongId.current !== nextSong.id);
 
     hookStartTimer.current = setTimeout(() => {
-      hookInteractionTask.current = InteractionManager.runAfterInteractions(() => {
-        startHookPlayback(nextSong, force, shouldFadeIn ? 220 : 0);
-      });
-    }, 80);
+      startHookPlayback(nextSong, force, shouldFadeIn ? 260 : 0);
+    }, shouldFadeIn ? 12 : 0);
   }, [songs, startHookPlayback]);
 
   const clearDragSettleTimer = useCallback(() => {
@@ -346,7 +343,6 @@ export function ForYouScreen() {
     if (hookStartTimer.current) {
       clearTimeout(hookStartTimer.current);
     }
-    hookInteractionTask.current?.cancel?.();
     if (scrollVolumeFrame.current != null) {
       cancelAnimationFrame(scrollVolumeFrame.current);
     }
@@ -357,17 +353,17 @@ export function ForYouScreen() {
     if (!isPlaying || songs.length < 2 || itemHeight <= 0) return;
 
     const pageOffset = event.nativeEvent.contentOffset.y / itemHeight;
-    const distanceToSnap = Math.min(0.5, Math.abs(pageOffset - Math.round(pageOffset)));
-    const transitionProgress = distanceToSnap / 0.5;
+    const distanceFromCurrentHook = Math.min(1, Math.abs(pageOffset - activeIndex));
+    const transitionProgress = Math.min(1, distanceFromCurrentHook / 0.85);
 
-    pendingScrollVolume.current = 1 - transitionProgress * 0.42;
+    pendingScrollVolume.current = 1 - transitionProgress;
 
     if (scrollVolumeFrame.current != null) return;
     scrollVolumeFrame.current = requestAnimationFrame(() => {
       scrollVolumeFrame.current = null;
       setPreviewVolume(pendingScrollVolume.current);
     });
-  }, [isPlaying, itemHeight, setPreviewVolume, songs.length]);
+  }, [activeIndex, isPlaying, itemHeight, setPreviewVolume, songs.length]);
 
   const handleMomentumScrollBegin = useCallback(() => {
     clearDragSettleTimer();
@@ -375,20 +371,20 @@ export function ForYouScreen() {
 
   const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     clearDragSettleTimer();
-    setPreviewVolume(1);
     const nextIndex = getIndexFromOffset(event.nativeEvent.contentOffset.y, itemHeight, songs.length);
+    setPreviewVolume(nextIndex === activeIndex ? 1 : 0);
     scheduleHookPlayback(nextIndex);
-  }, [clearDragSettleTimer, itemHeight, scheduleHookPlayback, setPreviewVolume, songs.length]);
+  }, [activeIndex, clearDragSettleTimer, itemHeight, scheduleHookPlayback, setPreviewVolume, songs.length]);
 
   const handleScrollEndDrag = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     clearDragSettleTimer();
     const nextIndex = getIndexFromOffset(event.nativeEvent.contentOffset.y, itemHeight, songs.length);
 
     dragSettleTimer.current = setTimeout(() => {
-      setPreviewVolume(1);
+      setPreviewVolume(nextIndex === activeIndex ? 1 : 0);
       scheduleHookPlayback(nextIndex);
     }, 220);
-  }, [clearDragSettleTimer, itemHeight, scheduleHookPlayback, setPreviewVolume, songs.length]);
+  }, [activeIndex, clearDragSettleTimer, itemHeight, scheduleHookPlayback, setPreviewVolume, songs.length]);
 
   // We want to pause when leaving the ForYou tab?
   // Usually TikTok pauses when you go to another tab, but for a music app maybe not.
@@ -854,42 +850,32 @@ const styles = StyleSheet.create({
   },
   followAvatar: {
     alignItems: 'center',
-    borderColor: 'rgba(168,85,247,0.45)',
-    borderRadius: 18,
+    borderColor: 'rgba(168,85,247,0.5)',
+    borderRadius: 22,
     borderWidth: 1,
-    height: 48,
+    height: 46,
     justifyContent: 'center',
     shadowColor: theme.colors.primaryLight,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 18,
-    width: 48,
+    width: 46,
   },
   followBadge: {
     alignItems: 'center',
     backgroundColor: theme.colors.primaryLight,
-    borderColor: '#050505',
+    borderColor: 'rgba(5,5,5,0.9)',
     borderRadius: 999,
-    borderWidth: 2,
-    bottom: -7,
-    height: 23,
+    borderWidth: 1.5,
+    bottom: 3,
+    height: 17,
     justifyContent: 'center',
     position: 'absolute',
-    right: -7,
-    width: 27,
+    right: 3,
+    width: 17,
   },
   followBadgeActive: {
     backgroundColor: theme.colors.accent,
-  },
-  followBadgeText: {
-    color: theme.colors.text,
-    fontSize: 8,
-    fontWeight: '900',
-    letterSpacing: 0.3,
-  },
-  followBadgeTextActive: {
-    color: theme.colors.background,
-    fontSize: 7,
   },
   actionText: {
     color: '#fff',
