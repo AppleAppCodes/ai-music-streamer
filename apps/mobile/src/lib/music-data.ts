@@ -362,7 +362,7 @@ export async function searchMusic(query: string): Promise<Song[]> {
   const { data, error } = await client
     .from('songs')
     .select(SONG_SELECT_WITH_PROFILE)
-    .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern}`)
+    .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern},genre.ilike.${searchPattern}`)
     .order('plays', { ascending: false })
     .limit(30);
 
@@ -371,7 +371,7 @@ export async function searchMusic(query: string): Promise<Song[]> {
     const fallback = await client
       .from('songs')
       .select(SONG_SELECT)
-      .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern}`)
+      .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern},genre.ilike.${searchPattern}`)
       .order('plays', { ascending: false })
       .limit(30);
 

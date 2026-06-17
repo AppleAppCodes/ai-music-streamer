@@ -329,6 +329,79 @@ export function ForYouScreen() {
     }
   }, [user, likedSongsMap]);
 
+  const renderTopTabs = useCallback(() => (
+    <View style={[styles.topTabs, { top: Math.max(insets.top + 10, 60) }]}>
+      <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveFeed('foryou')}>
+        <Text style={[styles.topTab, activeFeed === 'foryou' && styles.topTabActive]}>Für dich</Text>
+      </TouchableOpacity>
+      <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveFeed('following')}>
+        <Text style={[styles.topTab, activeFeed === 'following' && styles.topTabActive]}>Gefolgt</Text>
+      </TouchableOpacity>
+      <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveFeed('explore')}>
+        <Text style={[styles.topTab, activeFeed === 'explore' && styles.topTabActive]}>Explore</Text>
+      </TouchableOpacity>
+    </View>
+  ), [activeFeed, insets.top]);
+
+  const renderEmptyState = useCallback(() => {
+    const copy = activeFeed === 'following'
+      ? {
+          icon: 'people-outline' as const,
+          eyebrow: 'Gefolgt',
+          title: 'Noch keine gefolgten Artists',
+          message: 'Folge Artists, damit hier nur Hooks von deinen Favoriten erscheinen.',
+          primaryLabel: 'Artists entdecken',
+          primaryAction: () => navigation.navigate('Artists'),
+          secondaryLabel: 'Explore öffnen',
+          secondaryAction: () => setActiveFeed('explore'),
+        }
+      : activeFeed === 'explore'
+        ? {
+            icon: 'compass-outline' as const,
+            eyebrow: 'Explore',
+            title: 'Noch keine Explore-Hooks',
+            message: 'Sobald neue Hooks verfügbar sind, landen sie hier zuerst.',
+            primaryLabel: 'Für dich öffnen',
+            primaryAction: () => setActiveFeed('foryou'),
+            secondaryLabel: null,
+            secondaryAction: null,
+          }
+        : {
+            icon: 'sparkles-outline' as const,
+            eyebrow: 'Für dich',
+            title: 'Dein Feed wird vorbereitet',
+            message: 'Höre und like Songs, damit YORIAX deinen Feed besser kuratieren kann.',
+            primaryLabel: 'Explore öffnen',
+            primaryAction: () => setActiveFeed('explore'),
+            secondaryLabel: null,
+            secondaryAction: null,
+          };
+
+    return (
+      <View style={styles.emptyContainer}>
+        <View style={styles.emptyCard}>
+          <View style={styles.emptyIcon}>
+            <Ionicons name={copy.icon} size={28} color={theme.colors.text} />
+          </View>
+          <Text style={styles.emptyEyebrow}>{copy.eyebrow}</Text>
+          <Text style={styles.emptyTitle}>{copy.title}</Text>
+          <Text style={styles.emptyMessage}>{copy.message}</Text>
+
+          <View style={styles.emptyActions}>
+            <TouchableOpacity activeOpacity={0.86} style={styles.emptyPrimaryButton} onPress={copy.primaryAction}>
+              <Text style={styles.emptyPrimaryText}>{copy.primaryLabel}</Text>
+            </TouchableOpacity>
+            {copy.secondaryLabel && copy.secondaryAction ? (
+              <TouchableOpacity activeOpacity={0.86} style={styles.emptySecondaryButton} onPress={copy.secondaryAction}>
+                <Text style={styles.emptySecondaryText}>{copy.secondaryLabel}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+      </View>
+    );
+  }, [activeFeed, navigation]);
+
   const renderItem = useCallback(({ item, index }: { item: FeedPreviewSong; index: number }) => {
     const isActive = index === activeIndex;
     const isCurrentSong = activeSong?.id === item.id;
@@ -360,33 +433,38 @@ export function ForYouScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <View style={styles.container}>
+        {renderTopTabs()}
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={styles.container}>
+        {renderTopTabs()}
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (songs.length === 0) {
+    return (
+      <View style={styles.container}>
+        {renderTopTabs()}
+        {renderEmptyState()}
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={[styles.topTabs, { top: Math.max(insets.top + 10, 60) }]}>
-        <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveFeed('foryou')}>
-          <Text style={[styles.topTab, activeFeed === 'foryou' && styles.topTabActive]}>Für dich</Text>
-        </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveFeed('following')}>
-          <Text style={[styles.topTab, activeFeed === 'following' && styles.topTabActive]}>Gefolgt</Text>
-        </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveFeed('explore')}>
-          <Text style={[styles.topTab, activeFeed === 'explore' && styles.topTabActive]}>Explore</Text>
-        </TouchableOpacity>
-      </View>
+      {renderTopTabs()}
 
       <FlatList
         data={songs}
@@ -448,6 +526,93 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 30,
+    borderWidth: 1,
+    maxWidth: 360,
+    padding: 24,
+    width: '100%',
+  },
+  emptyIcon: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: 'rgba(168,85,247,0.35)',
+    borderRadius: 24,
+    borderWidth: 1,
+    height: 54,
+    justifyContent: 'center',
+    marginBottom: 16,
+    width: 54,
+  },
+  emptyEyebrow: {
+    color: theme.colors.accent,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 2.4,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  emptyTitle: {
+    color: theme.colors.text,
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  emptyMessage: {
+    color: theme.colors.muted,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+    marginBottom: 22,
+    textAlign: 'center',
+  },
+  emptyActions: {
+    gap: 10,
+    width: '100%',
+  },
+  emptyPrimaryButton: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.text,
+    borderRadius: 999,
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  emptyPrimaryText: {
+    color: theme.colors.background,
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  emptySecondaryButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 999,
+    borderWidth: 1,
+    minHeight: 46,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  emptySecondaryText: {
+    color: theme.colors.text,
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   feedItem: {
     backgroundColor: '#140c23',

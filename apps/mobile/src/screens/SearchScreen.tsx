@@ -1,11 +1,29 @@
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import { usePlayer } from '../lib/player-context';
 import { searchMusic } from '../lib/music-data';
 import type { Song } from '../lib/types';
 import { formatPlays } from '../lib/format';
+
+const GENRE_SUGGESTIONS: Array<{
+  label: string;
+  color: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = [
+  { label: 'Pop', color: '#ec4899', icon: 'sparkles' },
+  { label: 'Hip-Hop', color: '#f97316', icon: 'flame' },
+  { label: 'R&B', color: '#a855f7', icon: 'heart' },
+  { label: 'Afrobeat', color: '#14b8a6', icon: 'globe' },
+  { label: 'EDM', color: '#06b6d4', icon: 'flash' },
+  { label: 'Phonk', color: '#7c3aed', icon: 'car-sport' },
+  { label: 'Latin', color: '#ef4444', icon: 'radio' },
+  { label: 'Sleep', color: '#4338ca', icon: 'moon' },
+  { label: 'Country', color: '#f59e0b', icon: 'musical-notes' },
+  { label: 'K-Pop', color: '#fb7185', icon: 'star' },
+];
 
 export function SearchScreen() {
   const insets = useSafeAreaInsets();
@@ -16,6 +34,12 @@ export function SearchScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const { activeSong, isPlaying, playSong, setQueue } = usePlayer();
+  const showGenreSuggestions = !query.trim();
+
+  const handleGenrePress = (genre: string) => {
+    setQuery(genre);
+    setDebouncedQuery(genre);
+  };
 
   // Debounce logic
   useEffect(() => {
@@ -73,7 +97,32 @@ export function SearchScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {loading ? (
+        {showGenreSuggestions ? (
+          <View style={styles.genreSection}>
+            <Text style={styles.sectionEyebrow}>Schnellzugriff</Text>
+            <Text style={styles.sectionTitle}>Genres entdecken</Text>
+            <Text style={styles.sectionDescription}>
+              Tippe ein Genre an, um direkt passende Songs zu finden.
+            </Text>
+
+            <View style={styles.genreGrid}>
+              {GENRE_SUGGESTIONS.map((genre) => (
+                <TouchableOpacity
+                  key={genre.label}
+                  activeOpacity={0.82}
+                  style={[styles.genreChip, { borderColor: `${genre.color}66` }]}
+                  onPress={() => handleGenrePress(genre.label)}
+                  accessibilityRole="button"
+                >
+                  <View style={[styles.genreIcon, { backgroundColor: `${genre.color}30` }]}>
+                    <Ionicons name={genre.icon} size={18} color={genre.color} />
+                  </View>
+                  <Text style={styles.genreLabel}>{genre.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ) : loading ? (
           <View style={styles.stateBox}>
             <ActivityIndicator color={theme.colors.text} />
             <Text style={styles.stateText}>Suche läuft...</Text>
@@ -169,6 +218,59 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingBottom: 120, // space for MiniPlayer
+  },
+  genreSection: {
+    gap: 10,
+  },
+  sectionEyebrow: {
+    color: theme.colors.accent,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 2.4,
+    textTransform: 'uppercase',
+  },
+  sectionTitle: {
+    color: theme.colors.text,
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  sectionDescription: {
+    color: theme.colors.muted,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  genreGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  genreChip: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.055)',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexBasis: '47%',
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 66,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+  },
+  genreIcon: {
+    alignItems: 'center',
+    borderRadius: 14,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  genreLabel: {
+    color: theme.colors.text,
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '900',
   },
   stateBox: {
     alignItems: 'center',
