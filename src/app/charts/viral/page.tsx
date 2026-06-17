@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CalendarDays, ChevronRight, Flame, Mic2, Pause, Play, TrendingUp, Edit2, Loader2, Trash2, Plus, Search, X, Music } from 'lucide-react';
 import { Reorder } from 'framer-motion';
@@ -13,9 +13,10 @@ import { Song } from '@/lib/types';
 import { usePlayer } from '@/lib/player-context';
 import { useTranslation } from 'react-i18next';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
-import { isAdminUser, isModUser } from '@/lib/admin';
+import { isModUser } from '@/lib/admin';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { getErrorMessage } from '@/lib/errors';
+import type { PublicChartsData } from '@/lib/public-music-data';
 
 interface DailyPlay {
   song_id: string;
@@ -27,6 +28,35 @@ interface ArtistChartItem {
   plays: number;
   songsCount: number;
   coverUrl: string;
+}
+
+type ChartSong = Song & {
+  viral_sort_order?: number | null;
+};
+
+function createWeeklyPlayMap(weeklyPlays: DailyPlay[]) {
+  const map = new Map<string, number>();
+
+  weeklyPlays.forEach(({ song_id, plays }) => {
+    map.set(song_id, (map.get(song_id) || 0) + plays);
+  });
+
+  return map;
+}
+
+function getRankedViralSongs(songs: Song[], weeklyPlays: DailyPlay[]) {
+  const weeklyPlayMap = createWeeklyPlayMap(weeklyPlays);
+
+  return [...songs]
+    .sort((a, b) => {
+      const orderA = (a as ChartSong).viral_sort_order || 999999;
+      const orderB = (b as ChartSong).viral_sort_order || 999999;
+      if (orderA !== orderB) return orderA - orderB;
+
+      const playDifference = (weeklyPlayMap.get(b.id) || 0) - (weeklyPlayMap.get(a.id) || 0);
+      return playDifference || b.plays - a.plays;
+    })
+    .slice(0, 20);
 }
 
 interface ChartPanelProps {
@@ -331,22 +361,36 @@ export default function ViralChartsPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const fetchCharts = async () => {
-    const todayUtc = new Date().toISOString().slice(0, 10);
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const sevenDaysAgoUtc = sevenDaysAgo.toISOString().slice(0, 10);
-
     const [
-      { data: songsData }, 
-      { data: dailyData, error: dailyError }, 
-      { data: weeklyData, error: weeklyError },
+      chartsResponse,
       { data: authData }
     ] = await Promise.all([
-      supabase.from('songs').select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, viral_sort_order, profiles!songs_creator_id_fkey(username)').limit(200),
-      supabase.from('song_daily_plays').select('song_id, plays').eq('play_date', todayUtc),
-      supabase.from('song_daily_plays').select('song_id, plays').gte('play_date', sevenDaysAgoUtc),
+      fetch('/api/public/charts'),
       supabase.auth.getSession(),
     ]);
+
+    if (!chartsResponse.ok) {
+      throw new Error('Failed to load charts data');
+    }
+
+    const chartsData = await chartsResponse.json() as PublicChartsData;
+    const session = authData.session;
+    let chartSongs = chartsData.songs || [];
+
+    if (session && chartSongs.length > 0) {
+      const ids = chartSongs.map(({ id }) => id);
+      const { data: fullSongs, error: fullSongsError } = await supabase
+        .from('songs')
+        .select('id, creator_id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, viral_sort_order, profiles!songs_creator_id_fkey(username)')
+        .in('id', ids);
+
+      if (fullSongsError) {
+        console.error('Failed to hydrate authenticated chart songs:', fullSongsError);
+      } else {
+        const fullSongById = new Map(((fullSongs || []) as unknown as Song[]).map((song) => [song.id, song]));
+        chartSongs = chartSongs.map((song) => fullSongById.get(song.id) || song);
+      }
+    }
 
     // Fetch background video
     const { data: files } = await supabase.storage.from('covers').list('charts');
@@ -360,66 +404,41 @@ export default function ViralChartsPage() {
       }
     }
 
-    if (dailyError) console.error('Failed to load daily charts:', dailyError);
-    if (weeklyError) console.error('Failed to load weekly charts:', weeklyError);
-
     return {
-      songs: (songsData as unknown as Song[]) || [],
-      dailyPlays: (dailyData as DailyPlay[]) || [],
-      weeklyPlays: (weeklyData as DailyPlay[]) || [],
-      user: authData.session?.user || null,
+      songs: chartSongs,
+      dailyPlays: chartsData.dailyPlays || [],
+      weeklyPlays: chartsData.weeklyPlays || [],
+      user: session?.user || null,
       videoUrl: fetchedVideoUrl
     };
   };
 
-  const { data: swrData, isLoading } = useSWR('viral_charts_data', fetchCharts, {
+  useSWR('viral_charts_data', fetchCharts, {
     revalidateOnFocus: false,
     dedupingInterval: 60000, // Cache for 1 minute
+    onSuccess: (data) => {
+      setSongs(data.songs);
+      setDailyPlays(data.dailyPlays);
+      setWeeklyPlays(data.weeklyPlays);
+      setUser(data.user);
+      if (data.videoUrl) setVideoUrl(data.videoUrl);
+      setAdminViralSongs(getRankedViralSongs(data.songs, data.weeklyPlays));
+      setLoading(false);
+    },
+    onError: () => {
+      setLoading(false);
+    },
   });
-
-  useEffect(() => {
-    if (swrData) {
-      setSongs(swrData.songs);
-      setDailyPlays(swrData.dailyPlays);
-      setWeeklyPlays(swrData.weeklyPlays);
-      setUser(swrData.user);
-      if (swrData.videoUrl) setVideoUrl(swrData.videoUrl);
-      setLoading(false);
-    } else if (!isLoading) {
-      setLoading(false);
-    }
-  }, [swrData, isLoading]);
 
   const dailyPlayMap = useMemo(
     () => new Map(dailyPlays.map(({ song_id, plays }) => [song_id, plays])),
     [dailyPlays],
   );
 
-  const weeklyPlayMap = useMemo(() => {
-    const map = new Map<string, number>();
-    weeklyPlays.forEach(({ song_id, plays }) => {
-      map.set(song_id, (map.get(song_id) || 0) + plays);
-    });
-    return map;
-  }, [weeklyPlays]);
-
   const viralSongs = useMemo<Song[]>(
-    () => [...songs]
-      .sort((a, b) => {
-        const orderA = (a as any).viral_sort_order || 999999;
-        const orderB = (b as any).viral_sort_order || 999999;
-        if (orderA !== orderB) return orderA - orderB;
-
-        const playDifference = (weeklyPlayMap.get(b.id) || 0) - (weeklyPlayMap.get(a.id) || 0);
-        return playDifference || b.plays - a.plays;
-      })
-      .slice(0, 20),
-    [weeklyPlayMap, songs],
+    () => getRankedViralSongs(songs, weeklyPlays),
+    [weeklyPlays, songs],
   );
-
-  useEffect(() => {
-    setAdminViralSongs(viralSongs);
-  }, [viralSongs]);
 
   const handleViralReorder = async (newOrder: Song[]) => {
     if (!isAdmin) return;

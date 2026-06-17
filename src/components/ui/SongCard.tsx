@@ -19,12 +19,14 @@ interface SongCardProps {
 
 export default function SongCard({ song, creatorName = 'Creator', className = '', contextQueue, compact = false, priority = false }: SongCardProps) {
   const router = useRouter();
-  const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
+  const { playSong, currentSong, isPlaying, togglePlayPause, setQueue, preloadSong } = usePlayer();
   const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
   const displayArtist = song.artist_name || creatorName;
 
   return (
     <div
+      onPointerEnter={() => preloadSong(song)}
+      onFocus={() => preloadSong(song)}
       onClick={() => router.push(`/song/${song.id}`)}
       className={`group relative flex flex-col rounded-xl hover:bg-white/5 transition-colors cursor-pointer ${compact ? 'gap-2 p-2.5' : 'gap-3 p-4'} ${className}`}
     >

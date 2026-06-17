@@ -21,6 +21,12 @@ type SongWithProfile = Song & {
   } | null;
 };
 
+type InitialHomeData = {
+  artistCovers: string[];
+  trendingSongs: Song[];
+  recommendedSongs: Song[];
+};
+
 const HOME_SONG_GRID_CLASSES = 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-[repeat(auto-fill,minmax(160px,200px))]';
 
 function SectionHeader({ title, actionLabel, href }: { title: string; actionLabel?: string; href?: string }) {
@@ -92,7 +98,7 @@ function getGreetingKey(hour: number): GreetingKey {
   return 'night';
 }
 
-export default function AuthenticatedHome() {
+export default function AuthenticatedHome({ initialHomeData }: { initialHomeData?: InitialHomeData }) {
   const { t } = useTranslation();
   const { playSong, setQueue, currentSong, isPlaying, togglePlayPause } = usePlayer();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -155,10 +161,10 @@ export default function AuthenticatedHome() {
     isHoveredRef.current = false;
   }, []);
 
-  const [dailyTrendingSongs, setDailyTrendingSongs] = useState<Song[]>([]);
-  const [recommendedSongs, setRecommendedSongs] = useState<Song[]>([]);
-  const [artistCovers, setArtistCovers] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [dailyTrendingSongs, setDailyTrendingSongs] = useState<Song[]>(initialHomeData?.trendingSongs ?? []);
+  const [recommendedSongs, setRecommendedSongs] = useState<Song[]>(initialHomeData?.recommendedSongs ?? []);
+  const [artistCovers, setArtistCovers] = useState<string[]>(initialHomeData?.artistCovers ?? []);
+  const [isLoading, setIsLoading] = useState(!initialHomeData);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 640px)');
@@ -234,11 +240,14 @@ export default function AuthenticatedHome() {
   }, []);
 
   useEffect(() => {
+    if (initialHomeData) return;
+
     async function loadMusic() {
       const [{ data: allSongs }, { data: { session } }] = await Promise.all([
         supabase
           .from('songs')
           .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, profiles!songs_creator_id_fkey(username)')
+          .order('plays', { ascending: false })
           .limit(200),
         supabase.auth.getSession(),
       ]);
@@ -304,7 +313,7 @@ export default function AuthenticatedHome() {
       setIsLoading(false);
     }
     loadMusic();
-  }, []);
+  }, [initialHomeData]);
 
   useEffect(() => {
     const updateGreeting = () => setGreetingKey(getGreetingKey(new Date().getHours()));
@@ -425,7 +434,7 @@ export default function AuthenticatedHome() {
     } finally {
       setQuickPlayLoading(null);
     }
-  }, [quickPlayLoading, supabase, t, startSongQueue]);
+  }, [quickPlayLoading, t, startSongQueue]);
 
   return (
     <div className="relative flex min-h-screen flex-col gap-8 overflow-hidden pb-12 pt-4 sm:gap-12 sm:pt-6">

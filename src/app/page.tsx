@@ -3,6 +3,7 @@ import GuestHome from '@/components/home/GuestHome';
 import PrelaunchLanding from '@/components/launch/PrelaunchLanding';
 import { isAdminUser } from '@/lib/admin';
 import { getLocaleFromAcceptLanguage } from '@/lib/locale';
+import { loadHomeInitialData } from '@/lib/public-music-data';
 import { isPrelaunchLockEnabled } from '@/lib/prelaunch';
 import { createClient } from '@/utils/supabase/server';
 import { headers } from 'next/headers';
@@ -23,7 +24,8 @@ export default async function Home() {
   }
 
   if (user) {
-    return <AuthenticatedHome />;
+    const initialHomeData = await loadHomeInitialData(supabase, user.id);
+    return <AuthenticatedHome initialHomeData={initialHomeData} />;
   }
 
   const { data: songs } = await supabase

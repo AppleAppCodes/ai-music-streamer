@@ -6,6 +6,7 @@ import { isPrelaunchLockEnabled } from './lib/prelaunch';
 function isPublicPath(pathname: string) {
   return pathname === '/'
     || pathname === '/site.webmanifest'
+    || pathname.startsWith('/api/public')
     || pathname.startsWith('/login')
     || pathname.startsWith('/search')
     || pathname.startsWith('/impressum')
@@ -21,6 +22,7 @@ function isPrelaunchAllowedPath(pathname: string) {
     || pathname.startsWith('/login')
     || pathname.startsWith('/auth')
     || pathname.startsWith('/api/auth')
+    || pathname.startsWith('/api/public')
     || pathname.startsWith('/impressum')
     || pathname.startsWith('/datenschutz')
     || pathname.startsWith('/agb');

@@ -94,12 +94,24 @@ function getSingle<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
-async function loadSongs(limit = 200): Promise<Song[]> {
+function mergeSongs(...groups: Song[][]): Song[] {
+  const merged = new Map<string, Song>();
+
+  groups.flat().forEach((song) => {
+    if (!merged.has(song.id)) {
+      merged.set(song.id, song);
+    }
+  });
+
+  return Array.from(merged.values());
+}
+
+async function loadSongs(limit = 80, orderBy: 'created_at' | 'plays' = 'created_at'): Promise<Song[]> {
   const client = requireClient();
   const withProfile = await client
     .from('songs')
     .select(SONG_SELECT_WITH_PROFILE)
-    .order('created_at', { ascending: false })
+    .order(orderBy, { ascending: false })
     .limit(limit);
 
   if (!withProfile.error) {
@@ -109,7 +121,7 @@ async function loadSongs(limit = 200): Promise<Song[]> {
   const fallback = await client
     .from('songs')
     .select(SONG_SELECT)
-    .order('created_at', { ascending: false })
+    .order(orderBy, { ascending: false })
     .limit(limit);
 
   if (fallback.error) {
@@ -144,10 +156,12 @@ async function loadSongSignals(userId: string) {
 }
 
 export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
-  const [songs, signals] = await Promise.all([
-    loadSongs(),
+  const [popularSongs, latestSongs, signals] = await Promise.all([
+    loadSongs(96, 'plays'),
+    loadSongs(48, 'created_at'),
     loadSongSignals(userId),
   ]);
+  const songs = mergeSongs(popularSongs, latestSongs);
   const trendingSongs = getDailyTrendingSongs(songs, 6);
   const rankedRecommendations = getPersonalizedSongs(songs, signals, songs.length);
   const trendingIds = new Set(trendingSongs.map(({ id }) => id));
@@ -157,7 +171,7 @@ export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
     totalSongs: songs.length,
     trendingSongs,
     recommendedSongs: (distinctRecommendations.length >= 6 ? distinctRecommendations : rankedRecommendations).slice(0, 6),
-    latestSongs: songs.slice(0, 6),
+    latestSongs: latestSongs.slice(0, 6),
   };
 }
 

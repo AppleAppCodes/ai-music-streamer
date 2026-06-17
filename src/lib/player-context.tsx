@@ -25,6 +25,7 @@ interface PlayerContextType {
   setVolume: (val: number) => void;
   seekTo: (percentage: number) => void;
   setQueue: (songs: Song[], startIndex?: number) => void;
+  preloadSong: (song: Song) => void;
   playNext: () => void;
   playPrevious: () => void;
   isShuffling: boolean;
@@ -107,6 +108,39 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const loadedSongIdRef = useRef<string | null>(null);
   const syncChannelRef = useRef<RealtimeChannel | null>(null);
+  const prefetchLinksRef = useRef<Map<string, HTMLLinkElement>>(new Map());
+
+  const preloadSong = useCallback((song: Song) => {
+    const href = song.audio_url;
+    if (!href || prefetchLinksRef.current.has(href)) return;
+
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.as = 'audio';
+    link.href = href;
+    link.dataset.yoriaxAudioPrefetch = 'true';
+    document.head.appendChild(link);
+
+    prefetchLinksRef.current.set(href, link);
+
+    if (prefetchLinksRef.current.size > 8) {
+      const oldestHref = prefetchLinksRef.current.keys().next().value;
+      if (oldestHref) {
+        const oldestLink = prefetchLinksRef.current.get(oldestHref);
+        oldestLink?.remove();
+        prefetchLinksRef.current.delete(oldestHref);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const prefetchLinks = prefetchLinksRef.current;
+
+    return () => {
+      prefetchLinks.forEach((link) => link.remove());
+      prefetchLinks.clear();
+    };
+  }, []);
 
   // Cross-device playback sync via Supabase Realtime
   useEffect(() => {
@@ -563,6 +597,21 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     }
   }, [playSong, queue, queueIndex, currentTime, repeatMode]);
 
+  const nextQueueSong = useMemo(() => {
+    if (isAdPlaying || queue.length === 0 || queueIndex < 0) return null;
+    if (repeatMode === 'one') return queue[queueIndex] ?? null;
+
+    const nextIndex = queueIndex + 1;
+    if (nextIndex < queue.length) return queue[nextIndex];
+    if (repeatMode === 'all') return queue[0] ?? null;
+    return null;
+  }, [isAdPlaying, queue, queueIndex, repeatMode]);
+
+  useEffect(() => {
+    if (!isPlaying || !nextQueueSong) return;
+    preloadSong(nextQueueSong);
+  }, [isPlaying, nextQueueSong, preloadSong]);
+
   // Handle song ended to play next or repeat
   useEffect(() => {
     const onSongEnded = () => {
@@ -661,6 +710,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     setVolume,
     seekTo,
     setQueue,
+    preloadSong,
     playNext,
     playPrevious,
     isShuffling,
@@ -672,7 +722,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     isAdPlaying,
   }), [
     currentSong, isPlaying, progress, currentTime, duration, volume, queue, queueIndex,
-    playSong, togglePlayPause, pausePlayback, setVolume, seekTo, setQueue, playNext,
+    playSong, togglePlayPause, pausePlayback, setVolume, seekTo, setQueue, preloadSong, playNext,
     playPrevious, isShuffling, toggleShuffle, repeatMode, toggleRepeat, user, isPro, isAdPlaying
   ]);
 
