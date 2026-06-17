@@ -14,7 +14,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useRef, useState, memo } from 'react';
 import { useAuth } from '../lib/auth-context';
-import { loadFeedPreview, loadFollowingFeed, loadExploreFeed, toggleLike } from '../lib/music-data';
+import {
+  loadFeedLikeCount,
+  loadFeedPreview,
+  loadFollowedArtistNames,
+  loadFollowingFeed,
+  loadExploreFeed,
+  toggleArtistFollow,
+  toggleLike,
+} from '../lib/music-data';
 import { usePlayerControls } from '../lib/player-context';
 import type { FeedPreviewSong } from '../lib/types';
 import { theme } from '../theme';
@@ -32,6 +40,10 @@ function getIndexFromOffset(offsetY: number, itemHeight: number, itemCount: numb
   if (itemHeight <= 0 || itemCount <= 0) return 0;
   const nextIndex = Math.round(offsetY / itemHeight);
   return Math.max(0, Math.min(itemCount - 1, nextIndex));
+}
+
+function getArtistName(song: FeedPreviewSong) {
+  return song.artist_name || song.creatorName || 'Creator';
 }
 
 function FeedVisual({
@@ -100,7 +112,10 @@ const FeedItem = memo(function FeedItem({
   onTogglePlay,
   shouldLoadVideo,
   isLiked,
+  isFollowingArtist,
+  showFollowButton,
   onToggleLike,
+  onToggleFollow,
 }: {
   itemHeight: number;
   itemWidth: number;
@@ -112,8 +127,13 @@ const FeedItem = memo(function FeedItem({
   onTogglePlay: () => void;
   shouldLoadVideo: boolean;
   isLiked: boolean;
+  isFollowingArtist: boolean;
+  showFollowButton: boolean;
   onToggleLike: (item: FeedPreviewSong) => void;
+  onToggleFollow: (item: FeedPreviewSong) => void;
 }) {
+  const artistName = getArtistName(item);
+
   return (
     <View style={[styles.feedItem, { width: itemWidth, height: itemHeight }]}>
       <FeedVisual
@@ -130,7 +150,7 @@ const FeedItem = memo(function FeedItem({
       <View style={styles.contentContainer}>
         <View style={styles.textContainer}>
           <Text style={[styles.artistName, { color: theme.colors.primary }]}>
-            {item.artist_name || item.creatorName || 'Creator'}
+            {artistName}
           </Text>
           <Text style={styles.songTitle}>{item.title}</Text>
           <TouchableOpacity 
@@ -144,6 +164,27 @@ const FeedItem = memo(function FeedItem({
       </View>
 
       <View style={styles.actionsContainer}>
+        {showFollowButton ? (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => onToggleFollow(item)}
+            accessibilityRole="button"
+            accessibilityLabel={isFollowingArtist ? `${artistName} nicht mehr folgen` : `${artistName} folgen`}
+          >
+            <View style={styles.followAvatar}>
+              <Ionicons name="person" size={26} color="white" />
+              <View style={[styles.followBadge, isFollowingArtist && styles.followBadgeActive]}>
+                <Ionicons
+                  name={isFollowingArtist ? 'checkmark' : 'add'}
+                  size={14}
+                  color={isFollowingArtist ? '#000' : '#fff'}
+                />
+              </View>
+            </View>
+            <Text style={styles.actionText}>{isFollowingArtist ? 'Gefolgt' : 'Folgen'}</Text>
+          </TouchableOpacity>
+        ) : null}
+
         <TouchableOpacity
           style={styles.actionButton}
           onPress={onTogglePlay}
@@ -171,6 +212,8 @@ const FeedItem = memo(function FeedItem({
   && previous.isPlaying === next.isPlaying
   && previous.shouldLoadVideo === next.shouldLoadVideo
   && previous.isLiked === next.isLiked
+  && previous.isFollowingArtist === next.isFollowingArtist
+  && previous.showFollowButton === next.showFollowButton
 ));
 
 export function ForYouScreen() {
@@ -185,6 +228,7 @@ export function ForYouScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [likedSongsMap, setLikedSongsMap] = useState<Record<string, boolean>>({});
+  const [followedArtistsMap, setFollowedArtistsMap] = useState<Record<string, boolean>>({});
 
   // Track currently visible item to avoid playing the same song repeatedly
   const currentHookSongId = useRef<string | null>(null);
@@ -210,15 +254,27 @@ export function ForYouScreen() {
           nextSongs = await loadExploreFeed(user.id);
         }
         
+        const followedArtistNames = await loadFollowedArtistNames(user.id);
+
         if (mounted) {
           const initialLikedMap: Record<string, boolean> = {};
+          const initialFollowedMap: Record<string, boolean> = {};
+
           nextSongs.forEach(s => {
             if (s.isLiked) initialLikedMap[s.id] = true;
           });
+          followedArtistNames.forEach((artistName) => {
+            initialFollowedMap[artistName] = true;
+          });
+
           setLikedSongsMap(initialLikedMap);
+          setFollowedArtistsMap(initialFollowedMap);
           currentHookSongId.current = null;
           setActiveIndex(0);
-          setSongs(nextSongs);
+          setSongs(nextSongs.map((song) => ({
+            ...song,
+            isFollowingArtist: !!initialFollowedMap[getArtistName(song)],
+          })));
         }
       } catch (loadError) {
         if (mounted) {
@@ -317,17 +373,58 @@ export function ForYouScreen() {
     if (!user) return;
     const isCurrentlyLiked = !!likedSongsMap[item.id];
     const newStatus = !isCurrentlyLiked;
+    const optimisticCount = Math.max(0, (item.likes_count ?? 0) + (newStatus ? 1 : -1));
     
     setLikedSongsMap(prev => ({ ...prev, [item.id]: newStatus }));
-    setSongs(prev => prev.map(s => s.id === item.id ? { ...s, likes_count: (s.likes_count ?? 0) + (newStatus ? 1 : -1) } : s));
+    setSongs(prev => prev.map(s => s.id === item.id ? { ...s, likes_count: optimisticCount, isLiked: newStatus } : s));
 
     try {
-      await toggleLike(user.id, item.id, newStatus);
+      const confirmedStatus = await toggleLike(user.id, item.id, isCurrentlyLiked);
+      const confirmedCount = await loadFeedLikeCount(item.id);
+
+      setLikedSongsMap(prev => ({ ...prev, [item.id]: confirmedStatus }));
+      setSongs(prev => prev.map(s => s.id === item.id ? {
+        ...s,
+        isLiked: confirmedStatus,
+        likes_count: confirmedCount,
+      } : s));
     } catch {
       setLikedSongsMap(prev => ({ ...prev, [item.id]: isCurrentlyLiked }));
-      setSongs(prev => prev.map(s => s.id === item.id ? { ...s, likes_count: (s.likes_count ?? 0) + (isCurrentlyLiked ? 1 : -1) } : s));
+      setSongs(prev => prev.map(s => s.id === item.id ? {
+        ...s,
+        isLiked: isCurrentlyLiked,
+        likes_count: item.likes_count ?? 0,
+      } : s));
     }
   }, [user, likedSongsMap]);
+
+  const handleToggleFollow = useCallback(async (item: FeedPreviewSong) => {
+    if (!user) return;
+    const artistName = getArtistName(item);
+    const isCurrentlyFollowing = !!followedArtistsMap[artistName];
+    const nextStatus = !isCurrentlyFollowing;
+
+    setFollowedArtistsMap(prev => ({ ...prev, [artistName]: nextStatus }));
+    setSongs(prev => prev.map(song => getArtistName(song) === artistName ? {
+      ...song,
+      isFollowingArtist: nextStatus,
+    } : song));
+
+    try {
+      const confirmedStatus = await toggleArtistFollow(user.id, artistName, isCurrentlyFollowing);
+      setFollowedArtistsMap(prev => ({ ...prev, [artistName]: confirmedStatus }));
+      setSongs(prev => prev.map(song => getArtistName(song) === artistName ? {
+        ...song,
+        isFollowingArtist: confirmedStatus,
+      } : song));
+    } catch {
+      setFollowedArtistsMap(prev => ({ ...prev, [artistName]: isCurrentlyFollowing }));
+      setSongs(prev => prev.map(song => getArtistName(song) === artistName ? {
+        ...song,
+        isFollowingArtist: isCurrentlyFollowing,
+      } : song));
+    }
+  }, [followedArtistsMap, user]);
 
   const renderTopTabs = useCallback(() => (
     <View style={[styles.topTabs, { top: Math.max(insets.top + 10, 60) }]}>
@@ -426,10 +523,27 @@ export function ForYouScreen() {
         }}
         shouldLoadVideo={shouldLoadVideo}
         isLiked={!!likedSongsMap[item.id]}
+        isFollowingArtist={!!followedArtistsMap[getArtistName(item)]}
+        showFollowButton={activeFeed !== 'following'}
         onToggleLike={handleToggleLike}
+        onToggleFollow={handleToggleFollow}
       />
     );
-  }, [activeIndex, activeSong?.id, handlePlayFull, isPlaying, itemHeight, itemWidth, startHookPlayback, toggle, likedSongsMap, handleToggleLike]);
+  }, [
+    activeFeed,
+    activeIndex,
+    activeSong?.id,
+    followedArtistsMap,
+    handlePlayFull,
+    handleToggleFollow,
+    handleToggleLike,
+    isPlaying,
+    itemHeight,
+    itemWidth,
+    likedSongsMap,
+    startHookPlayback,
+    toggle,
+  ]);
 
   if (loading) {
     return (
@@ -470,7 +584,7 @@ export function ForYouScreen() {
         data={songs}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        extraData={`${activeIndex}:${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}:${itemHeight}:${itemWidth}:${JSON.stringify(likedSongsMap)}`}
+        extraData={`${activeIndex}:${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}:${itemHeight}:${itemWidth}:${activeFeed}:${JSON.stringify(likedSongsMap)}:${JSON.stringify(followedArtistsMap)}`}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={itemHeight}
@@ -697,6 +811,31 @@ const styles = StyleSheet.create({
   actionButton: {
     alignItems: 'center',
     gap: 4,
+  },
+  followAvatar: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(255,255,255,0.28)',
+    borderRadius: 24,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  followBadge: {
+    alignItems: 'center',
+    backgroundColor: '#ff2f68',
+    borderColor: '#050505',
+    borderRadius: 11,
+    borderWidth: 2,
+    bottom: -5,
+    height: 22,
+    justifyContent: 'center',
+    position: 'absolute',
+    width: 22,
+  },
+  followBadgeActive: {
+    backgroundColor: '#fff',
   },
   actionText: {
     color: '#fff',

@@ -494,9 +494,69 @@ export async function toggleLike(userId: string, songId: string, isLiked: boolea
     const { error } = await client
       .from('liked_songs')
       .insert({ user_id: userId, song_id: songId });
-    if (error) throw new Error(error.message);
+    if (error && error.code !== '23505') throw new Error(error.message);
     return true;
   }
+}
+
+export async function loadFeedLikeCount(songId: string): Promise<number> {
+  const client = requireClient();
+
+  const { data, error } = await client
+    .from('song_feed_stats')
+    .select('likes_count')
+    .eq('song_id', songId)
+    .maybeSingle();
+
+  if (!error && data) {
+    return Math.max(0, data.likes_count ?? 0);
+  }
+
+  const { count, error: countError } = await client
+    .from('liked_songs')
+    .select('song_id', { count: 'exact', head: true })
+    .eq('song_id', songId);
+
+  if (countError) throw new Error(countError.message);
+  return Math.max(0, count ?? 0);
+}
+
+export async function loadFollowedArtistNames(userId: string): Promise<string[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('follows')
+    .select('artist_name')
+    .eq('user_id', userId);
+
+  if (error) throw new Error(error.message);
+
+  return (data || [])
+    .map((item) => item.artist_name?.trim())
+    .filter((artistName): artistName is string => Boolean(artistName));
+}
+
+export async function toggleArtistFollow(userId: string, artistName: string, isFollowing: boolean): Promise<boolean> {
+  const normalizedArtistName = artistName.trim();
+  if (!normalizedArtistName) return false;
+  const client = requireClient();
+
+  if (isFollowing) {
+    const { error } = await client
+      .from('follows')
+      .delete()
+      .eq('user_id', userId)
+      .eq('artist_name', normalizedArtistName);
+
+    if (error) throw new Error(error.message);
+    return false;
+  }
+
+  const { error } = await client
+    .from('follows')
+    .insert({ user_id: userId, artist_name: normalizedArtistName });
+
+  if (error && error.code !== '23505') throw new Error(error.message);
+  return true;
 }
 
 export async function getUserPlaylists(userId: string): Promise<Playlist[]> {
