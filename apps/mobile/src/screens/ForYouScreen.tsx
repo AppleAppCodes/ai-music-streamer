@@ -10,7 +10,9 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
+  Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useRef, useState, memo } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { loadFeedPreview } from '../lib/music-data';
@@ -170,6 +172,7 @@ const FeedItem = memo(function FeedItem({
 ));
 
 export function ForYouScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const { height: itemHeight, width: itemWidth } = useWindowDimensions();
@@ -338,10 +341,16 @@ export function ForYouScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topTabs}>
-        <Text style={[styles.topTab, styles.topTabActive]}>Für dich</Text>
-        <Text style={styles.topTab}>Gefolgt</Text>
-        <Text style={styles.topTab}>Explore</Text>
+      <View style={[styles.topTabs, { top: Math.max(insets.top + 10, 60) }]}>
+        <TouchableOpacity activeOpacity={0.8}>
+          <Text style={[styles.topTab, styles.topTabActive]}>Für dich</Text>
+        </TouchableOpacity>
+        <TouchableOpacity activeOpacity={0.6} onPress={() => Alert.alert('Bald verfügbar', 'Dieser Feed kommt in einem der nächsten Updates.')}>
+          <Text style={styles.topTab}>Gefolgt</Text>
+        </TouchableOpacity>
+        <TouchableOpacity activeOpacity={0.6} onPress={() => Alert.alert('Bald verfügbar', 'Dieser Feed kommt in einem der nächsten Updates.')}>
+          <Text style={styles.topTab}>Explore</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
