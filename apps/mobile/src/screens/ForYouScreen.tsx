@@ -29,7 +29,7 @@ import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAudioPlayer, type AudioPlayer } from 'expo-audio';
-import { useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -220,8 +220,6 @@ type PreviewSlotState = {
   token: number;
 };
 
-const HANDOFF_SEEK_LEAD_SECONDS = 0.06;
-
 const PREVIEW_PLAYER_OPTIONS = {
   keepAudioSessionActive: true,
   preferredForwardBufferDuration: 8,
@@ -249,9 +247,10 @@ function setFeedPlayerVolume(player: AudioPlayer, volume: number) {
 export function ForYouScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const isFocused = useIsFocused();
   const { user } = useAuth();
   const { height: itemHeight, width: itemWidth } = useWindowDimensions();
-  const { activeSong, isPlaying, playSong, toggle, setQueue, setPreviewVolume } = usePlayerControls();
+  const { playSong, reset: resetMainPlayer, setQueue } = usePlayerControls();
   const previewPlayerA = useAudioPlayer(null, PREVIEW_PLAYER_OPTIONS);
   const previewPlayerB = useAudioPlayer(null, PREVIEW_PLAYER_OPTIONS);
   const [activeFeed, setActiveFeed] = useState<'foryou' | 'following' | 'explore'>('foryou');
@@ -259,6 +258,7 @@ export function ForYouScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [feedPlayingSongId, setFeedPlayingSongId] = useState<string | null>(null);
   const [likedSongsMap, setLikedSongsMap] = useState<Record<string, boolean>>({});
   const [followedArtistsMap, setFollowedArtistsMap] = useState<Record<string, boolean>>({});
 
@@ -293,6 +293,7 @@ export function ForYouScreen() {
     }
     if (audiblePreviewSlot.current === slotKey) {
       audiblePreviewSlot.current = null;
+      setFeedPlayingSongId(null);
     }
   }, [getPreviewSlot]);
 
@@ -459,6 +460,7 @@ export function ForYouScreen() {
     try {
       player.play();
       audiblePreviewSlot.current = slotKey;
+      setFeedPlayingSongId(getPreviewSlot(slotKey).state.songId);
       return true;
     } catch {
       pausePreviewSlot(slotKey);
@@ -497,7 +499,7 @@ export function ForYouScreen() {
       return;
     }
 
-    const { player, state } = getPreviewSlot(slotKey);
+    const { state } = getPreviewSlot(slotKey);
     if (!state.ready || state.index !== nextIndex || state.songId !== nextSong.id) {
       if (pendingTransitionIndex.current === nextIndex) {
         pendingTransitionIndex.current = null;
@@ -505,105 +507,28 @@ export function ForYouScreen() {
       return;
     }
 
-    setPreviewVolume(0);
     if (!activatePreviewSlot(slotKey)) {
-      setPreviewVolume(1);
       if (pendingTransitionIndex.current === nextIndex) {
         pendingTransitionIndex.current = null;
       }
       return;
     }
     currentHookSongId.current = nextSong.id;
-    setQueue([nextSong], 0);
     const swipeDirection = nextIndex >= previousIndex ? 1 : -1;
     const continuationIndex = nextIndex + swipeDirection;
     if (continuationIndex >= 0 && continuationIndex < songs.length) {
       void ensurePreviewSlot(continuationIndex);
     }
 
-    const getHandoffStart = () => {
-      const fallbackStart = getHookStart(nextSong);
-      if (state.songId !== nextSong.id) return fallbackStart;
-      let previewTime = 0;
-      try {
-        previewTime = player.currentTime;
-      } catch {
-        return fallbackStart;
-      }
-      return Number.isFinite(previewTime) && previewTime > 0
-        ? Math.max(fallbackStart, previewTime)
-        : fallbackStart;
-    };
-
-    let handoffCompleted = false;
-    try {
-      await playSong(nextSong, {
-        fadeInMs: 0,
-        getFinalHandoffPosition: () => {
-          if (
-            handoffCompleted
-            || transitionToken.current !== requestToken
-            || audiblePreviewSlot.current !== slotKey
-          ) {
-            return null;
-          }
-
-          let finalPosition = getHookStart(nextSong);
-          try {
-            finalPosition = Math.max(finalPosition, player.currentTime);
-          } catch {
-            // Fall back to the configured hook position.
-          }
-
-          return finalPosition + HANDOFF_SEEK_LEAD_SECONDS;
-        },
-        isSwipeTransition: true,
-        onPlaybackStarted: () => {
-          if (
-            handoffCompleted
-            || transitionToken.current !== requestToken
-            || audiblePreviewSlot.current !== slotKey
-          ) {
-            return;
-          }
-          handoffCompleted = true;
-          pausePreviewSlot(slotKey);
-          if (
-            isMounted.current
-            && transitionToken.current === requestToken
-            && currentHookSongId.current === nextSong.id
-          ) {
-            queueNeighborPrewarm(nextIndex);
-          }
-        },
-        startAt: getHandoffStart,
-      });
-    } finally {
-      if (pendingTransitionIndex.current === nextIndex) {
-        pendingTransitionIndex.current = null;
-      }
-      if (!handoffCompleted && transitionToken.current !== requestToken) {
-        pausePreviewSlot(slotKey);
-      }
-      if (!handoffCompleted && transitionToken.current === requestToken) {
-        // Keep the prepared preview audible if the main player could not take over.
-        if (
-          isMounted.current
-          && currentHookSongId.current === nextSong.id
-        ) {
-          queueNeighborPrewarm(nextIndex);
-        }
-      }
+    if (pendingTransitionIndex.current === nextIndex) {
+      pendingTransitionIndex.current = null;
     }
+    queueNeighborPrewarm(nextIndex);
   }, [
     activatePreviewSlot,
     ensurePreviewSlot,
     getPreviewSlot,
-    pausePreviewSlot,
-    playSong,
     queueNeighborPrewarm,
-    setPreviewVolume,
-    setQueue,
     songs,
   ]);
 
@@ -615,7 +540,7 @@ export function ForYouScreen() {
       transitionToken.current += 1;
       pendingTransitionIndex.current = null;
       stopAllPreviewPlayers();
-      setPreviewVolume(1);
+      resetMainPlayer();
       setLoading(true);
       setError(null);
 
@@ -663,7 +588,7 @@ export function ForYouScreen() {
 
     load();
     return () => { mounted = false; };
-  }, [user, activeFeed, setPreviewVolume, stopAllPreviewPlayers]);
+  }, [user, activeFeed, resetMainPlayer, stopAllPreviewPlayers]);
 
   const clearDragSettleTimer = useCallback(() => {
     if (!dragSettleTimer.current) return;
@@ -672,9 +597,26 @@ export function ForYouScreen() {
   }, []);
 
   useEffect(() => {
-    if (loading || songs.length === 0 || currentHookSongId.current) return;
-    void transitionToIndex(0, true);
-  }, [loading, songs.length, transitionToIndex]);
+    if (!isFocused) {
+      transitionToken.current += 1;
+      pendingTransitionIndex.current = null;
+      stopAllPreviewPlayers();
+      currentHookSongId.current = null;
+      return;
+    }
+
+    resetMainPlayer();
+    if (!loading && songs.length > 0) {
+      void transitionToIndex(activeIndexRef.current, true);
+    }
+  }, [
+    isFocused,
+    loading,
+    resetMainPlayer,
+    songs.length,
+    stopAllPreviewPlayers,
+    transitionToIndex,
+  ]);
 
   useEffect(() => {
     const nearbyIndexes = [activeIndex - 1, activeIndex, activeIndex + 1, activeIndex + 2];
@@ -699,9 +641,8 @@ export function ForYouScreen() {
         clearTimeout(prewarmTimer.current);
       }
       stopAllPreviewPlayers();
-      setPreviewVolume(1);
     };
-  }, [clearDragSettleTimer, setPreviewVolume, stopAllPreviewPlayers]);
+  }, [clearDragSettleTimer, stopAllPreviewPlayers]);
 
   const handleMomentumScrollBegin = useCallback(() => {
     clearDragSettleTimer();
@@ -726,12 +667,20 @@ export function ForYouScreen() {
 
   const handlePlayFull = useCallback((item: FeedPreviewSong) => {
     transitionToken.current += 1;
+    let startAt = 0;
+    const audibleSlot = audiblePreviewSlot.current;
+    if (audibleSlot && feedPlayingSongId === item.id) {
+      try {
+        startAt = Math.max(0, getPreviewSlot(audibleSlot).player.currentTime);
+      } catch {
+        startAt = 0;
+      }
+    }
     stopAllPreviewPlayers();
-    setPreviewVolume(1);
     setQueue([item], 0);
-    void playSong(item, { startAt: 0 });
+    void playSong(item, { startAt });
     navigation.navigate('FullscreenPlayer');
-  }, [navigation, playSong, setPreviewVolume, setQueue, stopAllPreviewPlayers]);
+  }, [feedPlayingSongId, getPreviewSlot, navigation, playSong, setQueue, stopAllPreviewPlayers]);
 
   const getItemLayout = useCallback((_: ArrayLike<FeedPreviewSong> | null | undefined, index: number) => ({
     length: itemHeight,
@@ -871,8 +820,8 @@ export function ForYouScreen() {
 
   const renderItem = useCallback(({ item, index }: { item: FeedPreviewSong; index: number }) => {
     const isActive = index === activeIndex;
-    const isCurrentSong = activeSong?.id === item.id;
-    const isSongPlaying = isActive && isCurrentSong && isPlaying;
+    const isCurrentSong = feedPlayingSongId === item.id;
+    const isSongPlaying = isActive && isCurrentSong;
 
     return (
       <FeedItem
@@ -884,13 +833,18 @@ export function ForYouScreen() {
         isPlaying={isSongPlaying}
         onPlayFull={handlePlayFull}
         onTogglePlay={() => {
-          setPreviewVolume(1);
-          if (activeSong?.id === item.id) {
+          if (feedPlayingSongId === item.id) {
             const audibleSlot = audiblePreviewSlot.current;
             if (audibleSlot) {
-              pausePreviewSlot(audibleSlot);
+              const { player } = getPreviewSlot(audibleSlot);
+              if (player.playing) {
+                pausePreviewSlot(audibleSlot);
+              } else {
+                setFeedPlayerVolume(player, 1);
+                player.play();
+                setFeedPlayingSongId(item.id);
+              }
             }
-            toggle();
           } else {
             void transitionToIndex(index, true);
           }
@@ -905,29 +859,26 @@ export function ForYouScreen() {
   }, [
     activeFeed,
     activeIndex,
-    activeSong?.id,
+    feedPlayingSongId,
     followedArtistsMap,
+    getPreviewSlot,
     handlePlayFull,
     handleToggleFollow,
     handleToggleLike,
-    isPlaying,
     itemHeight,
     itemWidth,
     likedSongsMap,
     pausePreviewSlot,
-    setPreviewVolume,
-    toggle,
     transitionToIndex,
   ]);
 
   const feedRenderState = useMemo(() => ({
     activeFeed,
     activeIndex,
-    activeSongId: activeSong?.id ?? null,
-    isPlaying,
+    feedPlayingSongId,
     itemHeight,
     itemWidth,
-  }), [activeFeed, activeIndex, activeSong?.id, isPlaying, itemHeight, itemWidth]);
+  }), [activeFeed, activeIndex, feedPlayingSongId, itemHeight, itemWidth]);
 
   if (loading) {
     return (

@@ -13,9 +13,6 @@ interface StorageListItem {
 interface PlayOptions {
   startAt?: number | null | (() => number);
   fadeInMs?: number;
-  getFinalHandoffPosition?: () => number | null;
-  isSwipeTransition?: boolean;
-  onPlaybackStarted?: () => void;
 }
 
 const PLAYBACK_READY_TIMEOUT_MS = 2500;
@@ -52,7 +49,6 @@ interface PlayerControlsContextValue {
   pause: () => void;
   playSong: (song: Song, options?: PlayOptions) => Promise<void>;
   reset: () => void;
-  setPreviewVolume: (volume: number) => void;
   setQueue: (songs: Song[], startIndex?: number) => void;
   toggle: () => void;
   toggleShuffle: () => void;
@@ -109,28 +105,6 @@ async function waitForPlayerReady(player: AudioPlayer, isCurrentRequest: () => b
     }
 
     await sleep(PLAYBACK_READY_POLL_MS);
-  }
-
-  return false;
-}
-
-async function waitForPlayerPlaying(
-  player: AudioPlayer,
-  isCurrentRequest: () => boolean,
-  timeoutMs = 900,
-) {
-  const startedAt = Date.now();
-  let playingObservedAt: number | null = null;
-
-  while (isCurrentRequest() && Date.now() - startedAt < timeoutMs) {
-    const currentStatus = player.currentStatus;
-    if (currentStatus.isLoaded && currentStatus.playing && !currentStatus.isBuffering) {
-      playingObservedAt ??= Date.now();
-      if (Date.now() - playingObservedAt >= 80) return true;
-    } else {
-      playingObservedAt = null;
-    }
-    await sleep(25);
   }
 
   return false;
@@ -265,11 +239,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setIsPreparingPlayback(true);
 
     try {
-      // Configure audio session for background/lockscreen if this is NOT a swipe transition.
-      // Swipe transitions reuse the already active session to avoid native blocking dropouts.
-      if (!options.isSwipeTransition) {
-        await activateYoriaxPlaybackSession();
-      }
+      await activateYoriaxPlaybackSession();
 
       const isSameSong = loadedSongIdRef.current === song.id;
       const fadeInMs = Math.max(0, options.fadeInMs ?? 0);
@@ -316,10 +286,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
 
       if (!isSameSong) {
-        const shouldStartMuted = options.isSwipeTransition || fadeInMs > 0;
-        if (shouldStartMuted) {
-          setPlayerVolume(0);
-        } else {
+        if (fadeInMs <= 0) {
           setPlayerVolume(1);
         }
 
@@ -334,6 +301,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (!isCurrentRequest()) return;
 
         loadedSongIdRef.current = song.id;
+        if (fadeInMs > 0) {
+          setPlayerVolume(0);
+        }
       }
 
       const resolvedStartAt = typeof options.startAt === 'function'
@@ -347,63 +317,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
 
       player.play();
-
-      if (options.isSwipeTransition) {
-        const playbackStarted = await waitForPlayerPlaying(player, isCurrentRequest);
-        if (!isCurrentRequest()) return;
-        if (!playbackStarted) {
-          player.play();
-        }
-
-        if (options.getFinalHandoffPosition) {
-          for (let synchronizationPass = 0; synchronizationPass < 2; synchronizationPass += 1) {
-            const finalHandoffPosition = options.getFinalHandoffPosition();
-            if (typeof finalHandoffPosition !== 'number' || !Number.isFinite(finalHandoffPosition)) {
-              break;
-            }
-
-            const targetPosition = Math.max(0, finalHandoffPosition);
-            if (Math.abs(player.currentTime - targetPosition) > 0.035) {
-              try {
-                await player.seekTo(targetPosition, 0, 0);
-              } catch (handoffSeekError) {
-                console.warn('Could not synchronize swipe audio position.', handoffSeekError);
-                break;
-              }
-              if (!isCurrentRequest()) return;
-            }
-
-            const synchronizedPlaybackReady = await waitForPlayerPlaying(player, isCurrentRequest);
-            if (!isCurrentRequest()) return;
-            if (!synchronizedPlaybackReady) {
-              player.play();
-            }
-          }
-        }
-
-        try {
-          options.onPlaybackStarted?.();
-        } catch (handoffError) {
-          console.warn('Could not complete swipe audio handoff.', handoffError);
-        }
-        if (fadeInMs > 0) {
-          rampPlayerVolume(1, fadeInMs);
-        } else {
-          setPlayerVolume(1);
-        }
-        setTimeout(() => {
-          if (isCurrentRequest()) {
-            setLockScreenMetadata(player, song);
-          }
-        }, 1000);
+      if (fadeInMs > 0) {
+        rampPlayerVolume(1, fadeInMs);
       } else {
-        if (fadeInMs > 0) {
-          rampPlayerVolume(1, fadeInMs);
-        } else {
-          setPlayerVolume(1);
-        }
-        setLockScreenMetadata(player, song);
+        setPlayerVolume(1);
       }
+      setLockScreenMetadata(player, song);
 
       setTimeout(() => {
         if (!isCurrentRequest()) return;
@@ -641,12 +560,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       pause,
       playSong,
       reset,
-      setPreviewVolume: setPlayerVolume,
       setQueue,
       toggle,
       toggleShuffle,
     }),
-    [activeSong, isShuffling, pause, playSong, reset, setPlayerVolume, setQueue, status.playing, toggle, toggleShuffle],
+    [activeSong, isShuffling, pause, playSong, reset, setQueue, status.playing, toggle, toggleShuffle],
   );
 
   const hasActiveSong = activeSong !== null;
