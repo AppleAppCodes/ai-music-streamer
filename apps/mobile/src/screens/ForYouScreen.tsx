@@ -111,52 +111,15 @@ type FeedPlayerState = {
 };
 
 function FeedVisual({
-  active,
   item,
   itemHeight,
   itemWidth,
-  shouldLoadVideo,
 }: {
-  active: boolean;
   item: FeedPreviewSong;
   itemHeight: number;
   itemWidth: number;
-  shouldLoadVideo: boolean;
 }) {
-  const videoUrl = item.clip?.video_url?.trim() || null;
-  const videoPlayer = useVideoPlayer(shouldLoadVideo && videoUrl ? { uri: videoUrl } : null, (player) => {
-    player.loop = true;
-    player.muted = true;
-  });
-
-  useEffect(() => {
-    if (!videoUrl || !shouldLoadVideo) return;
-
-    if (active) {
-      videoPlayer.play();
-    } else {
-      videoPlayer.pause();
-    }
-
-    return () => {
-      videoPlayer.pause();
-    };
-  }, [active, shouldLoadVideo, videoPlayer, videoUrl]);
-
   const mediaStyle = [styles.coverImage, { width: itemWidth, height: itemHeight }];
-
-  if (videoUrl && shouldLoadVideo) {
-    return (
-      <VideoView
-        player={videoPlayer}
-        style={mediaStyle}
-        contentFit="cover"
-        nativeControls={false}
-        playsInline
-        surfaceType="textureView"
-      />
-    );
-  }
 
   if (item.cover_url) {
     return <Image source={{ uri: item.cover_url }} style={mediaStyle} resizeMode="cover" alt="" />;
@@ -174,7 +137,6 @@ const FeedItem = memo(function FeedItem({
   isPlaying,
   onPlayFull,
   onTogglePlay,
-  shouldLoadVideo,
   isLiked,
   isFollowingArtist,
   showFollowButton,
@@ -189,7 +151,6 @@ const FeedItem = memo(function FeedItem({
   isPlaying: boolean;
   onPlayFull: (item: FeedPreviewSong) => void;
   onTogglePlay: () => void;
-  shouldLoadVideo: boolean;
   isLiked: boolean;
   isFollowingArtist: boolean;
   showFollowButton: boolean;
@@ -201,11 +162,9 @@ const FeedItem = memo(function FeedItem({
   return (
     <View style={[styles.feedItem, { width: itemWidth, height: itemHeight }]}>
       <FeedVisual
-        active={isActive}
         item={item}
         itemHeight={itemHeight}
         itemWidth={itemWidth}
-        shouldLoadVideo={shouldLoadVideo}
       />
 
       {/* Dark gradient overlay at bottom could go here, for now just a dark shadow overlay */}
@@ -285,7 +244,6 @@ const FeedItem = memo(function FeedItem({
   && previous.isActive === next.isActive
   && previous.isCurrentSong === next.isCurrentSong
   && previous.isPlaying === next.isPlaying
-  && previous.shouldLoadVideo === next.shouldLoadVideo
   && previous.isLiked === next.isLiked
   && previous.isFollowingArtist === next.isFollowingArtist
   && previous.showFollowButton === next.showFollowButton
@@ -888,7 +846,6 @@ export function ForYouScreen() {
     const isActive = index === activeIndex;
     const isCurrentSong = activeSong?.id === item.id;
     const isSongPlaying = isActive && isCurrentSong && isPlaying;
-    const shouldLoadVideo = isActive;
 
     return (
       <FeedItem
@@ -908,7 +865,6 @@ export function ForYouScreen() {
             startHookPlayback(item, true, 180);
           }
         }}
-        shouldLoadVideo={shouldLoadVideo}
         isLiked={!!likedSongsMap[item.id]}
         isFollowingArtist={!!followedArtistsMap[getArtistName(item)]}
         showFollowButton={activeFeed !== 'following'}
