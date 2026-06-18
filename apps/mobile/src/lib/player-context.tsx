@@ -323,14 +323,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setPlayerVolume(1);
       }
       setLockScreenMetadata(player, song);
-
-      setTimeout(() => {
-        if (!isCurrentRequest()) return;
-        const currentStatus = player.currentStatus;
-        if (currentStatus.isLoaded && !currentStatus.playing && !currentStatus.didJustFinish) {
-          player.play();
-        }
-      }, 150);
     } catch (playError) {
       setError(playError instanceof Error ? playError.message : 'Playback konnte nicht gestartet werden.');
     } finally {

@@ -235,6 +235,42 @@ function setFeedPlayerVolume(player: AudioPlayer, volume: number) {
   }
 }
 
+function setFeedPlayerMuted(player: AudioPlayer, muted: boolean) {
+  try {
+    player.muted = muted;
+  } catch {
+    // The native shared object can be released while the screen is unmounting.
+  }
+}
+
+async function waitForFeedPlayersToStop(players: AudioPlayer[], timeoutMs = 400) {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    let allStopped = true;
+
+    players.forEach((player) => {
+      setFeedPlayerMuted(player, true);
+      setFeedPlayerVolume(player, 0);
+
+      try {
+        if (player.playing || player.currentStatus.playing) {
+          allStopped = false;
+          player.pause();
+        }
+      } catch {
+        // A released player is already stopped from the app's perspective.
+      }
+    });
+
+    if (allStopped) break;
+    await new Promise((resolve) => setTimeout(resolve, 16));
+  }
+
+  // Flush the final AVPlayer audio buffer before another player becomes audible.
+  await new Promise((resolve) => setTimeout(resolve, 32));
+}
+
 export function ForYouScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -277,6 +313,7 @@ export function ForYouScreen() {
 
   const pausePreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
     const { player } = getPreviewSlot(slotKey);
+    setFeedPlayerMuted(player, true);
     setFeedPlayerVolume(player, 0);
     try {
       player.pause();
@@ -321,6 +358,11 @@ export function ForYouScreen() {
     resetPreviewSlot('b');
   }, [cancelNeighborPrewarm, resetPreviewSlot]);
 
+  const stopAllPreviewPlayersAndWait = useCallback(async () => {
+    stopAllPreviewPlayers();
+    await waitForFeedPlayersToStop([previewPlayerA, previewPlayerB]);
+  }, [previewPlayerA, previewPlayerB, stopAllPreviewPlayers]);
+
   const preparePreviewSlot = useCallback((slotKey: PreviewSlotKey, index: number): Promise<boolean> => {
     const song = songs[index];
     if (!song?.audio_url) return Promise.resolve(false);
@@ -338,6 +380,7 @@ export function ForYouScreen() {
     state.songId = song.id;
     state.token = token;
 
+    setFeedPlayerMuted(player, true);
     setFeedPlayerVolume(player, 0);
     try {
       player.pause();
@@ -465,6 +508,7 @@ export function ForYouScreen() {
     }
 
     const { player } = getPreviewSlot(slotKey);
+    setFeedPlayerMuted(player, false);
     setFeedPlayerVolume(player, 1);
     try {
       player.play();
@@ -690,13 +734,17 @@ export function ForYouScreen() {
         startAt = 0;
       }
     }
-    stopAllPreviewPlayers();
-    setQueue([item], 0);
-    void playSong(item, { startAt }).finally(() => {
-      fullSongTransitionActive.current = false;
-    });
-    navigation.navigate('FullscreenPlayer');
-  }, [feedPlayingSongId, getPreviewSlot, navigation, playSong, setQueue, stopAllPreviewPlayers]);
+    void (async () => {
+      try {
+        await stopAllPreviewPlayersAndWait();
+        setQueue([item], 0);
+        await playSong(item, { startAt });
+        navigation.navigate('FullscreenPlayer');
+      } finally {
+        fullSongTransitionActive.current = false;
+      }
+    })();
+  }, [feedPlayingSongId, getPreviewSlot, navigation, playSong, setQueue, stopAllPreviewPlayersAndWait]);
 
   const getItemLayout = useCallback((_: ArrayLike<FeedPreviewSong> | null | undefined, index: number) => ({
     length: itemHeight,
@@ -856,6 +904,7 @@ export function ForYouScreen() {
               if (player.playing) {
                 pausePreviewSlot(audibleSlot);
               } else {
+                setFeedPlayerMuted(player, false);
                 setFeedPlayerVolume(player, 1);
                 player.play();
                 setFeedPlayingSongId(item.id);
