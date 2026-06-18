@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -17,7 +18,7 @@ import { theme } from '../theme';
 type AuthMode = 'sign-in' | 'sign-up';
 
 export function AuthScreen() {
-  const { authReady, lastError, signIn, signInWithGoogle, signUp } = useAuth();
+  const { authReady, lastError, signIn, signInWithApple, signInWithGoogle, signUp } = useAuth();
   const [mode, setMode] = useState<AuthMode>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,11 +27,35 @@ export function AuthScreen() {
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+  const [appleSubmitting, setAppleSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   const isSignUp = mode === 'sign-up';
   const captchaReady = hasTurnstileConfig && Boolean(captchaToken);
   const canSubmit = authReady && captchaReady && email.trim().length > 3 && password.length >= 6 && !submitting;
+
+  useEffect(() => {
+    let active = true;
+
+    if (Platform.OS !== 'ios') {
+      return () => {
+        active = false;
+      };
+    }
+
+    AppleAuthentication.isAvailableAsync()
+      .then((available) => {
+        if (active) setAppleAvailable(available);
+      })
+      .catch(() => {
+        if (active) setAppleAvailable(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -66,6 +91,20 @@ export function AuthScreen() {
     setGoogleSubmitting(false);
   }
 
+  async function handleAppleLogin() {
+    if (!authReady || appleSubmitting || googleSubmitting || submitting) return;
+
+    setAppleSubmitting(true);
+    setMessage(null);
+
+    const result = await signInWithApple();
+    if (!result.ok) {
+      setMessage(result.message);
+    }
+
+    setAppleSubmitting(false);
+  }
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -89,25 +128,44 @@ export function AuthScreen() {
           </View>
         ) : null}
 
-        <TouchableOpacity
-          accessibilityRole="button"
-          disabled={!authReady || googleSubmitting || submitting}
-          onPress={() => {
-            void handleGoogleLogin();
-          }}
-          style={[styles.googleButton, (!authReady || googleSubmitting || submitting) && styles.buttonDisabled]}
-        >
-          {googleSubmitting ? (
-            <ActivityIndicator color={theme.colors.text} />
-          ) : (
-            <>
-              <View style={styles.googleIcon}>
-                <Text style={styles.googleIconText}>G</Text>
-              </View>
-              <Text style={styles.googleButtonText}>Mit Google fortfahren</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        <View style={styles.socialButtons}>
+          {appleAvailable ? (
+            <View pointerEvents={appleSubmitting || googleSubmitting || submitting ? 'none' : 'auto'}>
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                cornerRadius={18}
+                onPress={() => {
+                  void handleAppleLogin();
+                }}
+                style={[styles.appleButton, appleSubmitting && styles.buttonDisabled]}
+              />
+            </View>
+          ) : null}
+
+          <TouchableOpacity
+            accessibilityRole="button"
+            disabled={!authReady || appleSubmitting || googleSubmitting || submitting}
+            onPress={() => {
+              void handleGoogleLogin();
+            }}
+            style={[
+              styles.googleButton,
+              (!authReady || appleSubmitting || googleSubmitting || submitting) && styles.buttonDisabled,
+            ]}
+          >
+            {googleSubmitting ? (
+              <ActivityIndicator color={theme.colors.text} />
+            ) : (
+              <>
+                <View style={styles.googleIcon}>
+                  <Text style={styles.googleIconText}>G</Text>
+                </View>
+                <Text style={styles.googleButtonText}>Mit Google fortfahren</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
@@ -246,6 +304,14 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginTop: 4,
   },
+  socialButtons: {
+    gap: 12,
+    marginTop: 22,
+  },
+  appleButton: {
+    height: 52,
+    width: '100%',
+  },
   googleButton: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.07)',
@@ -255,7 +321,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'center',
-    marginTop: 22,
     minHeight: 52,
     paddingHorizontal: 18,
   },

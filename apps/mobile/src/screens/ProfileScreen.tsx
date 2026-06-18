@@ -38,7 +38,7 @@ function getImageContentType(extension: string) {
 }
 
 export function ProfileScreen({ navigation }: Props) {
-  const { authReady, user, signOut } = useAuth();
+  const { authReady, deleteAccount, user, signOut } = useAuth();
   
   const initialUsername = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
   const email = user?.email || '';
@@ -46,6 +46,7 @@ export function ProfileScreen({ navigation }: Props) {
 
   const [username, setUsername] = useState(initialUsername);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const handlePickImage = async () => {
@@ -142,6 +143,54 @@ export function ProfileScreen({ navigation }: Props) {
     }
   };
 
+  const performAccountDeletion = async () => {
+    if (isDeleting) return;
+
+    setIsDeleting(true);
+    const result = await deleteAccount();
+
+    if (!result.ok) {
+      setIsDeleting(false);
+      Alert.alert('Account konnte nicht gelöscht werden', result.message);
+      return;
+    }
+
+    Alert.alert(
+      'Account gelöscht',
+      'Dein Yoriax Account und die damit verbundenen Daten wurden dauerhaft gelöscht.',
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Account löschen?',
+      'Dein Profil, deine Uploads, Playlists, Likes, Kommentare und Anmeldedaten werden dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.',
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Weiter',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Endgültig löschen',
+              'Möchtest du deinen Yoriax Account jetzt endgültig löschen?',
+              [
+                { text: 'Abbrechen', style: 'cancel' },
+                {
+                  text: 'Account löschen',
+                  style: 'destructive',
+                  onPress: () => {
+                    void performAccountDeletion();
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -207,6 +256,39 @@ export function ProfileScreen({ navigation }: Props) {
                 <>
                   <Ionicons name="save-outline" size={18} color="#000" />
                   <Text style={styles.saveButtonText}>Änderungen speichern</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.accountSection}>
+          <Text style={styles.sectionLabel}>Account</Text>
+          <View style={styles.dangerCard}>
+            <View style={styles.dangerHeader}>
+              <View style={styles.dangerIcon}>
+                <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
+              </View>
+              <View style={styles.dangerCopy}>
+                <Text style={styles.dangerTitle}>Account löschen</Text>
+                <Text style={styles.dangerText}>
+                  Löscht deinen Yoriax Account einschließlich Profil, Uploads, Playlists, Likes und Kommentaren dauerhaft.
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              accessibilityLabel="Account löschen"
+              accessibilityRole="button"
+              disabled={isDeleting}
+              onPress={handleDeleteAccount}
+              style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
+            >
+              {isDeleting ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="trash-outline" size={18} color="#fff" />
+                  <Text style={styles.deleteButtonText}>Account löschen</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -379,5 +461,70 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '800',
     fontSize: 15,
+  },
+  accountSection: {
+    gap: 10,
+  },
+  sectionLabel: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    paddingHorizontal: 4,
+    textTransform: 'uppercase',
+  },
+  dangerCard: {
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderColor: 'rgba(239,68,68,0.34)',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+  },
+  dangerHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dangerIcon: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(239,68,68,0.14)',
+    borderRadius: 20,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  dangerCopy: {
+    flex: 1,
+  },
+  dangerTitle: {
+    color: theme.colors.text,
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  dangerText: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 5,
+  },
+  deleteButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.danger,
+    borderRadius: 100,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    marginTop: 18,
+    minHeight: 46,
+    paddingHorizontal: 18,
+  },
+  deleteButtonDisabled: {
+    opacity: 0.55,
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '900',
   },
 });

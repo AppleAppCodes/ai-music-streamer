@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCallback, useEffect, useRef, useState, memo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth-context';
 import {
   loadFeedLikeCount,
@@ -29,7 +29,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import { useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -89,6 +89,26 @@ function getIndexFromOffset(offsetY: number, itemHeight: number, itemCount: numb
 function getArtistName(song: FeedPreviewSong) {
   return song.artist_name || song.creatorName || 'Creator';
 }
+
+function getFeedPlayerSlot(index: number) {
+  return ((index % 3) + 3) % 3;
+}
+
+function getFeedPlayerVolume(player: AudioPlayer) {
+  const volume = Reflect.get(player, 'volume');
+  return typeof volume === 'number' ? clamp01(volume) : 0;
+}
+
+function setFeedPlayerVolume(player: AudioPlayer, volume: number) {
+  Reflect.set(player, 'volume', clamp01(volume));
+}
+
+type FeedPlayerState = {
+  index: number | null;
+  ready: boolean;
+  songId: string | null;
+  token: number;
+};
 
 function FeedVisual({
   active,

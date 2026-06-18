@@ -6,6 +6,8 @@
     <true/>
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleAllowMixedLocalizations</key>
+    <true/>
     <key>CFBundleDisplayName</key>
     <string>Yoriax</string>
     <key>CFBundleExecutable</key>
@@ -33,7 +35,7 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>33</string>
+    <string>34</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>

@@ -10,9 +10,11 @@
     "backgroundColor": "#050505",
     "ios": {
       "bundleIdentifier": "com.yoriax.app",
-      "buildNumber": "33",
+      "buildNumber": "34",
+      "usesAppleSignIn": true,
       "supportsTablet": false,
       "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true,
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryAddUsageDescription": "YORIAX saves images only when you explicitly choose to do so.",
         "NSPhotoLibraryUsageDescription": "YORIAX uses your photo library so you can choose a profile picture.",
@@ -30,6 +32,7 @@
       }
     },
     "plugins": [
+      "expo-apple-authentication",
       "expo-audio",
       "expo-video",
       [

@@ -1,5 +1,7 @@
 import type { AuthError, Session, User } from '@supabase/supabase-js';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { makeRedirectUri } from 'expo-auth-session';
+import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import {
@@ -11,6 +13,7 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
+import { Platform } from 'react-native';
 import { apiBaseUrl, hasSupabaseConfig } from './env';
 import { supabase } from './supabase';
 
@@ -22,10 +25,12 @@ type AuthResult =
 
 type AuthContextValue = {
   authReady: boolean;
+  deleteAccount: () => Promise<AuthResult>;
   initializing: boolean;
   lastError: string | null;
   session: Session | null;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>;
+  signInWithApple: () => Promise<AuthResult>;
   signInWithGoogle: () => Promise<AuthResult>;
   signOut: () => Promise<AuthResult>;
   signUp: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>;
@@ -86,6 +91,25 @@ async function triggerWelcomeEmail(accessToken?: string | null) {
   } catch (error) {
     console.error('[AuthProvider] Welcome email failed', error);
   }
+}
+
+function isRequestCanceledError(error: unknown) {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'ERR_REQUEST_CANCELED'
+  );
+}
+
+async function createAppleNonce() {
+  const rawNonce = Crypto.randomUUID();
+  const hashedNonce = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    rawNonce,
+  );
+
+  return { hashedNonce, rawNonce };
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -179,6 +203,77 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return { ok: true, needsEmailConfirmation: !data.session };
   }, []);
 
+  const signInWithApple = useCallback(async (): Promise<AuthResult> => {
+    if (!hasSupabaseConfig || !supabase) {
+      return missingConfigResult();
+    }
+
+    if (Platform.OS !== 'ios') {
+      return { ok: false, message: 'Apple Login ist nur auf iPhone und iPad verfügbar.' };
+    }
+
+    try {
+      const { hashedNonce, rawNonce } = await createAppleNonce();
+      const credential = await AppleAuthentication.signInAsync({
+        nonce: hashedNonce,
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        const message = 'Apple hat kein gültiges Login-Token zurückgegeben.';
+        setLastError(message);
+        return { ok: false, message };
+      }
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        nonce: rawNonce,
+        provider: 'apple',
+        token: credential.identityToken,
+      });
+
+      if (error) {
+        const message = normalizeAuthError(error);
+        setLastError(message);
+        return { ok: false, message };
+      }
+
+      const givenName = credential.fullName?.givenName ?? null;
+      const middleName = credential.fullName?.middleName ?? null;
+      const familyName = credential.fullName?.familyName ?? null;
+      const fullName = [givenName, middleName, familyName].filter(Boolean).join(' ');
+
+      if (fullName) {
+        const { error: metadataError } = await supabase.auth.updateUser({
+          data: {
+            full_name: fullName,
+            given_name: givenName,
+            family_name: familyName,
+          },
+        });
+
+        if (metadataError) {
+          console.warn('[AuthProvider] Apple name metadata could not be saved', metadataError);
+        }
+      }
+
+      setSession(data.session ?? null);
+      setLastError(null);
+      await triggerWelcomeEmail(data.session?.access_token);
+      return { ok: true };
+    } catch (error) {
+      if (isRequestCanceledError(error)) {
+        return { ok: false, message: 'Apple Login wurde abgebrochen.' };
+      }
+
+      const message = normalizeAuthError(error);
+      setLastError(message);
+      return { ok: false, message };
+    }
+  }, []);
+
   const signInWithGoogle = useCallback(async (): Promise<AuthResult> => {
     if (!hasSupabaseConfig || !supabase) {
       return missingConfigResult();
@@ -263,6 +358,41 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
+  const deleteAccount = useCallback(async (): Promise<AuthResult> => {
+    if (!hasSupabaseConfig || !supabase) {
+      return missingConfigResult();
+    }
+
+    if (!session?.access_token) {
+      return { ok: false, message: 'Bitte melde dich erneut an, bevor du deinen Account löschst.' };
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke<{ deleted?: boolean; error?: string }>(
+        'delete-account',
+        { method: 'DELETE' },
+      );
+
+      if (error || !data?.deleted) {
+        const message =
+          data?.error ||
+          error?.message ||
+          'Der Account konnte nicht gelöscht werden. Bitte versuche es erneut.';
+        setLastError(message);
+        return { ok: false, message };
+      }
+
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+      setSession(null);
+      setLastError(null);
+      return { ok: true };
+    } catch (error) {
+      const message = normalizeAuthError(error);
+      setLastError(message);
+      return { ok: false, message };
+    }
+  }, [session?.access_token]);
+
   const signOut = useCallback(async (): Promise<AuthResult> => {
     if (!hasSupabaseConfig || !supabase) {
       return missingConfigResult();
@@ -284,16 +414,28 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthContextValue>(
     () => ({
       authReady: hasSupabaseConfig && Boolean(supabase),
+      deleteAccount,
       initializing,
       lastError,
       session,
       signIn,
+      signInWithApple,
       signInWithGoogle,
       signOut,
       signUp,
       user: session?.user ?? null,
     }),
-    [initializing, lastError, session, signIn, signInWithGoogle, signOut, signUp],
+    [
+      deleteAccount,
+      initializing,
+      lastError,
+      session,
+      signIn,
+      signInWithApple,
+      signInWithGoogle,
+      signOut,
+      signUp,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
