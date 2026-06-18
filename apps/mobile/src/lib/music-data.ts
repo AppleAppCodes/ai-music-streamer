@@ -280,7 +280,7 @@ export async function loadFeedPreview(userId: string): Promise<FeedPreviewSong[]
 export async function loadFollowingFeed(userId: string): Promise<FeedPreviewSong[]> {
   const client = requireClient();
   const signalsPromise = loadSongSignals(userId);
-  
+
   const { data: followsData, error: followsError } = await client
     .from('follows')
     .select('artist_name')
@@ -487,9 +487,10 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
 
     if (songsData) {
       const songRows = songsData as SongRow[];
+      const songsById = new Map(songRows.map((song) => [song.id, song]));
       const orderedSongs = mappingData
         .map((m) => {
-          const s = songRows.find((s) => s.id === m.song_id);
+          const s = songsById.get(m.song_id);
           if (s) return mapSong(s);
           return null;
         })

@@ -1,9 +1,9 @@
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useState, useEffect } from 'react';
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
-import { usePlayer } from '../lib/player-context';
+import { usePlayerControls } from '../lib/player-context';
 import { searchMusic } from '../lib/music-data';
 import type { Song } from '../lib/types';
 import { formatPlays } from '../lib/format';
@@ -24,6 +24,91 @@ const GENRE_SUGGESTIONS: Array<{
   { label: 'Country', color: '#f59e0b', icon: 'musical-notes' },
   { label: 'K-Pop', color: '#fb7185', icon: 'star' },
 ];
+const EMPTY_RESULTS: Song[] = [];
+
+function ResultSeparator() {
+  return <View style={styles.resultSeparator} />;
+}
+
+const SearchResultRow = memo(function SearchResultRow({
+  active,
+  index,
+  isPlaying,
+  onPlay,
+  song,
+}: {
+  active: boolean;
+  index: number;
+  isPlaying: boolean;
+  onPlay: (song: Song, index: number) => void;
+  song: Song;
+}) {
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      onPress={() => onPlay(song, index)}
+      style={styles.songRow}
+    >
+      {song.cover_url ? (
+        <Image source={{ uri: song.cover_url }} style={styles.cover} alt="" />
+      ) : (
+        <View style={[styles.cover, styles.coverFallback]}>
+          <Text style={styles.coverFallbackText}>Y</Text>
+        </View>
+      )}
+
+      <View style={styles.songInfo}>
+        <Text style={[styles.songTitle, active && styles.activeText]} numberOfLines={1}>
+          {song.title}
+        </Text>
+        <Text style={styles.songArtist} numberOfLines={1}>
+          {song.artist_name || song.creatorName || 'Creator'}
+        </Text>
+      </View>
+
+      <Text style={styles.songMeta}>{formatPlays(song.plays)}</Text>
+
+      {active && isPlaying ? (
+        <View style={styles.playingIndicator}>
+          <Text style={styles.playingText}>▶</Text>
+        </View>
+      ) : null}
+    </TouchableOpacity>
+  );
+});
+
+const GenreSuggestions = memo(function GenreSuggestions({
+  onSelect,
+}: {
+  onSelect: (genre: string) => void;
+}) {
+  return (
+    <View style={styles.genreSection}>
+      <Text style={styles.sectionEyebrow}>Schnellzugriff</Text>
+      <Text style={styles.sectionTitle}>Genres entdecken</Text>
+      <Text style={styles.sectionDescription}>
+        Tippe ein Genre an, um direkt passende Songs zu finden.
+      </Text>
+
+      <View style={styles.genreGrid}>
+        {GENRE_SUGGESTIONS.map((genre) => (
+          <TouchableOpacity
+            key={genre.label}
+            activeOpacity={0.82}
+            style={[styles.genreChip, { borderColor: `${genre.color}66` }]}
+            onPress={() => onSelect(genre.label)}
+            accessibilityRole="button"
+          >
+            <View style={[styles.genreIcon, { backgroundColor: `${genre.color}30` }]}>
+              <Ionicons name={genre.icon} size={18} color={genre.color} />
+            </View>
+            <Text style={styles.genreLabel}>{genre.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+});
 
 export function SearchScreen() {
   const insets = useSafeAreaInsets();
@@ -33,13 +118,15 @@ export function SearchScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { activeSong, isPlaying, playSong, setQueue } = usePlayer();
-  const showGenreSuggestions = !query.trim();
+  const { activeSong, isPlaying, playSong, setQueue } = usePlayerControls();
+  const normalizedQuery = query.trim();
+  const showGenreSuggestions = !normalizedQuery;
+  const isSearchPending = !showGenreSuggestions && normalizedQuery !== debouncedQuery.trim();
 
-  const handleGenrePress = (genre: string) => {
+  const handleGenrePress = useCallback((genre: string) => {
     setQuery(genre);
     setDebouncedQuery(genre);
-  };
+  }, []);
 
   // Debounce logic
   useEffect(() => {
@@ -79,6 +166,27 @@ export function SearchScreen() {
     };
   }, [debouncedQuery]);
 
+  const handlePlayResult = useCallback((song: Song, index: number) => {
+    setQueue(results, index);
+    void playSong(song);
+  }, [playSong, results, setQueue]);
+
+  const renderResult = useCallback(({ item, index }: { item: Song; index: number }) => {
+    const active = activeSong?.id === item.id;
+
+    return (
+      <SearchResultRow
+        active={active}
+        index={index}
+        isPlaying={active && isPlaying}
+        onPlay={handlePlayResult}
+        song={item}
+      />
+    );
+  }, [activeSong?.id, handlePlayResult, isPlaying]);
+
+  const listData = showGenreSuggestions || isSearchPending || loading || error ? EMPTY_RESULTS : results;
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 18 }]}>
@@ -96,90 +204,38 @@ export function SearchScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {showGenreSuggestions ? (
-          <View style={styles.genreSection}>
-            <Text style={styles.sectionEyebrow}>Schnellzugriff</Text>
-            <Text style={styles.sectionTitle}>Genres entdecken</Text>
-            <Text style={styles.sectionDescription}>
-              Tippe ein Genre an, um direkt passende Songs zu finden.
-            </Text>
-
-            <View style={styles.genreGrid}>
-              {GENRE_SUGGESTIONS.map((genre) => (
-                <TouchableOpacity
-                  key={genre.label}
-                  activeOpacity={0.82}
-                  style={[styles.genreChip, { borderColor: `${genre.color}66` }]}
-                  onPress={() => handleGenrePress(genre.label)}
-                  accessibilityRole="button"
-                >
-                  <View style={[styles.genreIcon, { backgroundColor: `${genre.color}30` }]}>
-                    <Ionicons name={genre.icon} size={18} color={genre.color} />
-                  </View>
-                  <Text style={styles.genreLabel}>{genre.label}</Text>
-                </TouchableOpacity>
-              ))}
+      <FlatList
+        contentContainerStyle={styles.content}
+        data={listData}
+        initialNumToRender={8}
+        ItemSeparatorComponent={ResultSeparator}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        keyExtractor={(item) => item.id}
+        maxToRenderPerBatch={8}
+        renderItem={renderResult}
+        showsVerticalScrollIndicator={false}
+        updateCellsBatchingPeriod={32}
+        windowSize={7}
+        ListEmptyComponent={
+          showGenreSuggestions ? (
+            <GenreSuggestions onSelect={handleGenrePress} />
+          ) : isSearchPending || loading ? (
+            <View style={styles.stateBox}>
+              <ActivityIndicator color={theme.colors.text} />
+              <Text style={styles.stateText}>Suche läuft...</Text>
             </View>
-          </View>
-        ) : loading ? (
-          <View style={styles.stateBox}>
-            <ActivityIndicator color={theme.colors.text} />
-            <Text style={styles.stateText}>Suche läuft...</Text>
-          </View>
-        ) : error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : query.trim() && results.length === 0 ? (
-          <View style={styles.stateBox}>
-            <Text style={styles.stateText}>Keine Ergebnisse für {query}</Text>
-          </View>
-        ) : (
-          <View style={styles.resultsList}>
-            {results.map((song, index) => {
-              const active = activeSong?.id === song.id;
-              
-              return (
-                <TouchableOpacity
-                  key={song.id}
-                  style={styles.songRow}
-                  onPress={() => {
-                    setQueue(results, index);
-                    void playSong(song);
-                  }}
-                  accessibilityRole="button"
-                >
-                  {song.cover_url ? (
-                    <Image source={{ uri: song.cover_url }} style={styles.cover} alt="" />
-                  ) : (
-                    <View style={[styles.cover, styles.coverFallback]}>
-                      <Text style={styles.coverFallbackText}>Y</Text>
-                    </View>
-                  )}
-                  
-                  <View style={styles.songInfo}>
-                    <Text style={[styles.songTitle, active && styles.activeText]} numberOfLines={1}>
-                      {song.title}
-                    </Text>
-                    <Text style={styles.songArtist} numberOfLines={1}>
-                      {song.artist_name || song.creatorName || 'Creator'}
-                    </Text>
-                  </View>
-                  
-                  <Text style={styles.songMeta}>{formatPlays(song.plays)}</Text>
-                  
-                  {active && isPlaying && (
-                    <View style={styles.playingIndicator}>
-                      <Text style={styles.playingText}>▶</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
+          ) : error ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : (
+            <View style={styles.stateBox}>
+              <Text style={styles.stateText}>Keine Ergebnisse für {query}</Text>
+            </View>
+          )
+        }
+      />
     </View>
   );
 }
@@ -295,8 +351,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  resultsList: {
-    gap: 16,
+  resultSeparator: {
+    height: 16,
   },
   songRow: {
     flexDirection: 'row',

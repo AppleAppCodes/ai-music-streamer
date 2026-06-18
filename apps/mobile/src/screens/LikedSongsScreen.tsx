@@ -1,5 +1,5 @@
-import { Alert, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useState } from 'react';
+import { Alert, FlatList, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +7,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
 import { useAuth } from '../lib/auth-context';
 import { loadLibraryMusic, type LibraryMusicData } from '../lib/music-data';
-import { usePlayer } from '../lib/player-context';
+import { usePlayerControls } from '../lib/player-context';
 import type { Song } from '../lib/types';
 import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
@@ -15,6 +15,54 @@ import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
 import { formatDuration } from '../lib/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LikedSongs'>;
+const EMPTY_SONGS: Song[] = [];
+const CONTEXT_BUTTON_HIT_SLOP = { top: 10, right: 10, bottom: 10, left: 10 };
+
+function RowSeparator() {
+  return <View style={styles.rowSeparator} />;
+}
+
+const LikedSongRow = memo(function LikedSongRow({
+  active,
+  index,
+  isPlaying,
+  onOpenMenu,
+  onPlay,
+  song,
+}: {
+  active: boolean;
+  index: number;
+  isPlaying: boolean;
+  onOpenMenu: (song: Song) => void;
+  onPlay: (song: Song, index: number) => void;
+  song: Song;
+}) {
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      onPress={() => onPlay(song, index)}
+      style={[styles.row, active && styles.rowActive]}
+    >
+      <CoverArt uri={song.cover_url} size={52} radius={12} />
+      <View style={styles.rowText}>
+        <Text style={[styles.rowTitle, active && styles.rowTitleActive]} numberOfLines={1}>{song.title}</Text>
+        <Text style={styles.rowMeta} numberOfLines={1}>{song.artist_name || song.creatorName || 'Creator'}</Text>
+      </View>
+      {active && isPlaying ? <Ionicons name="volume-high" size={18} color={theme.colors.primaryLight} /> : null}
+      <TouchableOpacity
+        accessibilityRole="button"
+        hitSlop={CONTEXT_BUTTON_HIT_SLOP}
+        onPress={(event) => {
+          event.stopPropagation();
+          onOpenMenu(song);
+        }}
+        style={styles.contextButton}
+      >
+        <Ionicons name="ellipsis-horizontal" size={20} color={theme.colors.muted} />
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+});
 
 export function LikedSongsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
@@ -23,7 +71,7 @@ export function LikedSongsScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [playlistSongId, setPlaylistSongId] = useState<string | null>(null);
-  const { activeSong, isPlaying, playSong, setQueue, toggleShuffle } = usePlayer();
+  const { activeSong, isPlaying, playSong, setQueue, toggleShuffle } = usePlayerControls();
 
   useEffect(() => {
     let mounted = true;
@@ -52,27 +100,27 @@ export function LikedSongsScreen({ navigation }: Props) {
     };
   }, [user]);
 
-  const likedSongs = data?.likedSongs ?? [];
+  const likedSongs = data?.likedSongs ?? EMPTY_SONGS;
 
-  const handlePlayAll = () => {
+  const handlePlayAll = useCallback(() => {
     if (likedSongs.length === 0) return;
     setQueue(likedSongs, 0);
     void playSong(likedSongs[0]);
-  };
+  }, [likedSongs, playSong, setQueue]);
 
-  const handleShuffle = () => {
+  const handleShuffle = useCallback(() => {
     if (likedSongs.length === 0) return;
     toggleShuffle();
     setQueue(likedSongs, 0);
     void playSong(likedSongs[0]);
-  };
+  }, [likedSongs, playSong, setQueue, toggleShuffle]);
 
-  const handlePlaySong = (song: Song, index: number) => {
+  const handlePlaySong = useCallback((song: Song, index: number) => {
     setQueue(likedSongs, index);
     void playSong(song);
-  };
+  }, [likedSongs, playSong, setQueue]);
 
-  const handleContextMenu = (song: Song) => {
+  const handleContextMenu = useCallback((song: Song) => {
     Alert.alert(
       song.title,
       'Was möchtest du tun?',
@@ -109,7 +157,22 @@ export function LikedSongsScreen({ navigation }: Props) {
       ],
       { cancelable: true },
     );
-  };
+  }, [navigation]);
+
+  const renderSong = useCallback(({ item, index }: { item: Song; index: number }) => {
+    const active = activeSong?.id === item.id;
+
+    return (
+      <LikedSongRow
+        active={active}
+        index={index}
+        isPlaying={active && isPlaying}
+        onOpenMenu={handleContextMenu}
+        onPlay={handlePlaySong}
+        song={item}
+      />
+    );
+  }, [activeSong?.id, handleContextMenu, handlePlaySong, isPlaying]);
 
   return (
     <View style={styles.container}>
@@ -123,75 +186,60 @@ export function LikedSongsScreen({ navigation }: Props) {
         <BackButton onPress={() => navigation.goBack()} />
       </View>
 
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 60, 86) }]} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <View style={styles.heroIcon}>
-            <Ionicons name="heart" size={30} color={theme.colors.text} />
-          </View>
-          <View style={styles.heroText}>
-            <Text style={styles.eyebrow}>PLAYLIST</Text>
-            <Text style={styles.heroTitle}>Lieblingssongs</Text>
-            <Text style={styles.heroMeta}>{likedSongs.length} Songs</Text>
-          </View>
-        </View>
+      <FlatList
+        contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 60, 86) }]}
+        data={loading || error ? EMPTY_SONGS : likedSongs}
+        extraData={`${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}`}
+        initialNumToRender={10}
+        ItemSeparatorComponent={RowSeparator}
+        keyExtractor={(item) => item.id}
+        maxToRenderPerBatch={10}
+        renderItem={renderSong}
+        showsVerticalScrollIndicator={false}
+        updateCellsBatchingPeriod={32}
+        windowSize={7}
+        ListHeaderComponent={
+          <>
+            <View style={styles.hero}>
+              <View style={styles.heroIcon}>
+                <Ionicons name="heart" size={30} color={theme.colors.text} />
+              </View>
+              <View style={styles.heroText}>
+                <Text style={styles.eyebrow}>PLAYLIST</Text>
+                <Text style={styles.heroTitle}>Lieblingssongs</Text>
+                <Text style={styles.heroMeta}>{likedSongs.length} Songs</Text>
+              </View>
+            </View>
 
-        <View style={styles.actions}>
-          <TouchableOpacity
-            accessibilityRole="button"
-            disabled={likedSongs.length === 0}
-            onPress={handleShuffle}
-            style={[styles.secondaryButton, likedSongs.length === 0 && styles.disabledButton]}
-          >
-            <Ionicons name="shuffle" size={22} color={likedSongs.length === 0 ? theme.colors.subtle : theme.colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            accessibilityRole="button"
-            disabled={likedSongs.length === 0}
-            onPress={handlePlayAll}
-            style={[styles.playButton, likedSongs.length === 0 && styles.disabledButton]}
-          >
-            <Ionicons name="play" size={28} color={likedSongs.length === 0 ? theme.colors.subtle : '#050505'} />
-          </TouchableOpacity>
-        </View>
+            <View style={styles.actions}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                disabled={likedSongs.length === 0}
+                onPress={handleShuffle}
+                style={[styles.secondaryButton, likedSongs.length === 0 && styles.disabledButton]}
+              >
+                <Ionicons name="shuffle" size={22} color={likedSongs.length === 0 ? theme.colors.subtle : theme.colors.text} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityRole="button"
+                disabled={likedSongs.length === 0}
+                onPress={handlePlayAll}
+                style={[styles.playButton, likedSongs.length === 0 && styles.disabledButton]}
+              >
+                <Ionicons name="play" size={28} color={likedSongs.length === 0 ? theme.colors.subtle : '#050505'} />
+              </TouchableOpacity>
+            </View>
 
-        {loading ? (
-          <StateCard title="Lieblingssongs werden geladen" message="Deine gespeicherten Tracks werden synchronisiert." loading />
-        ) : error ? (
-          <StateCard icon="warning" title="Konnte nicht geladen werden" message={error} />
-        ) : likedSongs.length === 0 ? (
-          <StateCard icon="heart-outline" title="Noch keine Lieblingssongs" message="Tippe bei Songs auf das Herz, dann erscheinen sie hier." />
-        ) : (
-          <View style={styles.list}>
-            {likedSongs.map((song, index) => {
-              const active = activeSong?.id === song.id;
-
-              return (
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  key={song.id}
-                  onPress={() => handlePlaySong(song, index)}
-                  style={[styles.row, active && styles.rowActive]}
-                >
-                  <CoverArt uri={song.cover_url} size={52} radius={12} />
-                  <View style={styles.rowText}>
-                    <Text style={[styles.rowTitle, active && styles.rowTitleActive]} numberOfLines={1}>{song.title}</Text>
-                    <Text style={styles.rowMeta} numberOfLines={1}>{song.artist_name || song.creatorName || 'Creator'}</Text>
-                  </View>
-                  {active && isPlaying ? <Ionicons name="volume-high" size={18} color={theme.colors.primaryLight} /> : null}
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-                    onPress={() => handleContextMenu(song)}
-                    style={styles.contextButton}
-                  >
-                    <Ionicons name="ellipsis-horizontal" size={20} color={theme.colors.muted} />
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
+            {loading ? (
+              <StateCard title="Lieblingssongs werden geladen" message="Deine gespeicherten Tracks werden synchronisiert." loading />
+            ) : error ? (
+              <StateCard icon="warning" title="Konnte nicht geladen werden" message={error} />
+            ) : likedSongs.length === 0 ? (
+              <StateCard icon="heart-outline" title="Noch keine Lieblingssongs" message="Tippe bei Songs auf das Herz, dann erscheinen sie hier." />
+            ) : null}
+          </>
+        }
+      />
       {playlistSongId ? (
         <AddToPlaylistModal
           visible={Boolean(playlistSongId)}
@@ -289,8 +337,8 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  list: {
-    gap: 8,
+  rowSeparator: {
+    height: 8,
   },
   row: {
     alignItems: 'center',

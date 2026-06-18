@@ -21,7 +21,7 @@ import { ChartsScreen } from '../screens/ChartsScreen';
 import { ArtistsScreen } from '../screens/ArtistsScreen';
 import { PlaylistDiscoverScreen } from '../screens/PlaylistDiscoverScreen';
 import { MiniPlayer } from '../components/MiniPlayer';
-import { usePlayerControls } from '../lib/player-context';
+import { usePlayerShell } from '../lib/player-context';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -107,7 +107,7 @@ function MainTabs() {
 }
 
 export function RootNavigator() {
-  const { activeSong } = usePlayerControls();
+  const { hasActiveSong } = usePlayerShell();
   const [activeRoute, setActiveRoute] = useState<string>('Home');
 
   return (
@@ -158,7 +158,7 @@ export function RootNavigator() {
           options={{ presentation: 'card' }}
         />
       </Stack.Navigator>
-      {activeSong && activeRoute !== 'ForYou' ? <MiniPlayer /> : null}
+      {hasActiveSong && activeRoute !== 'ForYou' ? <MiniPlayer /> : null}
     </NavigationContainer>
   );
 }

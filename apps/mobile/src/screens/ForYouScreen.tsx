@@ -28,8 +28,7 @@ import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAudioPlayer, type AudioPlayer } from 'expo-audio';
-import { VideoView, useVideoPlayer } from 'expo-video';
-import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -89,26 +88,6 @@ function getIndexFromOffset(offsetY: number, itemHeight: number, itemCount: numb
 function getArtistName(song: FeedPreviewSong) {
   return song.artist_name || song.creatorName || 'Creator';
 }
-
-function getFeedPlayerSlot(index: number) {
-  return ((index % 3) + 3) % 3;
-}
-
-function getFeedPlayerVolume(player: AudioPlayer) {
-  const volume = Reflect.get(player, 'volume');
-  return typeof volume === 'number' ? clamp01(volume) : 0;
-}
-
-function setFeedPlayerVolume(player: AudioPlayer, volume: number) {
-  Reflect.set(player, 'volume', clamp01(volume));
-}
-
-type FeedPlayerState = {
-  index: number | null;
-  ready: boolean;
-  songId: string | null;
-  token: number;
-};
 
 function FeedVisual({
   item,
@@ -586,7 +565,7 @@ export function ForYouScreen() {
         }
       })();
     }, 0);
-  }, [cancelPendingHandoff, getCrossfadeHandoffStart, songs, startHookPlayback, stopCrossfadePreview]);
+  }, [applyCrossfadeMix, cancelPendingHandoff, getCrossfadeHandoffStart, songs, startHookPlayback, stopCrossfadePreview]);
 
   const clearDragSettleTimer = useCallback(() => {
     if (!dragSettleTimer.current) return;
@@ -890,6 +869,15 @@ export function ForYouScreen() {
     toggle,
   ]);
 
+  const feedRenderState = useMemo(() => ({
+    activeFeed,
+    activeIndex,
+    activeSongId: activeSong?.id ?? null,
+    isPlaying,
+    itemHeight,
+    itemWidth,
+  }), [activeFeed, activeIndex, activeSong?.id, isPlaying, itemHeight, itemWidth]);
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -929,7 +917,7 @@ export function ForYouScreen() {
         data={songs}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        extraData={`${activeIndex}:${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}:${itemHeight}:${itemWidth}:${activeFeed}:${JSON.stringify(likedSongsMap)}:${JSON.stringify(followedArtistsMap)}`}
+        extraData={feedRenderState}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={itemHeight}

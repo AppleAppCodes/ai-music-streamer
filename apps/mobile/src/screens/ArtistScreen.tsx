@@ -1,7 +1,7 @@
 import { ActivityIndicator, Alert, Image, ImageBackground, Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useState, useEffect } from 'react';
 import { theme } from '../theme';
-import { usePlayer } from '../lib/player-context';
+import { usePlayerControls } from '../lib/player-context';
 import { loadArtistSongs } from '../lib/music-data';
 import type { Song } from '../lib/types';
 import { formatPlays } from '../lib/format';
@@ -33,7 +33,7 @@ export function ArtistScreen({ route, navigation }: Props) {
   const [socials, setSocials] = useState<ArtistSocials | null>(null);
 
   const { user } = useAuth();
-  const { activeSong, isPlaying, isShuffling, playSong, setQueue, toggle, toggleShuffle } = usePlayer();
+  const { activeSong, isPlaying, isShuffling, playSong, setQueue, toggle, toggleShuffle } = usePlayerControls();
 
   useEffect(() => {
     let mounted = true;

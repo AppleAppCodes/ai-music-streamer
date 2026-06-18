@@ -45,16 +45,25 @@ interface PlayerContextValue {
 
 interface PlayerControlsContextValue {
   activeSong: Song | null;
+  isShuffling: boolean;
   isPlaying: boolean;
   pause: () => void;
   playSong: (song: Song, options?: PlayOptions) => Promise<void>;
+  reset: () => void;
   setPreviewVolume: (volume: number) => void;
   setQueue: (songs: Song[], startIndex?: number) => void;
   toggle: () => void;
+  toggleShuffle: () => void;
+}
+
+interface PlayerShellContextValue {
+  hasActiveSong: boolean;
+  reset: () => void;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
 const PlayerControlsContext = createContext<PlayerControlsContextValue | null>(null);
+const PlayerShellContext = createContext<PlayerShellContextValue | null>(null);
 
 const LOCK_SCREEN_OPTIONS: AudioLockScreenOptions = {
   isLiveStream: false,
@@ -558,20 +567,34 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const controlsValue = useMemo<PlayerControlsContextValue>(
     () => ({
       activeSong,
+      isShuffling,
       isPlaying: status.playing,
       pause,
       playSong,
+      reset,
       setPreviewVolume: setPlayerVolume,
       setQueue,
       toggle,
+      toggleShuffle,
     }),
-    [activeSong, pause, playSong, setPlayerVolume, setQueue, status.playing, toggle],
+    [activeSong, isShuffling, pause, playSong, reset, setPlayerVolume, setQueue, status.playing, toggle, toggleShuffle],
+  );
+
+  const hasActiveSong = activeSong !== null;
+  const shellValue = useMemo<PlayerShellContextValue>(
+    () => ({
+      hasActiveSong,
+      reset,
+    }),
+    [hasActiveSong, reset],
   );
 
   return (
-    <PlayerControlsContext.Provider value={controlsValue}>
-      <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
-    </PlayerControlsContext.Provider>
+    <PlayerShellContext.Provider value={shellValue}>
+      <PlayerControlsContext.Provider value={controlsValue}>
+        <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
+      </PlayerControlsContext.Provider>
+    </PlayerShellContext.Provider>
   );
 }
 
@@ -590,6 +613,16 @@ export function usePlayerControls() {
 
   if (!context) {
     throw new Error('usePlayerControls must be used within PlayerProvider.');
+  }
+
+  return context;
+}
+
+export function usePlayerShell() {
+  const context = useContext(PlayerShellContext);
+
+  if (!context) {
+    throw new Error('usePlayerShell must be used within PlayerProvider.');
   }
 
   return context;

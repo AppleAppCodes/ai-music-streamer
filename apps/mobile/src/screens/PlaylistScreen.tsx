@@ -1,35 +1,37 @@
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useState, memo, useCallback } from 'react';
 import { theme } from '../theme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { loadPlaylistDetails } from '../lib/music-data';
 import type { Playlist, Song } from '../lib/types';
-import { usePlayer } from '../lib/player-context';
+import { usePlayerControls } from '../lib/player-context';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPlays } from '../lib/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
+function SongSeparator() {
+  return <View style={styles.songSeparator} />;
+}
+
 const MemoizedSongRow = memo(function SongRow({
   song,
   index,
-  songs,
   isActive,
   isPlaying,
   onPlay
 }: {
   song: Song;
   index: number;
-  songs: Song[];
   isActive: boolean;
   isPlaying: boolean;
-  onPlay: (song: Song, index: number, songs: Song[]) => void;
+  onPlay: (song: Song, index: number) => void;
 }) {
   return (
     <TouchableOpacity
       style={[styles.songRow, isActive && styles.songRowActive]}
-      onPress={() => onPlay(song, index, songs)}
+      onPress={() => onPlay(song, index)}
     >
       {song.cover_url ? (
         <Image source={{ uri: song.cover_url }} style={styles.songCover} alt="" />
@@ -67,12 +69,12 @@ export function PlaylistScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { activeSong, isPlaying, playSong, setQueue } = usePlayer();
+  const { activeSong, isPlaying, playSong, setQueue } = usePlayerControls();
 
-  const handlePlaySong = useCallback((song: Song, index: number, songsList: Song[]) => {
-    setQueue(songsList, index);
+  const handlePlaySong = useCallback((song: Song, index: number) => {
+    setQueue(songs, index);
     void playSong(song);
-  }, [setQueue, playSong]);
+  }, [playSong, setQueue, songs]);
 
   useEffect(() => {
     let mounted = true;
@@ -102,6 +104,20 @@ export function PlaylistScreen({ route, navigation }: Props) {
     };
   }, [playlistId]);
 
+  const renderSong = useCallback(({ item, index }: { item: Song; index: number }) => {
+    const isActive = activeSong?.id === item.id;
+
+    return (
+      <MemoizedSongRow
+        song={item}
+        index={index}
+        isActive={isActive}
+        isPlaying={isActive && isPlaying}
+        onPlay={handlePlaySong}
+      />
+    );
+  }, [activeSong?.id, handlePlaySong, isPlaying]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -121,57 +137,51 @@ export function PlaylistScreen({ route, navigation }: Props) {
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : playlist ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-          <View style={styles.playlistHero}>
-            {playlist.cover_url ? (
-              <Image source={{ uri: playlist.cover_url }} style={styles.playlistCover} alt="" />
-            ) : (
-              <View style={[styles.playlistCover, styles.playlistFallback]}>
-                <Text style={styles.playlistFallbackText}>♪</Text>
-              </View>
-            )}
-            <Text style={styles.playlistTitle}>{playlist.title}</Text>
-            <Text style={styles.playlistMeta}>
-              {playlist.is_public ? 'Öffentliche Playlist' : 'Private Playlist'} • {songs.length} Songs
-            </Text>
-            {playlist.description ? (
-              <Text style={styles.playlistDescription}>{playlist.description}</Text>
-            ) : null}
+        <FlatList
+          contentContainerStyle={styles.content}
+          data={songs}
+          extraData={`${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}`}
+          initialNumToRender={10}
+          ItemSeparatorComponent={SongSeparator}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
+          maxToRenderPerBatch={10}
+          renderItem={renderSong}
+          showsVerticalScrollIndicator={false}
+          updateCellsBatchingPeriod={32}
+          windowSize={7}
+          ListHeaderComponent={
+            <View style={styles.playlistHero}>
+              {playlist.cover_url ? (
+                <Image source={{ uri: playlist.cover_url }} style={styles.playlistCover} alt="" />
+              ) : (
+                <View style={[styles.playlistCover, styles.playlistFallback]}>
+                  <Text style={styles.playlistFallbackText}>♪</Text>
+                </View>
+              )}
+              <Text style={styles.playlistTitle}>{playlist.title}</Text>
+              <Text style={styles.playlistMeta}>
+                {playlist.is_public ? 'Öffentliche Playlist' : 'Private Playlist'} • {songs.length} Songs
+              </Text>
+              {playlist.description ? (
+                <Text style={styles.playlistDescription}>{playlist.description}</Text>
+              ) : null}
 
-            {songs.length > 0 && (
-              <TouchableOpacity 
-                style={styles.playAllButton}
-                onPress={() => handlePlaySong(songs[0], 0, songs)}
-              >
-                <Text style={styles.playAllText}>Abspielen</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.songList}>
-            {songs.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>Diese Playlist ist leer.</Text>
-              </View>
-            ) : (
-              songs.map((song, index) => {
-                const isActive = activeSong?.id === song.id;
-
-                return (
-                  <MemoizedSongRow
-                    key={`${song.id}-${index}`}
-                    song={song}
-                    index={index}
-                    songs={songs}
-                    isActive={isActive}
-                    isPlaying={isActive ? isPlaying : false}
-                    onPlay={handlePlaySong}
-                  />
-                );
-              })
-            )}
-          </View>
-        </ScrollView>
+              {songs.length > 0 ? (
+                <TouchableOpacity
+                  style={styles.playAllButton}
+                  onPress={() => handlePlaySong(songs[0], 0)}
+                >
+                  <Text style={styles.playAllText}>Abspielen</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>Diese Playlist ist leer.</Text>
+            </View>
+          }
+        />
       ) : null}
     </View>
   );
@@ -278,10 +288,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-  songList: {
-    padding: 20,
-    gap: 12,
-  },
   songRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -289,6 +295,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceMuted,
     padding: 12,
     borderRadius: 16,
+    marginHorizontal: 20,
+  },
+  songSeparator: {
+    height: 12,
   },
   songRowActive: {
     backgroundColor: 'rgba(124,58,237,0.1)',
@@ -349,6 +359,7 @@ const styles = StyleSheet.create({
   },
   emptyBox: {
     alignItems: 'center',
+    paddingHorizontal: 20,
     paddingVertical: 40,
   },
   emptyText: {
