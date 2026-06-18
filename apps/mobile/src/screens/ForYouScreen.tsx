@@ -2,6 +2,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  InteractionManager,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   StyleSheet,
@@ -40,16 +41,12 @@ function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
 
-function easeInOut(value: number) {
-  const clamped = clamp01(value);
-  return clamped * clamped * (3 - 2 * clamped);
-}
-
 async function waitForFeedAudioReady(
   player: AudioPlayer,
   isCurrentRequest: () => boolean,
-  timeoutMs = 1300,
+  timeoutMs = 2200,
 ) {
+  await new Promise((resolve) => setTimeout(resolve, 48));
   const startedAt = Date.now();
 
   while (isCurrentRequest() && Date.now() - startedAt < timeoutMs) {
@@ -58,22 +55,7 @@ async function waitForFeedAudioReady(
     } catch {
       return false;
     }
-    await new Promise((resolve) => setTimeout(resolve, 40));
-  }
-
-  return false;
-}
-
-async function waitForCondition(
-  condition: () => boolean,
-  isCurrentRequest: () => boolean,
-  timeoutMs = 1000,
-) {
-  const startedAt = Date.now();
-
-  while (isCurrentRequest() && Date.now() - startedAt < timeoutMs) {
-    if (condition()) return true;
-    await new Promise((resolve) => setTimeout(resolve, 32));
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 
   return false;
@@ -228,11 +210,41 @@ const FeedItem = memo(function FeedItem({
   && previous.showFollowButton === next.showFollowButton
 ));
 
-const CROSSFADE_PLAYER_OPTIONS = {
-  keepAudioSessionActive: true,
-  preferredForwardBufferDuration: 3,
-  updateInterval: 250,
+type PreviewSlotKey = 'a' | 'b';
+
+type PreviewSlotState = {
+  index: number | null;
+  pending: Promise<boolean> | null;
+  ready: boolean;
+  songId: string | null;
+  token: number;
 };
+
+const PREVIEW_PLAYER_OPTIONS = {
+  keepAudioSessionActive: true,
+  preferredForwardBufferDuration: 8,
+  updateInterval: 1000,
+};
+
+const PREVIEW_FADE_STEP_MS = 32;
+
+function createPreviewSlotState(): PreviewSlotState {
+  return {
+    index: null,
+    pending: null,
+    ready: false,
+    songId: null,
+    token: 0,
+  };
+}
+
+function setFeedPlayerVolume(player: AudioPlayer, volume: number) {
+  try {
+    player.volume = clamp01(volume);
+  } catch {
+    // The native shared object can be released while the screen is unmounting.
+  }
+}
 
 export function ForYouScreen() {
   const insets = useSafeAreaInsets();
@@ -240,7 +252,8 @@ export function ForYouScreen() {
   const { user } = useAuth();
   const { height: itemHeight, width: itemWidth } = useWindowDimensions();
   const { activeSong, isPlaying, playSong, toggle, setQueue, setPreviewVolume } = usePlayerControls();
-  const crossfadePlayer = useAudioPlayer(null, CROSSFADE_PLAYER_OPTIONS);
+  const previewPlayerA = useAudioPlayer(null, PREVIEW_PLAYER_OPTIONS);
+  const previewPlayerB = useAudioPlayer(null, PREVIEW_PLAYER_OPTIONS);
   const [activeFeed, setActiveFeed] = useState<'foryou' | 'following' | 'explore'>('foryou');
   const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -251,147 +264,341 @@ export function ForYouScreen() {
 
   // Track currently visible item to avoid playing the same song repeatedly
   const currentHookSongId = useRef<string | null>(null);
+  const activeIndexRef = useRef(0);
   const dragSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hookStartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scrollVolumeFrame = useRef<number | null>(null);
-  const crossfadeSongId = useRef<string | null>(null);
-  const crossfadeIndex = useRef<number | null>(null);
-  const crossfadeVolume = useRef(0);
-  const lastMainPlayerVolume = useRef(1);
-  const crossfadeReady = useRef(false);
-  const desiredCrossfadeProgress = useRef(0);
-  const crossfadePrepareToken = useRef(0);
-  const crossfadeFadeFrame = useRef<number | null>(null);
-  const handoffSongId = useRef<string | null>(null);
-  const handoffToken = useRef(0);
+  const previewSlotA = useRef<PreviewSlotState>(createPreviewSlotState());
+  const previewSlotB = useRef<PreviewSlotState>(createPreviewSlotState());
+  const audiblePreviewSlot = useRef<PreviewSlotKey | null>(null);
+  const previewFadeTimers = useRef<Record<PreviewSlotKey, ReturnType<typeof setInterval> | null>>({
+    a: null,
+    b: null,
+  });
+  const prewarmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prewarmGeneration = useRef(0);
+  const transitionToken = useRef(0);
+  const isMounted = useRef(true);
 
-  const setCrossfadePlayerVolume = useCallback((volume: number) => {
-    const nextVolume = clamp01(volume);
-    // Skip bridge call if change is minor (less than 4%), to preserve React Native bridge bandwidth.
-    // Always allow exact boundaries (0 and 1) to ensure silence/full volume.
-    if (Math.abs(crossfadeVolume.current - nextVolume) < 0.04 && nextVolume !== 0 && nextVolume !== 1) {
+  const getPreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
+    if (slotKey === 'a') {
+      return { player: previewPlayerA, state: previewSlotA.current };
+    }
+
+    return { player: previewPlayerB, state: previewSlotB.current };
+  }, [previewPlayerA, previewPlayerB]);
+
+  const cancelPreviewFade = useCallback((slotKey: PreviewSlotKey) => {
+    const timer = previewFadeTimers.current[slotKey];
+    if (!timer) return;
+    clearInterval(timer);
+    previewFadeTimers.current[slotKey] = null;
+  }, []);
+
+  const pausePreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
+    cancelPreviewFade(slotKey);
+    const { player } = getPreviewSlot(slotKey);
+    setFeedPlayerVolume(player, 0);
+    try {
+      player.pause();
+    } catch {
+      // The managed player may already be released during teardown.
+    }
+    if (audiblePreviewSlot.current === slotKey) {
+      audiblePreviewSlot.current = null;
+    }
+  }, [cancelPreviewFade, getPreviewSlot]);
+
+  const resetPreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
+    pausePreviewSlot(slotKey);
+    const { state } = getPreviewSlot(slotKey);
+    state.token += 1;
+    state.index = null;
+    state.pending = null;
+    state.ready = false;
+    state.songId = null;
+  }, [getPreviewSlot, pausePreviewSlot]);
+
+  const stopAllPreviewPlayers = useCallback(() => {
+    resetPreviewSlot('a');
+    resetPreviewSlot('b');
+  }, [resetPreviewSlot]);
+
+  const fadeOutPreviewSlot = useCallback((
+    slotKey: PreviewSlotKey,
+    durationMs = 180,
+    onComplete?: () => void,
+  ) => {
+    cancelPreviewFade(slotKey);
+    if (audiblePreviewSlot.current !== slotKey) {
+      pausePreviewSlot(slotKey);
+      onComplete?.();
       return;
     }
-    crossfadeVolume.current = nextVolume;
-    try {
-      Reflect.set(crossfadePlayer, 'volume', nextVolume);
-    } catch {
-      crossfadeVolume.current = 0;
-    }
-  }, [crossfadePlayer]);
 
-  const applyCrossfadeMix = useCallback(() => {
-    const progress = crossfadeReady.current ? desiredCrossfadeProgress.current : 0;
-    setCrossfadePlayerVolume(progress);
-
-    const nextMainVolume = clamp01(1 - progress);
-    if (Math.abs(lastMainPlayerVolume.current - nextMainVolume) >= 0.04 || nextMainVolume === 0 || nextMainVolume === 1) {
-      lastMainPlayerVolume.current = nextMainVolume;
-      setPreviewVolume(nextMainVolume);
-    }
-  }, [setCrossfadePlayerVolume, setPreviewVolume]);
-
-  const stopCrossfadePreview = useCallback((durationMs = 140) => {
-    crossfadePrepareToken.current += 1;
-    desiredCrossfadeProgress.current = 0;
-
-    if (crossfadeFadeFrame.current != null) {
-      cancelAnimationFrame(crossfadeFadeFrame.current);
-      crossfadeFadeFrame.current = null;
-    }
-
-    const startVolume = crossfadeVolume.current;
-    const startedAt = Date.now();
-
-    const finish = () => {
-      setCrossfadePlayerVolume(0);
-      try {
-        crossfadePlayer.pause();
-      } catch {
-        // The managed player may already be released during screen teardown.
-      }
-      crossfadeSongId.current = null;
-      crossfadeIndex.current = null;
-      crossfadeReady.current = false;
-    };
+    const { player } = getPreviewSlot(slotKey);
+    const startVolume = Math.max(0, Math.min(1, player.volume || 1));
 
     if (durationMs <= 0 || startVolume <= 0.01) {
-      finish();
+      pausePreviewSlot(slotKey);
+      onComplete?.();
       return;
     }
 
-    const fade = () => {
-      const progress = clamp01((Date.now() - startedAt) / durationMs);
-      setCrossfadePlayerVolume(startVolume * (1 - progress));
+    const startedAt = Date.now();
+    previewFadeTimers.current[slotKey] = setInterval(() => {
+      const progress = Math.min(1, (Date.now() - startedAt) / durationMs);
+      setFeedPlayerVolume(player, startVolume * (1 - progress));
 
       if (progress >= 1) {
-        finish();
-        return;
+        pausePreviewSlot(slotKey);
+        onComplete?.();
       }
+    }, PREVIEW_FADE_STEP_MS);
+  }, [cancelPreviewFade, getPreviewSlot, pausePreviewSlot]);
 
-      crossfadeFadeFrame.current = requestAnimationFrame(fade);
-    };
+  const preparePreviewSlot = useCallback((slotKey: PreviewSlotKey, index: number): Promise<boolean> => {
+    const song = songs[index];
+    if (!song?.audio_url) return Promise.resolve(false);
 
-    crossfadeFadeFrame.current = requestAnimationFrame(fade);
-  }, [crossfadePlayer, setCrossfadePlayerVolume]);
-
-  const prepareCrossfadeSong = useCallback((index: number) => {
-    const nextSong = songs[index];
-    if (!nextSong?.audio_url || nextSong.id === currentHookSongId.current) return;
-    if (crossfadeSongId.current === nextSong.id && crossfadeIndex.current === index) return;
-
-    const token = crossfadePrepareToken.current + 1;
-    crossfadePrepareToken.current = token;
-    crossfadeSongId.current = nextSong.id;
-    crossfadeIndex.current = index;
-    crossfadeReady.current = false;
-
-    if (crossfadeFadeFrame.current != null) {
-      cancelAnimationFrame(crossfadeFadeFrame.current);
-      crossfadeFadeFrame.current = null;
+    const { player, state } = getPreviewSlot(slotKey);
+    if (state.index === index && state.songId === song.id) {
+      if (state.ready) return Promise.resolve(true);
+      if (state.pending) return state.pending;
     }
 
-    setCrossfadePlayerVolume(0);
+    cancelPreviewFade(slotKey);
+    const token = state.token + 1;
+    state.index = index;
+    state.pending = null;
+    state.ready = false;
+    state.songId = song.id;
+    state.token = token;
+
+    setFeedPlayerVolume(player, 0);
     try {
-      crossfadePlayer.pause();
-      crossfadePlayer.replace({ name: nextSong.title, uri: nextSong.audio_url });
+      player.pause();
+      player.replace({ name: song.title, uri: song.audio_url });
     } catch {
-      crossfadeSongId.current = null;
-      crossfadeIndex.current = null;
+      state.index = null;
+      state.songId = null;
+      return Promise.resolve(false);
+    }
+
+    const pending = (async () => {
+      const isCurrentRequest = () => (
+        isMounted.current
+        && state.token === token
+        && state.songId === song.id
+      );
+      const ready = await waitForFeedAudioReady(player, isCurrentRequest);
+      if (!ready || !isCurrentRequest()) return false;
+
+      try {
+        await player.seekTo(getHookStart(song), 0, 0);
+      } catch {
+        // The source is still usable if a platform seek races the final load event.
+      }
+
+      if (!isCurrentRequest()) return false;
+      state.ready = true;
+      return true;
+    })().finally(() => {
+      if (state.token === token) {
+        state.pending = null;
+      }
+    });
+
+    state.pending = pending;
+    return pending;
+  }, [cancelPreviewFade, getPreviewSlot, songs]);
+
+  const findPreparedSlot = useCallback((index: number): PreviewSlotKey | null => {
+    if (previewSlotA.current.index === index && previewSlotA.current.ready) return 'a';
+    if (previewSlotB.current.index === index && previewSlotB.current.ready) return 'b';
+    return null;
+  }, []);
+
+  const selectPreviewSlot = useCallback((targetIndex: number): PreviewSlotKey => {
+    const audibleSlot = audiblePreviewSlot.current;
+    if (audibleSlot === 'a') return 'b';
+    if (audibleSlot === 'b') return 'a';
+    if (previewSlotA.current.index == null) return 'a';
+    if (previewSlotB.current.index == null) return 'b';
+
+    const distanceA = Math.abs((previewSlotA.current.index ?? targetIndex) - targetIndex);
+    const distanceB = Math.abs((previewSlotB.current.index ?? targetIndex) - targetIndex);
+    return distanceA >= distanceB ? 'a' : 'b';
+  }, []);
+
+  const ensurePreviewSlot = useCallback(async (index: number): Promise<PreviewSlotKey | null> => {
+    if (index < 0 || index >= songs.length) return null;
+
+    const preparedSlot = findPreparedSlot(index);
+    if (preparedSlot) return preparedSlot;
+
+    const matchingPendingSlot = previewSlotA.current.index === index
+      ? 'a'
+      : previewSlotB.current.index === index
+        ? 'b'
+        : null;
+    const slotKey = matchingPendingSlot ?? selectPreviewSlot(index);
+    const ready = await preparePreviewSlot(slotKey, index);
+    return ready ? slotKey : null;
+  }, [findPreparedSlot, preparePreviewSlot, selectPreviewSlot, songs.length]);
+
+  const prewarmNeighbors = useCallback((index: number) => {
+    const targets = [index + 1, index - 1].filter(
+      (targetIndex) => targetIndex >= 0 && targetIndex < songs.length,
+    );
+    const availableSlots: PreviewSlotKey[] = ['a', 'b'].filter(
+      (slotKey) => slotKey !== audiblePreviewSlot.current,
+    ) as PreviewSlotKey[];
+    const pendingTargets: number[] = [];
+
+    targets.forEach((targetIndex) => {
+      const matchingSlot = previewSlotA.current.index === targetIndex
+        ? 'a'
+        : previewSlotB.current.index === targetIndex
+          ? 'b'
+          : null;
+      if (matchingSlot) {
+        const availableIndex = availableSlots.indexOf(matchingSlot);
+        if (availableIndex >= 0) {
+          availableSlots.splice(availableIndex, 1);
+        }
+        return;
+      }
+      pendingTargets.push(targetIndex);
+    });
+
+    pendingTargets.forEach((targetIndex, targetOffset) => {
+      const slotKey = availableSlots[targetOffset];
+      if (slotKey) {
+        void preparePreviewSlot(slotKey, targetIndex);
+      }
+    });
+  }, [preparePreviewSlot, songs.length]);
+
+  const queueNeighborPrewarm = useCallback((index: number) => {
+    prewarmGeneration.current += 1;
+    const generation = prewarmGeneration.current;
+    if (prewarmTimer.current) {
+      clearTimeout(prewarmTimer.current);
+    }
+
+    prewarmTimer.current = setTimeout(() => {
+      InteractionManager.runAfterInteractions(() => {
+        if (!isMounted.current || prewarmGeneration.current !== generation) return;
+        prewarmNeighbors(index);
+      });
+    }, 180);
+  }, [prewarmNeighbors]);
+
+  const activatePreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
+    const previousAudibleSlot = audiblePreviewSlot.current;
+    if (previousAudibleSlot && previousAudibleSlot !== slotKey) {
+      pausePreviewSlot(previousAudibleSlot);
+    }
+
+    cancelPreviewFade(slotKey);
+    const { player } = getPreviewSlot(slotKey);
+    setFeedPlayerVolume(player, 1);
+    try {
+      player.play();
+      audiblePreviewSlot.current = slotKey;
+      return true;
+    } catch {
+      pausePreviewSlot(slotKey);
+      return false;
+    }
+  }, [cancelPreviewFade, getPreviewSlot, pausePreviewSlot]);
+
+  const transitionToIndex = useCallback(async (index: number, force = false) => {
+    if (songs.length === 0) return;
+    const nextIndex = Math.max(0, Math.min(songs.length - 1, index));
+    const nextSong = songs[nextIndex];
+    const previousIndex = activeIndexRef.current;
+    activeIndexRef.current = nextIndex;
+    setActiveIndex((currentIndex) => currentIndex === nextIndex ? currentIndex : nextIndex);
+
+    if (!force && currentHookSongId.current === nextSong.id) {
+      queueNeighborPrewarm(nextIndex);
       return;
     }
 
-    void (async () => {
-      const isCurrentRequest = () => crossfadePrepareToken.current === token;
-      const isReady = await waitForFeedAudioReady(crossfadePlayer, isCurrentRequest);
-      if (!isCurrentRequest() || !isReady) return;
+    const requestToken = transitionToken.current + 1;
+    transitionToken.current = requestToken;
+    const slotKey = await ensurePreviewSlot(nextIndex);
+    if (
+      !slotKey
+      || transitionToken.current !== requestToken
+      || !isMounted.current
+    ) {
+      return;
+    }
 
-      try {
-        await crossfadePlayer.seekTo(getHookStart(nextSong), 0, 0);
-      } catch {
-        // If a seek races the native loader, still let the preview play.
-      }
+    const { player, state } = getPreviewSlot(slotKey);
+    if (!state.ready || state.index !== nextIndex || state.songId !== nextSong.id) {
+      return;
+    }
 
-      if (!isCurrentRequest()) return;
+    if (!activatePreviewSlot(slotKey)) return;
+    currentHookSongId.current = nextSong.id;
+    setQueue([nextSong], 0);
+    const swipeDirection = nextIndex >= previousIndex ? 1 : -1;
+    const continuationIndex = nextIndex + swipeDirection;
+    if (continuationIndex >= 0 && continuationIndex < songs.length) {
+      void ensurePreviewSlot(continuationIndex);
+    }
+
+    const getHandoffStart = () => {
+      const fallbackStart = getHookStart(nextSong);
+      if (state.songId !== nextSong.id) return fallbackStart;
+      let previewTime = 0;
       try {
-        crossfadePlayer.play();
-        crossfadeReady.current = true;
-        applyCrossfadeMix();
+        previewTime = player.currentTime;
       } catch {
-        crossfadeSongId.current = null;
-        crossfadeIndex.current = null;
-        crossfadeReady.current = false;
-        setCrossfadePlayerVolume(0);
+        return fallbackStart;
       }
-    })();
-  }, [applyCrossfadeMix, crossfadePlayer, setCrossfadePlayerVolume, songs]);
+      return Number.isFinite(previewTime) && previewTime > 0
+        ? Math.max(fallbackStart, previewTime)
+        : fallbackStart;
+    };
+
+    try {
+      await playSong(nextSong, {
+        isSwipeTransition: true,
+        startAt: getHandoffStart,
+      });
+    } finally {
+      fadeOutPreviewSlot(slotKey, 180, () => {
+        if (
+          isMounted.current
+          && transitionToken.current === requestToken
+          && currentHookSongId.current === nextSong.id
+        ) {
+          queueNeighborPrewarm(nextIndex);
+        }
+      });
+    }
+  }, [
+    activatePreviewSlot,
+    ensurePreviewSlot,
+    fadeOutPreviewSlot,
+    getPreviewSlot,
+    playSong,
+    queueNeighborPrewarm,
+    setQueue,
+    songs,
+  ]);
 
   useEffect(() => {
     let mounted = true;
 
     async function load() {
       if (!user) return;
-      stopCrossfadePreview(0);
+      transitionToken.current += 1;
+      stopAllPreviewPlayers();
+      setPreviewVolume(1);
       setLoading(true);
       setError(null);
 
@@ -421,6 +628,7 @@ export function ForYouScreen() {
           setLikedSongsMap(initialLikedMap);
           setFollowedArtistsMap(initialFollowedMap);
           currentHookSongId.current = null;
+          activeIndexRef.current = 0;
           setActiveIndex(0);
           setSongs(nextSongs.map((song) => ({
             ...song,
@@ -438,134 +646,7 @@ export function ForYouScreen() {
 
     load();
     return () => { mounted = false; };
-  }, [user, activeFeed, stopCrossfadePreview]);
-
-  const getCrossfadeHandoffStart = useCallback((song: FeedPreviewSong) => {
-    const fallbackStart = getHookStart(song);
-    if (crossfadeSongId.current !== song.id) return fallbackStart;
-
-    let previewTime = 0;
-    try {
-      previewTime = crossfadePlayer.currentTime;
-    } catch {
-      return fallbackStart;
-    }
-    if (!Number.isFinite(previewTime) || previewTime <= 0) return fallbackStart;
-
-    return Math.max(fallbackStart, previewTime);
-  }, [crossfadePlayer]);
-
-  const startHookPlayback = useCallback((
-    song: FeedPreviewSong,
-    force = false,
-    fadeInMs = 0,
-    startAt: number | (() => number) = getHookStart(song),
-  ) => {
-    if (!force && currentHookSongId.current === song.id) return;
-    currentHookSongId.current = song.id;
-
-    setQueue([song], 0);
-    return playSong(song, { startAt, fadeInMs, isSwipeTransition: true });
-  }, [playSong, setQueue]);
-
-  const cancelPendingHandoff = useCallback(() => {
-    handoffToken.current += 1;
-    handoffSongId.current = null;
-    if (hookStartTimer.current) {
-      clearTimeout(hookStartTimer.current);
-      hookStartTimer.current = null;
-    }
-  }, []);
-
-  const scheduleHookPlayback = useCallback((index: number, force = false) => {
-    if (songs.length === 0) return;
-    const nextIndex = Math.max(0, Math.min(songs.length - 1, index));
-    const nextSong = songs[nextIndex];
-
-    setActiveIndex((currentIndex) => currentIndex === nextIndex ? currentIndex : nextIndex);
-
-    if (!force && currentHookSongId.current === nextSong.id) {
-      cancelPendingHandoff();
-      return;
-    }
-
-    if (!force && handoffSongId.current === nextSong.id) {
-      return;
-    }
-
-    if (hookStartTimer.current) {
-      clearTimeout(hookStartTimer.current);
-    }
-
-    const requestToken = handoffToken.current + 1;
-    handoffToken.current = requestToken;
-    handoffSongId.current = nextSong.id;
-
-    hookStartTimer.current = setTimeout(() => {
-      void (async () => {
-        const isCurrentRequest = () => (
-          handoffToken.current === requestToken
-          && handoffSongId.current === nextSong.id
-        );
-
-        if (crossfadeSongId.current === nextSong.id && !crossfadeReady.current) {
-          await waitForCondition(
-            () => crossfadeReady.current && crossfadeSongId.current === nextSong.id,
-            isCurrentRequest,
-          );
-        }
-
-        if (!isCurrentRequest()) return;
-
-        const shouldFadeIn = Boolean(currentHookSongId.current && currentHookSongId.current !== nextSong.id);
-        const hasAudibleCrossfade = (
-          crossfadeSongId.current === nextSong.id
-          && crossfadeReady.current
-          && crossfadeVolume.current > 0.04
-        );
-
-        // Keep crossfade at full volume during the handoff so there's no
-        // silence gap while the main player loads the new source.
-        if (hasAudibleCrossfade) {
-          desiredCrossfadeProgress.current = 1;
-          applyCrossfadeMix();
-        }
-
-        // Pass a lazy evaluator function for handoffStart, so that the seek position
-        // is resolved in real-time AFTER the main player finishes loading (waitForPlayerReady).
-        const handoffStart = () => getCrossfadeHandoffStart(nextSong);
-
-        const playback = startHookPlayback(
-          nextSong,
-          force,
-          shouldFadeIn ? (hasAudibleCrossfade ? 180 : 260) : 0,
-          handoffStart,
-        );
-
-        if (playback) {
-          playback.finally(() => {
-            if (handoffSongId.current === nextSong.id) {
-              handoffSongId.current = null;
-            }
-
-            // playSong resolved → player.play() was called.  Give the
-            // native audio pipeline a moment to start outputting before
-            // fading out the crossfade bridge that's been covering the gap.
-            if (hasAudibleCrossfade) {
-              setTimeout(() => stopCrossfadePreview(220), 120);
-            } else {
-              stopCrossfadePreview(120);
-            }
-          });
-        } else {
-          if (handoffSongId.current === nextSong.id) {
-            handoffSongId.current = null;
-          }
-          stopCrossfadePreview(120);
-        }
-      })();
-    }, 0);
-  }, [applyCrossfadeMix, cancelPendingHandoff, getCrossfadeHandoffStart, songs, startHookPlayback, stopCrossfadePreview]);
+  }, [user, activeFeed, setPreviewVolume, stopAllPreviewPlayers]);
 
   const clearDragSettleTimer = useCallback(() => {
     if (!dragSettleTimer.current) return;
@@ -575,115 +656,64 @@ export function ForYouScreen() {
 
   useEffect(() => {
     if (loading || songs.length === 0 || currentHookSongId.current) return;
-    scheduleHookPlayback(0, true);
-  }, [loading, scheduleHookPlayback, songs.length]);
+    void transitionToIndex(0, true);
+  }, [loading, songs.length, transitionToIndex]);
 
-  useEffect(() => () => {
-    clearDragSettleTimer();
-    if (hookStartTimer.current) {
-      clearTimeout(hookStartTimer.current);
-    }
-    if (scrollVolumeFrame.current != null) {
-      cancelAnimationFrame(scrollVolumeFrame.current);
-    }
-    if (crossfadeFadeFrame.current != null) {
-      cancelAnimationFrame(crossfadeFadeFrame.current);
-    }
-    setPreviewVolume(1);
-    lastMainPlayerVolume.current = 1;
-    crossfadeVolume.current = 0;
-    crossfadePrepareToken.current += 1;
-    handoffToken.current += 1;
-    handoffSongId.current = null;
-    try {
-      crossfadePlayer.pause();
-    } catch {
-      // useAudioPlayer owns release; teardown can race native cleanup.
-    }
-  }, [clearDragSettleTimer, crossfadePlayer, setPreviewVolume]);
-
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (!isPlaying || songs.length < 2 || itemHeight <= 0) return;
-
-    const pageOffset = event.nativeEvent.contentOffset.y / itemHeight;
-    const deltaFromActive = pageOffset - activeIndex;
-    const distanceFromCurrentHook = Math.min(1, Math.abs(deltaFromActive));
-    const direction = deltaFromActive > 0 ? 1 : -1;
-    const crossfadeTargetIndex = activeIndex + direction;
-    const hasCrossfadeTarget = crossfadeTargetIndex >= 0 && crossfadeTargetIndex < songs.length;
-    const transitionProgress = easeInOut(Math.min(1, distanceFromCurrentHook / 0.82));
-
-    desiredCrossfadeProgress.current = hasCrossfadeTarget ? transitionProgress : 0;
-    // Delay preloading until user swiped at least 12% of the transition,
-    // to filter out accidental/jittery scrolls and keep the swipe start smooth.
-    if (hasCrossfadeTarget && transitionProgress > 0.12) {
-      prepareCrossfadeSong(crossfadeTargetIndex);
-    }
-
-    if (scrollVolumeFrame.current != null) return;
-    scrollVolumeFrame.current = requestAnimationFrame(() => {
-      scrollVolumeFrame.current = null;
-      applyCrossfadeMix();
+  useEffect(() => {
+    const nearbyIndexes = [activeIndex - 1, activeIndex, activeIndex + 1, activeIndex + 2];
+    nearbyIndexes.forEach((index) => {
+      const coverUrl = songs[index]?.cover_url;
+      if (coverUrl) {
+        void Image.prefetch(coverUrl);
+      }
     });
-  }, [
-    activeIndex,
-    applyCrossfadeMix,
-    isPlaying,
-    itemHeight,
-    prepareCrossfadeSong,
-    songs.length,
-  ]);
+  }, [activeIndex, songs]);
+
+  useEffect(() => {
+    isMounted.current = true;
+
+    return () => {
+      isMounted.current = false;
+      transitionToken.current += 1;
+      prewarmGeneration.current += 1;
+      clearDragSettleTimer();
+      if (prewarmTimer.current) {
+        clearTimeout(prewarmTimer.current);
+      }
+      stopAllPreviewPlayers();
+      setPreviewVolume(1);
+    };
+  }, [clearDragSettleTimer, setPreviewVolume, stopAllPreviewPlayers]);
 
   const handleMomentumScrollBegin = useCallback(() => {
     clearDragSettleTimer();
   }, [clearDragSettleTimer]);
 
+  // Keep the native scroll path completely free of JS/audio work.
+  // Audio only changes after paging has settled in one of these end callbacks.
   const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     clearDragSettleTimer();
     const nextIndex = getIndexFromOffset(event.nativeEvent.contentOffset.y, itemHeight, songs.length);
-    if (nextIndex === activeIndex) {
-      cancelPendingHandoff();
-      desiredCrossfadeProgress.current = 0;
-      applyCrossfadeMix();
-      stopCrossfadePreview(140);
-    } else {
-      desiredCrossfadeProgress.current = 1;
-      prepareCrossfadeSong(nextIndex);
-      applyCrossfadeMix();
-    }
-    scheduleHookPlayback(nextIndex);
-  }, [activeIndex, applyCrossfadeMix, cancelPendingHandoff, clearDragSettleTimer, itemHeight, prepareCrossfadeSong, scheduleHookPlayback, songs.length, stopCrossfadePreview]);
+    void transitionToIndex(nextIndex);
+  }, [clearDragSettleTimer, itemHeight, songs.length, transitionToIndex]);
 
   const handleScrollEndDrag = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     clearDragSettleTimer();
     const nextIndex = getIndexFromOffset(event.nativeEvent.contentOffset.y, itemHeight, songs.length);
 
     dragSettleTimer.current = setTimeout(() => {
-      if (nextIndex === activeIndex) {
-        cancelPendingHandoff();
-        desiredCrossfadeProgress.current = 0;
-        applyCrossfadeMix();
-        stopCrossfadePreview(140);
-      } else {
-        desiredCrossfadeProgress.current = 1;
-        prepareCrossfadeSong(nextIndex);
-        applyCrossfadeMix();
-      }
-      scheduleHookPlayback(nextIndex);
-    }, 80);
-  }, [activeIndex, applyCrossfadeMix, cancelPendingHandoff, clearDragSettleTimer, itemHeight, prepareCrossfadeSong, scheduleHookPlayback, songs.length, stopCrossfadePreview]);
-
-  // We want to pause when leaving the ForYou tab?
-  // Usually TikTok pauses when you go to another tab, but for a music app maybe not.
-  // We'll leave it playing for now.
+      void transitionToIndex(nextIndex);
+    }, 120);
+  }, [clearDragSettleTimer, itemHeight, songs.length, transitionToIndex]);
 
   const handlePlayFull = useCallback((item: FeedPreviewSong) => {
-    stopCrossfadePreview(0);
+    transitionToken.current += 1;
+    stopAllPreviewPlayers();
     setPreviewVolume(1);
     setQueue([item], 0);
     void playSong(item, { startAt: 0 });
     navigation.navigate('FullscreenPlayer');
-  }, [navigation, playSong, setPreviewVolume, setQueue, stopCrossfadePreview]);
+  }, [navigation, playSong, setPreviewVolume, setQueue, stopAllPreviewPlayers]);
 
   const getItemLayout = useCallback((_: ArrayLike<FeedPreviewSong> | null | undefined, index: number) => ({
     length: itemHeight,
@@ -836,12 +866,15 @@ export function ForYouScreen() {
         isPlaying={isSongPlaying}
         onPlayFull={handlePlayFull}
         onTogglePlay={() => {
-          stopCrossfadePreview(0);
           setPreviewVolume(1);
           if (activeSong?.id === item.id) {
+            const audibleSlot = audiblePreviewSlot.current;
+            if (audibleSlot) {
+              pausePreviewSlot(audibleSlot);
+            }
             toggle();
           } else {
-            startHookPlayback(item, true, 180);
+            void transitionToIndex(index, true);
           }
         }}
         isLiked={!!likedSongsMap[item.id]}
@@ -863,10 +896,10 @@ export function ForYouScreen() {
     itemHeight,
     itemWidth,
     likedSongsMap,
+    pausePreviewSlot,
     setPreviewVolume,
-    startHookPlayback,
-    stopCrossfadePreview,
     toggle,
+    transitionToIndex,
   ]);
 
   const feedRenderState = useMemo(() => ({
@@ -926,14 +959,12 @@ export function ForYouScreen() {
         disableIntervalMomentum
         onMomentumScrollBegin={handleMomentumScrollBegin}
         onMomentumScrollEnd={handleMomentumScrollEnd}
-        onScroll={handleScroll}
         onScrollEndDrag={handleScrollEndDrag}
-        scrollEventThrottle={16}
         initialNumToRender={2}
-        windowSize={5}
-        maxToRenderPerBatch={2}
-        updateCellsBatchingPeriod={16}
-        removeClippedSubviews={false}
+        windowSize={3}
+        maxToRenderPerBatch={1}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews
         getItemLayout={getItemLayout}
       />
     </View>

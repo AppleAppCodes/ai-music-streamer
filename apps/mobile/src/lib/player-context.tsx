@@ -112,6 +112,27 @@ async function waitForPlayerReady(player: AudioPlayer, isCurrentRequest: () => b
   return false;
 }
 
+async function waitForPlayerPlaying(
+  player: AudioPlayer,
+  isCurrentRequest: () => boolean,
+  timeoutMs = 900,
+) {
+  const startedAt = Date.now();
+  let playingObservedAt: number | null = null;
+
+  while (isCurrentRequest() && Date.now() - startedAt < timeoutMs) {
+    if (player.currentStatus.playing) {
+      playingObservedAt ??= Date.now();
+      if (Date.now() - playingObservedAt >= 80) return true;
+    } else {
+      playingObservedAt = null;
+    }
+    await sleep(25);
+  }
+
+  return false;
+}
+
 function setLockScreenMetadata(player: AudioPlayer, song: Song) {
   try {
     player.setActiveForLockScreen(true, {
@@ -334,7 +355,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       } else {
         setPlayerVolume(1);
       }
-      setLockScreenMetadata(player, song);
+
+      if (options.isSwipeTransition) {
+        const playbackStarted = await waitForPlayerPlaying(player, isCurrentRequest);
+        if (!isCurrentRequest()) return;
+        if (!playbackStarted) {
+          player.play();
+        }
+        setTimeout(() => {
+          if (isCurrentRequest()) {
+            setLockScreenMetadata(player, song);
+          }
+        }, 1000);
+      } else {
+        setLockScreenMetadata(player, song);
+      }
 
       setTimeout(() => {
         if (!isCurrentRequest()) return;
