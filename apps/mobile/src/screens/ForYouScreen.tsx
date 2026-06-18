@@ -27,7 +27,7 @@ import type { FeedPreviewSong } from '../lib/types';
 import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { createAudioPlayer, preload, type AudioPlayer } from 'expo-audio';
+import { useAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -54,7 +54,11 @@ async function waitForFeedAudioReady(
   const startedAt = Date.now();
 
   while (isCurrentRequest() && Date.now() - startedAt < timeoutMs) {
-    if (player.currentStatus.isLoaded) return true;
+    try {
+      if (player.currentStatus.isLoaded) return true;
+    } catch {
+      return false;
+    }
     await new Promise((resolve) => setTimeout(resolve, 40));
   }
 
@@ -258,14 +262,11 @@ export function ForYouScreen() {
   const { user } = useAuth();
   const { height: itemHeight, width: itemWidth } = useWindowDimensions();
   const { activeSong, isPlaying, playSong, toggle, setQueue, setPreviewVolume } = usePlayerControls();
-  const crossfadePlayerRef = useRef<AudioPlayer | null>(null);
-  if (crossfadePlayerRef.current === null) {
-    crossfadePlayerRef.current = createAudioPlayer(null, {
-      keepAudioSessionActive: true,
-      preferredForwardBufferDuration: 4,
-      updateInterval: 250,
-    });
-  }
+  const crossfadePlayer = useAudioPlayer(null, {
+    keepAudioSessionActive: true,
+    preferredForwardBufferDuration: 3,
+    updateInterval: 250,
+  });
   const [activeFeed, setActiveFeed] = useState<'foryou' | 'following' | 'explore'>('foryou');
   const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -289,10 +290,12 @@ export function ForYouScreen() {
   const setCrossfadePlayerVolume = useCallback((volume: number) => {
     const nextVolume = clamp01(volume);
     crossfadeVolume.current = nextVolume;
-    if (crossfadePlayerRef.current) {
-      crossfadePlayerRef.current.volume = nextVolume;
+    try {
+      Reflect.set(crossfadePlayer, 'volume', nextVolume);
+    } catch {
+      crossfadeVolume.current = 0;
     }
-  }, []);
+  }, [crossfadePlayer]);
 
   const stopCrossfadePreview = useCallback((durationMs = 140) => {
     crossfadePrepareToken.current += 1;
@@ -307,7 +310,11 @@ export function ForYouScreen() {
 
     const finish = () => {
       setCrossfadePlayerVolume(0);
-      crossfadePlayerRef.current?.pause();
+      try {
+        crossfadePlayer.pause();
+      } catch {
+        // The managed player may already be released during screen teardown.
+      }
       crossfadeSongId.current = null;
       crossfadeIndex.current = null;
     };
@@ -330,7 +337,7 @@ export function ForYouScreen() {
     };
 
     crossfadeFadeFrame.current = requestAnimationFrame(fade);
-  }, [setCrossfadePlayerVolume]);
+  }, [crossfadePlayer, setCrossfadePlayerVolume]);
 
   const prepareCrossfadeSong = useCallback((index: number) => {
     const nextSong = songs[index];
@@ -348,15 +355,19 @@ export function ForYouScreen() {
     }
 
     setCrossfadePlayerVolume(0);
-    const crossfadePlayer = crossfadePlayerRef.current;
-    if (!crossfadePlayer) return;
-    crossfadePlayer.pause();
-    crossfadePlayer.replace({ name: nextSong.title, uri: nextSong.audio_url });
+    try {
+      crossfadePlayer.pause();
+      crossfadePlayer.replace({ name: nextSong.title, uri: nextSong.audio_url });
+    } catch {
+      crossfadeSongId.current = null;
+      crossfadeIndex.current = null;
+      return;
+    }
 
     void (async () => {
       const isCurrentRequest = () => crossfadePrepareToken.current === token;
-      await waitForFeedAudioReady(crossfadePlayer, isCurrentRequest);
-      if (!isCurrentRequest()) return;
+      const isReady = await waitForFeedAudioReady(crossfadePlayer, isCurrentRequest);
+      if (!isCurrentRequest() || !isReady) return;
 
       try {
         await crossfadePlayer.seekTo(getHookStart(nextSong), 0, 0);
@@ -365,10 +376,16 @@ export function ForYouScreen() {
       }
 
       if (!isCurrentRequest()) return;
-      crossfadePlayer.play();
-      setCrossfadePlayerVolume(crossfadeVolume.current);
+      try {
+        crossfadePlayer.play();
+        setCrossfadePlayerVolume(crossfadeVolume.current);
+      } catch {
+        crossfadeSongId.current = null;
+        crossfadeIndex.current = null;
+        setCrossfadePlayerVolume(0);
+      }
     })();
-  }, [setCrossfadePlayerVolume, songs]);
+  }, [crossfadePlayer, setCrossfadePlayerVolume, songs]);
 
   useEffect(() => {
     let mounted = true;
@@ -428,11 +445,16 @@ export function ForYouScreen() {
     const fallbackStart = getHookStart(song);
     if (crossfadeSongId.current !== song.id) return fallbackStart;
 
-    const previewTime = crossfadePlayerRef.current?.currentTime ?? 0;
+    let previewTime = 0;
+    try {
+      previewTime = crossfadePlayer.currentTime;
+    } catch {
+      return fallbackStart;
+    }
     if (!Number.isFinite(previewTime) || previewTime <= 0) return fallbackStart;
 
     return Math.max(fallbackStart, previewTime);
-  }, []);
+  }, [crossfadePlayer]);
 
   const startHookPlayback = useCallback((
     song: FeedPreviewSong,
@@ -497,18 +519,6 @@ export function ForYouScreen() {
     }
   }, [isPlaying, stopCrossfadePreview]);
 
-  useEffect(() => {
-    const preloadCandidates = [songs[activeIndex - 1], songs[activeIndex + 1]]
-      .filter((song): song is FeedPreviewSong => Boolean(song));
-
-    preloadCandidates.forEach((song) => {
-      if (!song.audio_url) return;
-      void preload({ uri: song.audio_url }, { preferredForwardBufferDuration: 4 }).catch(() => {
-        // Preloading is opportunistic; playback still works if the cache misses.
-      });
-    });
-  }, [activeIndex, songs]);
-
   useEffect(() => () => {
     clearDragSettleTimer();
     if (hookStartTimer.current) {
@@ -522,10 +532,12 @@ export function ForYouScreen() {
     }
     setPreviewVolume(1);
     crossfadePrepareToken.current += 1;
-    crossfadePlayerRef.current?.pause();
-    crossfadePlayerRef.current?.remove();
-    crossfadePlayerRef.current = null;
-  }, [clearDragSettleTimer, setPreviewVolume]);
+    try {
+      crossfadePlayer.pause();
+    } catch {
+      // useAudioPlayer owns release; teardown can race native cleanup.
+    }
+  }, [clearDragSettleTimer, crossfadePlayer, setPreviewVolume]);
 
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!isPlaying || songs.length < 2 || itemHeight <= 0) return;
