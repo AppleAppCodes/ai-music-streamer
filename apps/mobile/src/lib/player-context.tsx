@@ -277,9 +277,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
 
       if (!isSameSong) {
-        if (fadeInMs > 0) {
-          setPlayerVolume(0);
-        } else {
+        // Don't zero-out volume before replace – the crossfade player
+        // may still be audibly bridging the gap.  We'll set volume
+        // right before play() instead.
+        if (fadeInMs <= 0) {
           setPlayerVolume(1);
         }
 
@@ -291,6 +292,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setLockScreenMetadata(player, song);
         await waitForPlayerReady(player, isCurrentRequest);
         if (!isCurrentRequest()) return;
+
+        // Now that the new source is loaded, apply the fade-in starting
+        // volume so we ramp from 0 → 1 without an audible gap.
+        if (fadeInMs > 0) {
+          setPlayerVolume(0);
+        }
       }
 
       const shouldSeekBeforePlay = options.startAt != null && (startAt > 0 || isSameSong);

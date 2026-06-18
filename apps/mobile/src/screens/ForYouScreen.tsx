@@ -574,6 +574,14 @@ export function ForYouScreen() {
           && crossfadeReady.current
           && crossfadeVolume.current > 0.04
         );
+
+        // Keep crossfade at full volume during the handoff so there's no
+        // silence gap while the main player loads the new source.
+        if (hasAudibleCrossfade) {
+          desiredCrossfadeProgress.current = 1;
+          applyCrossfadeMix();
+        }
+
         const playback = startHookPlayback(
           nextSong,
           force,
@@ -586,7 +594,15 @@ export function ForYouScreen() {
             if (handoffSongId.current === nextSong.id) {
               handoffSongId.current = null;
             }
-            stopCrossfadePreview(hasAudibleCrossfade ? 220 : 120);
+
+            // playSong resolved → player.play() was called.  Give the
+            // native audio pipeline a moment to start outputting before
+            // fading out the crossfade bridge that's been covering the gap.
+            if (hasAudibleCrossfade) {
+              setTimeout(() => stopCrossfadePreview(220), 120);
+            } else {
+              stopCrossfadePreview(120);
+            }
           });
         } else {
           if (handoffSongId.current === nextSong.id) {
@@ -697,7 +713,7 @@ export function ForYouScreen() {
         applyCrossfadeMix();
       }
       scheduleHookPlayback(nextIndex);
-    }, 180);
+    }, 80);
   }, [activeIndex, applyCrossfadeMix, cancelPendingHandoff, clearDragSettleTimer, itemHeight, prepareCrossfadeSong, scheduleHookPlayback, songs.length, stopCrossfadePreview]);
 
   // We want to pause when leaving the ForYou tab?
