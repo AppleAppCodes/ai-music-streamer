@@ -65,6 +65,21 @@ async function waitForFeedAudioReady(
   return false;
 }
 
+async function waitForCondition(
+  condition: () => boolean,
+  isCurrentRequest: () => boolean,
+  timeoutMs = 1000,
+) {
+  const startedAt = Date.now();
+
+  while (isCurrentRequest() && Date.now() - startedAt < timeoutMs) {
+    if (condition()) return true;
+    await new Promise((resolve) => setTimeout(resolve, 32));
+  }
+
+  return false;
+}
+
 function getIndexFromOffset(offsetY: number, itemHeight: number, itemCount: number) {
   if (itemHeight <= 0 || itemCount <= 0) return 0;
   const nextIndex = Math.round(offsetY / itemHeight);
@@ -280,12 +295,15 @@ export function ForYouScreen() {
   const dragSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hookStartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollVolumeFrame = useRef<number | null>(null);
-  const pendingScrollVolume = useRef(1);
   const crossfadeSongId = useRef<string | null>(null);
   const crossfadeIndex = useRef<number | null>(null);
   const crossfadeVolume = useRef(0);
+  const crossfadeReady = useRef(false);
+  const desiredCrossfadeProgress = useRef(0);
   const crossfadePrepareToken = useRef(0);
   const crossfadeFadeFrame = useRef<number | null>(null);
+  const handoffSongId = useRef<string | null>(null);
+  const handoffToken = useRef(0);
 
   const setCrossfadePlayerVolume = useCallback((volume: number) => {
     const nextVolume = clamp01(volume);
@@ -297,8 +315,15 @@ export function ForYouScreen() {
     }
   }, [crossfadePlayer]);
 
+  const applyCrossfadeMix = useCallback(() => {
+    const progress = crossfadeReady.current ? desiredCrossfadeProgress.current : 0;
+    setCrossfadePlayerVolume(progress);
+    setPreviewVolume(1 - progress);
+  }, [setCrossfadePlayerVolume, setPreviewVolume]);
+
   const stopCrossfadePreview = useCallback((durationMs = 140) => {
     crossfadePrepareToken.current += 1;
+    desiredCrossfadeProgress.current = 0;
 
     if (crossfadeFadeFrame.current != null) {
       cancelAnimationFrame(crossfadeFadeFrame.current);
@@ -317,6 +342,7 @@ export function ForYouScreen() {
       }
       crossfadeSongId.current = null;
       crossfadeIndex.current = null;
+      crossfadeReady.current = false;
     };
 
     if (durationMs <= 0 || startVolume <= 0.01) {
@@ -348,6 +374,7 @@ export function ForYouScreen() {
     crossfadePrepareToken.current = token;
     crossfadeSongId.current = nextSong.id;
     crossfadeIndex.current = index;
+    crossfadeReady.current = false;
 
     if (crossfadeFadeFrame.current != null) {
       cancelAnimationFrame(crossfadeFadeFrame.current);
@@ -378,14 +405,16 @@ export function ForYouScreen() {
       if (!isCurrentRequest()) return;
       try {
         crossfadePlayer.play();
-        setCrossfadePlayerVolume(crossfadeVolume.current);
+        crossfadeReady.current = true;
+        applyCrossfadeMix();
       } catch {
         crossfadeSongId.current = null;
         crossfadeIndex.current = null;
+        crossfadeReady.current = false;
         setCrossfadePlayerVolume(0);
       }
     })();
-  }, [crossfadePlayer, setCrossfadePlayerVolume, songs]);
+  }, [applyCrossfadeMix, crossfadePlayer, setCrossfadePlayerVolume, songs]);
 
   useEffect(() => {
     let mounted = true;
@@ -462,45 +491,92 @@ export function ForYouScreen() {
     fadeInMs = 0,
     startAt = getHookStart(song),
   ) => {
-    if (!force && currentHookSongId.current === song.id && activeSong?.id === song.id) return;
+    if (!force && currentHookSongId.current === song.id) return;
     currentHookSongId.current = song.id;
 
     setQueue([song], 0);
     return playSong(song, { startAt, fadeInMs });
-  }, [activeSong?.id, playSong, setQueue]);
+  }, [playSong, setQueue]);
+
+  const cancelPendingHandoff = useCallback(() => {
+    handoffToken.current += 1;
+    handoffSongId.current = null;
+    if (hookStartTimer.current) {
+      clearTimeout(hookStartTimer.current);
+      hookStartTimer.current = null;
+    }
+  }, []);
 
   const scheduleHookPlayback = useCallback((index: number, force = false) => {
     if (songs.length === 0) return;
     const nextIndex = Math.max(0, Math.min(songs.length - 1, index));
+    const nextSong = songs[nextIndex];
 
     setActiveIndex((currentIndex) => currentIndex === nextIndex ? currentIndex : nextIndex);
+
+    if (!force && currentHookSongId.current === nextSong.id) {
+      cancelPendingHandoff();
+      return;
+    }
+
+    if (!force && handoffSongId.current === nextSong.id) {
+      return;
+    }
 
     if (hookStartTimer.current) {
       clearTimeout(hookStartTimer.current);
     }
 
-    const nextSong = songs[nextIndex];
-    const shouldFadeIn = Boolean(currentHookSongId.current && currentHookSongId.current !== nextSong.id);
-    const handoffStart = getCrossfadeHandoffStart(nextSong);
-    const hasAudibleCrossfade = crossfadeSongId.current === nextSong.id && crossfadeVolume.current > 0.04;
+    const requestToken = handoffToken.current + 1;
+    handoffToken.current = requestToken;
+    handoffSongId.current = nextSong.id;
 
     hookStartTimer.current = setTimeout(() => {
-      const playback = startHookPlayback(
-        nextSong,
-        force,
-        shouldFadeIn ? (hasAudibleCrossfade ? 180 : 260) : 0,
-        handoffStart,
-      );
+      void (async () => {
+        const isCurrentRequest = () => (
+          handoffToken.current === requestToken
+          && handoffSongId.current === nextSong.id
+        );
 
-      if (playback) {
-        playback.finally(() => {
-          stopCrossfadePreview(hasAudibleCrossfade ? 220 : 120);
-        });
-      } else {
-        stopCrossfadePreview(120);
-      }
-    }, shouldFadeIn && !hasAudibleCrossfade ? 12 : 0);
-  }, [getCrossfadeHandoffStart, songs, startHookPlayback, stopCrossfadePreview]);
+        if (crossfadeSongId.current === nextSong.id && !crossfadeReady.current) {
+          await waitForCondition(
+            () => crossfadeReady.current && crossfadeSongId.current === nextSong.id,
+            isCurrentRequest,
+          );
+        }
+
+        if (!isCurrentRequest()) return;
+
+        const shouldFadeIn = Boolean(currentHookSongId.current && currentHookSongId.current !== nextSong.id);
+        const handoffStart = getCrossfadeHandoffStart(nextSong);
+        const hasAudibleCrossfade = (
+          crossfadeSongId.current === nextSong.id
+          && crossfadeReady.current
+          && crossfadeVolume.current > 0.04
+        );
+        const playback = startHookPlayback(
+          nextSong,
+          force,
+          shouldFadeIn ? (hasAudibleCrossfade ? 180 : 260) : 0,
+          handoffStart,
+        );
+
+        if (playback) {
+          playback.finally(() => {
+            if (handoffSongId.current === nextSong.id) {
+              handoffSongId.current = null;
+            }
+            stopCrossfadePreview(hasAudibleCrossfade ? 220 : 120);
+          });
+        } else {
+          if (handoffSongId.current === nextSong.id) {
+            handoffSongId.current = null;
+          }
+          stopCrossfadePreview(120);
+        }
+      })();
+    }, 0);
+  }, [cancelPendingHandoff, getCrossfadeHandoffStart, songs, startHookPlayback, stopCrossfadePreview]);
 
   const clearDragSettleTimer = useCallback(() => {
     if (!dragSettleTimer.current) return;
@@ -512,12 +588,6 @@ export function ForYouScreen() {
     if (loading || songs.length === 0 || currentHookSongId.current) return;
     scheduleHookPlayback(0, true);
   }, [loading, scheduleHookPlayback, songs.length]);
-
-  useEffect(() => {
-    if (!isPlaying) {
-      stopCrossfadePreview(120);
-    }
-  }, [isPlaying, stopCrossfadePreview]);
 
   useEffect(() => () => {
     clearDragSettleTimer();
@@ -532,6 +602,8 @@ export function ForYouScreen() {
     }
     setPreviewVolume(1);
     crossfadePrepareToken.current += 1;
+    handoffToken.current += 1;
+    handoffSongId.current = null;
     try {
       crossfadePlayer.pause();
     } catch {
@@ -550,26 +622,22 @@ export function ForYouScreen() {
     const hasCrossfadeTarget = crossfadeTargetIndex >= 0 && crossfadeTargetIndex < songs.length;
     const transitionProgress = easeInOut(Math.min(1, distanceFromCurrentHook / 0.82));
 
-    pendingScrollVolume.current = 1 - transitionProgress;
+    desiredCrossfadeProgress.current = hasCrossfadeTarget ? transitionProgress : 0;
     if (hasCrossfadeTarget && transitionProgress > 0.03) {
       prepareCrossfadeSong(crossfadeTargetIndex);
-      setCrossfadePlayerVolume(transitionProgress);
-    } else {
-      setCrossfadePlayerVolume(0);
     }
 
     if (scrollVolumeFrame.current != null) return;
     scrollVolumeFrame.current = requestAnimationFrame(() => {
       scrollVolumeFrame.current = null;
-      setPreviewVolume(pendingScrollVolume.current);
+      applyCrossfadeMix();
     });
   }, [
     activeIndex,
+    applyCrossfadeMix,
     isPlaying,
     itemHeight,
     prepareCrossfadeSong,
-    setCrossfadePlayerVolume,
-    setPreviewVolume,
     songs.length,
   ]);
 
@@ -580,25 +648,37 @@ export function ForYouScreen() {
   const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     clearDragSettleTimer();
     const nextIndex = getIndexFromOffset(event.nativeEvent.contentOffset.y, itemHeight, songs.length);
-    setPreviewVolume(nextIndex === activeIndex ? 1 : 0);
     if (nextIndex === activeIndex) {
+      cancelPendingHandoff();
+      desiredCrossfadeProgress.current = 0;
+      applyCrossfadeMix();
       stopCrossfadePreview(140);
+    } else {
+      desiredCrossfadeProgress.current = 1;
+      prepareCrossfadeSong(nextIndex);
+      applyCrossfadeMix();
     }
     scheduleHookPlayback(nextIndex);
-  }, [activeIndex, clearDragSettleTimer, itemHeight, scheduleHookPlayback, setPreviewVolume, songs.length, stopCrossfadePreview]);
+  }, [activeIndex, applyCrossfadeMix, cancelPendingHandoff, clearDragSettleTimer, itemHeight, prepareCrossfadeSong, scheduleHookPlayback, songs.length, stopCrossfadePreview]);
 
   const handleScrollEndDrag = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     clearDragSettleTimer();
     const nextIndex = getIndexFromOffset(event.nativeEvent.contentOffset.y, itemHeight, songs.length);
 
     dragSettleTimer.current = setTimeout(() => {
-      setPreviewVolume(nextIndex === activeIndex ? 1 : 0);
       if (nextIndex === activeIndex) {
+        cancelPendingHandoff();
+        desiredCrossfadeProgress.current = 0;
+        applyCrossfadeMix();
         stopCrossfadePreview(140);
+      } else {
+        desiredCrossfadeProgress.current = 1;
+        prepareCrossfadeSong(nextIndex);
+        applyCrossfadeMix();
       }
       scheduleHookPlayback(nextIndex);
-    }, 120);
-  }, [activeIndex, clearDragSettleTimer, itemHeight, scheduleHookPlayback, setPreviewVolume, songs.length, stopCrossfadePreview]);
+    }, 180);
+  }, [activeIndex, applyCrossfadeMix, cancelPendingHandoff, clearDragSettleTimer, itemHeight, prepareCrossfadeSong, scheduleHookPlayback, songs.length, stopCrossfadePreview]);
 
   // We want to pause when leaving the ForYou tab?
   // Usually TikTok pauses when you go to another tab, but for a music app maybe not.
@@ -764,6 +844,8 @@ export function ForYouScreen() {
         isPlaying={isSongPlaying}
         onPlayFull={handlePlayFull}
         onTogglePlay={() => {
+          stopCrossfadePreview(0);
+          setPreviewVolume(1);
           if (activeSong?.id === item.id) {
             toggle();
           } else {
@@ -790,7 +872,9 @@ export function ForYouScreen() {
     itemHeight,
     itemWidth,
     likedSongsMap,
+    setPreviewVolume,
     startHookPlayback,
+    stopCrossfadePreview,
     toggle,
   ]);
 
