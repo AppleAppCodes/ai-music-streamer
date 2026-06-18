@@ -453,47 +453,80 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     await player.seekTo(seconds, 0, 0);
   }, [activeSong, player]);
 
-  // Handle native end-of-track notifications once. iOS keeps didJustFinish=true
-  // briefly after we swap to the next source, so this must not key off activeSong.
+  const activeSongRef = useRef(activeSong);
   useEffect(() => {
-    if (!status.didJustFinish) {
-      finishEventConsumedRef.current = false;
-      return;
-    }
+    activeSongRef.current = activeSong;
+  }, [activeSong]);
 
-    if (!activeSong || finishEventConsumedRef.current) return;
-    finishEventConsumedRef.current = true;
+  const isAdPlayingRef = useRef(isAdPlaying);
+  useEffect(() => {
+    isAdPlayingRef.current = isAdPlaying;
+  }, [isAdPlaying]);
 
-    setTimeout(() => {
-      if (isAdPlaying) {
-        setIsAdPlaying(false);
-        setSongsPlayed(0);
+  const pendingSongToPlayAfterAdRef = useRef(pendingSongToPlayAfterAd);
+  useEffect(() => {
+    pendingSongToPlayAfterAdRef.current = pendingSongToPlayAfterAd;
+  }, [pendingSongToPlayAfterAd]);
 
-        if (supabase) {
-          supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single().then(({ data }) => {
-            if (data) setAdFrequency(data.ad_frequency);
+  const repeatModeRef = useRef(repeatMode);
+  useEffect(() => {
+    repeatModeRef.current = repeatMode;
+  }, [repeatMode]);
+
+  const playSongRef = useRef(playSong);
+  useEffect(() => {
+    playSongRef.current = playSong;
+  }, [playSong]);
+
+  // Handle native end-of-track notifications once.
+  // We attach a direct listener to the native player object instead of using a React hook (useAudioPlayerStatus),
+  // because React hooks do not update/execute when the app is in the background or screen is locked.
+  useEffect(() => {
+    const subscription = player.addListener('playbackStatusUpdate', (status) => {
+      if (!status.didJustFinish) {
+        finishEventConsumedRef.current = false;
+        return;
+      }
+
+      if (!activeSongRef.current || finishEventConsumedRef.current) return;
+      finishEventConsumedRef.current = true;
+
+      // Handle track completion
+      setTimeout(() => {
+        if (isAdPlayingRef.current) {
+          setIsAdPlaying(false);
+          setSongsPlayed(0);
+
+          if (supabase) {
+            supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single().then(({ data }) => {
+              if (data) setAdFrequency(data.ad_frequency);
+            });
+          }
+
+          if (pendingSongToPlayAfterAdRef.current) {
+            void playSongRef.current(pendingSongToPlayAfterAdRef.current);
+            setPendingSongToPlayAfterAd(null);
+          } else {
+            playNextRef.current();
+          }
+          return;
+        }
+
+        if (repeatModeRef.current === 'one') {
+          void player.seekTo(0, 0, 0).then(() => {
+            player.play();
           });
+          return;
         }
 
-        if (pendingSongToPlayAfterAd) {
-          void playSong(pendingSongToPlayAfterAd);
-          setPendingSongToPlayAfterAd(null);
-        } else {
-          playNext();
-        }
-        return;
-      }
+        playNextRef.current();
+      }, 0);
+    });
 
-      if (repeatMode === 'one') {
-        void player.seekTo(0, 0, 0).then(() => {
-          player.play();
-        });
-        return;
-      }
-
-      playNext();
-    }, 0);
-  }, [activeSong, status.didJustFinish, repeatMode, playNext, player, isAdPlaying, pendingSongToPlayAfterAd, playSong]);
+    return () => {
+      subscription.remove();
+    };
+  }, [player]);
 
   const value = useMemo<PlayerContextValue>(
     () => ({
