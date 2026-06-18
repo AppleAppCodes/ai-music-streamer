@@ -220,6 +220,8 @@ type PreviewSlotState = {
   token: number;
 };
 
+const HANDOFF_SEEK_LEAD_SECONDS = 0.06;
+
 const PREVIEW_PLAYER_OPTIONS = {
   keepAudioSessionActive: true,
   preferredForwardBufferDuration: 8,
@@ -533,13 +535,13 @@ export function ForYouScreen() {
         : fallbackStart;
     };
 
-    let previewStoppedForHandoff = false;
+    let handoffCompleted = false;
     try {
       await playSong(nextSong, {
-        fadeInMs: 48,
+        fadeInMs: 0,
         getFinalHandoffPosition: () => {
           if (
-            previewStoppedForHandoff
+            handoffCompleted
             || transitionToken.current !== requestToken
             || audiblePreviewSlot.current !== slotKey
           ) {
@@ -553,12 +555,19 @@ export function ForYouScreen() {
             // Fall back to the configured hook position.
           }
 
-          previewStoppedForHandoff = true;
-          pausePreviewSlot(slotKey);
-          return finalPosition;
+          return finalPosition + HANDOFF_SEEK_LEAD_SECONDS;
         },
         isSwipeTransition: true,
         onPlaybackStarted: () => {
+          if (
+            handoffCompleted
+            || transitionToken.current !== requestToken
+            || audiblePreviewSlot.current !== slotKey
+          ) {
+            return;
+          }
+          handoffCompleted = true;
+          pausePreviewSlot(slotKey);
           if (
             isMounted.current
             && transitionToken.current === requestToken
@@ -573,10 +582,10 @@ export function ForYouScreen() {
       if (pendingTransitionIndex.current === nextIndex) {
         pendingTransitionIndex.current = null;
       }
-      if (!previewStoppedForHandoff && transitionToken.current !== requestToken) {
+      if (!handoffCompleted && transitionToken.current !== requestToken) {
         pausePreviewSlot(slotKey);
       }
-      if (!previewStoppedForHandoff && transitionToken.current === requestToken) {
+      if (!handoffCompleted && transitionToken.current === requestToken) {
         // Keep the prepared preview audible if the main player could not take over.
         if (
           isMounted.current

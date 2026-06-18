@@ -123,7 +123,8 @@ async function waitForPlayerPlaying(
   let playingObservedAt: number | null = null;
 
   while (isCurrentRequest() && Date.now() - startedAt < timeoutMs) {
-    if (player.currentStatus.playing) {
+    const currentStatus = player.currentStatus;
+    if (currentStatus.isLoaded && currentStatus.playing && !currentStatus.isBuffering) {
       playingObservedAt ??= Date.now();
       if (Date.now() - playingObservedAt >= 80) return true;
     } else {
@@ -315,10 +316,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
 
       if (!isSameSong) {
-        // Don't zero-out volume before replace – the crossfade player
-        // may still be audibly bridging the gap.  We'll set volume
-        // right before play() instead.
-        if (fadeInMs <= 0) {
+        const shouldStartMuted = options.isSwipeTransition || fadeInMs > 0;
+        if (shouldStartMuted) {
+          setPlayerVolume(0);
+        } else {
           setPlayerVolume(1);
         }
 
@@ -333,12 +334,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (!isCurrentRequest()) return;
 
         loadedSongIdRef.current = song.id;
-
-        // Now that the new source is loaded, apply the fade-in starting
-        // volume so we ramp from 0 → 1 without an audible gap.
-        if (fadeInMs > 0) {
-          setPlayerVolume(0);
-        }
       }
 
       const resolvedStartAt = typeof options.startAt === 'function'
@@ -361,14 +356,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         }
 
         if (options.getFinalHandoffPosition) {
-          const finalHandoffPosition = options.getFinalHandoffPosition();
-          if (typeof finalHandoffPosition === 'number' && Number.isFinite(finalHandoffPosition)) {
-            try {
-              await player.seekTo(Math.max(0, finalHandoffPosition), 0, 0);
-            } catch (handoffSeekError) {
-              console.warn('Could not synchronize swipe audio position.', handoffSeekError);
+          for (let synchronizationPass = 0; synchronizationPass < 2; synchronizationPass += 1) {
+            const finalHandoffPosition = options.getFinalHandoffPosition();
+            if (typeof finalHandoffPosition !== 'number' || !Number.isFinite(finalHandoffPosition)) {
+              break;
             }
+
+            const targetPosition = Math.max(0, finalHandoffPosition);
+            if (Math.abs(player.currentTime - targetPosition) > 0.035) {
+              try {
+                await player.seekTo(targetPosition, 0, 0);
+              } catch (handoffSeekError) {
+                console.warn('Could not synchronize swipe audio position.', handoffSeekError);
+                break;
+              }
+              if (!isCurrentRequest()) return;
+            }
+
+            const synchronizedPlaybackReady = await waitForPlayerPlaying(player, isCurrentRequest);
             if (!isCurrentRequest()) return;
+            if (!synchronizedPlaybackReady) {
+              player.play();
+            }
           }
         }
 
