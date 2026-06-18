@@ -320,6 +320,7 @@ export function ForYouScreen() {
   const crossfadeSongId = useRef<string | null>(null);
   const crossfadeIndex = useRef<number | null>(null);
   const crossfadeVolume = useRef(0);
+  const lastMainPlayerVolume = useRef(1);
   const crossfadeReady = useRef(false);
   const desiredCrossfadeProgress = useRef(0);
   const crossfadePrepareToken = useRef(0);
@@ -329,6 +330,11 @@ export function ForYouScreen() {
 
   const setCrossfadePlayerVolume = useCallback((volume: number) => {
     const nextVolume = clamp01(volume);
+    // Skip bridge call if change is minor (less than 4%), to preserve React Native bridge bandwidth.
+    // Always allow exact boundaries (0 and 1) to ensure silence/full volume.
+    if (Math.abs(crossfadeVolume.current - nextVolume) < 0.04 && nextVolume !== 0 && nextVolume !== 1) {
+      return;
+    }
     crossfadeVolume.current = nextVolume;
     try {
       Reflect.set(crossfadePlayer, 'volume', nextVolume);
@@ -340,7 +346,12 @@ export function ForYouScreen() {
   const applyCrossfadeMix = useCallback(() => {
     const progress = crossfadeReady.current ? desiredCrossfadeProgress.current : 0;
     setCrossfadePlayerVolume(progress);
-    setPreviewVolume(1 - progress);
+
+    const nextMainVolume = clamp01(1 - progress);
+    if (Math.abs(lastMainPlayerVolume.current - nextMainVolume) >= 0.04 || nextMainVolume === 0 || nextMainVolume === 1) {
+      lastMainPlayerVolume.current = nextMainVolume;
+      setPreviewVolume(nextMainVolume);
+    }
   }, [setCrossfadePlayerVolume, setPreviewVolume]);
 
   const stopCrossfadePreview = useCallback((durationMs = 140) => {
@@ -642,6 +653,8 @@ export function ForYouScreen() {
       cancelAnimationFrame(crossfadeFadeFrame.current);
     }
     setPreviewVolume(1);
+    lastMainPlayerVolume.current = 1;
+    crossfadeVolume.current = 0;
     crossfadePrepareToken.current += 1;
     handoffToken.current += 1;
     handoffSongId.current = null;
@@ -664,7 +677,9 @@ export function ForYouScreen() {
     const transitionProgress = easeInOut(Math.min(1, distanceFromCurrentHook / 0.82));
 
     desiredCrossfadeProgress.current = hasCrossfadeTarget ? transitionProgress : 0;
-    if (hasCrossfadeTarget && transitionProgress > 0.03) {
+    // Delay preloading until user swiped at least 12% of the transition,
+    // to filter out accidental/jittery scrolls and keep the swipe start smooth.
+    if (hasCrossfadeTarget && transitionProgress > 0.12) {
       prepareCrossfadeSong(crossfadeTargetIndex);
     }
 
