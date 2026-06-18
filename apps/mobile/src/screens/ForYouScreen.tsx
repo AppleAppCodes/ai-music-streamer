@@ -276,6 +276,7 @@ export function ForYouScreen() {
   const prewarmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prewarmGeneration = useRef(0);
   const transitionToken = useRef(0);
+  const pendingTransitionIndex = useRef<number | null>(null);
   const isMounted = useRef(true);
 
   const getPreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
@@ -524,24 +525,41 @@ export function ForYouScreen() {
       queueNeighborPrewarm(nextIndex);
       return;
     }
+    if (!force && pendingTransitionIndex.current === nextIndex) {
+      return;
+    }
 
     const requestToken = transitionToken.current + 1;
     transitionToken.current = requestToken;
+    pendingTransitionIndex.current = nextIndex;
     const slotKey = await ensurePreviewSlot(nextIndex);
     if (
       !slotKey
       || transitionToken.current !== requestToken
       || !isMounted.current
     ) {
+      if (pendingTransitionIndex.current === nextIndex) {
+        pendingTransitionIndex.current = null;
+      }
       return;
     }
 
     const { player, state } = getPreviewSlot(slotKey);
     if (!state.ready || state.index !== nextIndex || state.songId !== nextSong.id) {
+      if (pendingTransitionIndex.current === nextIndex) {
+        pendingTransitionIndex.current = null;
+      }
       return;
     }
 
-    if (!activatePreviewSlot(slotKey)) return;
+    setPreviewVolume(0);
+    if (!activatePreviewSlot(slotKey)) {
+      setPreviewVolume(1);
+      if (pendingTransitionIndex.current === nextIndex) {
+        pendingTransitionIndex.current = null;
+      }
+      return;
+    }
     currentHookSongId.current = nextSong.id;
     setQueue([nextSong], 0);
     const swipeDirection = nextIndex >= previousIndex ? 1 : -1;
@@ -564,29 +582,58 @@ export function ForYouScreen() {
         : fallbackStart;
     };
 
+    let handoffStarted = false;
     try {
       await playSong(nextSong, {
+        fadeInMs: 160,
         isSwipeTransition: true,
+        onPlaybackStarted: () => {
+          if (
+            handoffStarted
+            || transitionToken.current !== requestToken
+            || audiblePreviewSlot.current !== slotKey
+          ) {
+            return;
+          }
+          handoffStarted = true;
+          fadeOutPreviewSlot(slotKey, 160, () => {
+            if (
+              isMounted.current
+              && transitionToken.current === requestToken
+              && currentHookSongId.current === nextSong.id
+            ) {
+              queueNeighborPrewarm(nextIndex);
+            }
+          });
+        },
         startAt: getHandoffStart,
       });
     } finally {
-      fadeOutPreviewSlot(slotKey, 180, () => {
+      if (pendingTransitionIndex.current === nextIndex) {
+        pendingTransitionIndex.current = null;
+      }
+      if (!handoffStarted && transitionToken.current !== requestToken) {
+        pausePreviewSlot(slotKey);
+      }
+      if (!handoffStarted && transitionToken.current === requestToken) {
+        // Keep the prepared preview audible if the main player could not take over.
         if (
           isMounted.current
-          && transitionToken.current === requestToken
           && currentHookSongId.current === nextSong.id
         ) {
           queueNeighborPrewarm(nextIndex);
         }
-      });
+      }
     }
   }, [
     activatePreviewSlot,
     ensurePreviewSlot,
     fadeOutPreviewSlot,
     getPreviewSlot,
+    pausePreviewSlot,
     playSong,
     queueNeighborPrewarm,
+    setPreviewVolume,
     setQueue,
     songs,
   ]);
@@ -597,6 +644,7 @@ export function ForYouScreen() {
     async function load() {
       if (!user) return;
       transitionToken.current += 1;
+      pendingTransitionIndex.current = null;
       stopAllPreviewPlayers();
       setPreviewVolume(1);
       setLoading(true);
@@ -675,6 +723,7 @@ export function ForYouScreen() {
     return () => {
       isMounted.current = false;
       transitionToken.current += 1;
+      pendingTransitionIndex.current = null;
       prewarmGeneration.current += 1;
       clearDragSettleTimer();
       if (prewarmTimer.current) {

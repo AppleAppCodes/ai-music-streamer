@@ -14,6 +14,7 @@ interface PlayOptions {
   startAt?: number | null | (() => number);
   fadeInMs?: number;
   isSwipeTransition?: boolean;
+  onPlaybackStarted?: () => void;
 }
 
 const PLAYBACK_READY_TIMEOUT_MS = 2500;
@@ -350,11 +351,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
 
       player.play();
-      if (fadeInMs > 0) {
-        rampPlayerVolume(1, fadeInMs);
-      } else {
-        setPlayerVolume(1);
-      }
 
       if (options.isSwipeTransition) {
         const playbackStarted = await waitForPlayerPlaying(player, isCurrentRequest);
@@ -362,12 +358,27 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (!playbackStarted) {
           player.play();
         }
+        try {
+          options.onPlaybackStarted?.();
+        } catch (handoffError) {
+          console.warn('Could not complete swipe audio handoff.', handoffError);
+        }
+        if (fadeInMs > 0) {
+          rampPlayerVolume(1, fadeInMs);
+        } else {
+          setPlayerVolume(1);
+        }
         setTimeout(() => {
           if (isCurrentRequest()) {
             setLockScreenMetadata(player, song);
           }
         }, 1000);
       } else {
+        if (fadeInMs > 0) {
+          rampPlayerVolume(1, fadeInMs);
+        } else {
+          setPlayerVolume(1);
+        }
         setLockScreenMetadata(player, song);
       }
 
