@@ -74,7 +74,8 @@ function isOfficialPlaylist(row: PlaylistRow, creatorName: string): boolean {
 }
 
 function mapDiscoverPlaylist(row: PlaylistRow): DiscoverPlaylist {
-  const creatorName = getProfileUsername(row.profiles ?? null) || 'Unbekannt';
+  const isDailyNewReleases = row.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111';
+  const creatorName = isDailyNewReleases ? 'YORIAX Team' : (getProfileUsername(row.profiles ?? null) || 'Unbekannt');
 
   return {
     id: row.id,
@@ -85,7 +86,7 @@ function mapDiscoverPlaylist(row: PlaylistRow): DiscoverPlaylist {
     is_public: row.is_public ?? null,
     created_at: row.created_at ?? null,
     creatorName,
-    isOfficial: isOfficialPlaylist(row, creatorName),
+    isOfficial: isDailyNewReleases ? true : isOfficialPlaylist(row, creatorName),
   };
 }
 
@@ -408,6 +409,46 @@ export async function loadArtistSongs(artistName: string): Promise<Song[]> {
 
 export async function loadPlaylistDetails(playlistId: string): Promise<{ playlist: Playlist; songs: Song[] }> {
   const client = requireClient();
+
+  if (playlistId === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111' || playlistId === 'daily-new-releases') {
+    const playlist: Playlist = {
+      id: 'da114eeb-ecea-5e55-9ee1-ea5e5da11111',
+      user_id: 'system',
+      title: 'Daily New Releases',
+      description: 'Die neuesten Uploads auf YORIAX, maximal ein Song pro Künstler.',
+      cover_url: null,
+      is_public: true,
+      created_at: new Date().toISOString(),
+    };
+
+    const { data: latestSongs, error } = await client
+      .from('songs')
+      .select(SONG_SELECT_WITH_PROFILE)
+      .eq('is_approved', true)
+      .order('created_at', { ascending: false })
+      .limit(150);
+
+    if (error) throw new Error(error.message);
+
+    const uniqueSongs: Song[] = [];
+    const seenArtists = new Set<string>();
+
+    if (latestSongs) {
+      const songRows = latestSongs as SongRow[];
+      for (const s of songRows) {
+        const artist = (s.artist_name || '').trim().toLowerCase();
+        if (artist && !seenArtists.has(artist)) {
+          seenArtists.add(artist);
+          uniqueSongs.push(mapSong(s));
+          if (uniqueSongs.length >= 20) {
+            break;
+          }
+        }
+      }
+    }
+
+    return { playlist, songs: uniqueSongs };
+  }
 
   const { data: playlistRow, error: playlistError } = await client
     .from('playlists')

@@ -114,9 +114,9 @@ export default function PlaylistPage() {
       }
       
       // Handle dynamic "Daily New Releases" playlist
-      if (playlistId === 'daily-new-releases') {
+      if (playlistId === 'daily-new-releases' || playlistId === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111') {
         setPlaylist({
-          id: 'daily-new-releases',
+          id: 'da114eeb-ecea-5e55-9ee1-ea5e5da11111',
           user_id: 'system',
           title: t('playlists.dailyNewReleases.title'),
           description: t('playlists.dailyNewReleases.description'),
@@ -132,14 +132,28 @@ export default function PlaylistPage() {
         setIsOwner(false);
         setIsAdmin(false);
         
+        // Fetch last 150 approved songs to find 20 unique artists
         const { data: latestSongs, error } = await supabase
           .from('songs')
           .select('id, title, artist_name, cover_url, plays, audio_url, duration, genre, album:albums(id, title)')
+          .eq('is_approved', true)
           .order('created_at', { ascending: false })
-          .limit(20);
+          .limit(150);
           
         if (!error && latestSongs) {
-          setSongs(latestSongs as unknown as Song[]);
+          const uniqueSongs: Song[] = [];
+          const seenArtists = new Set<string>();
+          for (const song of latestSongs) {
+            const artist = (song.artist_name || '').trim().toLowerCase();
+            if (artist && !seenArtists.has(artist)) {
+              seenArtists.add(artist);
+              uniqueSongs.push(song as unknown as Song);
+              if (uniqueSongs.length >= 20) {
+                break;
+              }
+            }
+          }
+          setSongs(uniqueSongs);
         }
         setLoading(false);
         return;
