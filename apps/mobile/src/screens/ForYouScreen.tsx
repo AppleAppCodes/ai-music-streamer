@@ -528,7 +528,7 @@ export function ForYouScreen() {
     currentHookSongId.current = song.id;
 
     setQueue([song], 0);
-    return playSong(song, { startAt, fadeInMs });
+    return playSong(song, { startAt, fadeInMs, isSwipeTransition: true });
   }, [playSong, setQueue]);
 
   const cancelPendingHandoff = useCallback(() => {
@@ -744,7 +744,7 @@ export function ForYouScreen() {
     stopCrossfadePreview(0);
     setPreviewVolume(1);
     setQueue([item], 0);
-    void playSong(item);
+    void playSong(item, { startAt: 0 });
     navigation.navigate('FullscreenPlayer');
   }, [navigation, playSong, setPreviewVolume, setQueue, stopCrossfadePreview]);
 
@@ -888,7 +888,7 @@ export function ForYouScreen() {
     const isActive = index === activeIndex;
     const isCurrentSong = activeSong?.id === item.id;
     const isSongPlaying = isActive && isCurrentSong && isPlaying;
-    const shouldLoadVideo = Math.abs(index - activeIndex) <= 1;
+    const shouldLoadVideo = isActive;
 
     return (
       <FeedItem

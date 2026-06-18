@@ -13,6 +13,7 @@ interface StorageListItem {
 interface PlayOptions {
   startAt?: number | null | (() => number);
   fadeInMs?: number;
+  isSwipeTransition?: boolean;
 }
 
 const PLAYBACK_READY_TIMEOUT_MS = 2500;
@@ -231,10 +232,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setIsPreparingPlayback(true);
 
     try {
-      // Avoid calling activateYoriaxPlaybackSession() on every track swap,
-      // as it re-activates the iOS AVAudioSession category, causing a brief
-      // native audio dropout. Instead, we configure the session once at startup,
-      // and when explicit play is triggered via toggle().
+      // Configure audio session for background/lockscreen if this is NOT a swipe transition.
+      // Swipe transitions reuse the already active session to avoid native blocking dropouts.
+      if (!options.isSwipeTransition) {
+        await activateYoriaxPlaybackSession();
+      }
 
       const isSameSong = loadedSongIdRef.current === song.id;
       const fadeInMs = Math.max(0, options.fadeInMs ?? 0);
