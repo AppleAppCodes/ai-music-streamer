@@ -364,6 +364,7 @@ export function ForYouScreen() {
   }, [previewPlayerA, previewPlayerB, stopAllPreviewPlayers]);
 
   const preparePreviewSlot = useCallback((slotKey: PreviewSlotKey, index: number): Promise<boolean> => {
+    if (!isFocused) return Promise.resolve(false);
     const song = songs[index];
     if (!song?.audio_url) return Promise.resolve(false);
 
@@ -417,7 +418,7 @@ export function ForYouScreen() {
 
     state.pending = pending;
     return pending;
-  }, [getPreviewSlot, songs]);
+  }, [getPreviewSlot, isFocused, songs]);
 
   const findPreparedSlot = useCallback((index: number): PreviewSlotKey | null => {
     if (previewSlotA.current.index === index && previewSlotA.current.ready) return 'a';
@@ -438,6 +439,7 @@ export function ForYouScreen() {
   }, []);
 
   const ensurePreviewSlot = useCallback(async (index: number): Promise<PreviewSlotKey | null> => {
+    if (!isFocused) return null;
     if (index < 0 || index >= songs.length) return null;
 
     const preparedSlot = findPreparedSlot(index);
@@ -451,7 +453,7 @@ export function ForYouScreen() {
     const slotKey = matchingPendingSlot ?? selectPreviewSlot(index);
     const ready = await preparePreviewSlot(slotKey, index);
     return ready ? slotKey : null;
-  }, [findPreparedSlot, preparePreviewSlot, selectPreviewSlot, songs.length]);
+  }, [findPreparedSlot, isFocused, preparePreviewSlot, selectPreviewSlot, songs.length]);
 
   const prewarmNeighbors = useCallback((index: number) => {
     const targets = [index + 1, index - 1].filter(
@@ -502,6 +504,7 @@ export function ForYouScreen() {
   }, [prewarmNeighbors]);
 
   const activatePreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
+    if (!isFocused) return false;
     const previousAudibleSlot = audiblePreviewSlot.current;
     if (previousAudibleSlot && previousAudibleSlot !== slotKey) {
       pausePreviewSlot(previousAudibleSlot);
@@ -519,9 +522,10 @@ export function ForYouScreen() {
       pausePreviewSlot(slotKey);
       return false;
     }
-  }, [getPreviewSlot, pausePreviewSlot]);
+  }, [getPreviewSlot, isFocused, pausePreviewSlot]);
 
   const transitionToIndex = useCallback(async (index: number, force = false) => {
+    if (!isFocused) return;
     if (songs.length === 0) return;
     const nextIndex = Math.max(0, Math.min(songs.length - 1, index));
     const nextSong = songs[nextIndex];
@@ -581,6 +585,7 @@ export function ForYouScreen() {
     activatePreviewSlot,
     ensurePreviewSlot,
     getPreviewSlot,
+    isFocused,
     queueNeighborPrewarm,
     songs,
   ]);
@@ -662,6 +667,13 @@ export function ForYouScreen() {
     if (!loading && songs.length > 0) {
       void transitionToIndex(activeIndexRef.current, true);
     }
+
+    return () => {
+      transitionToken.current += 1;
+      pendingTransitionIndex.current = null;
+      stopAllPreviewPlayers();
+      currentHookSongId.current = null;
+    };
   }, [
     isFocused,
     loading,
@@ -725,26 +737,17 @@ export function ForYouScreen() {
     pendingTransitionIndex.current = null;
     currentHookSongId.current = null;
 
-    let startAt = 0;
-    const audibleSlot = audiblePreviewSlot.current;
-    if (audibleSlot && feedPlayingSongId === item.id) {
-      try {
-        startAt = Math.max(0, getPreviewSlot(audibleSlot).player.currentTime);
-      } catch {
-        startAt = 0;
-      }
-    }
     void (async () => {
       try {
         await stopAllPreviewPlayersAndWait();
         setQueue([item], 0);
-        await playSong(item, { startAt });
+        await playSong(item, { startAt: 0 });
         navigation.navigate('FullscreenPlayer');
       } finally {
         fullSongTransitionActive.current = false;
       }
     })();
-  }, [feedPlayingSongId, getPreviewSlot, navigation, playSong, setQueue, stopAllPreviewPlayersAndWait]);
+  }, [navigation, playSong, setQueue, stopAllPreviewPlayersAndWait]);
 
   const getItemLayout = useCallback((_: ArrayLike<FeedPreviewSong> | null | undefined, index: number) => ({
     length: itemHeight,
