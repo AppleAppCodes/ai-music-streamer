@@ -27,7 +27,6 @@ import { usePlayerControls } from '../lib/player-context';
 import type { FeedPreviewSong } from '../lib/types';
 import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -154,28 +153,20 @@ const FeedItem = memo(function FeedItem({
             onPress={() => onToggleFollow(item)}
             accessibilityRole="button"
             accessibilityLabel={isFollowingArtist ? `${artistName} nicht mehr folgen` : `${artistName} folgen`}
+            accessibilityState={{ selected: isFollowingArtist }}
           >
-            <LinearGradient
-              colors={isFollowingArtist
-                ? ['rgba(45,212,191,0.36)', 'rgba(124,58,237,0.22)']
-                : ['rgba(124,58,237,0.34)', 'rgba(45,212,191,0.18)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.followAvatar}
+            <View
+              style={[
+                styles.followControl,
+                isFollowingArtist && styles.followControlActive,
+              ]}
             >
               <Ionicons
-                name={isFollowingArtist ? 'person' : 'person-add-outline'}
-                size={24}
-                color={isFollowingArtist ? theme.colors.accent : theme.colors.text}
+                name="add"
+                size={31}
+                color={theme.colors.primaryLight}
               />
-              <View style={[styles.followBadge, isFollowingArtist && styles.followBadgeActive]}>
-                <Ionicons
-                  name={isFollowingArtist ? 'checkmark' : 'add'}
-                  size={11}
-                  color={isFollowingArtist ? theme.colors.background : theme.colors.text}
-                />
-              </View>
-            </LinearGradient>
+            </View>
             <Text style={styles.actionText}>{isFollowingArtist ? 'Gefolgt' : 'Folgen'}</Text>
           </TouchableOpacity>
         ) : null}
@@ -273,6 +264,7 @@ export function ForYouScreen() {
   const prewarmGeneration = useRef(0);
   const transitionToken = useRef(0);
   const pendingTransitionIndex = useRef<number | null>(null);
+  const fullSongTransitionActive = useRef(false);
   const isMounted = useRef(true);
 
   const getPreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
@@ -299,18 +291,35 @@ export function ForYouScreen() {
 
   const resetPreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
     pausePreviewSlot(slotKey);
-    const { state } = getPreviewSlot(slotKey);
+    const { player, state } = getPreviewSlot(slotKey);
     state.token += 1;
     state.index = null;
     state.pending = null;
     state.ready = false;
     state.songId = null;
+
+    try {
+      // Pausing alone leaves the native source resident. Unloading it prevents
+      // the feed stream from surviving the handoff to the full-song player.
+      player.replace(null);
+    } catch {
+      // The managed player may already be released during teardown.
+    }
   }, [getPreviewSlot, pausePreviewSlot]);
 
+  const cancelNeighborPrewarm = useCallback(() => {
+    prewarmGeneration.current += 1;
+    if (prewarmTimer.current) {
+      clearTimeout(prewarmTimer.current);
+      prewarmTimer.current = null;
+    }
+  }, []);
+
   const stopAllPreviewPlayers = useCallback(() => {
+    cancelNeighborPrewarm();
     resetPreviewSlot('a');
     resetPreviewSlot('b');
-  }, [resetPreviewSlot]);
+  }, [cancelNeighborPrewarm, resetPreviewSlot]);
 
   const preparePreviewSlot = useCallback((slotKey: PreviewSlotKey, index: number): Promise<boolean> => {
     const song = songs[index];
@@ -666,7 +675,12 @@ export function ForYouScreen() {
   }, [clearDragSettleTimer, itemHeight, songs.length, transitionToIndex]);
 
   const handlePlayFull = useCallback((item: FeedPreviewSong) => {
+    if (fullSongTransitionActive.current) return;
+    fullSongTransitionActive.current = true;
     transitionToken.current += 1;
+    pendingTransitionIndex.current = null;
+    currentHookSongId.current = null;
+
     let startAt = 0;
     const audibleSlot = audiblePreviewSlot.current;
     if (audibleSlot && feedPlayingSongId === item.id) {
@@ -678,7 +692,9 @@ export function ForYouScreen() {
     }
     stopAllPreviewPlayers();
     setQueue([item], 0);
-    void playSong(item, { startAt });
+    void playSong(item, { startAt }).finally(() => {
+      fullSongTransitionActive.current = false;
+    });
     navigation.navigate('FullscreenPlayer');
   }, [feedPlayingSongId, getPreviewSlot, navigation, playSong, setQueue, stopAllPreviewPlayers]);
 
@@ -1147,34 +1163,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  followAvatar: {
+  followControl: {
     alignItems: 'center',
-    borderColor: 'rgba(168,85,247,0.5)',
-    borderRadius: 22,
-    borderWidth: 1,
+    backgroundColor: 'rgba(10,7,16,0.84)',
+    borderColor: 'rgba(168,85,247,0.72)',
+    borderRadius: 999,
+    borderWidth: 2,
     height: 46,
     justifyContent: 'center',
     shadowColor: theme.colors.primaryLight,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
     width: 46,
   },
-  followBadge: {
-    alignItems: 'center',
-    backgroundColor: theme.colors.primaryLight,
-    borderColor: 'rgba(5,5,5,0.9)',
-    borderRadius: 999,
-    borderWidth: 1.5,
-    bottom: 3,
-    height: 17,
-    justifyContent: 'center',
-    position: 'absolute',
-    right: 3,
-    width: 17,
-  },
-  followBadgeActive: {
-    backgroundColor: theme.colors.accent,
+  followControlActive: {
+    backgroundColor: 'rgba(124,58,237,0.28)',
+    borderColor: theme.colors.primaryLight,
   },
   actionText: {
     color: '#fff',
