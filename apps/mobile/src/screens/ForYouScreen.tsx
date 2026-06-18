@@ -226,8 +226,6 @@ const PREVIEW_PLAYER_OPTIONS = {
   updateInterval: 1000,
 };
 
-const PREVIEW_FADE_STEP_MS = 32;
-
 function createPreviewSlotState(): PreviewSlotState {
   return {
     index: null,
@@ -269,10 +267,6 @@ export function ForYouScreen() {
   const previewSlotA = useRef<PreviewSlotState>(createPreviewSlotState());
   const previewSlotB = useRef<PreviewSlotState>(createPreviewSlotState());
   const audiblePreviewSlot = useRef<PreviewSlotKey | null>(null);
-  const previewFadeTimers = useRef<Record<PreviewSlotKey, ReturnType<typeof setInterval> | null>>({
-    a: null,
-    b: null,
-  });
   const prewarmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prewarmGeneration = useRef(0);
   const transitionToken = useRef(0);
@@ -287,15 +281,7 @@ export function ForYouScreen() {
     return { player: previewPlayerB, state: previewSlotB.current };
   }, [previewPlayerA, previewPlayerB]);
 
-  const cancelPreviewFade = useCallback((slotKey: PreviewSlotKey) => {
-    const timer = previewFadeTimers.current[slotKey];
-    if (!timer) return;
-    clearInterval(timer);
-    previewFadeTimers.current[slotKey] = null;
-  }, []);
-
   const pausePreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
-    cancelPreviewFade(slotKey);
     const { player } = getPreviewSlot(slotKey);
     setFeedPlayerVolume(player, 0);
     try {
@@ -306,7 +292,7 @@ export function ForYouScreen() {
     if (audiblePreviewSlot.current === slotKey) {
       audiblePreviewSlot.current = null;
     }
-  }, [cancelPreviewFade, getPreviewSlot]);
+  }, [getPreviewSlot]);
 
   const resetPreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
     pausePreviewSlot(slotKey);
@@ -323,39 +309,6 @@ export function ForYouScreen() {
     resetPreviewSlot('b');
   }, [resetPreviewSlot]);
 
-  const fadeOutPreviewSlot = useCallback((
-    slotKey: PreviewSlotKey,
-    durationMs = 180,
-    onComplete?: () => void,
-  ) => {
-    cancelPreviewFade(slotKey);
-    if (audiblePreviewSlot.current !== slotKey) {
-      pausePreviewSlot(slotKey);
-      onComplete?.();
-      return;
-    }
-
-    const { player } = getPreviewSlot(slotKey);
-    const startVolume = Math.max(0, Math.min(1, player.volume || 1));
-
-    if (durationMs <= 0 || startVolume <= 0.01) {
-      pausePreviewSlot(slotKey);
-      onComplete?.();
-      return;
-    }
-
-    const startedAt = Date.now();
-    previewFadeTimers.current[slotKey] = setInterval(() => {
-      const progress = Math.min(1, (Date.now() - startedAt) / durationMs);
-      setFeedPlayerVolume(player, startVolume * (1 - progress));
-
-      if (progress >= 1) {
-        pausePreviewSlot(slotKey);
-        onComplete?.();
-      }
-    }, PREVIEW_FADE_STEP_MS);
-  }, [cancelPreviewFade, getPreviewSlot, pausePreviewSlot]);
-
   const preparePreviewSlot = useCallback((slotKey: PreviewSlotKey, index: number): Promise<boolean> => {
     const song = songs[index];
     if (!song?.audio_url) return Promise.resolve(false);
@@ -366,7 +319,6 @@ export function ForYouScreen() {
       if (state.pending) return state.pending;
     }
 
-    cancelPreviewFade(slotKey);
     const token = state.token + 1;
     state.index = index;
     state.pending = null;
@@ -410,7 +362,7 @@ export function ForYouScreen() {
 
     state.pending = pending;
     return pending;
-  }, [cancelPreviewFade, getPreviewSlot, songs]);
+  }, [getPreviewSlot, songs]);
 
   const findPreparedSlot = useCallback((index: number): PreviewSlotKey | null => {
     if (previewSlotA.current.index === index && previewSlotA.current.ready) return 'a';
@@ -500,7 +452,6 @@ export function ForYouScreen() {
       pausePreviewSlot(previousAudibleSlot);
     }
 
-    cancelPreviewFade(slotKey);
     const { player } = getPreviewSlot(slotKey);
     setFeedPlayerVolume(player, 1);
     try {
@@ -511,7 +462,7 @@ export function ForYouScreen() {
       pausePreviewSlot(slotKey);
       return false;
     }
-  }, [cancelPreviewFade, getPreviewSlot, pausePreviewSlot]);
+  }, [getPreviewSlot, pausePreviewSlot]);
 
   const transitionToIndex = useCallback(async (index: number, force = false) => {
     if (songs.length === 0) return;
@@ -582,29 +533,39 @@ export function ForYouScreen() {
         : fallbackStart;
     };
 
-    let handoffStarted = false;
+    let previewStoppedForHandoff = false;
     try {
       await playSong(nextSong, {
-        fadeInMs: 160,
-        isSwipeTransition: true,
-        onPlaybackStarted: () => {
+        fadeInMs: 48,
+        getFinalHandoffPosition: () => {
           if (
-            handoffStarted
+            previewStoppedForHandoff
             || transitionToken.current !== requestToken
             || audiblePreviewSlot.current !== slotKey
           ) {
-            return;
+            return null;
           }
-          handoffStarted = true;
-          fadeOutPreviewSlot(slotKey, 160, () => {
-            if (
-              isMounted.current
-              && transitionToken.current === requestToken
-              && currentHookSongId.current === nextSong.id
-            ) {
-              queueNeighborPrewarm(nextIndex);
-            }
-          });
+
+          let finalPosition = getHookStart(nextSong);
+          try {
+            finalPosition = Math.max(finalPosition, player.currentTime);
+          } catch {
+            // Fall back to the configured hook position.
+          }
+
+          previewStoppedForHandoff = true;
+          pausePreviewSlot(slotKey);
+          return finalPosition;
+        },
+        isSwipeTransition: true,
+        onPlaybackStarted: () => {
+          if (
+            isMounted.current
+            && transitionToken.current === requestToken
+            && currentHookSongId.current === nextSong.id
+          ) {
+            queueNeighborPrewarm(nextIndex);
+          }
         },
         startAt: getHandoffStart,
       });
@@ -612,10 +573,10 @@ export function ForYouScreen() {
       if (pendingTransitionIndex.current === nextIndex) {
         pendingTransitionIndex.current = null;
       }
-      if (!handoffStarted && transitionToken.current !== requestToken) {
+      if (!previewStoppedForHandoff && transitionToken.current !== requestToken) {
         pausePreviewSlot(slotKey);
       }
-      if (!handoffStarted && transitionToken.current === requestToken) {
+      if (!previewStoppedForHandoff && transitionToken.current === requestToken) {
         // Keep the prepared preview audible if the main player could not take over.
         if (
           isMounted.current
@@ -628,7 +589,6 @@ export function ForYouScreen() {
   }, [
     activatePreviewSlot,
     ensurePreviewSlot,
-    fadeOutPreviewSlot,
     getPreviewSlot,
     pausePreviewSlot,
     playSong,

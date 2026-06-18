@@ -13,6 +13,7 @@ interface StorageListItem {
 interface PlayOptions {
   startAt?: number | null | (() => number);
   fadeInMs?: number;
+  getFinalHandoffPosition?: () => number | null;
   isSwipeTransition?: boolean;
   onPlaybackStarted?: () => void;
 }
@@ -358,6 +359,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (!playbackStarted) {
           player.play();
         }
+
+        if (options.getFinalHandoffPosition) {
+          const finalHandoffPosition = options.getFinalHandoffPosition();
+          if (typeof finalHandoffPosition === 'number' && Number.isFinite(finalHandoffPosition)) {
+            try {
+              await player.seekTo(Math.max(0, finalHandoffPosition), 0, 0);
+            } catch (handoffSeekError) {
+              console.warn('Could not synchronize swipe audio position.', handoffSeekError);
+            }
+            if (!isCurrentRequest()) return;
+          }
+        }
+
         try {
           options.onPlaybackStarted?.();
         } catch (handoffError) {
