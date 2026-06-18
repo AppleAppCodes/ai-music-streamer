@@ -291,17 +291,19 @@ const FeedItem = memo(function FeedItem({
   && previous.showFollowButton === next.showFollowButton
 ));
 
+const CROSSFADE_PLAYER_OPTIONS = {
+  keepAudioSessionActive: true,
+  preferredForwardBufferDuration: 3,
+  updateInterval: 250,
+};
+
 export function ForYouScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const { height: itemHeight, width: itemWidth } = useWindowDimensions();
   const { activeSong, isPlaying, playSong, toggle, setQueue, setPreviewVolume } = usePlayerControls();
-  const crossfadePlayer = useAudioPlayer(null, {
-    keepAudioSessionActive: true,
-    preferredForwardBufferDuration: 3,
-    updateInterval: 250,
-  });
+  const crossfadePlayer = useAudioPlayer(null, CROSSFADE_PLAYER_OPTIONS);
   const [activeFeed, setActiveFeed] = useState<'foryou' | 'following' | 'explore'>('foryou');
   const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -509,7 +511,7 @@ export function ForYouScreen() {
     song: FeedPreviewSong,
     force = false,
     fadeInMs = 0,
-    startAt = getHookStart(song),
+    startAt: number | (() => number) = getHookStart(song),
   ) => {
     if (!force && currentHookSongId.current === song.id) return;
     currentHookSongId.current = song.id;
@@ -568,7 +570,6 @@ export function ForYouScreen() {
         if (!isCurrentRequest()) return;
 
         const shouldFadeIn = Boolean(currentHookSongId.current && currentHookSongId.current !== nextSong.id);
-        const handoffStart = getCrossfadeHandoffStart(nextSong);
         const hasAudibleCrossfade = (
           crossfadeSongId.current === nextSong.id
           && crossfadeReady.current
@@ -581,6 +582,10 @@ export function ForYouScreen() {
           desiredCrossfadeProgress.current = 1;
           applyCrossfadeMix();
         }
+
+        // Pass a lazy evaluator function for handoffStart, so that the seek position
+        // is resolved in real-time AFTER the main player finishes loading (waitForPlayerReady).
+        const handoffStart = () => getCrossfadeHandoffStart(nextSong);
 
         const playback = startHookPlayback(
           nextSong,

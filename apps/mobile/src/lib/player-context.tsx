@@ -11,7 +11,7 @@ interface StorageListItem {
 }
 
 interface PlayOptions {
-  startAt?: number | null;
+  startAt?: number | null | (() => number);
   fadeInMs?: number;
 }
 
@@ -141,6 +141,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const playPreviousRef = useRef<() => void>(() => {});
   const playRequestIdRef = useRef(0);
   const volumeRampRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const loadedSongIdRef = useRef<string | null>(null);
 
   // Ad & User State
   const { user } = useAuth();
@@ -230,10 +231,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setIsPreparingPlayback(true);
 
     try {
-      await activateYoriaxPlaybackSession();
+      // Avoid calling activateYoriaxPlaybackSession() on every track swap,
+      // as it re-activates the iOS AVAudioSession category, causing a brief
+      // native audio dropout. Instead, we configure the session once at startup,
+      // and when explicit play is triggered via toggle().
 
-      const isSameSong = activeSong?.id === song.id;
-      const startAt = Math.max(0, options.startAt ?? 0);
+      const isSameSong = loadedSongIdRef.current === song.id;
       const fadeInMs = Math.max(0, options.fadeInMs ?? 0);
 
       // AD LOGIC
@@ -262,10 +265,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setPlayerVolume(1);
         player.replace({ name: adSong.title, uri: adSong.audio_url });
         setActiveSong(adSong);
-        setLockScreenMetadata(player, adSong);
         await waitForPlayerReady(player, isCurrentRequest);
         if (!isCurrentRequest()) return;
+        loadedSongIdRef.current = adSong.id;
         player.play();
+        setLockScreenMetadata(player, adSong);
         return;
       }
 
@@ -289,9 +293,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           uri: song.audio_url,
         });
         setActiveSong(song);
-        setLockScreenMetadata(player, song);
+        // Do not update lock screen controls until the new source is ready and playing.
+        // Doing it early triggers native route adjustments that interrupt active audio.
         await waitForPlayerReady(player, isCurrentRequest);
         if (!isCurrentRequest()) return;
+
+        loadedSongIdRef.current = song.id;
 
         // Now that the new source is loaded, apply the fade-in starting
         // volume so we ramp from 0 → 1 without an audible gap.
@@ -299,6 +306,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           setPlayerVolume(0);
         }
       }
+
+      const resolvedStartAt = typeof options.startAt === 'function'
+        ? options.startAt()
+        : (options.startAt ?? 0);
+      const startAt = Math.max(0, resolvedStartAt);
 
       const shouldSeekBeforePlay = options.startAt != null && (startAt > 0 || isSameSong);
       if (shouldSeekBeforePlay) {
@@ -327,7 +339,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setIsPreparingPlayback(false);
       }
     }
-  }, [activeSong, player, isPro, songsPlayed, availableAds, adFrequency, rampPlayerVolume, setPlayerVolume]);
+  }, [player, isPro, songsPlayed, availableAds, adFrequency, rampPlayerVolume, setPlayerVolume]);
 
   const pause = useCallback(() => {
     player.pause();
@@ -339,6 +351,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     player.pause();
     player.clearLockScreenControls();
     setActiveSong(null);
+    loadedSongIdRef.current = null;
     setError(null);
     setIsPreparingPlayback(false);
     setQueueState([]);
@@ -357,6 +370,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (status.playing) {
       player.pause();
     } else {
+      void activateYoriaxPlaybackSession(); // Ensure session is active when resuming from pause
       player.play();
     }
   }, [activeSong, player, status.playing]);
