@@ -1,10 +1,8 @@
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, type ViewToken } from 'react-native';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { VideoView, useVideoPlayer } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useIsFocused } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
 import { loadArtistsData, type ArtistStat } from '../lib/music-data';
@@ -13,44 +11,14 @@ import { theme } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Artists'>;
 type ArtistsNavigation = NativeStackNavigationProp<RootStackParamList, 'Artists'>;
-const ARTIST_VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 55 };
-
-function haveSameItems(left: ReadonlySet<string>, right: ReadonlySet<string>) {
-  return left.size === right.size && Array.from(left).every((item) => right.has(item));
-}
-
-const ActiveArtistVideo = memo(function ActiveArtistVideo({ uri }: { uri: string }) {
-  const videoPlayer = useVideoPlayer({ uri }, (player) => {
-    player.loop = true;
-    player.muted = true;
-  });
-
-  useEffect(() => {
-    videoPlayer.play();
-  }, [videoPlayer]);
-
-  return (
-    <VideoView
-      contentFit="cover"
-      nativeControls={false}
-      player={videoPlayer}
-      playsInline
-      style={styles.cardMedia}
-    />
-  );
-});
 
 const ArtistCard = memo(function ArtistCard({
-  isVideoActive,
   item,
   navigation,
 }: {
-  isVideoActive: boolean;
   item: ArtistStat;
   navigation: ArtistsNavigation;
 }) {
-  const videoUrl = item.videoUrl || null;
-
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -59,9 +27,6 @@ const ArtistCard = memo(function ArtistCard({
     >
       <View style={styles.cardInner}>
         <CoverArt uri={item.coverUrl} size={220} radius={0} style={styles.cardMedia} />
-        {isVideoActive && videoUrl ? (
-          <ActiveArtistVideo uri={videoUrl} />
-        ) : null}
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.54)', 'rgba(0,0,0,0.94)']}
           style={StyleSheet.absoluteFill}
@@ -80,26 +45,9 @@ const ArtistCard = memo(function ArtistCard({
 
 export function ArtistsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const isFocused = useIsFocused();
   const [artists, setArtists] = useState<ArtistStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [visibleArtistNames, setVisibleArtistNames] = useState<ReadonlySet<string>>(() => new Set());
-  const onViewableItemsChanged = useCallback(({
-    viewableItems,
-  }: {
-    viewableItems: Array<ViewToken<ArtistStat>>;
-  }) => {
-    const nextVisibleArtistNames = new Set(
-      viewableItems
-        .filter((viewToken) => viewToken.isViewable)
-        .map((viewToken) => viewToken.item.name),
-    );
-
-    setVisibleArtistNames((current) => (
-      haveSameItems(current, nextVisibleArtistNames) ? current : nextVisibleArtistNames
-    ));
-  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -125,16 +73,10 @@ export function ArtistsScreen({ navigation }: Props) {
 
   const renderArtist = useCallback(({ item }: { item: ArtistStat }) => (
     <ArtistCard
-      isVideoActive={isFocused && visibleArtistNames.has(item.name)}
       item={item}
       navigation={navigation}
     />
-  ), [isFocused, navigation, visibleArtistNames]);
-
-  const videoRenderState = useMemo(() => ({
-    isFocused,
-    visibleArtistNames,
-  }), [isFocused, visibleArtistNames]);
+  ), [navigation]);
 
   return (
     <View style={styles.container}>
@@ -150,16 +92,13 @@ export function ArtistsScreen({ navigation }: Props) {
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={[styles.listContent, { paddingTop: Math.max(insets.top + 60, 84) }]}
         data={artists}
-        extraData={videoRenderState}
         initialNumToRender={4}
         keyExtractor={(item) => item.name}
         maxToRenderPerBatch={4}
         numColumns={2}
-        onViewableItemsChanged={onViewableItemsChanged}
         renderItem={renderArtist}
         showsVerticalScrollIndicator={false}
         updateCellsBatchingPeriod={50}
-        viewabilityConfig={ARTIST_VIEWABILITY_CONFIG}
         windowSize={5}
         ListHeaderComponent={
           <View style={styles.hero}>
@@ -172,7 +111,7 @@ export function ArtistsScreen({ navigation }: Props) {
             </View>
             <Text style={styles.eyebrow}>ENTDECKEN</Text>
             <Text style={styles.heroTitle}>Künstler entdecken</Text>
-            <Text style={styles.heroMeta}>Videos, Cover und Creator aus dem YORIAX-Kosmos.</Text>
+            <Text style={styles.heroMeta}>Cover und Creator aus dem YORIAX-Kosmos.</Text>
             <View style={styles.statsBadge}>
               <Ionicons name="people" size={14} color={theme.colors.text} />
               <Text style={styles.statsBadgeText}>{artists.length} Künstler</Text>
