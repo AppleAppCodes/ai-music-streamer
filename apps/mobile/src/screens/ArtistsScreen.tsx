@@ -19,6 +19,31 @@ function haveSameItems(left: ReadonlySet<string>, right: ReadonlySet<string>) {
   return left.size === right.size && Array.from(left).every((item) => right.has(item));
 }
 
+const ActiveArtistVideo = memo(function ActiveArtistVideo({ uri }: { uri: string }) {
+  const videoPlayer = useVideoPlayer({ uri }, (player) => {
+    player.loop = true;
+    player.muted = true;
+  });
+
+  useEffect(() => {
+    videoPlayer.play();
+
+    return () => {
+      videoPlayer.pause();
+    };
+  }, [videoPlayer]);
+
+  return (
+    <VideoView
+      contentFit="cover"
+      nativeControls={false}
+      player={videoPlayer}
+      playsInline
+      style={styles.cardMedia}
+    />
+  );
+});
+
 const ArtistCard = memo(function ArtistCard({
   isVideoActive,
   item,
@@ -29,29 +54,6 @@ const ArtistCard = memo(function ArtistCard({
   navigation: ArtistsNavigation;
 }) {
   const videoUrl = item.videoUrl || null;
-  const videoSource = useMemo(
-    () => isVideoActive && videoUrl ? { uri: videoUrl } : null,
-    [isVideoActive, videoUrl],
-  );
-  const videoPlayer = useVideoPlayer(videoSource, (player) => {
-    player.loop = true;
-    player.muted = true;
-  });
-
-  useEffect(() => {
-    if (!videoUrl) return;
-
-    if (!isVideoActive) {
-      videoPlayer.pause();
-      return;
-    }
-
-    videoPlayer.play();
-
-    return () => {
-      videoPlayer.pause();
-    };
-  }, [isVideoActive, videoPlayer, videoUrl]);
 
   return (
     <TouchableOpacity
@@ -62,13 +64,7 @@ const ArtistCard = memo(function ArtistCard({
       <View style={styles.cardInner}>
         <CoverArt uri={item.coverUrl} size={220} radius={0} style={styles.cardMedia} />
         {isVideoActive && videoUrl ? (
-          <VideoView
-            contentFit="cover"
-            nativeControls={false}
-            player={videoPlayer}
-            playsInline
-            style={styles.cardMedia}
-          />
+          <ActiveArtistVideo uri={videoUrl} />
         ) : null}
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.54)', 'rgba(0,0,0,0.94)']}

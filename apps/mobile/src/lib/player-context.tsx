@@ -131,7 +131,7 @@ async function activateYoriaxPlaybackSession() {
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const player = useMemo<AudioPlayer>(
-    () => createAudioPlayer(null, { keepAudioSessionActive: true, updateInterval: 500 }),
+    () => createAudioPlayer(null, { keepAudioSessionActive: true, updateInterval: 1000 }),
     [],
   );
   const status = useAudioPlayerStatus(player);

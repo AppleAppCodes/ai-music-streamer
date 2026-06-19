@@ -1,5 +1,7 @@
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   FlatList,
   Image,
   InteractionManager,
@@ -27,6 +29,7 @@ import { usePlayerControls } from '../lib/player-context';
 import type { FeedPreviewSong } from '../lib/types';
 import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -72,21 +75,127 @@ function getArtistName(song: FeedPreviewSong) {
 
 function FeedVisual({
   item,
-  itemHeight,
-  itemWidth,
+  size,
 }: {
   item: FeedPreviewSong;
-  itemHeight: number;
-  itemWidth: number;
+  size: number;
 }) {
-  const mediaStyle = [styles.coverImage, { width: itemWidth, height: itemHeight }];
+  const mediaStyle = [styles.coverImage, { width: size, height: size }];
 
   if (item.cover_url) {
     return <Image source={{ uri: item.cover_url }} style={mediaStyle} resizeMode="cover" alt="" />;
   }
 
-  return <View style={[mediaStyle, styles.fallbackCover]} />;
+  return (
+    <LinearGradient
+      colors={['#2a1645', '#140a24', '#09050f']}
+      style={[mediaStyle, styles.fallbackCover]}
+    >
+      <Ionicons name="musical-notes" size={54} color={theme.colors.primaryLight} />
+    </LinearGradient>
+  );
 }
+
+const AnimatedCiBackdrop = memo(function AnimatedCiBackdrop() {
+  const [drift] = useState(() => new Animated.Value(0));
+  const [pulse] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    const driftAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift, {
+          duration: 7000,
+          easing: Easing.inOut(Easing.sin),
+          toValue: 1,
+          useNativeDriver: true,
+        }),
+        Animated.timing(drift, {
+          duration: 7000,
+          easing: Easing.inOut(Easing.sin),
+          toValue: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    const pulseAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          duration: 3200,
+          easing: Easing.inOut(Easing.quad),
+          toValue: 1,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          duration: 3200,
+          easing: Easing.inOut(Easing.quad),
+          toValue: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    Animated.parallel([driftAnimation, pulseAnimation]).start();
+
+    return () => {
+      driftAnimation.stop();
+      pulseAnimation.stop();
+    };
+  }, [drift, pulse]);
+
+  return (
+    <View pointerEvents="none" style={styles.animatedBackdrop}>
+      <LinearGradient
+        colors={['#050505', '#10081c', '#09040f', '#050505']}
+        locations={[0, 0.34, 0.72, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      <Animated.View
+        style={[
+          styles.glowOrb,
+          styles.glowOrbPurple,
+          {
+            opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.48, 0.78] }),
+            transform: [
+              { translateX: drift.interpolate({ inputRange: [0, 1], outputRange: [-42, 34] }) },
+              { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: [-24, 48] }) },
+              { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.12] }) },
+            ],
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={['rgba(168,85,247,0.68)', 'rgba(124,58,237,0.08)']}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.glowOrb,
+          styles.glowOrbAccent,
+          {
+            opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.38] }),
+            transform: [
+              { translateX: drift.interpolate({ inputRange: [0, 1], outputRange: [28, -36] }) },
+              { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: [44, -20] }) },
+              { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1.08, 0.9] }) },
+            ],
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={['rgba(45,212,191,0.5)', 'rgba(45,212,191,0.03)']}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+
+      <View style={styles.meshLineOne} />
+      <View style={styles.meshLineTwo} />
+      <View style={styles.backgroundVignette} />
+    </View>
+  );
+});
 
 const FeedItem = memo(function FeedItem({
   itemHeight,
@@ -118,19 +227,27 @@ const FeedItem = memo(function FeedItem({
   onToggleFollow: (item: FeedPreviewSong) => void;
 }) {
   const artistName = getArtistName(item);
+  const coverSize = Math.max(220, Math.min(itemWidth - 64, itemHeight * 0.4, 350));
+  const coverTop = Math.max(126, itemHeight * 0.14);
 
   return (
     <View style={[styles.feedItem, { width: itemWidth, height: itemHeight }]}>
-      <FeedVisual
-        item={item}
-        itemHeight={itemHeight}
-        itemWidth={itemWidth}
-      />
+      <View style={[styles.coverStage, { top: coverTop }]}>
+        <View style={[styles.coverOrbit, { height: coverSize + 24, width: coverSize + 24 }]} />
+        <View style={[styles.coverFrame, { height: coverSize, width: coverSize }]}>
+          <FeedVisual item={item} size={coverSize} />
+          <LinearGradient
+            colors={['transparent', 'rgba(5,5,5,0.18)']}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+        <View style={styles.selectionPill}>
+          <View style={styles.selectionDot} />
+          <Text style={styles.selectionText}>YORIAX SELECT</Text>
+        </View>
+      </View>
 
-      {/* Dark gradient overlay at bottom could go here, for now just a dark shadow overlay */}
-      <View style={styles.overlay} />
-
-      <View style={styles.contentContainer}>
+      <View style={[styles.contentContainer, { top: coverTop + coverSize + 26 }]}>
         <View style={styles.textContainer}>
           <Text style={[styles.artistName, { color: theme.colors.primary }]}>
             {artistName}
@@ -146,7 +263,7 @@ const FeedItem = memo(function FeedItem({
         </View>
       </View>
 
-      <View style={styles.actionsContainer}>
+      <View style={[styles.actionsContainer, { top: coverTop + coverSize - 54 }]}>
         {showFollowButton ? (
           <TouchableOpacity
             style={styles.actionButton}
@@ -301,6 +418,7 @@ export function ForYouScreen() {
   const transitionToken = useRef(0);
   const pendingTransitionIndex = useRef<number | null>(null);
   const fullSongTransitionActive = useRef(false);
+  const prefetchedCoverUrls = useRef(new Set<string>());
   const isMounted = useRef(true);
 
   const getPreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
@@ -687,9 +805,14 @@ export function ForYouScreen() {
     const nearbyIndexes = [activeIndex - 1, activeIndex, activeIndex + 1, activeIndex + 2];
     nearbyIndexes.forEach((index) => {
       const coverUrl = songs[index]?.cover_url;
-      if (coverUrl) {
-        void Image.prefetch(coverUrl);
-      }
+      if (!coverUrl || prefetchedCoverUrls.current.has(coverUrl)) return;
+
+      prefetchedCoverUrls.current.add(coverUrl);
+      void Image.prefetch(coverUrl).then((loaded) => {
+        if (!loaded) prefetchedCoverUrls.current.delete(coverUrl);
+      }).catch(() => {
+        prefetchedCoverUrls.current.delete(coverUrl);
+      });
     });
   }, [activeIndex, songs]);
 
@@ -981,6 +1104,7 @@ export function ForYouScreen() {
 
   return (
     <View style={styles.container}>
+      <AnimatedCiBackdrop />
       {renderTopTabs()}
 
       <FlatList
@@ -1132,33 +1256,131 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   feedItem: {
-    backgroundColor: '#140c23',
-    justifyContent: 'flex-end', // content at bottom
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
+  },
+  animatedBackdrop: {
+    bottom: 0,
+    left: 0,
+    overflow: 'hidden',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  glowOrb: {
+    borderRadius: 999,
+    overflow: 'hidden',
+    position: 'absolute',
+  },
+  glowOrbPurple: {
+    height: 430,
+    right: -145,
+    shadowColor: theme.colors.primaryLight,
+    shadowOpacity: 0.42,
+    shadowRadius: 70,
+    top: 40,
+    width: 430,
+  },
+  glowOrbAccent: {
+    bottom: 20,
+    height: 330,
+    left: -165,
+    shadowColor: theme.colors.accent,
+    shadowOpacity: 0.24,
+    shadowRadius: 64,
+    width: 330,
+  },
+  meshLineOne: {
+    backgroundColor: 'rgba(168,85,247,0.16)',
+    height: 1,
+    left: -80,
+    position: 'absolute',
+    right: -80,
+    top: '37%',
+    transform: [{ rotate: '-14deg' }],
+  },
+  meshLineTwo: {
+    backgroundColor: 'rgba(45,212,191,0.1)',
+    bottom: '25%',
+    height: 1,
+    left: -90,
+    position: 'absolute',
+    right: -90,
+    transform: [{ rotate: '18deg' }],
+  },
+  backgroundVignette: {
+    backgroundColor: 'rgba(0,0,0,0.16)',
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  coverStage: {
+    alignItems: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    zIndex: 3,
+  },
+  coverOrbit: {
+    borderColor: 'rgba(168,85,247,0.28)',
+    borderRadius: 32,
+    borderWidth: 1,
+    position: 'absolute',
+    top: -12,
+    transform: [{ rotate: '3deg' }],
+  },
+  coverFrame: {
+    backgroundColor: '#130b20',
+    borderColor: 'rgba(255,255,255,0.16)',
+    borderRadius: 26,
+    borderWidth: 1,
+    elevation: 18,
+    overflow: 'hidden',
+    shadowColor: theme.colors.primaryLight,
+    shadowOffset: { width: 0, height: 22 },
+    shadowOpacity: 0.28,
+    shadowRadius: 32,
   },
   coverImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    borderRadius: 25,
   },
   fallbackCover: {
-    backgroundColor: '#1a102d',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.35)', // slightly dark so text is readable
+  selectionPill: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(10,7,16,0.9)',
+    borderColor: 'rgba(168,85,247,0.38)',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    marginTop: -15,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  selectionDot: {
+    backgroundColor: theme.colors.primaryLight,
+    borderRadius: 999,
+    height: 6,
+    shadowColor: theme.colors.primaryLight,
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    width: 6,
+  },
+  selectionText: {
+    color: theme.colors.text,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.6,
   },
   contentContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingBottom: 250, // move the text structure even higher
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    left: 22,
+    position: 'absolute',
+    right: 88,
     zIndex: 5,
   },
   fullSongButton: {
@@ -1179,21 +1401,22 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     flex: 1,
-    paddingRight: 60, // keep text from hitting absolute buttons
   },
   artistName: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginBottom: 6,
     textShadowColor: 'rgba(0,0,0,0.7)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   songTitle: {
     color: '#fff',
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '900',
-    marginBottom: 8,
+    letterSpacing: -0.5,
+    lineHeight: 30,
     textShadowColor: 'rgba(0,0,0,0.7)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
@@ -1204,11 +1427,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   actionsContainer: {
-    position: 'absolute',
-    right: 16,
-    bottom: 300, // Move buttons way up to the middle right
     alignItems: 'center',
-    gap: 24,
+    gap: 18,
+    position: 'absolute',
+    right: 14,
     zIndex: 10,
   },
   actionButton: {

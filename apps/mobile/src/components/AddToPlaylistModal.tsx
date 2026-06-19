@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { memo, useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from '../theme';
 import { useAuth } from '../lib/auth-context';
 import { addSongToPlaylist, createPlaylist, getUserPlaylists } from '../lib/music-data';
@@ -11,6 +11,39 @@ interface AddToPlaylistModalProps {
   songId: string;
   onClose: () => void;
 }
+
+function PlaylistSeparator() {
+  return <View style={styles.playlistSeparator} />;
+}
+
+const PlaylistModalRow = memo(function PlaylistModalRow({
+  adding,
+  disabled,
+  onAdd,
+  playlist,
+}: {
+  adding: boolean;
+  disabled: boolean;
+  onAdd: (playlistId: string) => void;
+  playlist: Playlist;
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.playlistRow}
+      onPress={() => onAdd(playlist.id)}
+      disabled={disabled}
+    >
+      <View style={styles.playlistIcon}>
+        <Ionicons name="musical-notes" size={24} color={theme.colors.background} />
+      </View>
+      <View style={styles.playlistInfo}>
+        <Text style={styles.playlistTitle} numberOfLines={1}>{playlist.title}</Text>
+        <Text style={styles.playlistMeta}>{playlist.is_public ? 'Öffentlich' : 'Privat'}</Text>
+      </View>
+      {adding ? <ActivityIndicator color={theme.colors.primary} size="small" /> : null}
+    </TouchableOpacity>
+  );
+});
 
 export function AddToPlaylistModal({ visible, songId, onClose }: AddToPlaylistModalProps) {
   const { user } = useAuth();
@@ -41,7 +74,7 @@ export function AddToPlaylistModal({ visible, songId, onClose }: AddToPlaylistMo
     };
   }, [user, visible]);
 
-  const handleAdd = async (playlistId: string) => {
+  const handleAdd = useCallback(async (playlistId: string) => {
     if (addingId) return;
     setAddingId(playlistId);
     try {
@@ -52,7 +85,44 @@ export function AddToPlaylistModal({ visible, songId, onClose }: AddToPlaylistMo
     } finally {
       setAddingId(null);
     }
-  };
+  }, [addingId, onClose, songId]);
+
+  const handleCreatePlaylist = useCallback(() => {
+    Alert.prompt(
+      'Neue Playlist',
+      'Wie soll die Playlist heißen?',
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Erstellen',
+          onPress: async (text?: string) => {
+            if (!text || !user) return;
+            setLoading(true);
+            try {
+              const newPlaylist = await createPlaylist(user.id, text);
+              setPlaylists((current) => [newPlaylist, ...current]);
+              await handleAdd(newPlaylist.id);
+            } catch (e) {
+              console.error(e);
+              setLoading(false);
+            }
+          },
+        },
+      ],
+      'plain-text',
+    );
+  }, [handleAdd, user]);
+
+  const renderPlaylist = useCallback(({ item }: { item: Playlist }) => (
+    <PlaylistModalRow
+      adding={addingId === item.id}
+      disabled={addingId !== null}
+      onAdd={(playlistId) => {
+        void handleAdd(playlistId);
+      }}
+      playlist={item}
+    />
+  ), [addingId, handleAdd]);
 
   return (
     <Modal
@@ -76,65 +146,34 @@ export function AddToPlaylistModal({ visible, songId, onClose }: AddToPlaylistMo
               <ActivityIndicator color={theme.colors.text} />
             </View>
           ) : (
-            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-              <TouchableOpacity
-                style={styles.playlistRow}
-                onPress={() => {
-                  Alert.prompt(
-                    'Neue Playlist',
-                    'Wie soll die Playlist heißen?',
-                    [
-                      { text: 'Abbrechen', style: 'cancel' },
-                      {
-                        text: 'Erstellen',
-                        onPress: async (text?: string) => {
-                          if (!text || !user) return;
-                          setLoading(true);
-                          try {
-                            const newPlaylist = await createPlaylist(user.id, text);
-                            setPlaylists([newPlaylist, ...playlists]);
-                            await handleAdd(newPlaylist.id);
-                          } catch (e) {
-                            console.error(e);
-                            setLoading(false);
-                          }
-                        },
-                      },
-                    ],
-                    'plain-text'
-                  );
-                }}
-              >
-                <View style={[styles.playlistIcon, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                  <Ionicons name="add" size={24} color={theme.colors.text} />
-                </View>
-                <View style={styles.playlistInfo}>
-                  <Text style={styles.playlistTitle}>Neue Playlist erstellen</Text>
-                </View>
-              </TouchableOpacity>
-              
-              {playlists.length > 0 && <View style={styles.divider} />}
-
-              {playlists.map(playlist => (
+            <FlatList
+              contentContainerStyle={styles.listContent}
+              data={playlists}
+              initialNumToRender={10}
+              ItemSeparatorComponent={PlaylistSeparator}
+              keyExtractor={(item) => item.id}
+              ListHeaderComponent={
+                <>
                 <TouchableOpacity
-                  key={playlist.id}
                   style={styles.playlistRow}
-                  onPress={() => void handleAdd(playlist.id)}
-                  disabled={addingId !== null}
+                  onPress={handleCreatePlaylist}
                 >
-                  <View style={styles.playlistIcon}>
-                    <Ionicons name="musical-notes" size={24} color={theme.colors.background} />
+                  <View style={[styles.playlistIcon, styles.createPlaylistIcon]}>
+                    <Ionicons name="add" size={24} color={theme.colors.text} />
                   </View>
                   <View style={styles.playlistInfo}>
-                    <Text style={styles.playlistTitle} numberOfLines={1}>{playlist.title}</Text>
-                    <Text style={styles.playlistMeta}>{playlist.is_public ? 'Öffentlich' : 'Privat'}</Text>
+                    <Text style={styles.playlistTitle}>Neue Playlist erstellen</Text>
                   </View>
-                  {addingId === playlist.id && (
-                    <ActivityIndicator color={theme.colors.primary} size="small" />
-                  )}
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  {playlists.length > 0 ? <View style={styles.divider} /> : null}
+                </>
+              }
+              maxToRenderPerBatch={10}
+              renderItem={renderPlaylist}
+              style={styles.list}
+              updateCellsBatchingPeriod={32}
+              windowSize={7}
+            />
           )}
         </View>
       </View>
@@ -192,7 +231,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 20,
-    gap: 12,
+  },
+  playlistSeparator: {
+    height: 12,
   },
   divider: {
     height: 1,
@@ -214,6 +255,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.text,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  createPlaylistIcon: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   playlistInfo: {
     flex: 1,

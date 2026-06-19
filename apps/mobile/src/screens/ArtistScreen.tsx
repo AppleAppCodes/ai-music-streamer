@@ -1,5 +1,5 @@
-import { ActivityIndicator, Alert, Image, ImageBackground, Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useState, useEffect } from 'react';
+import { ActivityIndicator, Alert, FlatList, Image, ImageBackground, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { theme } from '../theme';
 import { usePlayerControls } from '../lib/player-context';
 import { loadArtistSongs } from '../lib/music-data';
@@ -20,6 +20,51 @@ type ArtistSocials = {
   tiktok_url?: string | null;
   youtube_url?: string | null;
 };
+
+function ArtistSongSeparator() {
+  return <View style={styles.songSeparator} />;
+}
+
+const ArtistSongRow = memo(function ArtistSongRow({
+  active,
+  index,
+  isPlaying,
+  onPlay,
+  song,
+}: {
+  active: boolean;
+  index: number;
+  isPlaying: boolean;
+  onPlay: (index: number) => void;
+  song: Song;
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.songRow}
+      onPress={() => onPlay(index)}
+    >
+      <Text style={styles.songIndex}>{index + 1}</Text>
+      {song.cover_url ? (
+        <Image source={{ uri: song.cover_url }} style={styles.cover} alt="" />
+      ) : (
+        <View style={[styles.cover, styles.coverFallback]}>
+          <Text style={styles.coverFallbackText}>Y</Text>
+        </View>
+      )}
+      <View style={styles.songInfo}>
+        <Text style={[styles.songTitle, active && styles.activeText]} numberOfLines={1}>
+          {song.title}
+        </Text>
+        <Text style={styles.songPlays}>{formatPlays(song.plays)}</Text>
+      </View>
+      {active && isPlaying ? (
+        <View style={styles.playingIndicator}>
+          <Text style={styles.playingText}>▶</Text>
+        </View>
+      ) : null}
+    </TouchableOpacity>
+  );
+});
 
 export function ArtistScreen({ route, navigation }: Props) {
   const { artistId: artistName } = route.params;
@@ -103,9 +148,15 @@ export function ArtistScreen({ route, navigation }: Props) {
     return () => { mounted = false; };
   }, [artistName, user]);
 
-  const totalPlays = songs.reduce((acc, song) => acc + (song.plays || 0), 0);
-  const monthlyListeners = getMonthlyListeners(songs);
-  const artistQueue = songs.map((song) => ({ ...song, creatorName: song.creatorName || artistName }));
+  const totalPlays = useMemo(
+    () => songs.reduce((acc, song) => acc + (song.plays || 0), 0),
+    [songs],
+  );
+  const monthlyListeners = useMemo(() => getMonthlyListeners(songs), [songs]);
+  const artistQueue = useMemo(
+    () => songs.map((song) => ({ ...song, creatorName: song.creatorName || artistName })),
+    [artistName, songs],
+  );
   const hasSongs = artistQueue.length > 0;
   const isArtistActive = artistQueue.some((song) => song.id === activeSong?.id);
   const isArtistPlaying = isArtistActive && isPlaying;
@@ -136,12 +187,12 @@ export function ArtistScreen({ route, navigation }: Props) {
     void playSong(artistQueue[startIndex]);
   }
 
-  function handleSongPress(index: number) {
+  const handleSongPress = useCallback((index: number) => {
     if (!artistQueue[index]) return;
 
     setQueue(artistQueue, index);
     void playSong(artistQueue[index]);
-  }
+  }, [artistQueue, playSong, setQueue]);
 
   function handleShare() {
     void Share.share({
@@ -177,6 +228,20 @@ export function ArtistScreen({ route, navigation }: Props) {
     }
   }
 
+  const renderSong = useCallback(({ item, index }: { item: Song; index: number }) => {
+    const active = activeSong?.id === item.id;
+
+    return (
+      <ArtistSongRow
+        active={active}
+        index={index}
+        isPlaying={active && isPlaying}
+        onPlay={handleSongPress}
+        song={item}
+      />
+    );
+  }, [activeSong?.id, handleSongPress, isPlaying]);
+
   return (
     <View style={styles.container}>
       <TouchableOpacity
@@ -188,132 +253,114 @@ export function ArtistScreen({ route, navigation }: Props) {
         <Ionicons name="chevron-back" size={18} color={theme.colors.text} />
         <Text style={styles.floatingBackText}>Zurück</Text>
       </TouchableOpacity>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {bannerUrl ? (
-          <ImageBackground source={{ uri: bannerUrl }} style={styles.heroBanner}>
-            <LinearGradient
-              colors={['rgba(12,10,18,0.10)', 'rgba(12,10,18,0.58)', '#0c0a12']}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.heroContent}>
-              <VerifiedBadge />
-              <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
-              <Text style={styles.subtitle}>{monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen</Text>
-              <Text style={styles.totalStreams}>{formatPlays(totalPlays)} Streams gesamt</Text>
-            </View>
-          </ImageBackground>
-        ) : (
-          <View style={styles.hero}>
-            <VerifiedBadge />
-            <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
-            <Text style={styles.subtitle}>{monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen</Text>
-            <Text style={styles.totalStreams}>{formatPlays(totalPlays)} Streams gesamt</Text>
-          </View>
-        )}
-
-        {loading ? (
-          <View style={styles.stateBox}>
-            <ActivityIndicator color={theme.colors.text} />
-          </View>
-        ) : error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : (
-          <View style={styles.section}>
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                accessibilityRole="button"
-                activeOpacity={0.86}
-                disabled={!hasSongs}
-                onPress={handlePlayAll}
-                style={[styles.playAllButton, !hasSongs && styles.disabledButton]}
-              >
-                <Ionicons
-                  name={isArtistPlaying ? 'pause' : 'play'}
-                  size={28}
-                  color="#050505"
-                  style={!isArtistPlaying ? styles.playIconOffset : undefined}
+      <FlatList
+        contentContainerStyle={styles.content}
+        data={loading || error ? [] : songs}
+        initialNumToRender={10}
+        ItemSeparatorComponent={ArtistSongSeparator}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={
+          <>
+            {bannerUrl ? (
+              <ImageBackground source={{ uri: bannerUrl }} style={styles.heroBanner}>
+                <LinearGradient
+                  colors={['rgba(12,10,18,0.10)', 'rgba(12,10,18,0.58)', '#0c0a12']}
+                  style={StyleSheet.absoluteFill}
                 />
-              </TouchableOpacity>
-              <TouchableOpacity
-                accessibilityRole="button"
-                activeOpacity={0.86}
-                disabled={!hasSongs}
-                onPress={handleShuffle}
-                style={[styles.secondaryAction, isShuffling && styles.secondaryActionActive, !hasSongs && styles.disabledButton]}
-              >
-                <Ionicons name="shuffle" size={22} color={isShuffling ? theme.colors.text : theme.colors.muted} />
-              </TouchableOpacity>
-              <TouchableOpacity accessibilityRole="button" activeOpacity={0.86} onPress={handleShare} style={styles.secondaryAction}>
-                <Ionicons name="share-social" size={21} color={theme.colors.muted} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                accessibilityRole="button"
-                activeOpacity={0.86}
-                disabled={followLoading}
-                onPress={() => {
-                  void handleFollow();
-                }}
-                style={[styles.followButton, isFollowing && styles.followButtonActive, followLoading && styles.disabledButton]}
-              >
-                {followLoading ? (
-                  <ActivityIndicator color={theme.colors.text} size="small" />
-                ) : (
-                  <Ionicons name={isFollowing ? 'person' : 'person-add'} size={15} color={theme.colors.text} />
-                )}
-                <Text style={styles.followButtonText}>{isFollowing ? 'Folge ich' : 'Folgen'}</Text>
-              </TouchableOpacity>
-              <View style={styles.songCountPill}>
-                <Text style={styles.songCountText}>{songs.length} {songs.length === 1 ? 'Song' : 'Songs'}</Text>
-              </View>
-            </View>
-            {hasSocials ? (
-              <View style={styles.socialCard}>
-                <Text style={styles.socialLabel}>Socials</Text>
-                <View style={styles.socialActions}>
-                  <SocialLink icon="logo-instagram" label="Instagram" tint="#E1306C" url={socials?.instagram_url} />
-                  <SocialLink icon="logo-tiktok" label="TikTok" tint="#00f2fe" url={socials?.tiktok_url} />
-                  <SocialLink icon="logo-youtube" label="YouTube" tint="#FF0033" url={socials?.youtube_url} />
+                <View style={styles.heroContent}>
+                  <VerifiedBadge />
+                  <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
+                  <Text style={styles.subtitle}>{monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen</Text>
+                  <Text style={styles.totalStreams}>{formatPlays(totalPlays)} Streams gesamt</Text>
                 </View>
+              </ImageBackground>
+            ) : (
+              <View style={styles.hero}>
+                <VerifiedBadge />
+                <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
+                <Text style={styles.subtitle}>{monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen</Text>
+                <Text style={styles.totalStreams}>{formatPlays(totalPlays)} Streams gesamt</Text>
               </View>
-            ) : null}
-            <Text style={styles.sectionTitle}>Beliebte Songs</Text>
-            <View style={styles.songList}>
-              {songs.map((song, idx) => {
-                const active = activeSong?.id === song.id;
-                return (
+            )}
+
+            {loading ? (
+              <View style={styles.stateBox}>
+                <ActivityIndicator color={theme.colors.text} />
+              </View>
+            ) : error ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : (
+              <View style={styles.section}>
+                <View style={styles.actionRow}>
                   <TouchableOpacity
-                    key={song.id}
-                    style={styles.songRow}
-                    onPress={() => handleSongPress(idx)}
+                    accessibilityRole="button"
+                    activeOpacity={0.86}
+                    disabled={!hasSongs}
+                    onPress={handlePlayAll}
+                    style={[styles.playAllButton, !hasSongs && styles.disabledButton]}
                   >
-                    <Text style={styles.songIndex}>{idx + 1}</Text>
-                    {song.cover_url ? (
-                      <Image source={{ uri: song.cover_url }} style={styles.cover} alt="" />
-                    ) : (
-                      <View style={[styles.cover, styles.coverFallback]}>
-                        <Text style={styles.coverFallbackText}>Y</Text>
-                      </View>
-                    )}
-                    <View style={styles.songInfo}>
-                      <Text style={[styles.songTitle, active && styles.activeText]} numberOfLines={1}>
-                        {song.title}
-                      </Text>
-                      <Text style={styles.songPlays}>{formatPlays(song.plays)}</Text>
-                    </View>
-                    {active && isPlaying && (
-                      <View style={styles.playingIndicator}>
-                        <Text style={styles.playingText}>▶</Text>
-                      </View>
-                    )}
+                    <Ionicons
+                      name={isArtistPlaying ? 'pause' : 'play'}
+                      size={28}
+                      color="#050505"
+                      style={!isArtistPlaying ? styles.playIconOffset : undefined}
+                    />
                   </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
-      </ScrollView>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    activeOpacity={0.86}
+                    disabled={!hasSongs}
+                    onPress={handleShuffle}
+                    style={[styles.secondaryAction, isShuffling && styles.secondaryActionActive, !hasSongs && styles.disabledButton]}
+                  >
+                    <Ionicons name="shuffle" size={22} color={isShuffling ? theme.colors.text : theme.colors.muted} />
+                  </TouchableOpacity>
+                  <TouchableOpacity accessibilityRole="button" activeOpacity={0.86} onPress={handleShare} style={styles.secondaryAction}>
+                    <Ionicons name="share-social" size={21} color={theme.colors.muted} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    activeOpacity={0.86}
+                    disabled={followLoading}
+                    onPress={() => {
+                      void handleFollow();
+                    }}
+                    style={[styles.followButton, isFollowing && styles.followButtonActive, followLoading && styles.disabledButton]}
+                  >
+                    {followLoading ? (
+                      <ActivityIndicator color={theme.colors.text} size="small" />
+                    ) : (
+                      <Ionicons name={isFollowing ? 'person' : 'person-add'} size={15} color={theme.colors.text} />
+                    )}
+                    <Text style={styles.followButtonText}>{isFollowing ? 'Folge ich' : 'Folgen'}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.songCountPill}>
+                    <Text style={styles.songCountText}>{songs.length} {songs.length === 1 ? 'Song' : 'Songs'}</Text>
+                  </View>
+                </View>
+                {hasSocials ? (
+                  <View style={styles.socialCard}>
+                    <Text style={styles.socialLabel}>Socials</Text>
+                    <View style={styles.socialActions}>
+                      <SocialLink icon="logo-instagram" label="Instagram" tint="#E1306C" url={socials?.instagram_url} />
+                      <SocialLink icon="logo-tiktok" label="TikTok" tint="#00f2fe" url={socials?.tiktok_url} />
+                      <SocialLink icon="logo-youtube" label="YouTube" tint="#FF0033" url={socials?.youtube_url} />
+                    </View>
+                  </View>
+                ) : null}
+                <Text style={styles.sectionTitle}>Beliebte Songs</Text>
+              </View>
+            )}
+          </>
+        }
+        maxToRenderPerBatch={10}
+        renderItem={renderSong}
+        showsVerticalScrollIndicator={false}
+        updateCellsBatchingPeriod={32}
+        windowSize={7}
+      />
     </View>
   );
 }
@@ -626,13 +673,14 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginBottom: 16,
   },
-  songList: {
-    gap: 12,
+  songSeparator: {
+    height: 12,
   },
   songRow: {
-    flexDirection: 'row',
     alignItems: 'center',
+    flexDirection: 'row',
     gap: 12,
+    paddingHorizontal: 20,
   },
   songIndex: {
     color: theme.colors.muted,

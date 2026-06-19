@@ -1,5 +1,5 @@
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useEffect, useState, memo, useCallback } from 'react';
+import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,11 +12,36 @@ import { theme } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PlaylistDiscover'>;
 type Accent = 'teal' | 'purple';
+type PlaylistListItem =
+  | {
+      kind: 'section';
+      accent: Accent;
+      count: number;
+      emptyText: string;
+      icon: keyof typeof Ionicons.glyphMap;
+      subtitle: string;
+      title: string;
+    }
+  | {
+      kind: 'playlist';
+      accent: Accent;
+      playlist: DiscoverPlaylist;
+    }
+  | {
+      kind: 'empty';
+      text: string;
+    };
 
 const ACCENTS: Record<Accent, string> = {
   purple: theme.colors.primaryLight,
   teal: theme.colors.accent,
 };
+const EMPTY_PLAYLISTS: DiscoverPlaylist[] = [];
+const EMPTY_LIST_ITEMS: PlaylistListItem[] = [];
+
+function PlaylistItemSeparator() {
+  return <View style={styles.itemSeparator} />;
+}
 
 export function PlaylistDiscoverScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
@@ -49,13 +74,85 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
     };
   }, [query]);
 
-  const officialPlaylists = data?.officialPlaylists ?? [];
-  const communityPlaylists = data?.communityPlaylists ?? [];
+  const officialPlaylists = data?.officialPlaylists ?? EMPTY_PLAYLISTS;
+  const communityPlaylists = data?.communityPlaylists ?? EMPTY_PLAYLISTS;
   const totalPlaylists = officialPlaylists.length + communityPlaylists.length;
 
   const handleOpenPlaylist = useCallback((playlistId: string) => {
     navigation.navigate('Playlist', { playlistId });
   }, [navigation]);
+  const listItems = useMemo<PlaylistListItem[]>(() => {
+    if (loading || error || totalPlaylists === 0) return EMPTY_LIST_ITEMS;
+
+    const items: PlaylistListItem[] = [
+      {
+        kind: 'section',
+        accent: 'teal',
+        count: officialPlaylists.length,
+        emptyText: 'Noch keine kuratierten offiziellen Playlists.',
+        icon: 'sparkles',
+        subtitle: 'Von YORIAX ausgewählte Sammlungen.',
+        title: 'Kuratierte offizielle Playlists',
+      },
+    ];
+
+    if (officialPlaylists.length > 0) {
+      officialPlaylists.forEach((playlist) => {
+        items.push({ kind: 'playlist', accent: 'teal', playlist });
+      });
+    } else {
+      items.push({ kind: 'empty', text: 'Noch keine kuratierten offiziellen Playlists.' });
+    }
+
+    items.push({
+      kind: 'section',
+      accent: 'purple',
+      count: communityPlaylists.length,
+      emptyText: 'Noch keine Community Playlists.',
+      icon: 'people',
+      subtitle: 'Öffentliche Playlists anderer Nutzer.',
+      title: 'Community Playlists',
+    });
+
+    if (communityPlaylists.length > 0) {
+      communityPlaylists.forEach((playlist) => {
+        items.push({ kind: 'playlist', accent: 'purple', playlist });
+      });
+    } else {
+      items.push({ kind: 'empty', text: 'Noch keine Community Playlists.' });
+    }
+
+    return items;
+  }, [communityPlaylists, error, loading, officialPlaylists, totalPlaylists]);
+  const renderListItem = useCallback(({ item }: { item: PlaylistListItem }) => {
+    if (item.kind === 'section') {
+      return (
+        <PlaylistSectionHeader
+          accent={item.accent}
+          count={item.count}
+          icon={item.icon}
+          subtitle={item.subtitle}
+          title={item.title}
+        />
+      );
+    }
+
+    if (item.kind === 'empty') {
+      return (
+        <View style={styles.emptySection}>
+          <Text style={styles.emptyText}>{item.text}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <PlaylistCard
+        accent={item.accent}
+        onOpen={handleOpenPlaylist}
+        playlist={item.playlist}
+      />
+    );
+  }, [handleOpenPlaylist]);
 
   return (
     <View style={styles.container}>
@@ -72,82 +169,75 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroCard}>
-          <LinearGradient
-            colors={['rgba(124,58,237,0.22)', 'rgba(45,212,191,0.10)', 'rgba(255,255,255,0.03)']}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.heroIcon}>
-            <Ionicons name="library" size={30} color={theme.colors.text} />
+      <FlatList
+        contentContainerStyle={styles.content}
+        data={listItems}
+        initialNumToRender={8}
+        ItemSeparatorComponent={PlaylistItemSeparator}
+        keyExtractor={(item, index) => item.kind === 'playlist'
+          ? `playlist-${item.playlist.id}`
+          : `${item.kind}-${index}`}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          <View style={styles.listHeader}>
+            <View style={styles.heroCard}>
+              <LinearGradient
+                colors={['rgba(124,58,237,0.22)', 'rgba(45,212,191,0.10)', 'rgba(255,255,255,0.03)']}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.heroIcon}>
+                <Ionicons name="library" size={30} color={theme.colors.text} />
+              </View>
+              <Text style={styles.heroTitle}>Community & kuratiert</Text>
+              <Text style={styles.heroMeta}>
+                Finde offizielle YORIAX-Sammlungen und öffentliche Playlists aus der Community.
+              </Text>
+            </View>
+
+            <View style={styles.searchBox}>
+              <Ionicons name="search" size={18} color={theme.colors.muted} />
+              <TextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={setQuery}
+                placeholder="Playlists durchsuchen"
+                placeholderTextColor={theme.colors.subtle}
+                returnKeyType="search"
+                style={styles.searchInput}
+                value={query}
+              />
+            </View>
+
+            {loading ? (
+              <StateCard title="Playlists werden geladen" message="Wir holen öffentliche Sammlungen." loading />
+            ) : error ? (
+              <StateCard icon="warning" title="Playlists nicht verfügbar" message={error} />
+            ) : totalPlaylists === 0 ? (
+              <StateCard icon="search" title="Keine Playlists gefunden" message="Zu deiner Suche gibt es aktuell keine öffentlichen Playlists." />
+            ) : null}
           </View>
-          <Text style={styles.heroTitle}>Community & kuratiert</Text>
-          <Text style={styles.heroMeta}>
-            Finde offizielle YORIAX-Sammlungen und öffentliche Playlists aus der Community.
-          </Text>
-        </View>
-
-        <View style={styles.searchBox}>
-          <Ionicons name="search" size={18} color={theme.colors.muted} />
-          <TextInput
-            autoCapitalize="none"
-            autoCorrect={false}
-            onChangeText={setQuery}
-            placeholder="Playlists durchsuchen"
-            placeholderTextColor={theme.colors.subtle}
-            returnKeyType="search"
-            style={styles.searchInput}
-            value={query}
-          />
-        </View>
-
-        {loading ? (
-          <StateCard title="Playlists werden geladen" message="Wir holen öffentliche Sammlungen." loading />
-        ) : error ? (
-          <StateCard icon="warning" title="Playlists nicht verfügbar" message={error} />
-        ) : totalPlaylists === 0 ? (
-          <StateCard icon="search" title="Keine Playlists gefunden" message="Zu deiner Suche gibt es aktuell keine öffentlichen Playlists." />
-        ) : (
-          <>
-            <PlaylistSection
-              accent="teal"
-              emptyText="Noch keine kuratierten offiziellen Playlists."
-              icon="sparkles"
-              onOpen={handleOpenPlaylist}
-              playlists={officialPlaylists}
-              subtitle="Von YORIAX ausgewählte Sammlungen."
-              title="Kuratierte offizielle Playlists"
-            />
-            <PlaylistSection
-              accent="purple"
-              emptyText="Noch keine Community Playlists."
-              icon="people"
-              onOpen={handleOpenPlaylist}
-              playlists={communityPlaylists}
-              subtitle="Öffentliche Playlists anderer Nutzer."
-              title="Community Playlists"
-            />
-          </>
-        )}
-      </ScrollView>
+        }
+        maxToRenderPerBatch={8}
+        renderItem={renderListItem}
+        showsVerticalScrollIndicator={false}
+        updateCellsBatchingPeriod={32}
+        windowSize={7}
+      />
     </View>
   );
 }
 
-const PlaylistSection = memo(function PlaylistSection({
+const PlaylistSectionHeader = memo(function PlaylistSectionHeader({
   accent,
-  emptyText,
+  count,
   icon,
-  onOpen,
-  playlists,
   subtitle,
   title,
 }: {
   accent: Accent;
-  emptyText: string;
+  count: number;
   icon: keyof typeof Ionicons.glyphMap;
-  onOpen: (playlistId: string) => void;
-  playlists: DiscoverPlaylist[];
   subtitle: string;
   title: string;
 }) {
@@ -163,42 +253,30 @@ const PlaylistSection = memo(function PlaylistSection({
           <Text style={styles.sectionTitle}>{title}</Text>
           <Text style={styles.sectionSubtitle}>{subtitle}</Text>
         </View>
-        <Text style={[styles.countBadge, { color: tint }]}>{playlists.length}</Text>
+        <Text style={[styles.countBadge, { color: tint }]}>{count}</Text>
       </View>
-
-      {playlists.length === 0 ? (
-        <View style={styles.emptySection}>
-          <Text style={styles.emptyText}>{emptyText}</Text>
-        </View>
-      ) : (
-        <View style={styles.cards}>
-          {playlists.map((playlist) => (
-            <PlaylistCard
-              accent={accent}
-              key={playlist.id}
-              onPress={() => onOpen(playlist.id)}
-              playlist={playlist}
-            />
-          ))}
-        </View>
-      )}
     </View>
   );
 });
 
 const PlaylistCard = memo(function PlaylistCard({
   accent,
-  onPress,
+  onOpen,
   playlist,
 }: {
   accent: Accent;
-  onPress: () => void;
+  onOpen: (playlistId: string) => void;
   playlist: DiscoverPlaylist;
 }) {
   const tint = ACCENTS[accent];
 
   return (
-    <TouchableOpacity accessibilityRole="button" activeOpacity={0.82} onPress={onPress} style={styles.card}>
+    <TouchableOpacity
+      accessibilityRole="button"
+      activeOpacity={0.82}
+      onPress={() => onOpen(playlist.id)}
+      style={styles.card}
+    >
       <LinearGradient
         colors={[`${tint}24`, 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0.02)']}
         style={StyleSheet.absoluteFill}
@@ -257,10 +335,16 @@ const styles = StyleSheet.create({
     letterSpacing: -0.8,
   },
   content: {
-    gap: 18,
     paddingBottom: 170,
     paddingHorizontal: theme.spacing.screen,
     paddingTop: 20,
+  },
+  listHeader: {
+    gap: 18,
+    marginBottom: 18,
+  },
+  itemSeparator: {
+    height: 10,
   },
   heroCard: {
     borderColor: theme.colors.border,
@@ -312,7 +396,7 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   section: {
-    gap: 12,
+    marginTop: 8,
   },
   sectionHeader: {
     alignItems: 'center',
@@ -345,9 +429,6 @@ const styles = StyleSheet.create({
   countBadge: {
     fontSize: 16,
     fontWeight: '900',
-  },
-  cards: {
-    gap: 10,
   },
   card: {
     alignItems: 'center',

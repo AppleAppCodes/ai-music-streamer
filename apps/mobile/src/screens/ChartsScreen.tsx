@@ -1,5 +1,5 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useState, memo, useCallback } from 'react';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,18 +17,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Charts'>;
 type ChartTab = 'viral' | 'daily' | 'artists';
 type Accent = 'orange' | 'violet' | 'teal';
 
-interface ChartPanelProps {
-  accent: Accent;
-  activeSongId?: string;
-  iconName: keyof typeof Ionicons.glyphMap;
-  isPlaying: boolean;
-  metricLabel: string;
-  onPlayChart: (songs: Song[]) => void;
-  onPlaySong: (songs: Song[], index: number) => void;
-  songs: Song[];
-  subtitle: string;
-  title: string;
-}
+type ChartListItem =
+  | { kind: 'song'; song: Song; index: number }
+  | { kind: 'artist'; artist: ArtistStat; index: number };
 
 const ACCENTS: Record<Accent, string> = {
   orange: '#f97316',
@@ -37,6 +28,13 @@ const ACCENTS: Record<Accent, string> = {
 };
 
 const CHARTS_CACHE_KEY = 'yoriax:charts:v1';
+const EMPTY_CHART_ITEMS: ChartListItem[] = [];
+const EMPTY_ARTISTS: ArtistStat[] = [];
+const EMPTY_SONGS: Song[] = [];
+
+function ChartRowSeparator() {
+  return <View style={styles.rowSeparator} />;
+}
 
 const ChartPanelItem = memo(function ChartPanelItem({
   song,
@@ -63,6 +61,7 @@ const ChartPanelItem = memo(function ChartPanelItem({
       onPress={() => onPlaySong(songs, index)}
       style={[
         styles.row,
+        styles.chartRow,
         active && {
           backgroundColor: `${accentColor}22`,
           borderColor: `${accentColor}66`,
@@ -83,130 +82,84 @@ const ChartPanelItem = memo(function ChartPanelItem({
   );
 });
 
-const ChartPanel = memo(function ChartPanel({
-  accent,
-  activeSongId,
-  iconName,
-  isPlaying,
-  metricLabel,
-  onPlayChart,
-  onPlaySong,
-  songs,
-  subtitle,
-  title,
-}: ChartPanelProps) {
-  const accentColor = ACCENTS[accent];
-  const isChartPlaying = isPlaying && songs.some((song) => song.id === activeSongId);
-
-  return (
-    <View style={[styles.panel, { borderColor: `${accentColor}44` }]}>
-      <LinearGradient
-        colors={[`${accentColor}2b`, 'rgba(255,255,255,0.035)', 'rgba(255,255,255,0.018)']}
-        style={StyleSheet.absoluteFill}
-      />
-
-      <View style={styles.panelHeader}>
-        <View style={styles.panelCopy}>
-          <View style={styles.panelEyebrow}>
-            <Ionicons name={iconName} size={15} color={accentColor} />
-            <Text style={[styles.eyebrowText, { color: accentColor }]}>Top {songs.length}</Text>
-          </View>
-          <Text style={styles.panelTitle}>{title}</Text>
-          <Text style={styles.panelSubtitle}>{subtitle}</Text>
-        </View>
-        <TouchableOpacity
-          accessibilityRole="button"
-          disabled={songs.length === 0}
-          onPress={() => onPlayChart(songs)}
-          style={[styles.playButton, { backgroundColor: songs.length === 0 ? theme.colors.surface : accentColor }]}
-        >
-          <Ionicons name={isChartPlaying ? 'pause' : 'play'} size={22} color={songs.length === 0 ? theme.colors.muted : '#050505'} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.panelList}>
-        {songs.length === 0 ? (
-          <StateCard icon="stats-chart" title="Noch keine Songs" message="Diese Charts füllen sich, sobald neue Plays gezählt werden." />
-        ) : (
-          songs.map((song, index) => {
-            const active = activeSongId === song.id;
-
-            return (
-              <ChartPanelItem
-                key={song.id}
-                song={song}
-                index={index}
-                accentColor={accentColor}
-                active={active}
-                isPlaying={isPlaying}
-                metricLabel={metricLabel}
-                onPlaySong={onPlaySong}
-                songs={songs}
-              />
-            );
-          })
-        )}
-      </View>
-    </View>
-  );
-});
-
-function ArtistChartPanel({
-  artists,
+const ArtistChartItem = memo(function ArtistChartItem({
+  artist,
+  index,
   onOpenArtist,
 }: {
-  artists: ArtistStat[];
+  artist: ArtistStat;
+  index: number;
   onOpenArtist: (artistName: string) => void;
 }) {
   const accentColor = ACCENTS.teal;
 
   return (
-    <View style={[styles.panel, { borderColor: `${accentColor}44` }]}>
+    <TouchableOpacity
+      accessibilityRole="button"
+      onPress={() => onOpenArtist(artist.name)}
+      style={[styles.row, styles.chartRow]}
+    >
+      <Text style={[styles.rank, index < 3 && { color: accentColor }]}>{index + 1}</Text>
+      <CoverArt uri={artist.coverUrl} size={50} radius={12} />
+      <View style={styles.rowText}>
+        <Text style={[styles.rowTitle, { color: index < 3 ? accentColor : theme.colors.text }]} numberOfLines={1}>
+          {artist.name}
+        </Text>
+        <Text style={styles.rowMeta} numberOfLines={1}>
+          {artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}
+        </Text>
+      </View>
+      <View style={styles.rowRight}>
+        <Text style={styles.metricValue}>{formatPlays(artist.plays)}</Text>
+        <Text style={styles.metric}>Streams</Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+function ChartListHeader({
+  accent,
+  count,
+  iconName,
+  isChartPlaying,
+  onPlay,
+  subtitle,
+  title,
+}: {
+  accent: Accent;
+  count: number;
+  iconName: keyof typeof Ionicons.glyphMap;
+  isChartPlaying: boolean;
+  onPlay?: () => void;
+  subtitle: string;
+  title: string;
+}) {
+  const accentColor = ACCENTS[accent];
+
+  return (
+    <View style={styles.panelHeader}>
       <LinearGradient
         colors={[`${accentColor}2b`, 'rgba(255,255,255,0.035)', 'rgba(255,255,255,0.018)']}
         style={StyleSheet.absoluteFill}
       />
-
-      <View style={styles.panelHeader}>
-        <View style={styles.panelCopy}>
-          <View style={styles.panelEyebrow}>
-            <Ionicons name="mic" size={15} color={accentColor} />
-            <Text style={[styles.eyebrowText, { color: accentColor }]}>Top {artists.length}</Text>
-          </View>
-          <Text style={styles.panelTitle}>Artist Charts</Text>
-          <Text style={styles.panelSubtitle}>Künstler mit den stärksten Gesamt-Streams auf YORIAX.</Text>
+      <View style={styles.panelCopy}>
+        <View style={styles.panelEyebrow}>
+          <Ionicons name={iconName} size={15} color={accentColor} />
+          <Text style={[styles.eyebrowText, { color: accentColor }]}>Top {count}</Text>
         </View>
+        <Text style={styles.panelTitle}>{title}</Text>
+        <Text style={styles.panelSubtitle}>{subtitle}</Text>
       </View>
-
-      <View style={styles.panelList}>
-        {artists.length === 0 ? (
-          <StateCard icon="mic-outline" title="Noch keine Künstler" message="Sobald Songs veröffentlicht sind, erscheinen Künstler-Charts hier." />
-        ) : (
-          artists.map((artist, index) => (
-            <TouchableOpacity
-              accessibilityRole="button"
-              key={artist.name}
-              onPress={() => onOpenArtist(artist.name)}
-              style={styles.row}
-            >
-              <Text style={[styles.rank, index < 3 && { color: accentColor }]}>{index + 1}</Text>
-              <CoverArt uri={artist.coverUrl} size={50} radius={12} />
-              <View style={styles.rowText}>
-                <Text style={[styles.rowTitle, { color: index < 3 ? accentColor : theme.colors.text }]} numberOfLines={1}>
-                  {artist.name}
-                </Text>
-                <Text style={styles.rowMeta} numberOfLines={1}>
-                  {artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}
-                </Text>
-              </View>
-              <View style={styles.rowRight}>
-                <Text style={styles.metricValue}>{formatPlays(artist.plays)}</Text>
-                <Text style={styles.metric}>Streams</Text>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </View>
+      {onPlay ? (
+        <TouchableOpacity
+          accessibilityRole="button"
+          disabled={count === 0}
+          onPress={onPlay}
+          style={[styles.playButton, { backgroundColor: count === 0 ? theme.colors.surface : accentColor }]}
+        >
+          <Ionicons name={isChartPlaying ? 'pause' : 'play'} size={22} color={count === 0 ? theme.colors.muted : '#050505'} />
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
@@ -270,8 +223,49 @@ export function ChartsScreen({ navigation }: Props) {
     void playSong(chartSongs[index]);
   }, [setQueue, playSong]);
 
-  const currentSongs = activeTab === 'viral' ? data?.viralSongs ?? [] : activeTab === 'daily' ? data?.dailySongs ?? [] : [];
+  const currentSongs = activeTab === 'viral'
+    ? data?.viralSongs ?? EMPTY_SONGS
+    : activeTab === 'daily'
+      ? data?.dailySongs ?? EMPTY_SONGS
+      : EMPTY_SONGS;
   const currentAccent: Accent = activeTab === 'viral' ? 'orange' : activeTab === 'daily' ? 'violet' : 'teal';
+  const currentArtists = data?.artistCharts ?? EMPTY_ARTISTS;
+  const chartItems = useMemo<ChartListItem[]>(
+    () => activeTab === 'artists'
+      ? currentArtists.map((artist, index) => ({ kind: 'artist', artist, index }))
+      : currentSongs.map((song, index) => ({ kind: 'song', song, index })),
+    [activeTab, currentArtists, currentSongs],
+  );
+  const accentColor = ACCENTS[currentAccent];
+  const isChartPlaying = isPlaying && currentSongs.some((song) => song.id === activeSong?.id);
+  const openArtist = useCallback((artistName: string) => {
+    navigation.navigate('Artist', { artistId: artistName });
+  }, [navigation]);
+  const renderChartItem = useCallback(({ item }: { item: ChartListItem }) => {
+    if (item.kind === 'artist') {
+      return (
+        <ArtistChartItem
+          artist={item.artist}
+          index={item.index}
+          onOpenArtist={openArtist}
+        />
+      );
+    }
+
+    const active = activeSong?.id === item.song.id;
+    return (
+      <ChartPanelItem
+        song={item.song}
+        index={item.index}
+        accentColor={accentColor}
+        active={active}
+        isPlaying={isPlaying}
+        metricLabel={activeTab === 'viral' ? 'Streams' : 'Heute'}
+        onPlaySong={handlePlaySong}
+        songs={currentSongs}
+      />
+    );
+  }, [accentColor, activeSong?.id, activeTab, currentSongs, handlePlaySong, isPlaying, openArtist]);
 
   return (
     <View style={styles.container}>
@@ -293,31 +287,55 @@ export function ChartsScreen({ navigation }: Props) {
         <ChartTabButton active={activeTab === 'artists'} icon="mic" label="Artists" onPress={() => setActiveTab('artists')} tint={ACCENTS.teal} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {loading && !data ? (
+      {loading && !data ? (
+        <View style={styles.stateContainer}>
           <StateCard title="Charts werden geladen" message="Wir holen die aktuellen YORIAX-Rankings." loading />
-        ) : error ? (
+        </View>
+      ) : error ? (
+        <View style={styles.stateContainer}>
           <StateCard icon="warning" title="Charts nicht verfügbar" message={error} />
-        ) : activeTab === 'artists' ? (
-          <ArtistChartPanel
-            artists={data?.artistCharts ?? []}
-            onOpenArtist={(artistName) => navigation.navigate('Artist', { artistId: artistName })}
-          />
-        ) : (
-          <ChartPanel
-            accent={currentAccent}
-            activeSongId={activeSong?.id}
-            iconName={activeTab === 'viral' ? 'flame' : 'calendar'}
-            isPlaying={isPlaying}
-            metricLabel={activeTab === 'viral' ? 'Streams' : 'Heute'}
-            onPlayChart={handlePlayChart}
-            onPlaySong={handlePlaySong}
-            songs={currentSongs}
-            subtitle={activeTab === 'viral' ? 'Songs mit der stärksten Plattform-Dynamik.' : 'Was heute auf YORIAX am meisten gehört wird.'}
-            title={activeTab === 'viral' ? 'Viral Charts' : 'Daily Charts'}
-          />
-        )}
-      </ScrollView>
+        </View>
+      ) : (
+        <FlatList
+          contentContainerStyle={styles.chartListContent}
+          data={chartItems.length > 0 ? chartItems : EMPTY_CHART_ITEMS}
+          initialNumToRender={10}
+          ItemSeparatorComponent={ChartRowSeparator}
+          keyExtractor={(item) => item.kind === 'song' ? `song-${item.song.id}` : `artist-${item.artist.name}`}
+          ListEmptyComponent={
+            <View style={styles.emptyChart}>
+              <StateCard
+                icon={activeTab === 'artists' ? 'mic-outline' : 'stats-chart'}
+                title={activeTab === 'artists' ? 'Noch keine Künstler' : 'Noch keine Songs'}
+                message={activeTab === 'artists'
+                  ? 'Sobald Songs veröffentlicht sind, erscheinen Künstler-Charts hier.'
+                  : 'Diese Charts füllen sich, sobald neue Plays gezählt werden.'}
+              />
+            </View>
+          }
+          ListHeaderComponent={
+            <ChartListHeader
+              accent={currentAccent}
+              count={chartItems.length}
+              iconName={activeTab === 'viral' ? 'flame' : activeTab === 'daily' ? 'calendar' : 'mic'}
+              isChartPlaying={isChartPlaying}
+              onPlay={activeTab === 'artists' ? undefined : () => handlePlayChart(currentSongs)}
+              subtitle={activeTab === 'viral'
+                ? 'Songs mit der stärksten Plattform-Dynamik.'
+                : activeTab === 'daily'
+                  ? 'Was heute auf YORIAX am meisten gehört wird.'
+                  : 'Künstler mit den stärksten Gesamt-Streams auf YORIAX.'}
+              title={activeTab === 'viral' ? 'Viral Charts' : activeTab === 'daily' ? 'Daily Charts' : 'Artist Charts'}
+            />
+          }
+          maxToRenderPerBatch={8}
+          renderItem={renderChartItem}
+          showsVerticalScrollIndicator={false}
+          style={[styles.chartList, { borderColor: `${accentColor}44` }]}
+          updateCellsBatchingPeriod={32}
+          windowSize={7}
+        />
+      )}
     </View>
   );
 }
@@ -404,16 +422,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
   },
-  content: {
-    paddingBottom: 170,
+  stateContainer: {
     paddingHorizontal: theme.spacing.screen,
     paddingTop: 18,
   },
-  panel: {
+  chartList: {
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: theme.radii.xl,
     borderWidth: 1,
+    marginHorizontal: theme.spacing.screen,
+    marginTop: 18,
     overflow: 'hidden',
+  },
+  chartListContent: {
+    paddingBottom: 170,
+  },
+  emptyChart: {
+    padding: 12,
   },
   panelHeader: {
     alignItems: 'flex-start',
@@ -421,7 +446,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 12,
+    overflow: 'hidden',
     padding: 20,
+  },
+  chartRow: {
+    marginHorizontal: 12,
+  },
+  rowSeparator: {
+    height: 8,
   },
   panelCopy: {
     flex: 1,
@@ -458,10 +491,6 @@ const styles = StyleSheet.create({
     height: 48,
     justifyContent: 'center',
     width: 48,
-  },
-  panelList: {
-    gap: 8,
-    padding: 12,
   },
   row: {
     alignItems: 'center',
