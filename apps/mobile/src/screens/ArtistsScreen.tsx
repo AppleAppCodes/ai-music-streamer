@@ -27,10 +27,6 @@ const ActiveArtistVideo = memo(function ActiveArtistVideo({ uri }: { uri: string
 
   useEffect(() => {
     videoPlayer.play();
-
-    return () => {
-      videoPlayer.pause();
-    };
   }, [videoPlayer]);
 
   return (
