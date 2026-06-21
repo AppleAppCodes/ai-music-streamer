@@ -35,8 +35,29 @@ import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 
+const DEFAULT_HOOK_DURATION_SECONDS = 20;
+
+function getHookRange(song: FeedPreviewSong | null) {
+  const rawDuration = Number(song?.duration);
+  const duration = Number.isFinite(rawDuration) && rawDuration > 0 ? rawDuration : null;
+  const rawStart = Number(song?.clip?.hook_start_seconds);
+  const configuredStart = Number.isFinite(rawStart) ? Math.max(0, rawStart) : 0;
+  const start = duration
+    ? Math.min(configuredStart, Math.max(0, duration - 0.25))
+    : configuredStart;
+  const rawEnd = Number(song?.clip?.hook_end_seconds);
+  const configuredEnd = Number.isFinite(rawEnd) && rawEnd > start
+    ? rawEnd
+    : start + DEFAULT_HOOK_DURATION_SECONDS;
+  const end = duration
+    ? Math.min(Math.max(start + 0.25, configuredEnd), duration)
+    : Math.max(start + 0.25, configuredEnd);
+
+  return { start, end };
+}
+
 function getHookStart(song: FeedPreviewSong | null) {
-  return Math.max(0, song?.clip?.hook_start_seconds ?? 0);
+  return getHookRange(song).start;
 }
 
 function clamp01(value: number) {
@@ -46,18 +67,55 @@ function clamp01(value: number) {
 async function waitForFeedAudioReady(
   player: AudioPlayer,
   isCurrentRequest: () => boolean,
+  expectedDuration?: number | null,
   timeoutMs = 2200,
 ) {
-  await new Promise((resolve) => setTimeout(resolve, 48));
+  await new Promise((resolve) => setTimeout(resolve, 96));
   const startedAt = Date.now();
 
   while (isCurrentRequest() && Date.now() - startedAt < timeoutMs) {
     try {
-      if (player.currentStatus.isLoaded) return true;
+      const status = player.currentStatus;
+      const durationMatches = !expectedDuration
+        || expectedDuration <= 0
+        || (status.duration > 0 && Math.abs(status.duration - expectedDuration) <= 3);
+      if (status.isLoaded && durationMatches) return true;
     } catch {
       return false;
     }
     await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  return false;
+}
+
+async function seekFeedPlayerToHookStart(
+  player: AudioPlayer,
+  song: FeedPreviewSong,
+  isCurrentRequest: () => boolean,
+) {
+  const hookStart = getHookStart(song);
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (!isCurrentRequest()) return false;
+
+    try {
+      await player.seekTo(hookStart, 0, 0);
+    } catch {
+      // A newly replaced remote source can reject the first seek while loading.
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 60 + attempt * 30));
+    if (!isCurrentRequest()) return false;
+
+    try {
+      const currentTime = player.currentTime;
+      if (Number.isFinite(currentTime) && Math.abs(currentTime - hookStart) <= 0.5) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
   }
 
   return false;
@@ -331,7 +389,7 @@ type PreviewSlotState = {
 const PREVIEW_PLAYER_OPTIONS = {
   keepAudioSessionActive: true,
   preferredForwardBufferDuration: 8,
-  updateInterval: 1000,
+  updateInterval: 250,
 };
 
 function createPreviewSlotState(): PreviewSlotState {
@@ -418,6 +476,7 @@ export function ForYouScreen() {
   const transitionToken = useRef(0);
   const pendingTransitionIndex = useRef<number | null>(null);
   const fullSongTransitionActive = useRef(false);
+  const hookLoopSeekInFlight = useRef<Record<PreviewSlotKey, boolean>>({ a: false, b: false });
   const prefetchedCoverUrls = useRef(new Set<string>());
   const isMounted = useRef(true);
 
@@ -516,16 +575,11 @@ export function ForYouScreen() {
         && state.token === token
         && state.songId === song.id
       );
-      const ready = await waitForFeedAudioReady(player, isCurrentRequest);
+      const ready = await waitForFeedAudioReady(player, isCurrentRequest, song.duration);
       if (!ready || !isCurrentRequest()) return false;
 
-      try {
-        await player.seekTo(getHookStart(song), 0, 0);
-      } catch {
-        // The source is still usable if a platform seek races the final load event.
-      }
-
-      if (!isCurrentRequest()) return false;
+      const positionedAtHook = await seekFeedPlayerToHookStart(player, song, isCurrentRequest);
+      if (!positionedAtHook || !isCurrentRequest()) return false;
       state.ready = true;
       return true;
     })().finally(() => {
@@ -621,26 +675,51 @@ export function ForYouScreen() {
     }, 180);
   }, [prewarmNeighbors]);
 
-  const activatePreviewSlot = useCallback((slotKey: PreviewSlotKey) => {
+  const activatePreviewSlot = useCallback(async (slotKey: PreviewSlotKey) => {
     if (!isFocused) return false;
     const previousAudibleSlot = audiblePreviewSlot.current;
     if (previousAudibleSlot && previousAudibleSlot !== slotKey) {
       pausePreviewSlot(previousAudibleSlot);
     }
 
-    const { player } = getPreviewSlot(slotKey);
+    const { player, state } = getPreviewSlot(slotKey);
+    const song = state.index == null ? null : songs[state.index];
+    if (!song || state.songId !== song.id) return false;
+
+    const { start, end } = getHookRange(song);
+    let currentTime = 0;
+    try {
+      currentTime = player.currentTime;
+    } catch {
+      return false;
+    }
+
+    if (currentTime < start - 0.5 || currentTime >= end - 0.05) {
+      const token = state.token;
+      const positionedAtHook = await seekFeedPlayerToHookStart(
+        player,
+        song,
+        () => (
+          isMounted.current
+          && state.token === token
+          && state.songId === song.id
+        ),
+      );
+      if (!positionedAtHook) return false;
+    }
+
     setFeedPlayerMuted(player, false);
     setFeedPlayerVolume(player, 1);
     try {
       player.play();
       audiblePreviewSlot.current = slotKey;
-      setFeedPlayingSongId(getPreviewSlot(slotKey).state.songId);
+      setFeedPlayingSongId(state.songId);
       return true;
     } catch {
       pausePreviewSlot(slotKey);
       return false;
     }
-  }, [getPreviewSlot, isFocused, pausePreviewSlot]);
+  }, [getPreviewSlot, isFocused, pausePreviewSlot, songs]);
 
   const transitionToIndex = useCallback(async (index: number, force = false) => {
     if (!isFocused) return;
@@ -682,7 +761,15 @@ export function ForYouScreen() {
       return;
     }
 
-    if (!activatePreviewSlot(slotKey)) {
+    const activated = await activatePreviewSlot(slotKey);
+    if (
+      !activated
+      || transitionToken.current !== requestToken
+      || !isMounted.current
+    ) {
+      if (activated) {
+        pausePreviewSlot(slotKey);
+      }
       if (pendingTransitionIndex.current === nextIndex) {
         pendingTransitionIndex.current = null;
       }
@@ -704,9 +791,71 @@ export function ForYouScreen() {
     ensurePreviewSlot,
     getPreviewSlot,
     isFocused,
+    pausePreviewSlot,
     queueNeighborPrewarm,
     songs,
   ]);
+
+  useEffect(() => {
+    const subscribeToHookBoundary = (slotKey: PreviewSlotKey, player: AudioPlayer) => (
+      player.addListener('playbackStatusUpdate', (status) => {
+        if (
+          audiblePreviewSlot.current !== slotKey
+          || !status.isLoaded
+          || (!status.playing && !status.didJustFinish)
+          || hookLoopSeekInFlight.current[slotKey]
+        ) {
+          return;
+        }
+
+        const state = slotKey === 'a' ? previewSlotA.current : previewSlotB.current;
+        const song = state.index == null ? null : songs[state.index];
+        if (!song || state.songId !== song.id) return;
+
+        const { start, end } = getHookRange(song);
+        const outsideHook = status.currentTime < start - 0.5
+          || status.currentTime >= end - 0.05
+          || status.didJustFinish;
+        if (!outsideHook) return;
+
+        const token = state.token;
+        hookLoopSeekInFlight.current[slotKey] = true;
+        setFeedPlayerMuted(player, true);
+
+        void seekFeedPlayerToHookStart(
+          player,
+          song,
+          () => (
+            isMounted.current
+            && audiblePreviewSlot.current === slotKey
+            && state.token === token
+            && state.songId === song.id
+          ),
+        ).then((positionedAtHook) => {
+          if (
+            !positionedAtHook
+            || audiblePreviewSlot.current !== slotKey
+            || state.token !== token
+          ) {
+            return;
+          }
+
+          player.play();
+          setFeedPlayerMuted(player, false);
+        }).finally(() => {
+          hookLoopSeekInFlight.current[slotKey] = false;
+        });
+      })
+    );
+
+    const subscriptionA = subscribeToHookBoundary('a', previewPlayerA);
+    const subscriptionB = subscribeToHookBoundary('b', previewPlayerB);
+
+    return () => {
+      subscriptionA.remove();
+      subscriptionB.remove();
+    };
+  }, [previewPlayerA, previewPlayerB, songs]);
 
   useEffect(() => {
     let mounted = true;
