@@ -686,39 +686,47 @@ export function ForYouScreen() {
     const song = state.index == null ? null : songs[state.index];
     if (!song || state.songId !== song.id) return false;
 
-    const { start, end } = getHookRange(song);
-    let currentTime = 0;
+    const token = state.token;
+    setFeedPlayerMuted(player, true);
+    setFeedPlayerVolume(player, 0);
+
     try {
-      currentTime = player.currentTime;
+      // Start silently first. AVPlayer can reset a prepared remote item to zero
+      // while transitioning into active playback, so the authoritative hook seek
+      // must happen after play() and before the player becomes audible.
+      player.play();
     } catch {
       return false;
     }
 
-    if (currentTime < start - 0.5 || currentTime >= end - 0.05) {
-      const token = state.token;
-      const positionedAtHook = await seekFeedPlayerToHookStart(
-        player,
-        song,
-        () => (
-          isMounted.current
-          && state.token === token
-          && state.songId === song.id
-        ),
-      );
-      if (!positionedAtHook) return false;
-    }
-
-    setFeedPlayerMuted(player, false);
-    setFeedPlayerVolume(player, 1);
-    try {
-      player.play();
-      audiblePreviewSlot.current = slotKey;
-      setFeedPlayingSongId(state.songId);
-      return true;
-    } catch {
+    const positionedAtHook = await seekFeedPlayerToHookStart(
+      player,
+      song,
+      () => (
+        isMounted.current
+        && state.token === token
+        && state.songId === song.id
+      ),
+    );
+    if (!positionedAtHook) {
       pausePreviewSlot(slotKey);
       return false;
     }
+
+    if (
+      !isMounted.current
+      || state.token !== token
+      || state.songId !== song.id
+    ) {
+      pausePreviewSlot(slotKey);
+      return false;
+    }
+
+    audiblePreviewSlot.current = slotKey;
+    setFeedPlayingSongId(state.songId);
+    setFeedPlayerVolume(player, 1);
+    setFeedPlayerMuted(player, false);
+    return true;
   }, [getPreviewSlot, isFocused, pausePreviewSlot, songs]);
 
   const transitionToIndex = useCallback(async (index: number, force = false) => {
