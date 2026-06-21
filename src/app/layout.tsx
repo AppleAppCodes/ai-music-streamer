@@ -12,7 +12,7 @@ import { createClient } from "@/utils/supabase/server";
 import { Analytics } from "@vercel/analytics/react";
 import { isAdminUser } from "@/lib/admin";
 import { getAppVersionLabel } from "@/lib/app-version";
-import { isPrelaunchLockEnabled } from "@/lib/prelaunch";
+import { isPrelaunchLockEnabled, isUserWhitelisted } from "@/lib/prelaunch";
 import { getLocaleFromAcceptLanguage } from "@/lib/locale";
 import { headers } from "next/headers";
 
@@ -78,7 +78,8 @@ export default async function RootLayout({
   const headerStore = await headers();
   const { data: { user } } = await supabase.auth.getUser();
   const isAdmin = isAdminUser(user);
-  const isPrelaunchLocked = isPrelaunchLockEnabled() && !isAdmin;
+  const isWhitelisted = isUserWhitelisted(user?.email);
+  const isPrelaunchLocked = isPrelaunchLockEnabled() && !isAdmin && !isWhitelisted;
   const shouldRenderAppShell = Boolean(user) && !isPrelaunchLocked;
   const shouldRenderGuestBanner = !user && !isPrelaunchLocked;
   const appVersionLabel = getAppVersionLabel();

@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { isAdminUser } from './lib/admin';
-import { isPrelaunchLockEnabled } from './lib/prelaunch';
+import { isPrelaunchLockEnabled, isUserWhitelisted } from './lib/prelaunch';
 
 function isPublicPath(pathname: string) {
   return pathname === '/'
@@ -60,8 +60,9 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const pathname = request.nextUrl.pathname;
   const isAdmin = isAdminUser(user);
+  const isWhitelisted = isUserWhitelisted(user?.email);
 
-  if (isPrelaunchLockEnabled() && !isAdmin && !isPrelaunchAllowedPath(pathname)) {
+  if (isPrelaunchLockEnabled() && !isAdmin && !isWhitelisted && !isPrelaunchAllowedPath(pathname)) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
