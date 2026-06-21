@@ -28,10 +28,10 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
       onPointerEnter={() => preloadSong(song)}
       onFocus={() => preloadSong(song)}
       onClick={() => router.push(`/song/${song.id}`)}
-      className={`group relative flex flex-col rounded-xl hover:bg-white/5 transition-colors cursor-pointer ${compact ? 'gap-2 p-2.5' : 'gap-3 p-4'} ${className}`}
+      className={`group relative flex cursor-pointer flex-col rounded-[1.35rem] border border-white/[0.065] bg-[linear-gradient(150deg,rgba(33,24,51,0.58),rgba(9,7,14,0.66))] shadow-[0_16px_42px_rgba(0,0,0,0.2)] transition-all hover:-translate-y-0.5 hover:border-violet-300/18 hover:bg-[linear-gradient(150deg,rgba(45,33,66,0.7),rgba(12,9,18,0.76))] hover:shadow-[0_22px_58px_rgba(0,0,0,0.32)] ${compact ? 'gap-2 p-2.5' : 'gap-3 p-4'} ${className}`}
     >
       {/* Cover Image Container */}
-      <div className="relative aspect-square w-full rounded-md overflow-hidden shadow-lg mb-2">
+      <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-[1.1rem] border border-white/10 shadow-[0_18px_38px_rgba(0,0,0,0.34)]">
         {song.cover_url ? (
           <Image
             src={song.cover_url}
@@ -66,7 +66,7 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
                 playSong({ ...song, creatorName: displayArtist });
               }
             }}
-            className={`${compact ? 'h-10 w-10' : 'h-12 w-12'} rounded-full bg-primary flex items-center justify-center text-white shadow-xl hover:scale-110 hover:bg-primary-hover transition-all`}
+            className={`${compact ? 'h-10 w-10' : 'h-12 w-12'} flex items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-violet-500 to-violet-700 text-white shadow-[0_12px_28px_rgba(124,58,237,0.42)] transition-all hover:scale-110 hover:from-violet-400 hover:to-violet-600`}
           >
             {isThisSongPlaying ? (
               <Pause className={`${compact ? 'h-5 w-5' : 'h-6 w-6'} fill-current`} />

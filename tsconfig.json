@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "mcp-server", "apps/mobile", "apps/desktop"]
+  "exclude": ["node_modules", "mcp-server", "apps/mobile", "apps/desktop", "supabase/functions"]
 }

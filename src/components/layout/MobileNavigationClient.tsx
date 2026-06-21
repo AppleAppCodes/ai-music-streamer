@@ -28,7 +28,10 @@ export default function MobileNavigationClient({ user }: { user: SupabaseUser | 
   if (!user) return null;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-[60] flex h-[calc(4rem+env(safe-area-inset-bottom))] items-center justify-around border-t border-white/10 bg-black/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden" aria-label="Mobile Navigation">
+    <nav
+      className="fixed bottom-[max(0.7rem,env(safe-area-inset-bottom))] left-3 right-3 z-[60] flex h-16 items-center justify-around rounded-[1.45rem] border border-white/12 bg-[#0c0912]/92 px-1.5 shadow-[0_18px_55px_rgba(0,0,0,0.58)] backdrop-blur-2xl md:hidden"
+      aria-label="Mobile Navigation"
+    >
       {navItems.map(({ href, label, icon: Icon }) => {
         const isActivePath = href === '/' ? pathname === href : pathname?.startsWith(href);
         const isPending = pendingNav?.href === href && pendingNav.from === pathname;
@@ -40,12 +43,15 @@ export default function MobileNavigationClient({ user }: { user: SupabaseUser | 
             href={href}
             prefetch
             onClick={() => setPendingNav({ href, from: pathname || '' })}
-            className={`flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[10px] font-semibold transition-colors ${
-              isActive ? 'text-white' : 'text-white/45 hover:text-white/80'
+            className={`relative flex h-[calc(100%-0.65rem)] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[1.1rem] px-1 text-[10px] font-bold transition-all ${
+              isActive
+                ? 'bg-violet-500/16 text-white shadow-[inset_0_0_0_1px_rgba(168,85,247,0.16)]'
+                : 'text-white/42 hover:bg-white/[0.055] hover:text-white/80'
             }`}
           >
-            <Icon className={`h-5 w-5 ${isActive ? 'text-violet-400' : ''}`} strokeWidth={isActive ? 2.5 : 2} />
+            <Icon className={`h-5 w-5 ${isActive ? 'text-violet-300' : ''}`} strokeWidth={isActive ? 2.5 : 2} />
             <span className="truncate">{label}</span>
+            {isActive ? <span className="absolute bottom-1 h-1 w-1 rounded-full bg-violet-300 shadow-[0_0_8px_rgba(196,181,253,0.95)]" /> : null}
           </Link>
         );
       })}

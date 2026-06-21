@@ -350,7 +350,7 @@ export default function AudioPlayer() {
   return (
     <>
       <div
-        className={`fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-50 h-16 items-center justify-between border-t border-white/10 bg-black/60 backdrop-blur-2xl px-2 md:bottom-0 md:flex md:h-24 md:border-white/5 md:px-4 transition-all duration-1000 ${currentSong ? 'flex' : 'hidden'}`}
+        className={`fixed bottom-[calc(5.35rem+env(safe-area-inset-bottom))] left-3 right-3 z-50 h-16 items-center justify-between overflow-hidden rounded-2xl border border-white/12 bg-[#0c0912]/88 px-2 shadow-[0_18px_55px_rgba(0,0,0,0.58)] backdrop-blur-2xl transition-all duration-1000 md:bottom-3 md:left-[15.75rem] md:right-3 md:flex md:h-24 md:rounded-[1.55rem] md:px-4 ${currentSong ? 'flex' : 'hidden'}`}
         onClick={() => setIsMobilePlayerOpen(true)}
       >
         {/* Background container with overflow-hidden to prevent blur bleed */}
@@ -367,7 +367,7 @@ export default function AudioPlayer() {
               }}
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0b0711]/95 via-[#120b1d]/78 to-[#07100f]/90" />
         </div>
 
         {currentSong ? (

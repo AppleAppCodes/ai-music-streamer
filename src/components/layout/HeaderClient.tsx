@@ -114,7 +114,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 w-full items-center justify-between gap-2 border-b border-white/5 px-3 glass-panel sm:gap-3 md:h-16 md:px-6">
+    <header className="glass-panel sticky top-0 z-50 flex h-14 w-full items-center justify-between gap-2 border-x-0 border-t-0 border-b-white/8 px-3 shadow-[0_12px_38px_rgba(0,0,0,0.24)] sm:gap-3 md:h-16 md:px-6">
       <div className="hidden w-1/3 items-center md:flex">
         {!user ? (
           <Link href="/" className="group flex items-center gap-3" aria-label="Yoriax Home">
@@ -166,7 +166,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
                   }
                 }
               }}
-              className="w-full rounded-2xl border border-white/10 bg-black/35 py-2.5 pl-12 pr-4 text-sm font-semibold text-white outline-none placeholder:text-white/35 focus:border-primary/60 focus:bg-black/50 transition-colors"
+              className="w-full rounded-2xl border border-white/10 bg-white/[0.055] py-2.5 pl-12 pr-4 text-sm font-semibold text-white outline-none transition-colors placeholder:text-white/35 focus:border-violet-400/55 focus:bg-violet-500/[0.07] focus:shadow-[0_0_0_3px_rgba(124,58,237,0.08)]"
               placeholder={t('nav.search') + "..."}
               aria-label={t('nav.search')}
             />
@@ -174,7 +174,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
 
           {/* Quick Search Dropdown */}
           {isSearchFocused && searchQuery.trim().length >= 2 && (
-            <div className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#1A1A1A] shadow-2xl backdrop-blur-xl">
+            <div className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-2xl border border-white/12 bg-[#130f1b]/96 shadow-[0_24px_70px_rgba(0,0,0,0.58)] backdrop-blur-2xl">
               <div className="p-2">
                 {searchLoading ? (
                   <div className="flex items-center gap-3 p-4 text-sm font-semibold text-white/55">
@@ -268,7 +268,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
         {!isElectron && (
           <Link 
             href="/download" 
-            className="hidden lg:flex h-8 items-center gap-2 rounded-full border border-white/20 bg-black/40 px-4 text-xs font-bold text-white transition-colors hover:scale-105 hover:bg-white/10"
+            className="hidden h-8 items-center gap-2 rounded-full border border-violet-300/20 bg-violet-500/10 px-4 text-xs font-bold text-white transition-all hover:scale-105 hover:bg-violet-500/18 lg:flex"
           >
             <Download className="w-3.5 h-3.5" />
             App installieren
