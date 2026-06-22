@@ -244,22 +244,37 @@ async function loadFeedClipMap(): Promise<Map<string, FeedClip>> {
     throw new Error(error.message);
   }
 
-  return new Map(
-    ((data || []) as FeedClip[]).map((clip) => [clip.song_id, clip]),
-  );
+  const clips = ((data || []) as FeedClip[]).flatMap((clip) => {
+    const start = Number(clip.hook_start_seconds);
+    const end = Number(clip.hook_end_seconds);
+
+    if (!clip.song_id || !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) {
+      return [];
+    }
+
+    return [{
+      ...clip,
+      hook_start_seconds: start,
+      hook_end_seconds: end,
+    }];
+  });
+
+  return new Map(clips.map((clip) => [clip.song_id, clip]));
 }
 
 export async function loadFeedPreview(userId: string): Promise<FeedPreviewSong[]> {
   const client = requireClient();
   const signalsPromise = loadSongSignals(userId);
-  const [feedQuery, clipMap] = await Promise.all([
-    client
-      .from('songs')
-      .select(`${SONG_SELECT_WITH_PROFILE}, song_feed_stats(song_id, likes_count)`)
-      .order('plays', { ascending: false })
-      .limit(80),
-    loadFeedClipMap(),
-  ]);
+  const clipMap = await loadFeedClipMap();
+  const configuredSongIds = Array.from(clipMap.keys());
+
+  if (configuredSongIds.length === 0) return [];
+
+  const feedQuery = await client
+    .from('songs')
+    .select(`${SONG_SELECT_WITH_PROFILE}, song_feed_stats(song_id, likes_count)`)
+    .in('id', configuredSongIds)
+    .order('plays', { ascending: false });
 
   if (feedQuery.error) {
     throw new Error(feedQuery.error.message);
@@ -275,15 +290,18 @@ export async function loadFeedPreview(userId: string): Promise<FeedPreviewSong[]
 
   const likedSongsSet = new Set(signals.likedSongs.map(l => l.song_id));
 
-  return ranked.map((song) => {
+  return ranked.flatMap((song) => {
     const row = rowById.get(song.id);
+    const clip = clipMap.get(song.id);
 
-    return {
+    if (!clip) return [];
+
+    return [{
       ...song,
-      clip: clipMap.get(song.id) ?? null,
+      clip,
       likes_count: row ? getLikes(row) : 0,
       isLiked: likedSongsSet.has(song.id),
-    };
+    }];
   });
 }
 
@@ -301,16 +319,19 @@ export async function loadFollowingFeed(userId: string): Promise<FeedPreviewSong
   const followingNames = (followsData || []).map(f => f.artist_name);
   
   if (followingNames.length === 0) return [];
-  
-  const [feedQuery, clipMap] = await Promise.all([
-    client
-      .from('songs')
-      .select(`${SONG_SELECT_WITH_PROFILE}, song_feed_stats(song_id, likes_count)`)
-      .in('artist_name', followingNames)
-      .order('created_at', { ascending: false })
-      .limit(30),
-    loadFeedClipMap(),
-  ]);
+
+  const clipMap = await loadFeedClipMap();
+  const configuredSongIds = Array.from(clipMap.keys());
+
+  if (configuredSongIds.length === 0) return [];
+
+  const feedQuery = await client
+    .from('songs')
+    .select(`${SONG_SELECT_WITH_PROFILE}, song_feed_stats(song_id, likes_count)`)
+    .in('id', configuredSongIds)
+    .in('artist_name', followingNames)
+    .order('created_at', { ascending: false })
+    .limit(30);
 
   if (feedQuery.error) throw new Error(feedQuery.error.message);
 
@@ -321,29 +342,36 @@ export async function loadFollowingFeed(userId: string): Promise<FeedPreviewSong
   
   const rowById = new Map(feedRows.map((row) => [row.id, row]));
 
-  return songs.map((song) => {
+  return songs.flatMap((song) => {
     const row = rowById.get(song.id);
-    return {
+    const clip = clipMap.get(song.id);
+
+    if (!clip) return [];
+
+    return [{
       ...song,
-      clip: clipMap.get(song.id) ?? null,
+      clip,
       likes_count: row ? getLikes(row) : 0,
       isLiked: likedSongsSet.has(song.id),
-    };
+    }];
   });
 }
 
 export async function loadExploreFeed(userId: string): Promise<FeedPreviewSong[]> {
   const client = requireClient();
   const signalsPromise = loadSongSignals(userId);
-  
-  const [feedQuery, clipMap] = await Promise.all([
-    client
-      .from('songs')
-      .select(`${SONG_SELECT_WITH_PROFILE}, song_feed_stats(song_id, likes_count)`)
-      .order('created_at', { ascending: false })
-      .limit(50),
-    loadFeedClipMap(),
-  ]);
+
+  const clipMap = await loadFeedClipMap();
+  const configuredSongIds = Array.from(clipMap.keys());
+
+  if (configuredSongIds.length === 0) return [];
+
+  const feedQuery = await client
+    .from('songs')
+    .select(`${SONG_SELECT_WITH_PROFILE}, song_feed_stats(song_id, likes_count)`)
+    .in('id', configuredSongIds)
+    .order('created_at', { ascending: false })
+    .limit(50);
 
   if (feedQuery.error) throw new Error(feedQuery.error.message);
 
@@ -356,14 +384,18 @@ export async function loadExploreFeed(userId: string): Promise<FeedPreviewSong[]
   
   const rowById = new Map(feedRows.map((row) => [row.id, row]));
 
-  return shuffled.map((song) => {
+  return shuffled.flatMap((song) => {
     const row = rowById.get(song.id);
-    return {
+    const clip = clipMap.get(song.id);
+
+    if (!clip) return [];
+
+    return [{
       ...song,
-      clip: clipMap.get(song.id) ?? null,
+      clip,
       likes_count: row ? getLikes(row) : 0,
       isLiked: likedSongsSet.has(song.id),
-    };
+    }];
   });
 }
 
