@@ -24,7 +24,11 @@ export function FullscreenPlayer({ navigation }: Props) {
   const [isLikeLoading, setIsLikeLoading] = useState(false);
   const [isPlaylistModalVisible, setIsPlaylistModalVisible] = useState(false);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [translateY] = useState(() => new Animated.Value(0));
+  const [saveToastAnimation] = useState(() => new Animated.Value(0));
+  const [saveToastVisible, setSaveToastVisible] = useState(false);
+  const [saveToastSongId, setSaveToastSongId] = useState<string | null>(null);
   const { 
     activeSong, currentTime, duration, isPlaying, isBuffering, isAdPlaying, toggle, 
     pause, playNext, playPrevious, isShuffling, repeatMode, toggleShuffle, toggleRepeat, seekTo
@@ -82,11 +86,14 @@ export function FullscreenPlayer({ navigation }: Props) {
       if (sleepTimerRef.current) {
         clearTimeout(sleepTimerRef.current);
       }
+      if (saveToastTimerRef.current) {
+        clearTimeout(saveToastTimerRef.current);
+      }
     };
   }, []);
 
-  const handleLike = async () => {
-    if (!user || !activeSong || isLikeLoading) return;
+  const toggleLikedStatus = useCallback(async (): Promise<boolean> => {
+    if (!user || !activeSong || isLikeLoading) return isCurrentSongLiked;
     const songId = activeSong.id;
     const previousStatus = isCurrentSongLiked;
 
@@ -98,14 +105,74 @@ export function FullscreenPlayer({ navigation }: Props) {
       const newStatus = await toggleLike(user.id, songId, previousStatus);
       setLikedSongId(songId);
       setIsLiked(newStatus);
+      return newStatus;
     } catch (e) {
       console.error(e);
       setLikedSongId(songId);
       setIsLiked(previousStatus);
+      return previousStatus;
     } finally {
       setIsLikeLoading(false);
     }
-  };
+  }, [activeSong, isCurrentSongLiked, isLikeLoading, user]);
+
+  const hideSaveToast = useCallback(() => {
+    if (saveToastTimerRef.current) {
+      clearTimeout(saveToastTimerRef.current);
+      saveToastTimerRef.current = null;
+    }
+
+    Animated.timing(saveToastAnimation, {
+      duration: 170,
+      toValue: 0,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setSaveToastVisible(false);
+    });
+  }, [saveToastAnimation]);
+
+  const showSaveToast = useCallback((songId: string) => {
+    if (saveToastTimerRef.current) {
+      clearTimeout(saveToastTimerRef.current);
+    }
+
+    setSaveToastSongId(songId);
+    setSaveToastVisible(true);
+    saveToastAnimation.stopAnimation();
+    saveToastAnimation.setValue(0);
+    Animated.spring(saveToastAnimation, {
+      bounciness: 5,
+      speed: 22,
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+
+    saveToastTimerRef.current = setTimeout(hideSaveToast, 3200);
+  }, [hideSaveToast, saveToastAnimation]);
+
+  const handleSavePress = useCallback(async () => {
+    if (!user || !activeSong || isLikeLoading || isAdPlaying) return;
+    if (isCurrentSongLiked) {
+      setIsPlaylistModalVisible(true);
+      return;
+    }
+
+    const nextStatus = await toggleLikedStatus();
+    if (nextStatus) showSaveToast(activeSong.id);
+  }, [
+    activeSong,
+    isAdPlaying,
+    isCurrentSongLiked,
+    isLikeLoading,
+    showSaveToast,
+    toggleLikedStatus,
+    user,
+  ]);
+
+  const handleToastChange = useCallback(() => {
+    hideSaveToast();
+    setIsPlaylistModalVisible(true);
+  }, [hideSaveToast]);
 
   const handleSongDetails = () => {
     if (!activeSong) return;
@@ -264,24 +331,20 @@ export function FullscreenPlayer({ navigation }: Props) {
             </View>
             <View style={styles.actionButtons}>
               <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => setIsPlaylistModalVisible(true)}
-                hitSlop={10}
-                disabled={isAdPlaying}
-              >
-                <Ionicons name="add-circle-outline" size={28} color={isAdPlaying ? theme.colors.muted : theme.colors.text} />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.likeButton}
-                onPress={() => { void handleLike(); }}
+                accessibilityLabel={isCurrentSongLiked ? 'Speicherorte ändern' : 'Zu Lieblingssongs hinzufügen'}
+                accessibilityRole="button"
+                style={[
+                  styles.saveButton,
+                  isCurrentSongLiked && styles.saveButtonActive,
+                ]}
+                onPress={() => { void handleSavePress(); }}
                 disabled={isLikeLoading || isAdPlaying}
                 hitSlop={12}
               >
                 <Ionicons 
-	                  name={isCurrentSongLiked ? "heart" : "heart-outline"}
-                  size={28} 
-	                  color={isAdPlaying ? theme.colors.muted : isCurrentSongLiked ? theme.colors.primary : theme.colors.text}
+                  name={isCurrentSongLiked ? 'heart' : 'add'}
+                  size={isCurrentSongLiked ? 25 : 29}
+                  color={isAdPlaying ? theme.colors.muted : isCurrentSongLiked ? theme.colors.text : theme.colors.primaryLight}
                 />
               </TouchableOpacity>
             </View>
@@ -350,10 +413,44 @@ export function FullscreenPlayer({ navigation }: Props) {
         
       </View>
       </Animated.View>
+
+      {saveToastVisible && saveToastSongId === activeSong.id ? (
+        <Animated.View
+          pointerEvents="box-none"
+          style={[
+            styles.saveToastContainer,
+            {
+              bottom: insets.bottom + 24,
+              opacity: saveToastAnimation,
+              transform: [{
+                translateY: saveToastAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [24, 0],
+                }),
+              }],
+            },
+          ]}
+        >
+          <View style={styles.saveToast}>
+            <View style={styles.saveToastIcon}>
+              <Ionicons name="heart" size={16} color={theme.colors.text} />
+            </View>
+            <Text style={styles.saveToastText} numberOfLines={1}>
+              Hinzugefügt zu: Lieblingssongs.
+            </Text>
+            <TouchableOpacity activeOpacity={0.78} onPress={handleToastChange} hitSlop={8}>
+              <Text style={styles.saveToastAction}>Ändern</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      ) : null}
+
       <AddToPlaylistModal 
         visible={isPlaylistModalVisible} 
         songId={activeSong.id} 
-        onClose={() => setIsPlaylistModalVisible(false)} 
+        isLiked={isCurrentSongLiked}
+        onClose={() => setIsPlaylistModalVisible(false)}
+        onToggleLiked={toggleLikedStatus}
       />
     </View>
   );
@@ -432,21 +529,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   actionButtons: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
-  actionButton: {
+  saveButton: {
     alignItems: 'center',
-    height: 48,
+    backgroundColor: 'rgba(10,7,16,0.72)',
+    borderColor: theme.colors.primaryLight,
+    borderRadius: 999,
+    borderWidth: 2,
+    height: 50,
     justifyContent: 'center',
-    width: 48,
+    shadowColor: theme.colors.primaryLight,
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.24,
+    shadowRadius: 14,
+    width: 50,
   },
-  likeButton: {
-    alignItems: 'center',
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
+  saveButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+    shadowOpacity: 0.42,
   },
   progressContainer: {
     width: '100%',
@@ -516,5 +618,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
+  },
+  saveToastContainer: {
+    alignItems: 'center',
+    left: 20,
+    position: 'absolute',
+    right: 20,
+    zIndex: 30,
+  },
+  saveToast: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(23,17,31,0.97)',
+    borderColor: 'rgba(168,85,247,0.34)',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    maxWidth: 430,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.32,
+    shadowRadius: 22,
+    width: '100%',
+  },
+  saveToastIcon: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 8,
+    height: 28,
+    justifyContent: 'center',
+    shadowColor: theme.colors.primaryLight,
+    shadowOpacity: 0.5,
+    shadowRadius: 9,
+    width: 28,
+  },
+  saveToastText: {
+    color: theme.colors.text,
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  saveToastAction: {
+    color: theme.colors.accent,
+    fontSize: 13,
+    fontWeight: '900',
   },
 });

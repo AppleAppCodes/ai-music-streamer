@@ -1,91 +1,178 @@
 import React, { memo, useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import { useAuth } from '../lib/auth-context';
-import { addSongToPlaylist, createPlaylist, getUserPlaylists } from '../lib/music-data';
+import {
+  addSongToPlaylist,
+  createPlaylist,
+  getPlaylistIdsForSong,
+  getUserPlaylists,
+  removeSongFromPlaylist,
+} from '../lib/music-data';
 import type { Playlist } from '../lib/types';
-import { Ionicons } from '@expo/vector-icons';
 
 interface AddToPlaylistModalProps {
   visible: boolean;
   songId: string;
   onClose: () => void;
+  isLiked?: boolean;
+  onToggleLiked?: () => Promise<boolean>;
 }
 
 function PlaylistSeparator() {
   return <View style={styles.playlistSeparator} />;
 }
 
-const PlaylistModalRow = memo(function PlaylistModalRow({
-  adding,
-  disabled,
-  onAdd,
-  playlist,
+const SelectionControl = memo(function SelectionControl({
+  loading,
+  selected,
 }: {
-  adding: boolean;
-  disabled: boolean;
-  onAdd: (playlistId: string) => void;
+  loading: boolean;
+  selected: boolean;
+}) {
+  if (loading) {
+    return <ActivityIndicator color={theme.colors.primaryLight} size="small" />;
+  }
+
+  return (
+    <View style={[styles.selectionControl, selected && styles.selectionControlSelected]}>
+      {selected ? <Ionicons name="checkmark" size={16} color={theme.colors.background} /> : null}
+    </View>
+  );
+});
+
+const PlaylistModalRow = memo(function PlaylistModalRow({
+  loading,
+  onToggle,
+  playlist,
+  selected,
+}: {
+  loading: boolean;
+  onToggle: (playlistId: string) => void;
   playlist: Playlist;
+  selected: boolean;
 }) {
   return (
     <TouchableOpacity
-      style={styles.playlistRow}
-      onPress={() => onAdd(playlist.id)}
-      disabled={disabled}
+      activeOpacity={0.84}
+      disabled={loading}
+      onPress={() => onToggle(playlist.id)}
+      style={[styles.playlistRow, selected && styles.playlistRowSelected]}
     >
-      <View style={styles.playlistIcon}>
-        <Ionicons name="musical-notes" size={24} color={theme.colors.background} />
+      <View style={[styles.playlistIcon, selected && styles.playlistIconSelected]}>
+        <Ionicons
+          name="musical-notes"
+          size={23}
+          color={selected ? theme.colors.text : theme.colors.background}
+        />
       </View>
       <View style={styles.playlistInfo}>
         <Text style={styles.playlistTitle} numberOfLines={1}>{playlist.title}</Text>
         <Text style={styles.playlistMeta}>{playlist.is_public ? 'Öffentlich' : 'Privat'}</Text>
       </View>
-      {adding ? <ActivityIndicator color={theme.colors.primary} size="small" /> : null}
+      <SelectionControl loading={loading} selected={selected} />
     </TouchableOpacity>
   );
 });
 
-export function AddToPlaylistModal({ visible, songId, onClose }: AddToPlaylistModalProps) {
+export function AddToPlaylistModal({
+  visible,
+  songId,
+  onClose,
+  isLiked = false,
+  onToggleLiked,
+}: AddToPlaylistModalProps) {
   const { user } = useAuth();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<Set<string>>(new Set());
+  const [likedSelected, setLikedSelected] = useState(isLiked);
   const [loading, setLoading] = useState(false);
-  const [addingId, setAddingId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [updatingLiked, setUpdatingLiked] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
-    async function fetchPlaylists() {
+    async function load() {
       if (!user || !visible) return;
       setLoading(true);
       try {
-        const data = await getUserPlaylists(user.id);
-        if (mounted) setPlaylists(data);
-      } catch (e) {
-        console.error('Error fetching playlists:', e);
+        const nextPlaylists = await getUserPlaylists(user.id);
+        const selectedIds = await getPlaylistIdsForSong(
+          nextPlaylists.map((playlist) => playlist.id),
+          songId,
+        );
+        if (!mounted) return;
+        setPlaylists(nextPlaylists);
+        setSelectedPlaylistIds(new Set(selectedIds));
+      } catch (error) {
+        console.error('Error loading save destinations:', error);
       } finally {
         if (mounted) setLoading(false);
       }
     }
 
-    fetchPlaylists();
-
+    void load();
     return () => {
       mounted = false;
     };
-  }, [user, visible]);
+  }, [songId, user, visible]);
 
-  const handleAdd = useCallback(async (playlistId: string) => {
-    if (addingId) return;
-    setAddingId(playlistId);
+  const handleTogglePlaylist = useCallback(async (playlistId: string) => {
+    if (updatingId) return;
+    const wasSelected = selectedPlaylistIds.has(playlistId);
+
+    setSelectedPlaylistIds((current) => {
+      const next = new Set(current);
+      if (wasSelected) next.delete(playlistId);
+      else next.add(playlistId);
+      return next;
+    });
+    setUpdatingId(playlistId);
+
     try {
-      await addSongToPlaylist(playlistId, songId);
-      onClose();
-    } catch (e) {
-      console.error('Error adding to playlist:', e);
+      if (wasSelected) {
+        await removeSongFromPlaylist(playlistId, songId);
+      } else {
+        await addSongToPlaylist(playlistId, songId);
+      }
+    } catch (error) {
+      console.error('Error updating playlist:', error);
+      setSelectedPlaylistIds((current) => {
+        const next = new Set(current);
+        if (wasSelected) next.add(playlistId);
+        else next.delete(playlistId);
+        return next;
+      });
     } finally {
-      setAddingId(null);
+      setUpdatingId(null);
     }
-  }, [addingId, onClose, songId]);
+  }, [selectedPlaylistIds, songId, updatingId]);
+
+  const handleToggleLiked = useCallback(async () => {
+    if (!onToggleLiked || updatingLiked) return;
+    const previousStatus = likedSelected;
+    setLikedSelected(!previousStatus);
+    setUpdatingLiked(true);
+    try {
+      setLikedSelected(await onToggleLiked());
+    } catch (error) {
+      console.error('Error updating liked songs:', error);
+      setLikedSelected(previousStatus);
+    } finally {
+      setUpdatingLiked(false);
+    }
+  }, [likedSelected, onToggleLiked, updatingLiked]);
 
   const handleCreatePlaylist = useCallback(() => {
     Alert.prompt(
@@ -96,14 +183,16 @@ export function AddToPlaylistModal({ visible, songId, onClose }: AddToPlaylistMo
         {
           text: 'Erstellen',
           onPress: async (text?: string) => {
-            if (!text || !user) return;
+            if (!text?.trim() || !user) return;
             setLoading(true);
             try {
-              const newPlaylist = await createPlaylist(user.id, text);
+              const newPlaylist = await createPlaylist(user.id, text.trim());
+              await addSongToPlaylist(newPlaylist.id, songId);
               setPlaylists((current) => [newPlaylist, ...current]);
-              await handleAdd(newPlaylist.id);
-            } catch (e) {
-              console.error(e);
+              setSelectedPlaylistIds((current) => new Set(current).add(newPlaylist.id));
+            } catch (error) {
+              console.error('Error creating playlist:', error);
+            } finally {
               setLoading(false);
             }
           },
@@ -111,39 +200,42 @@ export function AddToPlaylistModal({ visible, songId, onClose }: AddToPlaylistMo
       ],
       'plain-text',
     );
-  }, [handleAdd, user]);
+  }, [songId, user]);
 
   const renderPlaylist = useCallback(({ item }: { item: Playlist }) => (
     <PlaylistModalRow
-      adding={addingId === item.id}
-      disabled={addingId !== null}
-      onAdd={(playlistId) => {
-        void handleAdd(playlistId);
-      }}
+      loading={updatingId === item.id}
+      onToggle={(playlistId) => { void handleTogglePlaylist(playlistId); }}
       playlist={item}
+      selected={selectedPlaylistIds.has(item.id)}
     />
-  ), [addingId, handleAdd]);
+  ), [handleTogglePlaylist, selectedPlaylistIds, updatingId]);
 
   return (
     <Modal
-      visible={visible}
-      transparent
       animationType="slide"
+      onShow={() => setLikedSelected(isLiked)}
       onRequestClose={onClose}
+      transparent
+      visible={visible}
     >
       <View style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+        <TouchableOpacity activeOpacity={1} onPress={onClose} style={styles.backdrop} />
         <View style={styles.content}>
+          <View style={styles.handle} />
           <View style={styles.header}>
-            <Text style={styles.title}>Zu Playlist hinzufügen</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <View>
+              <Text style={styles.eyebrow}>YORIAX SPEICHERN</Text>
+              <Text style={styles.title}>Speichern in</Text>
+            </View>
+            <TouchableOpacity accessibilityLabel="Auswahl schließen" onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={theme.colors.text} />
             </TouchableOpacity>
           </View>
 
           {loading ? (
             <View style={styles.centerBox}>
-              <ActivityIndicator color={theme.colors.text} />
+              <ActivityIndicator color={theme.colors.primaryLight} />
             </View>
           ) : (
             <FlatList
@@ -154,17 +246,35 @@ export function AddToPlaylistModal({ visible, songId, onClose }: AddToPlaylistMo
               keyExtractor={(item) => item.id}
               ListHeaderComponent={
                 <>
-                <TouchableOpacity
-                  style={styles.playlistRow}
-                  onPress={handleCreatePlaylist}
-                >
-                  <View style={[styles.playlistIcon, styles.createPlaylistIcon]}>
-                    <Ionicons name="add" size={24} color={theme.colors.text} />
-                  </View>
-                  <View style={styles.playlistInfo}>
-                    <Text style={styles.playlistTitle}>Neue Playlist erstellen</Text>
-                  </View>
-                </TouchableOpacity>
+                  {onToggleLiked ? (
+                    <TouchableOpacity
+                      activeOpacity={0.84}
+                      disabled={updatingLiked}
+                      onPress={() => { void handleToggleLiked(); }}
+                      style={[styles.playlistRow, likedSelected && styles.playlistRowSelected]}
+                    >
+                      <View style={[styles.playlistIcon, styles.favoriteIcon, likedSelected && styles.favoriteIconSelected]}>
+                        <Ionicons name="heart" size={23} color={theme.colors.text} />
+                      </View>
+                      <View style={styles.playlistInfo}>
+                        <Text style={styles.playlistTitle}>Lieblingssongs</Text>
+                        <Text style={styles.playlistMeta}>Deine gespeicherten Songs</Text>
+                      </View>
+                      <SelectionControl loading={updatingLiked} selected={likedSelected} />
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {onToggleLiked ? <View style={styles.divider} /> : null}
+
+                  <TouchableOpacity activeOpacity={0.84} onPress={handleCreatePlaylist} style={styles.playlistRow}>
+                    <View style={[styles.playlistIcon, styles.createPlaylistIcon]}>
+                      <Ionicons name="add" size={24} color={theme.colors.text} />
+                    </View>
+                    <View style={styles.playlistInfo}>
+                      <Text style={styles.playlistTitle}>Neue Playlist erstellen</Text>
+                    </View>
+                  </TouchableOpacity>
+
                   {playlists.length > 0 ? <View style={styles.divider} /> : null}
                 </>
               }
@@ -175,6 +285,10 @@ export function AddToPlaylistModal({ visible, songId, onClose }: AddToPlaylistMo
               windowSize={7}
             />
           )}
+
+          <TouchableOpacity activeOpacity={0.88} onPress={onClose} style={styles.doneButton}>
+            <Text style={styles.doneButtonText}>Fertig</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -187,74 +301,109 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   backdrop: {
-    position: 'absolute',
+    backgroundColor: 'rgba(0,0,0,0.68)',
+    bottom: 0,
     left: 0,
+    position: 'absolute',
     right: 0,
     top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   content: {
-    backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    minHeight: 300,
-    maxHeight: '80%',
-    paddingBottom: 40,
+    backgroundColor: '#120c1b',
+    borderColor: 'rgba(168,85,247,0.24)',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderWidth: 1,
+    maxHeight: '82%',
+    minHeight: 330,
+    paddingBottom: 28,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 30,
+  },
+  handle: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 999,
+    height: 5,
+    marginTop: 10,
+    width: 46,
   },
   header: {
+    alignItems: 'center',
+    borderBottomColor: theme.colors.border,
+    borderBottomWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    paddingBottom: 18,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+  },
+  eyebrow: {
+    color: theme.colors.primaryLight,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.8,
+    marginBottom: 5,
   },
   title: {
     color: theme.colors.text,
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '900',
   },
   closeBtn: {
     padding: 4,
   },
   centerBox: {
-    padding: 40,
     alignItems: 'center',
-  },
-  emptyText: {
-    color: theme.colors.muted,
-    fontSize: 16,
+    padding: 40,
   },
   list: {
     flexGrow: 0,
   },
   listContent: {
     padding: 20,
+    paddingBottom: 10,
   },
   playlistSeparator: {
-    height: 12,
+    height: 10,
   },
   divider: {
-    height: 1,
     backgroundColor: theme.colors.border,
-    marginVertical: 4,
+    height: 1,
+    marginVertical: 12,
   },
   playlistRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
-    padding: 12,
-    borderRadius: 16,
+    backgroundColor: 'rgba(5,5,5,0.72)',
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
     gap: 14,
+    padding: 12,
+  },
+  playlistRowSelected: {
+    backgroundColor: 'rgba(124,58,237,0.13)',
+    borderColor: 'rgba(168,85,247,0.32)',
   },
   playlistIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: theme.colors.text,
     alignItems: 'center',
+    backgroundColor: theme.colors.text,
+    borderRadius: 14,
+    height: 48,
     justifyContent: 'center',
+    width: 48,
+  },
+  playlistIconSelected: {
+    backgroundColor: theme.colors.primary,
+  },
+  favoriteIcon: {
+    backgroundColor: theme.colors.primary,
+  },
+  favoriteIconSelected: {
+    backgroundColor: theme.colors.primaryLight,
   },
   createPlaylistIcon: {
     backgroundColor: 'rgba(255,255,255,0.1)',
@@ -273,5 +422,34 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
     fontSize: 13,
     fontWeight: '600',
+  },
+  selectionControl: {
+    alignItems: 'center',
+    borderColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 25,
+    justifyContent: 'center',
+    width: 25,
+  },
+  selectionControlSelected: {
+    backgroundColor: theme.colors.primaryLight,
+    borderColor: theme.colors.primaryLight,
+  },
+  doneButton: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 999,
+    justifyContent: 'center',
+    marginHorizontal: 20,
+    marginTop: 8,
+    minHeight: 50,
+  },
+  doneButtonText: {
+    color: theme.colors.text,
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 });
