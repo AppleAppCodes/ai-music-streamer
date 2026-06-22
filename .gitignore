@@ -47,3 +47,8 @@ apps/mobile/.expo/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# mobile builds
+*.ipa
+apps/mobile/*.ipa
+
