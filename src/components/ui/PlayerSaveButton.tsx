@@ -241,7 +241,7 @@ export default function PlayerSaveButton({
             updateMenuPosition();
             setOpenSongId(songId);
           }}
-          className={`transition-all duration-300 active:scale-75 ${isLiked ? 'text-green-500' : 'text-white/60 hover:text-white'} ${className}`}
+          className={`transition-all duration-300 active:scale-75 ${isLiked ? 'text-primary-light' : 'text-white/60 hover:text-white'} ${className}`}
           title={isLiked ? 'Gespeichert' : 'Speichern'}
           aria-label={isLiked ? 'Gespeicherten Song verwalten' : 'Song speichern'}
           aria-expanded={isOpen}
@@ -257,7 +257,7 @@ export default function PlayerSaveButton({
 
         {isOpen && isStatusReady && menuPosition && (
           <div
-            className="fixed z-[110] overflow-hidden rounded-xl border border-white/10 bg-[#242424]/95 py-2 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-xl"
+            className="yoriax-card fixed z-[110] overflow-hidden rounded-xl py-2 text-sm text-white"
             style={menuPosition}
           >
             <button
@@ -271,7 +271,7 @@ export default function PlayerSaveButton({
               {isSaving ? (
                 <Loader2 className="h-5 w-5 animate-spin text-white/70" />
               ) : isLiked ? (
-                <CheckCircle2 className="h-5 w-5 text-green-500" strokeWidth={2.5} />
+                <CheckCircle2 className="h-5 w-5 text-accent" strokeWidth={2.5} />
               ) : (
                 <PlusCircle className="h-5 w-5 text-white/70" />
               )}

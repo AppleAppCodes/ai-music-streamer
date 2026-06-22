@@ -226,7 +226,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
                               {song.cover_url ? (
                                 <Image src={song.cover_url} alt={song.title} fill sizes="40px" className="object-cover" />
                               ) : (
-                                <div className="w-full h-full bg-[#282828] flex items-center justify-center">
+                                <div className="flex h-full w-full items-center justify-center bg-surface-hover">
                                   <Music className="w-5 h-5 text-white/20" />
                                 </div>
                               )}

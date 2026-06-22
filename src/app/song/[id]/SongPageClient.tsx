@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
@@ -45,7 +45,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
   const [editCredits, setEditCredits] = useState<{ role: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     if (!id) return;
@@ -119,7 +119,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen">
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
@@ -127,7 +127,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
 
   if (!song) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen">
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
         <h1 className="text-2xl text-white">Song not found</h1>
       </div>
     );
@@ -141,13 +141,10 @@ export default function SongPageClient({ songId }: { songId: string }) {
   const canEditSong = isAdminUser(user);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#121212] relative pb-32">
-      {/* Background Gradient Header */}
-      <div className="absolute top-0 left-0 right-0 h-[400px] bg-gradient-to-b from-[#4A2B29] to-[#121212] opacity-80 pointer-events-none" />
-      
+    <div className="yoriax-page flex-1 overflow-y-auto pb-32">
       {/* Header Content */}
       <div className="relative flex flex-col items-center gap-5 px-5 pb-6 pt-20 text-center md:flex-row md:items-end md:gap-8 md:px-10 md:pt-24 md:text-left">
-        <div className="relative h-44 w-44 flex-shrink-0 overflow-hidden rounded-md shadow-2xl shadow-black/50 sm:h-48 sm:w-48 md:h-60 md:w-60 flex items-center justify-center bg-[#282828]">
+        <div className="relative flex h-44 w-44 flex-shrink-0 items-center justify-center overflow-hidden rounded-[1.75rem] border border-primary-light/20 bg-surface-hover shadow-[0_24px_70px_rgba(0,0,0,0.52)] sm:h-48 sm:w-48 md:h-60 md:w-60">
           {song.cover_url ? (
             <Image src={song.cover_url} alt={song.title} fill sizes="(max-width: 768px) 192px, 240px" className="object-cover" priority />
           ) : (
@@ -183,7 +180,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
       </div>
 
       {/* Background overlay for lower section */}
-      <div className="relative bg-black/20 backdrop-blur-3xl px-6 md:px-10 py-6 min-h-screen">
+      <div className="relative min-h-screen border-t border-white/5 bg-black/20 px-6 py-6 backdrop-blur-3xl md:px-10">
         
         {/* Action Bar */}
         <div className="mb-10 flex items-center justify-center gap-6 md:justify-start">
@@ -265,7 +262,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
         </div>
 
         {/* Track Info / Credits */}
-        <div className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 backdrop-blur-md max-w-4xl relative group/edit">
+        <div className="yoriax-card group/edit relative mb-16 max-w-4xl rounded-[1.75rem] p-6 md:p-8">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-white">Track Info & Credits</h3>
             {canEditSong && !isEditing && (
@@ -288,7 +285,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
                     type="text"
                     value={editArtistName}
                     onChange={(e) => setEditArtistName(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                    className="yoriax-input w-full rounded-xl px-3 py-2"
                     placeholder="Creator Name"
                   />
                 </div>
@@ -301,7 +298,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
                     max="100" 
                     value={editHumanEdit} 
                     onChange={(e) => setEditHumanEdit(parseInt(e.target.value))}
-                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500 mt-2"
+                    className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-lg bg-white/10 accent-primary"
                   />
                   <div className="flex justify-between text-xs text-white/50 mt-2">
                     <span>0% (Pure AI)</span>
@@ -321,7 +318,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
                         value={type}
                         checked={editVocalsType === type}
                         onChange={(e) => setEditVocalsType(e.target.value)}
-                        className="w-4 h-4 text-indigo-500 bg-white/10 border-white/20 focus:ring-indigo-500 focus:ring-offset-black"
+                        className="h-4 w-4 border-white/20 bg-white/10 text-primary focus:ring-primary focus:ring-offset-black"
                       />
                       <span className="text-white/90 text-sm">{type}</span>
                     </label>
@@ -337,7 +334,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
                     <button
                       type="button"
                       onClick={() => setEditCredits([...editCredits, { role: 'Creator', name: '' }])}
-                      className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium bg-indigo-500/10 px-3 py-1.5 rounded-lg transition-colors"
+                      className="flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary-light transition-colors hover:bg-primary/20 hover:text-white"
                     >
                       <Plus className="w-4 h-4" />
                       Hinzufügen
@@ -355,7 +352,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
                           newCredits[index].role = e.target.value;
                           setEditCredits(newCredits);
                         }}
-                        className="w-1/3 bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="yoriax-input w-1/3 rounded-xl px-3 py-2.5 text-sm"
                       >
                         <option value="Creator">Creator</option>
                         <option value="Producer">Producer</option>
@@ -372,7 +369,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
                           setEditCredits(newCredits);
                         }}
                         placeholder="Name"
-                        className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="yoriax-input flex-1 rounded-xl px-4 py-2.5 text-sm placeholder-white/30"
                       />
                       <button
                         type="button"
@@ -419,7 +416,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
                   <div className="flex items-center gap-3">
                     <span className="font-semibold text-white/90 w-10">{song.human_edit ?? 0}%</span>
                     <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: `${song.human_edit ?? 0}%` }} />
+                      <div className="bg-gradient-primary h-full rounded-full transition-all duration-1000" style={{ width: `${song.human_edit ?? 0}%` }} />
                     </div>
                   </div>
                 </div>
@@ -436,7 +433,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {song.credits.map((credit, idx) => (
                       <div key={idx} className="flex flex-col">
-                        <span className="text-xs text-indigo-300 font-medium mb-0.5">{credit.role}</span>
+                        <span className="mb-0.5 text-xs font-medium text-primary-light">{credit.role}</span>
                         <span className="text-sm font-semibold text-white/90">{credit.name}</span>
                       </div>
                     ))}

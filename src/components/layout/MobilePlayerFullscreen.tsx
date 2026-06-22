@@ -126,7 +126,7 @@ export default function MobilePlayerFullscreen({ isOpen, onClose }: MobilePlayer
                   />
                 </div>
               ) : (
-                <div className="w-full max-w-[320px] aspect-square bg-[#282828] flex items-center justify-center rounded-xl shadow-2xl">
+                <div className="flex aspect-square w-full max-w-[320px] items-center justify-center rounded-[1.75rem] bg-surface-hover shadow-2xl">
                   <Music className="w-24 h-24 text-white/20" />
                 </div>
               )}

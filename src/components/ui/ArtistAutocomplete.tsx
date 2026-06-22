@@ -74,7 +74,7 @@ export default function ArtistAutocomplete({ value, onChange }: ArtistAutocomple
         onFocus={() => {
           if (suggestions.length > 0) setIsOpen(true);
         }}
-        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+        className="yoriax-input w-full rounded-xl px-4 py-3 placeholder-white/30"
         placeholder={t('upload.artistPlaceholder')}
         required
       />

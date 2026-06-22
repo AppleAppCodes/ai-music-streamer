@@ -93,7 +93,7 @@ function ArtistCard({ artist }: { artist: ArtistStat }) {
       
       {/* Premium Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500 pointer-events-none" />
-      <div className="absolute inset-0 bg-indigo-500/10 mix-blend-overlay group-hover:bg-purple-500/20 transition-colors duration-500 pointer-events-none" />
+      <div className="pointer-events-none absolute inset-0 bg-primary/10 mix-blend-overlay transition-colors duration-500 group-hover:bg-primary-light/20" />
       
       {/* Content */}
       <div className="absolute inset-0 p-8 flex flex-col justify-end translate-y-4 group-hover:translate-y-0 transition-transform duration-500 pointer-events-none">
@@ -282,14 +282,14 @@ export default function ArtistsPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
+    <div className="yoriax-page flex-1 overflow-y-auto pb-32">
       {/* Background Gradient Header or Video */}
       <div className="absolute top-0 left-0 right-0 h-[500px] overflow-hidden pointer-events-none z-0">
         {videoUrl ? (
@@ -308,10 +308,10 @@ export default function ArtistsPage() {
             }}
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-[#0A0A0A] blur-3xl" />
+          <div className="h-full w-full bg-gradient-to-br from-primary/15 via-primary-light/5 to-background blur-3xl" />
         )}
       </div>
-      <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-black/10 via-[#0A0A0A]/60 to-[#0A0A0A] pointer-events-none z-0" />
+      <div className="pointer-events-none absolute left-0 right-0 top-0 z-0 h-[500px] bg-gradient-to-b from-black/10 via-background/60 to-background" />
 
       <button
         type="button"
@@ -372,7 +372,7 @@ export default function ArtistsPage() {
           </div>
         )}
 
-        <div className="w-40 h-40 md:w-56 md:h-56 flex-shrink-0 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 border border-white/10 backdrop-blur-md flex items-center justify-center">
+        <div className="bg-gradient-primary flex h-40 w-40 flex-shrink-0 items-center justify-center overflow-hidden rounded-[1.75rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md md:h-56 md:w-56">
           <Mic2 className="w-20 h-20 text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
         </div>
         <div className="flex flex-col gap-2">
@@ -383,7 +383,7 @@ export default function ArtistsPage() {
             Künstler entdecken
           </h1>
           <div className="flex items-center gap-3 text-sm text-white/70 mt-3 font-medium">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center overflow-hidden shadow-inner">
+            <div className="bg-gradient-primary flex h-7 w-7 items-center justify-center overflow-hidden rounded-full shadow-inner">
               <Users className="w-3.5 h-3.5 text-white" />
             </div>
             <span className="font-bold text-white">YORIAX</span>
@@ -447,7 +447,7 @@ export default function ArtistsPage() {
               {artists.filter(a => a.isOriginal).length > 0 && (
                 <section>
                   <div className="flex items-center gap-3 mb-8">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+                    <div className="bg-gradient-primary flex h-10 w-10 items-center justify-center rounded-full shadow-[0_0_20px_rgba(168,85,247,0.4)]">
                       <Users className="w-5 h-5 text-white" />
                     </div>
                     <h2 className="text-3xl font-black text-white tracking-tight">Yoriax Spotlight</h2>

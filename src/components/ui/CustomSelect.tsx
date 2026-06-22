@@ -33,24 +33,25 @@ export default function CustomSelect({ options, value, onChange, placeholder }: 
 
   return (
     <div className="relative w-full" ref={wrapperRef}>
-      <div
-        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white flex justify-between items-center cursor-pointer hover:border-white/20 transition-colors"
+      <button
+        type="button"
+        className="yoriax-input flex w-full cursor-pointer items-center justify-between rounded-xl px-4 py-3 text-white hover:border-white/20"
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className={selectedOption ? 'text-white' : 'text-white/30'}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown className={`w-5 h-5 text-white/50 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </div>
+      </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="yoriax-card absolute z-50 mt-2 w-full overflow-hidden rounded-xl animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
             {options.map((option) => (
               <div
                 key={option.value}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
-                  value === option.value ? 'bg-indigo-500/20 text-indigo-300' : 'text-white/80 hover:bg-white/10 hover:text-white'
+                  value === option.value ? 'bg-primary/20 text-primary-light' : 'text-white/80 hover:bg-white/10 hover:text-white'
                 }`}
                 onClick={() => {
                   onChange(option.value);

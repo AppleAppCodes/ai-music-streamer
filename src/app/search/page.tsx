@@ -93,7 +93,7 @@ function SearchResults() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
@@ -119,7 +119,7 @@ function SearchResults() {
             }
           }, 300);
         }}
-        className="block w-full rounded-full border border-white/10 bg-white/10 py-3 pl-12 pr-4 text-base text-white placeholder-white/50 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30 transition-all"
+        className="yoriax-input block w-full rounded-full py-3 pl-12 pr-4 text-base placeholder-white/50"
         placeholder="Was möchtest du hören?"
       />
     </div>
@@ -127,7 +127,7 @@ function SearchResults() {
 
   if (!query) {
     return (
-      <div className="flex-1 flex flex-col items-center min-h-screen bg-[#0A0A0A] p-6 pt-10 text-center">
+      <div className="yoriax-page flex min-h-screen flex-1 flex-col items-center p-6 pt-10 text-center">
         {searchInput}
         <div className="flex-1 flex flex-col items-center justify-center -mt-20">
           <Search className="w-16 h-16 text-white/20 mb-4" />
@@ -142,7 +142,7 @@ function SearchResults() {
   const hasNoResults = songs.length === 0 && playlists.length === 0 && artists.length === 0;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
+    <div className="yoriax-page flex-1 overflow-y-auto pb-32">
       <div className="relative pt-6 md:pt-10 px-6 md:px-10 pb-6 z-10">
         {searchInput}
         <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-8">
@@ -168,9 +168,9 @@ function SearchResults() {
                   {artists.length > 0 ? (
                     <Link
                       href={isAuthenticated ? `/artist/${encodeURIComponent(artists[0].artist_name)}` : '/login'}
-                      className="group flex flex-col gap-4 p-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all duration-300 relative overflow-hidden h-[240px] justify-end"
+                      className="yoriax-card-interactive group relative flex h-[240px] flex-col justify-end gap-4 overflow-hidden rounded-[1.75rem] p-6"
                     >
-                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shadow-lg mb-2">
+                      <div className="mb-2 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-primary/35 to-accent/20 shadow-lg">
                         <Mic2 className="w-12 h-12 text-white/50" />
                       </div>
                       <div className="flex flex-col">
@@ -181,8 +181,8 @@ function SearchResults() {
                       </div>
                     </Link>
                   ) : (
-                    <Link href={isAuthenticated ? `/song/${songs[0].id}` : '/login'} className="group flex flex-col gap-4 p-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all duration-300 relative overflow-hidden h-[240px] justify-end">
-                      <div className="relative w-24 h-24 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center shadow-lg overflow-hidden mb-2">
+                    <Link href={isAuthenticated ? `/song/${songs[0].id}` : '/login'} className="yoriax-card-interactive group relative flex h-[240px] flex-col justify-end gap-4 overflow-hidden rounded-[1.75rem] p-6">
+                      <div className="relative mb-2 flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary/35 to-accent/20 shadow-lg">
                         {songs[0].cover_url ? (
                           <Image src={songs[0].cover_url} alt={songs[0].title} fill sizes="96px" className="object-cover" />
                         ) : (
@@ -211,13 +211,13 @@ function SearchResults() {
                         <Link 
                           href={isAuthenticated ? `/song/${song.id}` : '/login'}
                           key={song.id}
-                          className="flex items-center gap-4 p-2 rounded-md hover:bg-white/10 group cursor-pointer transition-colors"
+                          className="group flex cursor-pointer items-center gap-4 rounded-2xl border border-transparent p-2 transition-colors hover:border-white/10 hover:bg-surface/70"
                         >
                           <div className="relative w-12 h-12 shrink-0 rounded overflow-hidden">
                             {song.cover_url ? (
                               <Image src={song.cover_url} alt={song.title} fill sizes="48px" className="object-cover" />
                             ) : (
-                              <div className="w-full h-full bg-[#282828] flex items-center justify-center">
+                              <div className="flex h-full w-full items-center justify-center bg-surface-hover">
                                 <Music className="w-6 h-6 text-white/20" />
                               </div>
                             )}
@@ -243,9 +243,9 @@ function SearchResults() {
                     <Link
                       key={i}
                       href={isAuthenticated ? `/artist/${encodeURIComponent(artist.artist_name)}` : '/login'}
-                      className="group flex flex-col items-center text-center gap-3 p-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all duration-300"
+                      className="yoriax-card-interactive group flex flex-col items-center gap-3 rounded-2xl p-4 text-center"
                     >
-                      <div className="w-full aspect-square rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center mb-2 shadow-lg">
+                      <div className="mb-2 flex aspect-square w-full items-center justify-center rounded-full bg-gradient-to-br from-primary/35 to-accent/20 shadow-lg">
                         <Mic2 className="w-12 h-12 text-white/50" />
                       </div>
                       <span className="font-bold text-white truncate w-full">{artist.artist_name}</span>
@@ -265,9 +265,9 @@ function SearchResults() {
                     <Link
                       key={playlist.id}
                       href={isAuthenticated ? `/playlist/${playlist.id}` : '/login'}
-                      className="group relative flex flex-col gap-3 p-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all duration-300"
+                      className="yoriax-card-interactive group relative flex flex-col gap-3 rounded-2xl p-3.5"
                     >
-                      <div className="relative aspect-square w-full rounded-lg overflow-hidden shadow-lg bg-[#282828] flex items-center justify-center">
+                      <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-surface-hover shadow-lg">
                         {playlist.cover_url ? (
                           <Image
                             src={playlist.cover_url}
@@ -302,7 +302,7 @@ function SearchResults() {
 export default function SearchPage() {
   return (
     <Suspense fallback={
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     }>

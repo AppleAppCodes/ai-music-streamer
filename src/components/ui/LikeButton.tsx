@@ -130,7 +130,7 @@ export default function LikeButton({ songId, className = '', iconClassName = 'w-
     <button 
       onClick={toggleLike}
       disabled={loading}
-      className={`transition-all duration-300 active:scale-75 ${isLiked ? 'text-green-500' : 'text-white/60 hover:text-white'} ${isAnimating ? 'scale-125' : 'scale-100'} ${className}`}
+      className={`transition-all duration-300 active:scale-75 ${isLiked ? 'text-primary-light' : 'text-white/60 hover:text-white'} ${isAnimating ? 'scale-125' : 'scale-100'} ${className}`}
       title={isLiked ? "Remove from Liked Songs" : "Save to Liked Songs"}
     >
       {isLiked ? (

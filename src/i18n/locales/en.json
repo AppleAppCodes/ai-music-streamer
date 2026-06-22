@@ -164,6 +164,15 @@
       "following": "Following",
       "explore": "Explore"
     },
+    "filters": {
+      "genres": "Genres",
+      "title": "Select genres",
+      "description": "Enable only the genres you want to hear in the Explore feed.",
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all",
+      "active": "{{count}} genres active",
+      "close": "Close genre filter"
+    },
     "empty": {
       "followingTitle": "No followed artists yet",
       "songsTitle": "No songs available yet",

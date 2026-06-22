@@ -125,7 +125,7 @@ export default function LikedSongsPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
@@ -134,9 +134,7 @@ export default function LikedSongsPage() {
   const isAnyPlaying = sortedSongs.some(s => s.id === currentSong?.id) && isPlaying;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
-      {/* Background Gradient Header - Premium Glassmorphism (Not Spotify) */}
-      <div className="absolute top-0 left-0 right-0 h-[600px] bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-[#0A0A0A] blur-3xl pointer-events-none" />
+    <div className="yoriax-page flex-1 overflow-y-auto pb-32">
       <div className="absolute left-1/2 top-16 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-[120px] pointer-events-none md:left-auto md:right-20 md:top-20 md:h-96 md:w-96 md:translate-x-0" />
 
       <button
@@ -161,7 +159,7 @@ export default function LikedSongsPage() {
             Lieblingssongs
           </h1>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm font-medium text-white/70 md:mt-3 md:justify-start md:gap-3">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center overflow-hidden shadow-inner">
+            <div className="bg-gradient-primary flex h-7 w-7 items-center justify-center overflow-hidden rounded-full shadow-inner">
               <span className="text-xs text-black font-bold">{user?.email?.charAt(0).toUpperCase()}</span>
             </div>
             <span className="font-bold text-white">{user?.email?.split('@')[0]}</span>
@@ -203,7 +201,7 @@ export default function LikedSongsPage() {
             </button>
             
             {dropdownOpen && (
-              <div className="absolute right-0 mt-3 w-56 bg-[#181818]/95 backdrop-blur-xl rounded-lg shadow-2xl z-50 p-2 border border-white/10 text-sm animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="yoriax-card absolute right-0 z-50 mt-3 w-56 rounded-xl p-2 text-sm animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="px-3 py-2 text-xs font-bold text-white/40 uppercase tracking-wider">Sortieren nach</div>
                 
                 <button onClick={() => { setSortBy('title'); setDropdownOpen(false); }} className={`w-full text-left px-3 py-2.5 rounded-md hover:bg-white/10 flex justify-between items-center transition-colors ${sortBy === 'title' ? 'text-primary font-medium' : 'text-white/90'}`}>

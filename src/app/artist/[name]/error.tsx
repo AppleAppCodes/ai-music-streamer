@@ -14,7 +14,7 @@ export default function ArtistError({
   }, [error]);
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-[#0A0A0A] text-white p-8">
+    <div className="yoriax-page flex min-h-screen flex-1 flex-col items-center justify-center p-8 text-white">
       <h2 className="text-2xl font-bold mb-4">Fehler beim Laden der Künstlerseite</h2>
       <pre className="bg-red-900/30 border border-red-500/50 rounded-xl p-4 text-sm text-red-200 max-w-2xl overflow-x-auto mb-6 whitespace-pre-wrap">
         {error.message}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { MoreVertical, Share2, User2, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Song } from '@/lib/types';
@@ -12,13 +12,14 @@ import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
 import { isAdminUser } from '@/lib/admin';
 import { uploadSongCover } from '@/lib/song-cover-upload';
+import Image from 'next/image';
 
 export default function MobileSongMenu({ song }: { song: Song }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -64,7 +65,7 @@ export default function MobileSongMenu({ song }: { song: Song }) {
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="fixed bottom-0 left-0 right-0 z-[101] bg-[#1a1a1a] rounded-t-3xl overflow-hidden pb-[calc(2rem+env(safe-area-inset-bottom))] border-t border-white/10"
+              className="yoriax-card fixed bottom-0 left-0 right-0 z-[101] overflow-hidden rounded-t-[2rem] pb-[calc(2rem+env(safe-area-inset-bottom))]"
             >
               {/* Drag handle */}
               <div className="w-full flex justify-center pt-3 pb-1">
@@ -73,8 +74,11 @@ export default function MobileSongMenu({ song }: { song: Song }) {
 
               {/* Header */}
               <div className="flex items-center gap-4 px-6 py-4 border-b border-white/5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={song.cover_url} alt={song.title} className="w-12 h-12 rounded object-cover shadow-md bg-[#282828]" />
+                {song.cover_url ? (
+                  <Image src={song.cover_url} alt={song.title} width={48} height={48} className="h-12 w-12 rounded-xl bg-surface-hover object-cover shadow-md" />
+                ) : (
+                  <div className="h-12 w-12 rounded-xl bg-surface-hover" />
+                )}
                 <div className="flex flex-col min-w-0">
                   <span className="text-lg font-bold text-white truncate">{song.title}</span>
                   <span className="text-sm text-white/60 truncate">{displayArtist}</span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useTranslation } from 'react-i18next';
 import { User, Settings, Image as ImageIcon, Loader2, Save, CreditCard, Globe, HardDrive } from 'lucide-react';
@@ -9,13 +9,14 @@ import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { compressImage } from '@/lib/imageCompression';
 import { hasPreferenceStorageConsent } from '@/lib/cookie-consent';
+import Image from 'next/image';
 
 const LANGUAGE_STORAGE_KEY = 'ai-stream-language';
 
 export default function SettingsPage() {
   const { i18n } = useTranslation();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -212,47 +213,48 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
-        <Loader2 className="w-10 h-10 animate-spin text-purple-500" />
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary-light" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-full bg-[#0A0A0A] relative pb-10">
-      {/* Background Gradient */}
-      <div className="absolute top-0 left-0 right-0 h-[400px] bg-gradient-to-br from-purple-900/20 via-indigo-900/10 to-[#0A0A0A] blur-3xl pointer-events-none" />
-      
-      <div className="relative pt-16 px-6 md:px-10 max-w-4xl mx-auto z-10">
+    <div className="yoriax-page pb-10">
+      <div className="relative z-10 mx-auto max-w-5xl px-5 pt-16 md:px-10">
         
         <div className="flex items-center gap-4 mb-10">
-          <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border border-white/10">
-            <Settings className="w-6 h-6 text-white" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary-light/25 bg-primary/15 shadow-[0_0_28px_rgba(124,58,237,0.22)]">
+            <Settings className="w-6 h-6 text-primary-light" />
           </div>
-          <h1 className="text-4xl font-bold text-white tracking-tight">Einstellungen</h1>
+          <div>
+            <p className="mb-1 text-xs font-black uppercase tracking-[0.24em] text-primary-light">Yoriax Account</p>
+            <h1 className="text-4xl font-black text-white tracking-tight">Einstellungen</h1>
+          </div>
         </div>
 
         <div className="space-y-10">
           
           {/* Profile Section */}
-          <section id="profil" className="bg-[#181818] border border-white/10 rounded-2xl p-6 md:p-8 scroll-mt-24">
+          <section id="profil" className="yoriax-card scroll-mt-24 rounded-[1.75rem] p-6 md:p-8">
             <div className="flex flex-col md:flex-row gap-8 items-start">
               
               {/* Avatar Upload */}
               <div className="flex flex-col items-center gap-4">
-                <div className="relative w-32 h-32 rounded-full overflow-hidden bg-black border-4 border-[#282828] shadow-xl group">
+                <div className="group relative h-32 w-32 overflow-hidden rounded-full border-4 border-primary/25 bg-black shadow-[0_0_34px_rgba(124,58,237,0.2)]">
                   {avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatarUrl} alt="Profilbild" className="w-full h-full object-cover" />
+                    <Image src={avatarUrl} alt="Profilbild" fill sizes="128px" className="object-cover" />
                   ) : (
                     <div className="w-full h-full bg-purple-900/20 flex flex-col items-center justify-center text-purple-400">
                       <User className="w-10 h-10 mb-2 opacity-50" />
                     </div>
                   )}
                   
-                  <div 
+                  <button
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm"
+                    className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center bg-black/55 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                    aria-label="Profilbild ändern"
                   >
                     {uploadingAvatar ? (
                       <Loader2 className="w-6 h-6 animate-spin text-white" />
@@ -262,7 +264,7 @@ export default function SettingsPage() {
                         <span className="text-xs font-medium text-white">Ändern</span>
                       </>
                     )}
-                  </div>
+                  </button>
                   <input 
                     type="file" 
                     accept="image/*" 
@@ -291,7 +293,7 @@ export default function SettingsPage() {
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="block w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+                      className="yoriax-input block w-full rounded-xl py-3 pl-10 pr-4"
                       placeholder="Dein Name"
                     />
                   </div>
@@ -305,7 +307,7 @@ export default function SettingsPage() {
                     type="email"
                     value={user?.email || ''}
                     disabled
-                    className="block w-full px-4 py-3 bg-black/20 border border-white/5 rounded-xl text-white/50 cursor-not-allowed"
+                    className="block w-full cursor-not-allowed rounded-xl border border-white/5 bg-black/25 px-4 py-3 text-white/50"
                   />
                   <p className="text-xs text-white/30 mt-2">Die E-Mail Adresse kann derzeit nicht geändert werden.</p>
                 </div>
@@ -314,7 +316,7 @@ export default function SettingsPage() {
                   <button 
                     onClick={saveProfile}
                     disabled={saving}
-                    className="flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-full font-bold text-sm hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
+                    className="bg-gradient-primary flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-black text-white shadow-[0_10px_28px_rgba(124,58,237,0.25)] transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                   >
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     Änderungen speichern
@@ -325,13 +327,13 @@ export default function SettingsPage() {
           </section>
 
           {/* Account & Subscription Section */}
-          <section id="konto" className="bg-[#181818] border border-white/10 rounded-2xl p-6 md:p-8 scroll-mt-24">
+          <section id="konto" className="yoriax-card scroll-mt-24 rounded-[1.75rem] p-6 md:p-8">
             <div className="flex items-center gap-3 mb-6">
               <CreditCard className="w-5 h-5 text-purple-400" />
               <h2 className="text-xl font-bold text-white">Abonnement</h2>
             </div>
             
-            <div className="bg-gradient-to-r from-purple-900/40 to-black/40 border border-purple-500/20 rounded-xl p-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="flex flex-col items-center justify-between gap-6 rounded-2xl border border-primary-light/20 bg-gradient-to-r from-primary/20 via-primary-light/10 to-accent/10 p-6 md:flex-row">
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <h3 className="text-2xl font-black text-white">{subscription} Plan</h3>
@@ -356,13 +358,13 @@ export default function SettingsPage() {
           </section>
 
           {/* View / Zoom Section */}
-          <section id="ansicht" className="bg-[#181818] border border-white/10 rounded-2xl p-6 md:p-8 scroll-mt-24">
+          <section id="ansicht" className="yoriax-card scroll-mt-24 rounded-[1.75rem] p-6 md:p-8">
             <div className="flex items-center gap-3 mb-6">
-              <ImageIcon className="w-5 h-5 text-green-400" />
+              <ImageIcon className="w-5 h-5 text-accent" />
               <h2 className="text-xl font-bold text-white">Ansicht & Zoom</h2>
             </div>
             
-            <div className="bg-gradient-to-r from-green-900/10 to-black/40 border border-green-500/10 rounded-xl p-6">
+            <div className="rounded-2xl border border-accent/15 bg-gradient-to-r from-accent/10 to-black/30 p-6">
                <div className="flex justify-between items-center mb-8">
                  <p className="text-sm text-white/60">Passe die Größe der gesamten App an deinen Bildschirm an.</p>
                  <button onClick={() => handleZoomChange(100)} className="px-4 py-1.5 text-xs font-bold rounded-full border border-white/20 hover:bg-white/10 hover:text-white text-white/70 transition-colors">Zurücksetzen</button>
@@ -373,17 +375,17 @@ export default function SettingsPage() {
                  <div className="absolute left-4 right-4 top-2 h-[1px] bg-white/10 -z-0" />
                  
                  {[70, 80, 90, 100, 110, 120, 130].map(level => (
-                    <div key={level} className="relative z-10 flex flex-col items-center gap-3 cursor-pointer group" onClick={() => handleZoomChange(level)}>
-                      <div className={`w-4 h-4 rounded-full border-[3px] transition-all ${zoom === level ? 'border-green-500 bg-black scale-125' : 'border-white/30 bg-[#181818] group-hover:border-white/50'}`} />
-                      <span className={`text-[11px] font-bold ${zoom === level ? 'text-green-400' : 'text-white/40 group-hover:text-white/60'}`}>{level} %</span>
-                    </div>
+                    <button key={level} type="button" className="group relative z-10 flex flex-col items-center gap-3" onClick={() => handleZoomChange(level)}>
+                      <div className={`h-4 w-4 rounded-full border-[3px] transition-all ${zoom === level ? 'scale-125 border-accent bg-black' : 'border-white/30 bg-surface group-hover:border-white/50'}`} />
+                      <span className={`text-[11px] font-bold ${zoom === level ? 'text-accent' : 'text-white/40 group-hover:text-white/60'}`}>{level} %</span>
+                    </button>
                  ))}
                </div>
             </div>
           </section>
 
           {/* Storage Section */}
-          <section id="speicher" className="bg-[#181818] border border-white/10 rounded-2xl p-6 md:p-8 scroll-mt-24">
+          <section id="speicher" className="yoriax-card scroll-mt-24 rounded-[1.75rem] p-6 md:p-8">
             <div className="flex items-center gap-3 mb-6">
               <HardDrive className="w-5 h-5 text-gray-400" />
               <h2 className="text-xl font-bold text-white">Speicher</h2>
@@ -415,9 +417,9 @@ export default function SettingsPage() {
           </section>
 
           {/* Preferences Section */}
-          <section id="einstellungen" className="bg-[#181818] border border-white/10 rounded-2xl p-6 md:p-8 mb-16 scroll-mt-24">
+          <section id="einstellungen" className="yoriax-card mb-16 scroll-mt-24 rounded-[1.75rem] p-6 md:p-8">
             <div className="flex items-center gap-3 mb-6">
-              <Globe className="w-5 h-5 text-blue-400" />
+              <Globe className="w-5 h-5 text-primary-light" />
               <h2 className="text-xl font-bold text-white">Präferenzen</h2>
             </div>
             
@@ -428,7 +430,7 @@ export default function SettingsPage() {
               <select
                 value={i18n.language || 'de'}
                 onChange={handleLanguageChange}
-                className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all appearance-none cursor-pointer"
+                className="yoriax-input block w-full cursor-pointer appearance-none rounded-xl px-4 py-3"
               >
                 <option value="de">Deutsch</option>
                 <option value="en">English</option>

@@ -513,7 +513,7 @@ export default function PlaylistPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
@@ -522,12 +522,7 @@ export default function PlaylistPage() {
   if (!playlist) return null;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
-      {/* Background Gradient matching cover or generic */}
-      <div className="absolute top-0 left-0 right-0 h-[400px] pointer-events-none z-0">
-        <div className="w-full h-full bg-gradient-to-b from-blue-900/40 via-[#0A0A0A]/80 to-[#0A0A0A]" />
-      </div>
-
+    <div className="yoriax-page flex-1 overflow-y-auto pb-32">
       <button
         type="button"
         onClick={() => router.back()}
@@ -542,11 +537,11 @@ export default function PlaylistPage() {
         
         {/* Cover Art */}
         <div 
-          className="group/cover relative flex h-44 w-44 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-[#282828] shadow-2xl sm:h-48 sm:w-48 md:h-56 md:w-56"
+          className="group/cover relative flex h-44 w-44 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-[1.75rem] border border-primary-light/20 bg-surface-hover shadow-2xl sm:h-48 sm:w-48 md:h-56 md:w-56"
           onClick={() => isOwner && fileInputRef.current?.click()}
         >
           {playlist.id === 'daily-new-releases' ? (
-            <div className="w-full h-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 flex items-center justify-center">
+            <div className="bg-gradient-primary flex h-full w-full items-center justify-center">
               <Sparkles className="w-20 h-20 text-white" />
             </div>
           ) : playlist.cover_url ? (
@@ -641,7 +636,7 @@ export default function PlaylistPage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="relative z-10 min-h-screen bg-[#0A0A0A] px-4 py-6 md:px-10">
+      <div className="relative z-10 min-h-screen border-t border-white/5 bg-background/80 px-4 py-6 backdrop-blur-2xl md:px-10">
         
         {/* Action Bar */}
         <div className="mb-10 flex items-center justify-center gap-6 md:justify-start">
@@ -679,7 +674,7 @@ export default function PlaylistPage() {
             </button>
             
             {isMenuOpen && (
-              <div className="absolute left-0 mt-2 w-56 bg-[#282828] rounded-md shadow-lg border border-white/10 overflow-hidden z-50 py-1">
+              <div className="yoriax-card absolute left-0 z-50 mt-2 w-56 overflow-hidden rounded-xl py-1">
                 {(isOwner || isAdmin) && (
                   <>
                     <button 
@@ -761,7 +756,7 @@ export default function PlaylistPage() {
                   value={songSearchQuery}
                   onChange={(event) => handleSongSearchQueryChange(event.target.value)}
                   placeholder={t('playlist.searchSongsPlaceholder')}
-                  className="w-full rounded-2xl border border-white/10 bg-black/35 py-3.5 pl-12 pr-4 text-sm font-semibold text-white outline-none placeholder:text-white/35 focus:border-primary/60 focus:bg-black/50"
+                        className="yoriax-input w-full rounded-2xl py-3.5 pl-12 pr-4 text-sm font-semibold placeholder:text-white/35"
                   aria-label={t('playlist.searchSongsAria')}
                 />
               </label>
@@ -792,7 +787,7 @@ export default function PlaylistPage() {
                         disabled={alreadyAdded || addingSongId !== null}
                         className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] p-3 text-left transition-colors hover:border-primary/40 hover:bg-white/[0.07] disabled:cursor-default disabled:opacity-60 disabled:hover:border-white/10 disabled:hover:bg-white/[0.025]"
                       >
-                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-[#282828] flex items-center justify-center">
+                        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-hover">
                           {song.cover_url ? (
                             <Image src={song.cover_url} alt={song.title} fill sizes="48px" className="object-cover" loading="lazy" />
                           ) : (
@@ -806,7 +801,7 @@ export default function PlaylistPage() {
                         {addingSongId === song.id ? (
                           <Loader2 className="h-5 w-5 animate-spin text-primary" />
                         ) : alreadyAdded ? (
-                          <span className="inline-flex items-center gap-2 rounded-full bg-green-500/10 px-3 py-1.5 text-xs font-black text-green-400">
+                          <span className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1.5 text-xs font-black text-accent">
                             <CheckCircle2 className="h-4 w-4" />
                             {t('playlist.added')}
                           </span>
@@ -870,7 +865,7 @@ export default function PlaylistPage() {
                     </div>
                     
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="relative w-10 h-10 shrink-0 bg-[#282828] rounded flex items-center justify-center overflow-hidden">
+                      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-hover">
                         {song.cover_url ? (
                           <Image
                             src={song.cover_url}
@@ -951,7 +946,7 @@ export default function PlaylistPage() {
       {/* Edit Details Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center backdrop-blur-sm p-4" onClick={() => setIsEditModalOpen(false)}>
-          <div className="bg-[#282828] rounded-xl w-full max-w-[520px] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="yoriax-card w-full max-w-[520px] overflow-hidden rounded-[1.75rem]" onClick={e => e.stopPropagation()}>
             <div className="p-6 flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
@@ -995,13 +990,13 @@ export default function PlaylistPage() {
                     type="text"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full bg-[#3E3E3E] text-white text-sm rounded p-3 outline-none focus:bg-[#4a4a4a] transition-colors"
+                    className="yoriax-input w-full rounded-xl p-3 text-sm"
                     placeholder={t('playlist.addNamePlaceholder')}
                   />
                   <textarea 
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
-                    className="w-full bg-[#3E3E3E] text-white text-sm rounded p-3 outline-none focus:bg-[#4a4a4a] transition-colors resize-none flex-1 min-h-[100px]"
+                    className="yoriax-input min-h-[100px] w-full flex-1 resize-none rounded-xl p-3 text-sm"
                     placeholder={t('playlist.addDescPlaceholder')}
                   />
                 </div>
