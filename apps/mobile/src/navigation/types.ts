@@ -17,4 +17,5 @@ export type RootStackParamList = {
   FullscreenPlayer: undefined;
   Artists: undefined;
   PlaylistDiscover: undefined;
+  MusicPreferences: undefined;
 };

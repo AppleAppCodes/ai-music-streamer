@@ -20,6 +20,7 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import { ChartsScreen } from '../screens/ChartsScreen';
 import { ArtistsScreen } from '../screens/ArtistsScreen';
 import { PlaylistDiscoverScreen } from '../screens/PlaylistDiscoverScreen';
+import { MusicPreferencesScreen } from '../screens/MusicPreferencesScreen';
 import { MiniPlayer } from '../components/MiniPlayer';
 import { usePlayerShell } from '../lib/player-context';
 
@@ -156,6 +157,11 @@ export function RootNavigator() {
           name="PlaylistDiscover"
           component={PlaylistDiscoverScreen}
           options={{ presentation: 'card' }}
+        />
+        <Stack.Screen
+          name="MusicPreferences"
+          component={MusicPreferencesScreen}
+          options={{ presentation: 'fullScreenModal' }}
         />
       </Stack.Navigator>
       {hasActiveSong && activeRoute !== 'ForYou' ? <MiniPlayer /> : null}

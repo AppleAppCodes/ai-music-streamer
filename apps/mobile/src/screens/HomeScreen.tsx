@@ -13,6 +13,7 @@ import { useAuth } from '../lib/auth-context';
 import { loadHomeMusic, type HomeMusicData } from '../lib/music-data';
 import { readPersistedCache, writePersistedCache } from '../lib/persisted-cache';
 import { usePlayerControls } from '../lib/player-context';
+import { useMusicPreferences } from '../lib/music-preferences-context';
 import type { Song } from '../lib/types';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
@@ -35,6 +36,7 @@ const HOME_CACHE_PREFIX = 'yoriax:home:v1:';
 
 export function HomeScreen() {
   const { user } = useAuth();
+  const { favoriteGenres, revision: preferenceRevision } = useMusicPreferences();
   const navigation = useNavigation<HomeNavigation>();
   const insets = useSafeAreaInsets();
   const [data, setData] = useState<HomeMusicData | null>(null);
@@ -47,7 +49,7 @@ export function HomeScreen() {
     async function load() {
       if (!user) return;
 
-      const cacheKey = `${HOME_CACHE_PREFIX}${user.id}`;
+      const cacheKey = `${HOME_CACHE_PREFIX}${user.id}:${favoriteGenres.join(',')}`;
       let hasCachedData = false;
       setLoading(true);
       setError(null);
@@ -79,7 +81,7 @@ export function HomeScreen() {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [favoriteGenres, preferenceRevision, user]);
 
   const quickTiles = useMemo<QuickTile[]>(() => [
     {

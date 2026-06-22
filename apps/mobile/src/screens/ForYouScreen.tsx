@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { memo, type ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth-context';
+import { useMusicPreferences } from '../lib/music-preferences-context';
 import {
   loadFeedLikeCount,
   loadFeedPreview,
@@ -626,6 +627,7 @@ export function ForYouScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const isFocused = useIsFocused();
   const { user } = useAuth();
+  const { revision: preferenceRevision } = useMusicPreferences();
   const { height: itemHeight, width: itemWidth } = useWindowDimensions();
   const { playSong, reset: resetMainPlayer, setQueue } = usePlayerControls();
   const previewPlayerA = useAudioPlayer(null, PREVIEW_PLAYER_OPTIONS);
@@ -1123,7 +1125,7 @@ export function ForYouScreen() {
 
     load();
     return () => { mounted = false; };
-  }, [user, activeFeed, resetMainPlayer, stopAllPreviewPlayers]);
+  }, [user, activeFeed, preferenceRevision, resetMainPlayer, stopAllPreviewPlayers]);
 
   const clearDragSettleTimer = useCallback(() => {
     if (!dragSettleTimer.current) return;
