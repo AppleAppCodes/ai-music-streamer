@@ -350,7 +350,7 @@ export default function AudioPlayer() {
   return (
     <>
       <div
-        className={`fixed bottom-[calc(5.35rem+env(safe-area-inset-bottom))] left-3 right-3 z-50 h-16 items-center justify-between overflow-hidden rounded-2xl border border-white/12 bg-[#0c0912]/88 px-2 shadow-[0_18px_55px_rgba(0,0,0,0.58)] backdrop-blur-2xl transition-all duration-1000 md:bottom-3 md:left-[15.75rem] md:right-3 md:flex md:h-24 md:rounded-[1.55rem] md:px-4 ${currentSong ? 'flex' : 'hidden'}`}
+        className={`fixed bottom-[calc(5.35rem+env(safe-area-inset-bottom))] left-3 right-3 z-50 h-16 items-center justify-between overflow-visible rounded-2xl border border-white/12 bg-[#0c0912]/88 px-2 shadow-[0_18px_55px_rgba(0,0,0,0.58)] backdrop-blur-2xl transition-all duration-1000 md:bottom-3 md:left-[15.75rem] md:right-3 md:flex md:h-24 md:rounded-[1.55rem] md:px-4 ${currentSong ? 'flex' : 'hidden'}`}
         onClick={() => setIsMobilePlayerOpen(true)}
       >
         {/* Background container with overflow-hidden to prevent blur bleed */}
