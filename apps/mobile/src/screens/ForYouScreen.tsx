@@ -38,14 +38,18 @@ import type { RootStackParamList } from '../navigation/types';
 const DEFAULT_HOOK_DURATION_SECONDS = 20;
 
 function getHookRange(song: FeedPreviewSong | null) {
+  if (!song) {
+    return { start: 0, end: DEFAULT_HOOK_DURATION_SECONDS };
+  }
+
   const rawDuration = Number(song?.duration);
   const duration = Number.isFinite(rawDuration) && rawDuration > 0 ? rawDuration : null;
-  const rawStart = Number(song?.clip?.hook_start_seconds);
+  const rawStart = Number(song.clip.hook_start_seconds);
   const configuredStart = Number.isFinite(rawStart) ? Math.max(0, rawStart) : 0;
   const start = duration
     ? Math.min(configuredStart, Math.max(0, duration - 0.25))
     : configuredStart;
-  const rawEnd = Number(song?.clip?.hook_end_seconds);
+  const rawEnd = Number(song.clip.hook_end_seconds);
   const configuredEnd = Number.isFinite(rawEnd) && rawEnd > start
     ? rawEnd
     : start + DEFAULT_HOOK_DURATION_SECONDS;

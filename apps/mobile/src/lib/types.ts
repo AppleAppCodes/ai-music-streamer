@@ -20,7 +20,7 @@ export interface FeedClip {
 }
 
 export interface FeedPreviewSong extends Song {
-  clip?: FeedClip | null;
+  clip: FeedClip;
   likes_count?: number;
   isLiked?: boolean;
   isFollowingArtist?: boolean;
