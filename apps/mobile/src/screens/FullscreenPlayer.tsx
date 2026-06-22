@@ -281,10 +281,15 @@ export function FullscreenPlayer({ navigation }: Props) {
     <View style={styles.container}>
       {activeSong.cover_url && (
         <View style={StyleSheet.absoluteFill}>
-          <Image source={{ uri: activeSong.cover_url }} style={StyleSheet.absoluteFill} blurRadius={10} alt="" />
-          <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill} />
+          <Image 
+            source={{ uri: activeSong.cover_url }} 
+            style={StyleSheet.absoluteFill} 
+            blurRadius={50} 
+            alt="" 
+          />
+          <BlurView intensity={65} tint="dark" style={StyleSheet.absoluteFill} />
           <LinearGradient
-            colors={['rgba(12,10,18,0.4)', 'rgba(12,10,18,0.8)', '#0c0a12']}
+            colors={['rgba(12,10,18,0.25)', 'rgba(12,10,18,0.55)', 'rgba(12,10,18,0.85)']}
             style={StyleSheet.absoluteFill}
           />
         </View>
@@ -343,7 +348,7 @@ export function FullscreenPlayer({ navigation }: Props) {
               >
                 <Ionicons 
                   name={isCurrentSongLiked ? 'heart' : 'add'}
-                  size={isCurrentSongLiked ? 25 : 29}
+                  size={isCurrentSongLiked ? 21 : 25}
                   color={isAdPlaying ? theme.colors.muted : isCurrentSongLiked ? theme.colors.text : theme.colors.primaryLight}
                 />
               </TouchableOpacity>
@@ -537,13 +542,13 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primaryLight,
     borderRadius: 999,
     borderWidth: 2,
-    height: 50,
+    height: 44,
     justifyContent: 'center',
     shadowColor: theme.colors.primaryLight,
-    shadowOffset: { width: 0, height: 7 },
+    shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.24,
-    shadowRadius: 14,
-    width: 50,
+    shadowRadius: 10,
+    width: 44,
   },
   saveButtonActive: {
     backgroundColor: theme.colors.primary,
