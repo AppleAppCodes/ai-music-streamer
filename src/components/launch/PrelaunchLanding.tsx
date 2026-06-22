@@ -132,7 +132,6 @@ export default function PrelaunchLanding({
     <div className="relative min-h-dvh overflow-x-hidden bg-[#060309] text-white">
       {/* 80s Retro Grid Background */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(124,58,237,0.22),transparent_42%),radial-gradient(circle_at_80%_24%,rgba(147,51,234,0.18),transparent_38%),linear-gradient(180deg,#0a0410_0%,#050207_58%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/stardust.png")' }} />
       {/* Perspective retro grid lines */}
       <div 
         className="pointer-events-none absolute inset-0 opacity-[0.08]" 

@@ -92,13 +92,6 @@ export default async function RootLayout({
     >
       <body className="flex min-h-full flex-col overflow-x-hidden bg-background text-foreground md:h-full md:overflow-hidden">
         <PlayerLayout isAuthenticated={shouldRenderAppShell}>
-          {/* Global Film Grain Overlay */}
-          <div 
-            className="pointer-events-none fixed inset-0 z-[9999] h-full w-full opacity-[0.04]"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-            }}
-          />
           {isPrelaunchLocked ? (
             <main className="relative z-0 min-h-dvh w-full">
               {children}
@@ -108,7 +101,7 @@ export default async function RootLayout({
               {user ? <Sidebar user={user} appVersionLabel={appVersionLabel} /> : null}
               <div className="flex-1 flex flex-col relative min-w-0">
                 <Header user={user} />
-                <main className={`yoriax-app-main no-drag md:flex-1 md:overflow-y-auto md:no-scrollbar ${
+                <main className={`no-drag bg-gradient-to-b from-surface to-background md:flex-1 md:overflow-y-auto md:no-scrollbar ${
                   user
                     ? 'pb-[calc(10.25rem+env(safe-area-inset-bottom))] md:pb-32'
                     : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
