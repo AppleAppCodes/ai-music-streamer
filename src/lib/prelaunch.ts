@@ -1,5 +1,5 @@
 export function isPrelaunchLockEnabled() {
-  return process.env.YORIAX_PRELAUNCH_LOCK !== 'false';
+  return false;
 }
 
 export function isUserWhitelisted(email: string | undefined | null) {

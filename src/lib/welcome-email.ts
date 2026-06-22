@@ -72,7 +72,7 @@ function getUserDisplayName(user: User, locale: SupportedLocale) {
 }
 
 function isEarlyAccessBonusActive() {
-  return process.env.YORIAX_PRELAUNCH_LOCK !== 'false';
+  return false;
 }
 
 function createWelcomeEmailHtml({
