@@ -41,9 +41,9 @@ export default function SidebarClient({
   };
 
   return (
-    <aside className="relative hidden h-full w-60 shrink-0 flex-col overflow-hidden border-r border-white/8 bg-[linear-gradient(180deg,rgba(23,17,31,0.96),rgba(5,5,5,0.98))] pb-24 pt-5 md:flex">
-      <div className="pointer-events-none absolute -left-24 top-24 h-56 w-56 rounded-full bg-violet-600/12 blur-[80px]" />
-      <div className="pointer-events-none absolute -right-28 bottom-20 h-52 w-52 rounded-full bg-teal-400/8 blur-[80px]" />
+    <aside className="yoriax-retro-sidebar relative hidden h-full w-60 shrink-0 flex-col overflow-hidden border-r border-white/8 pb-24 pt-5 md:flex">
+      <div className="pointer-events-none absolute -left-24 top-24 h-56 w-56 rounded-full bg-fuchsia-600/14 blur-[80px]" />
+      <div className="pointer-events-none absolute -right-28 bottom-20 h-52 w-52 rounded-full bg-cyan-400/9 blur-[80px]" />
 
       <div className="relative mb-8 px-4">
         <Link

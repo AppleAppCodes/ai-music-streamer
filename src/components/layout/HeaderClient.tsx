@@ -114,7 +114,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
   }, []);
 
   return (
-    <header className="glass-panel sticky top-0 z-50 flex h-14 w-full items-center justify-between gap-2 border-x-0 border-t-0 border-b-white/8 px-3 shadow-[0_12px_38px_rgba(0,0,0,0.24)] sm:gap-3 md:h-16 md:px-6">
+    <header className="yoriax-retro-header sticky top-0 z-50 flex h-14 w-full items-center justify-between gap-2 border-x-0 border-t-0 border-b-white/8 px-3 shadow-[0_12px_38px_rgba(0,0,0,0.24)] sm:gap-3 md:h-16 md:px-6">
       <div className="hidden w-1/3 items-center md:flex">
         {!user ? (
           <Link href="/" className="group flex items-center gap-3" aria-label="Yoriax Home">
