@@ -132,13 +132,26 @@ async function loadSongs(limit = 80, orderBy: 'created_at' | 'plays' = 'created_
 
 async function loadSongSignals(userId: string) {
   const client = requireClient();
-  const [{ data: likedSongs }, { data: playlists }, { data: savedSongs }, { data: playbackHistory }] =
+  const [
+    { data: likedSongs },
+    { data: playlists },
+    { data: savedSongs },
+    { data: playbackHistory },
+    { data: preferences, error: preferencesError },
+  ] =
     await Promise.all([
       client.from('liked_songs').select('song_id').eq('user_id', userId),
       client.from('playlists').select('id').eq('user_id', userId),
       client.from('feed_saves').select('song_id').eq('user_id', userId),
       client.from('user_song_plays').select('song_id, play_count, last_played_at').eq('user_id', userId),
+      client
+        .from('user_music_preferences')
+        .select('favorite_genres')
+        .eq('user_id', userId)
+        .maybeSingle(),
     ]);
+
+  if (preferencesError) throw new Error(preferencesError.message);
 
   const playlistIds = ((playlists || []) as Array<{ id: string }>).map(({ id }) => id);
   const { data: playlistSongs } =
@@ -147,6 +160,7 @@ async function loadSongSignals(userId: string) {
       : { data: [] };
 
   return {
+    favoriteGenres: Array.isArray(preferences?.favorite_genres) ? preferences.favorite_genres : [],
     likedSongs: (likedSongs || []) as SongSignal[],
     playlistSongs: (playlistSongs || []) as SongSignal[],
     savedSongs: (savedSongs || []) as SongSignal[],
@@ -284,7 +298,6 @@ export async function loadFeedPreview(userId: string): Promise<FeedPreviewSong[]
   const songs = feedRows.map(mapSong);
   const signals = await signalsPromise;
   const ranked = getPersonalizedSongs(songs, signals, songs.length)
-    .filter((song) => song.genre?.trim().toLocaleLowerCase() !== 'chillhop')
     .slice(0, 12);
   const rowById = new Map(feedRows.map((row) => [row.id, row]));
 

@@ -263,6 +263,27 @@ export function ProfileScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.accountSection}>
+          <Text style={styles.sectionLabel}>Personalisierung</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            activeOpacity={0.84}
+            onPress={() => navigation.navigate('MusicPreferences')}
+            style={styles.preferenceCard}
+          >
+            <View style={styles.preferenceIcon}>
+              <Ionicons name="sparkles" size={22} color={theme.colors.primaryLight} />
+            </View>
+            <View style={styles.preferenceCopy}>
+              <Text style={styles.preferenceTitle}>Lieblingsgenres</Text>
+              <Text style={styles.preferenceText}>
+                Passe die Auswahl für Home und deinen Für-dich-Feed jederzeit an.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.accountSection}>
           <Text style={styles.sectionLabel}>Account</Text>
           <View style={styles.dangerCard}>
             <View style={styles.dangerHeader}>
@@ -440,6 +461,38 @@ const styles = StyleSheet.create({
   inputHint: {
     color: theme.colors.muted,
     fontSize: 12,
+  },
+  preferenceCard: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 13,
+    padding: 17,
+  },
+  preferenceCopy: {
+    flex: 1,
+  },
+  preferenceIcon: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: 22,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  preferenceText: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  preferenceTitle: {
+    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '900',
   },
   cardFooter: {
     alignItems: 'flex-end',

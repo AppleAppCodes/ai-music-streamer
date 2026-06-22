@@ -6,18 +6,22 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/lib/auth-context';
 import { hasSupabaseConfig } from './src/lib/env';
 import { PlayerProvider, usePlayerShell } from './src/lib/player-context';
+import { MusicPreferencesProvider, useMusicPreferences } from './src/lib/music-preferences-context';
 import { AuthScreen } from './src/screens/AuthScreen';
+import { MusicPreferencesOnboarding } from './src/screens/MusicPreferencesScreen';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { theme } from './src/theme';
-import { YoriaxLogo, YoriaxMark } from './src/components/YoriaxUI';
+import { YoriaxLoginLogo, YoriaxMark } from './src/components/YoriaxUI';
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <PlayerProvider>
-          <AppShell />
-        </PlayerProvider>
+        <MusicPreferencesProvider>
+          <PlayerProvider>
+            <AppShell />
+          </PlayerProvider>
+        </MusicPreferencesProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
@@ -25,8 +29,10 @@ export default function App() {
 
 function AppShell() {
   const { initializing, user } = useAuth();
+  const { loading: preferencesLoading, onboardingCompleted } = useMusicPreferences();
   const { reset } = usePlayerShell();
   const signedIn = Boolean(user);
+  const appInitializing = initializing || (signedIn && preferencesLoading);
   const headerStatus = getHeaderStatus(initializing, user?.email ?? null);
 
   useEffect(() => {
@@ -38,13 +44,13 @@ function AppShell() {
       <StatusBar style="light" />
       {!signedIn && !initializing && (
         <View style={styles.header}>
-          <YoriaxLogo />
+          <YoriaxLoginLogo />
           <Text style={styles.connection} numberOfLines={1}>{headerStatus}</Text>
         </View>
       )}
 
       <View style={{ flex: 1 }}>
-        {initializing ? (
+        {appInitializing ? (
           <View style={styles.launchScreen}>
             <LinearGradient
               colors={['rgba(124,58,237,0.32)', 'rgba(45,212,191,0.12)', 'transparent']}
@@ -57,6 +63,8 @@ function AppShell() {
             <Text style={styles.launchSubtitle}>Dein Sound wird vorbereitet.</Text>
             <ActivityIndicator color={theme.colors.primaryLight} style={styles.launchSpinner} />
           </View>
+        ) : signedIn && !onboardingCompleted ? (
+          <MusicPreferencesOnboarding />
         ) : signedIn ? (
           <RootNavigator />
         ) : (

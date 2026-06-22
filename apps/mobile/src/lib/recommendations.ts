@@ -1,4 +1,5 @@
 import type { Song } from './types';
+import { getGenreId } from './genre-catalog';
 
 export interface SongSignal {
   song_id: string;
@@ -10,6 +11,7 @@ export interface PlaybackSignal extends SongSignal {
 }
 
 interface RecommendationSignals {
+  favoriteGenres?: string[];
   likedSongs: SongSignal[];
   playlistSongs: SongSignal[];
   savedSongs: SongSignal[];
@@ -72,11 +74,12 @@ export function getPersonalizedSongs(
   const playlistIds = new Set(signals.playlistSongs.map((item) => item.song_id));
   const savedIds = new Set(signals.savedSongs.map((item) => item.song_id));
   const dateSeed = getLocalDateSeed(date);
+  signals.favoriteGenres?.forEach((genre) => increase(genreAffinity, getGenreId(genre), 18));
 
   const addAffinity = (songId: string, genreWeight: number, artistWeight: number) => {
     const song = songsById.get(songId);
     if (!song) return;
-    increase(genreAffinity, normalize(song.genre), genreWeight);
+    increase(genreAffinity, getGenreId(song.genre), genreWeight);
     increase(artistAffinity, normalize(song.artist_name || song.creatorName), artistWeight);
   };
 
@@ -103,7 +106,7 @@ export function getPersonalizedSongs(
       const popularity = Math.log10(Math.max(0, song.plays || 0) + 1) * 1.25;
       const discoveryBonus = likedIds.has(song.id) || playlistIds.has(song.id) || savedIds.has(song.id) ? 0 : 4;
       const score =
-        (genreAffinity.get(normalize(song.genre)) || 0) +
+        (genreAffinity.get(getGenreId(song.genre)) || 0) +
         (artistAffinity.get(normalize(song.artist_name || song.creatorName)) || 0) +
         (likedIds.has(song.id) ? 2 : 0) +
         (playlistIds.has(song.id) ? 1 : 0) +
