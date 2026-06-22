@@ -439,24 +439,18 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
   }, [quickPlayLoading, t, startSongQueue]);
 
   return (
-    <div className="yoriax-retro-home relative flex min-h-screen flex-col gap-8 overflow-hidden pb-12 pt-4 sm:gap-12 sm:pt-6">
-      <div className="yoriax-retro-sun pointer-events-none absolute right-[8%] top-8 z-0 hidden h-56 w-56 rounded-full sm:block" />
-      <div className="yoriax-retro-horizon pointer-events-none absolute inset-x-0 top-[310px] z-0 h-px" />
-      <div className="yoriax-retro-grid pointer-events-none absolute inset-x-0 top-[310px] z-0 h-[430px]" />
+    <div className="relative flex min-h-screen flex-col gap-8 overflow-hidden pb-12 pt-4 sm:gap-12 sm:pt-6">
 
       {/* Dynamic Blurred Backgrounds */}
       <div className="absolute top-0 left-0 w-full h-[500px] pointer-events-none z-0 overflow-hidden">
 
-        {/* Default retro ambient glow */}
+        {/* Default Ambient Purple Glow */}
         <div
-          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out blur-[52px] z-0 ${hoveredBg ? 'opacity-25' : 'opacity-100'}`}
-          style={{
-            backgroundImage:
-              'radial-gradient(ellipse at 62% 8%, rgba(255,52,103,0.62) 0%, rgba(147,32,166,0.4) 28%, rgba(36,12,76,0.24) 58%, transparent 78%)',
-          }}
+          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out blur-[60px] z-0 ${hoveredBg ? 'opacity-0' : 'opacity-60'}`}
+          style={{ backgroundImage: "linear-gradient(135deg, #4f46e5 0%, #312e81 100%)" }}
         />
 
-        <div className="absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(7,2,16,0.06),rgba(8,3,18,0.55)_58%,#080310_100%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black z-10 opacity-50" />
 
         {allBackgroundImages.map((img) => {
           const isUrl = img.startsWith('/') || img.startsWith('http');
@@ -471,17 +465,17 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
           );
         })}
 
-        <div className="absolute inset-0 z-20 bg-[linear-gradient(180deg,transparent_0%,rgba(8,3,18,0.54)_55%,#080310_100%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/80 to-black z-20" />
       </div>
-      <div className="pointer-events-none absolute right-[-120px] top-24 z-0 h-72 w-72 rounded-full bg-fuchsia-500/18 blur-[90px]" />
-      <div className="pointer-events-none absolute left-[-120px] top-72 z-0 h-72 w-72 rounded-full bg-cyan-300/10 blur-[100px]" />
+      <div className="pointer-events-none absolute right-[-120px] top-24 z-0 h-72 w-72 rounded-full bg-primary/20 blur-[90px]" />
+      <div className="pointer-events-none absolute left-[-120px] top-72 z-0 h-72 w-72 rounded-full bg-accent/10 blur-[100px]" />
 
       {/* Quick Access / Greeting Section */}
       <section className="px-4 sm:px-8 relative z-10">
         <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="mb-2 text-xs font-black uppercase tracking-[0.34em] text-cyan-200/80">Yoriax</p>
-            <h1 className="yoriax-retro-title text-3xl font-black tracking-tight text-white sm:text-5xl">{greeting}</h1>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-accent/80">Yoriax</p>
+            <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-md sm:text-5xl">{greeting}</h1>
             <p className="mt-3 hidden max-w-2xl text-sm text-white/55 sm:block">{t('home.subtitle')}</p>
           </div>
         </div>
@@ -517,7 +511,7 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
             return (
               <div
                 key={item.title}
-                className="yoriax-retro-quick-card group relative flex h-14 items-center overflow-hidden rounded-xl border border-white/10 shadow-[0_14px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_54px_rgba(0,0,0,0.42)] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-cyan-300 sm:h-[72px] sm:rounded-2xl"
+                className="group relative flex h-14 items-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.07] shadow-[0_14px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.12] hover:shadow-[0_20px_54px_rgba(0,0,0,0.38)] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent sm:h-[72px] sm:rounded-2xl"
                 onMouseEnter={() => {
                   setHoveredItem(item.title);
                   setSlideIndex(item.images && item.images.length > 1 ? 1 : 0);
