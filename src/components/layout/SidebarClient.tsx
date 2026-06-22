@@ -41,20 +41,34 @@ export default function SidebarClient({
   };
 
   return (
-    <aside className="relative hidden h-full w-60 shrink-0 flex-col overflow-hidden border-r border-white/8 bg-[linear-gradient(180deg,rgba(23,17,31,0.96),rgba(5,5,5,0.98))] pb-24 pt-6 md:flex">
-      <div className="pointer-events-none absolute -left-24 top-24 h-56 w-56 rounded-full bg-violet-600/12 blur-[80px]" />
-      <div className="pointer-events-none absolute -right-28 bottom-20 h-52 w-52 rounded-full bg-teal-400/8 blur-[80px]" />
+    <aside className="yoriax-retro-sidebar relative hidden h-full w-60 shrink-0 flex-col overflow-hidden border-r border-white/8 pb-24 pt-5 md:flex">
+      <div className="pointer-events-none absolute -left-24 top-24 h-56 w-56 rounded-full bg-fuchsia-600/14 blur-[80px]" />
+      <div className="pointer-events-none absolute -right-28 bottom-20 h-52 w-52 rounded-full bg-cyan-400/9 blur-[80px]" />
 
-      <div className="relative mb-8 px-5">
-        <Link href="/" className="flex items-center gap-4 group">
+      <div className="relative mb-8 px-4">
+        <Link
+          href="/"
+          className="group flex items-center gap-3 rounded-2xl border border-fuchsia-400/16 bg-black/20 p-2.5 shadow-[0_14px_36px_rgba(0,0,0,0.28)] transition-colors hover:border-fuchsia-300/30 hover:bg-fuchsia-500/[0.06]"
+        >
           <Image
-            src="/brand/yoriax-logo.png"
+            src="/brand/yoriax-ios-app-icon.png"
             alt="YORIAX"
-            width={164}
-            height={38}
+            width={48}
+            height={48}
             priority
-            className="h-9 w-auto transition-opacity duration-300 group-hover:opacity-85"
+            className="h-11 w-11 rounded-xl object-cover shadow-[0_0_24px_rgba(217,70,239,0.42)] transition-transform duration-300 group-hover:scale-[1.03]"
           />
+          <span className="min-w-0">
+            <span
+              className="block truncate text-[14px] font-bold tracking-[0.22em] text-white"
+              style={{ fontFamily: 'var(--font-syncopate)' }}
+            >
+              YORIAX
+            </span>
+            <span className="mt-1 block text-[8px] font-black uppercase tracking-[0.32em] text-cyan-200/60">
+              AI Music
+            </span>
+          </span>
         </Link>
       </div>
 

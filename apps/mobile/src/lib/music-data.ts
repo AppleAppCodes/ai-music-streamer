@@ -695,6 +695,31 @@ export async function addSongToPlaylist(playlistId: string, songId: string): Pro
   if (error) throw new Error(error.message);
 }
 
+export async function removeSongFromPlaylist(playlistId: string, songId: string): Promise<void> {
+  const client = requireClient();
+  const { error } = await client
+    .from('playlist_songs')
+    .delete()
+    .eq('playlist_id', playlistId)
+    .eq('song_id', songId);
+
+  if (error) throw new Error(error.message);
+}
+
+export async function getPlaylistIdsForSong(playlistIds: string[], songId: string): Promise<string[]> {
+  const client = requireClient();
+  if (playlistIds.length === 0) return [];
+
+  const { data, error } = await client
+    .from('playlist_songs')
+    .select('playlist_id')
+    .eq('song_id', songId)
+    .in('playlist_id', playlistIds);
+
+  if (error) throw new Error(error.message);
+  return (data || []).map((row) => row.playlist_id);
+}
+
 export async function loadCreatedSongs(userId: string): Promise<Song[]> {
   const client = requireClient();
   const { data, error } = await client
