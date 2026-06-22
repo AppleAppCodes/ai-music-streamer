@@ -45,29 +45,21 @@ export default function SidebarClient({
       <div className="pointer-events-none absolute -left-24 top-24 h-56 w-56 rounded-full bg-violet-600/12 blur-[80px]" />
       <div className="pointer-events-none absolute -right-28 bottom-20 h-52 w-52 rounded-full bg-teal-400/8 blur-[80px]" />
 
-      <div className="relative mb-8 px-4">
-        <Link
-          href="/"
-          className="group flex items-center gap-3 rounded-2xl border border-fuchsia-400/16 bg-black/20 p-2.5 shadow-[0_14px_36px_rgba(0,0,0,0.28)] transition-colors hover:border-fuchsia-300/30 hover:bg-fuchsia-500/[0.06]"
-        >
+      <div className="relative mb-8 px-6">
+        <Link href="/" className="group flex items-center gap-3" aria-label="YORIAX Home">
           <Image
             src="/brand/yoriax-logo-symbol.png"
             alt="YORIAX"
-            width={48}
-            height={48}
+            width={40}
+            height={40}
             priority
-            className="h-11 w-11 rounded-xl object-cover shadow-[0_0_24px_rgba(217,70,239,0.42)] transition-transform duration-300 group-hover:scale-[1.03]"
+            className="h-9 w-9 rounded-xl object-cover transition-transform duration-300 group-hover:scale-105"
           />
-          <span className="min-w-0">
-            <span
-              className="block truncate text-[14px] font-bold tracking-[0.22em] text-white"
-              style={{ fontFamily: 'var(--font-syncopate)' }}
-            >
-              YORIAX
-            </span>
-            <span className="mt-1 block text-[8px] font-black uppercase tracking-[0.32em] text-cyan-200/60">
-              AI Music
-            </span>
+          <span
+            className="text-[15px] font-bold tracking-[0.24em] text-white"
+            style={{ fontFamily: 'var(--font-syncopate)' }}
+          >
+            YORIAX
           </span>
         </Link>
       </div>
