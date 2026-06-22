@@ -131,13 +131,13 @@ export default function PrelaunchLanding({
   return (
     <div className="relative min-h-dvh overflow-x-hidden bg-[#060309] text-white">
       {/* 80s Retro Grid Background */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(220,38,38,0.22),transparent_42%),radial-gradient(circle_at_80%_24%,rgba(147,51,234,0.18),transparent_38%),linear-gradient(180deg,#0a0410_0%,#050207_58%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(124,58,237,0.22),transparent_42%),radial-gradient(circle_at_80%_24%,rgba(147,51,234,0.18),transparent_38%),linear-gradient(180deg,#0a0410_0%,#050207_58%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/stardust.png")' }} />
       {/* Perspective retro grid lines */}
       <div 
         className="pointer-events-none absolute inset-0 opacity-[0.08]" 
         style={{ 
-          backgroundImage: 'linear-gradient(rgba(239, 68, 68, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(239, 68, 68, 0.3) 1px, transparent 1px)', 
+          backgroundImage: 'linear-gradient(rgba(124, 58, 237, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(124, 58, 237, 0.3) 1px, transparent 1px)', 
           backgroundSize: '40px 40px',
           maskImage: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.8))',
           WebkitMaskImage: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.8))'
@@ -148,20 +148,18 @@ export default function PrelaunchLanding({
         <header className="flex items-center justify-between gap-4">
           <Link href="/" aria-label={t.homeAria} className="inline-flex items-center gap-3">
             <Image
-              src="/brand/yoriax-logo-symbol.png"
-              alt="YORIAX Logo Symbol"
-              width={42}
-              height={42}
+              src="/brand/yoriax-logo.png"
+              alt="YORIAX"
+              width={160}
+              height={36}
               priority
-              className="h-9 w-9 rounded-xl border border-red-500/30 shadow-[0_0_12px_rgba(239,68,68,0.35)]"
+              className="h-8 w-auto"
+              style={{ filter: 'drop-shadow(0 0 12px rgba(124,58,237,0.4))' }}
             />
-            <span className="font-serif text-2xl font-black uppercase tracking-[0.14em] text-red-500" style={{ textShadow: '0 0 8px rgba(239,68,68,0.7), 0 0 16px rgba(239,68,68,0.3)' }}>
-              Yoriax
-            </span>
           </Link>
           <Link
             href="/login"
-            className="rounded-full border border-red-500/30 bg-red-950/15 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.15)] transition hover:border-red-500/60 hover:bg-red-900/30 hover:text-red-200 hover:shadow-[0_0_16px_rgba(239,68,68,0.35)]"
+            className="rounded-full border border-purple-500/30 bg-purple-950/15 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-teal-400 shadow-[0_0_10px_rgba(124,58,237,0.15)] transition hover:border-purple-500/60 hover:bg-purple-900/30 hover:text-purple-200 hover:shadow-[0_0_16px_rgba(124,58,237,0.35)]"
           >
             {t.login}
           </Link>
@@ -169,12 +167,12 @@ export default function PrelaunchLanding({
 
         <section className="grid flex-1 items-center gap-10 py-12 md:grid-cols-[1.05fr_0.95fr] md:py-14 lg:py-16">
           <div>
-            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-950/20 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-red-400 shadow-[0_0_12px_rgba(239,68,68,0.15)]">
-              <LockKeyhole className="h-4 w-4 text-red-500" />
+            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-950/20 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-teal-400 shadow-[0_0_12px_rgba(124,58,237,0.15)]">
+              <LockKeyhole className="h-4 w-4 text-purple-500" />
               {t.badge}
             </p>
             <h1 className="max-w-3xl font-serif text-5xl font-extrabold leading-[0.95] tracking-tight text-white sm:text-6xl md:text-7xl">
-              <span className="block text-red-500 uppercase tracking-widest" style={{ textShadow: '0 0 12px rgba(220,38,38,0.9), 0 0 24px rgba(220,38,38,0.4)' }}>
+              <span className="block text-purple-500 uppercase tracking-widest" style={{ textShadow: '0 0 12px rgba(124,58,237,0.9), 0 0 24px rgba(124,58,237,0.4)' }}>
                 YORIAX
               </span>
               <span className="block text-white font-sans text-3xl font-light tracking-wide mt-3 sm:text-4xl md:text-5xl">
@@ -197,17 +195,17 @@ export default function PrelaunchLanding({
                   </p>
                 </div>
               ) : (
-                <div className="relative overflow-hidden rounded-[2rem] border border-red-500/25 bg-[#0e0714]/60 p-4 shadow-[0_0_40px_rgba(239,68,68,0.15)] backdrop-blur-xl sm:p-5">
-                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(239,68,68,0.3),transparent_40%),radial-gradient(circle_at_88%_55%,rgba(45,212,191,0.2),transparent_42%)]" />
+                <div className="relative overflow-hidden rounded-[2rem] border border-purple-500/25 bg-[#0e0714]/60 p-4 shadow-[0_0_40px_rgba(124,58,237,0.15)] backdrop-blur-xl sm:p-5">
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(124,58,237,0.3),transparent_40%),radial-gradient(circle_at_88%_55%,rgba(45,212,191,0.2),transparent_42%)]" />
                   <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                      <p className="mb-1 text-xs font-black uppercase tracking-[0.2em] text-red-400">Early Access</p>
+                      <p className="mb-1 text-xs font-black uppercase tracking-[0.2em] text-teal-400">Early Access</p>
                       <h2 className="text-2xl font-black tracking-tight text-white">{t.ctaHeadline}</h2>
                       <p className="mt-2 text-sm leading-6 text-white/60">{t.ctaSubline}</p>
                     </div>
                     <Link
                       href="/login?mode=register&bonus=early"
-                      className="inline-flex shrink-0 items-center justify-center rounded-full bg-red-600 border border-red-400 px-6 py-4 text-sm font-black uppercase tracking-[0.16em] text-white shadow-[0_0_24px_rgba(239,68,68,0.5)] transition hover:scale-[1.02] hover:bg-red-500 hover:shadow-[0_0_32px_rgba(239,68,68,0.7)] active:scale-[0.98]"
+                      className="inline-flex shrink-0 items-center justify-center rounded-full bg-purple-600 border border-teal-400 px-6 py-4 text-sm font-black uppercase tracking-[0.16em] text-white shadow-[0_0_24px_rgba(124,58,237,0.5)] transition hover:scale-[1.02] hover:bg-purple-500 hover:shadow-[0_0_32px_rgba(124,58,237,0.7)] active:scale-[0.98]"
                     >
                       {t.cta}
                     </Link>
@@ -222,9 +220,9 @@ export default function PrelaunchLanding({
               )}
             </div>
 
-            <div className="mt-6 max-w-2xl rounded-3xl border border-red-500/15 bg-black/40 p-5 backdrop-blur-xl md:mb-4 shadow-[0_0_20px_rgba(239,68,68,0.05)]">
-              <p className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-red-400">
-                <Radio className="h-4 w-4 text-red-500 animate-pulse" />
+            <div className="mt-6 max-w-2xl rounded-3xl border border-purple-500/15 bg-black/40 p-5 backdrop-blur-xl md:mb-4 shadow-[0_0_20px_rgba(124,58,237,0.05)]">
+              <p className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-teal-400">
+                <Radio className="h-4 w-4 text-purple-500 animate-pulse" />
                 {t.infoEyebrow}
               </p>
               <h2 className="text-2xl font-black tracking-tight text-white">{t.infoTitle}</h2>
@@ -232,7 +230,7 @@ export default function PrelaunchLanding({
               <div className="mt-4 grid gap-2">
                 {t.points.map((point) => (
                   <div key={point} className="flex items-start gap-3 text-sm font-semibold leading-5 text-white/70">
-                    <Star className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                    <Star className="mt-0.5 h-4 w-4 shrink-0 text-teal-400" />
                     {point}
                   </div>
                 ))}
@@ -252,12 +250,12 @@ export default function PrelaunchLanding({
           </div>
 
           <div className="relative">
-            <div className="absolute -inset-8 rounded-[3rem] bg-gradient-to-br from-red-600/20 via-purple-600/10 to-transparent blur-3xl" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-red-500/20 bg-black/50 p-5 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl sm:p-6">
-              <div className="rounded-[1.5rem] border border-red-500/15 bg-black/60 p-5 shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]">
+            <div className="absolute -inset-8 rounded-[3rem] bg-gradient-to-br from-purple-600/20 via-purple-600/10 to-transparent blur-3xl" />
+            <div className="relative overflow-hidden rounded-[2rem] border border-purple-500/20 bg-black/50 p-5 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl sm:p-6">
+              <div className="rounded-[1.5rem] border border-purple-500/15 bg-black/60 p-5 shadow-[inset_0_0_20px_rgba(124,58,237,0.05)]">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-950/40 border border-red-500/20 text-red-400 shadow-[0_0_12px_rgba(239,68,68,0.25)]">
-                    <TicketCheck className="h-6 w-6 text-red-500" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-950/40 border border-purple-500/20 text-teal-400 shadow-[0_0_12px_rgba(124,58,237,0.25)]">
+                    <TicketCheck className="h-6 w-6 text-purple-500" />
                   </div>
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.18em] text-white/40">{t.bonusEyebrow}</p>
@@ -266,8 +264,8 @@ export default function PrelaunchLanding({
                 </div>
                 <div className="mt-6 grid gap-3">
                   {t.bonusItems.map((item) => (
-                    <div key={item} className="flex items-center gap-3 rounded-2xl bg-red-950/20 px-4 py-3 text-sm font-semibold text-white/70 border border-red-500/5">
-                      <Sparkles className="h-4 w-4 text-red-400" />
+                    <div key={item} className="flex items-center gap-3 rounded-2xl bg-purple-950/20 px-4 py-3 text-sm font-semibold text-white/70 border border-purple-500/5">
+                      <Sparkles className="h-4 w-4 text-teal-400" />
                       {item}
                     </div>
                   ))}
