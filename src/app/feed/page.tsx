@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
+  Check,
   ChevronDown,
   ChevronUp,
   Compass,
@@ -380,13 +381,21 @@ const FeedCard = React.memo(function FeedCard({
         ) : null}
 
         <div className="absolute right-0 top-1/2 z-20 flex -translate-y-[18%] flex-col items-center gap-4 text-white" onPointerDown={(event) => event.stopPropagation()}>
-          <button type="button" onClick={onFollow} className="group relative" aria-label={following ? t('feed.unfollow', { artist: displayArtist }) : t('feed.follow', { artist: displayArtist })}>
-            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-violet-300/40 bg-violet-950 text-sm font-black shadow-[0_0_24px_rgba(124,58,237,0.28)]">
-              {avatarUrl ? <Image src={avatarUrl} alt={displayArtist} width={48} height={48} className="h-full w-full object-cover" /> : displayArtist.slice(0, 1).toUpperCase()}
-            </span>
-            <span className="absolute -bottom-2 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border-2 border-[#08050c] bg-[#160d25] text-violet-300">
-              <Plus className="h-4 w-4" strokeWidth={3.5} />
-            </span>
+          <button type="button" onClick={onFollow} className="group flex flex-col items-center" aria-label={following ? t('feed.unfollow', { artist: displayArtist }) : t('feed.follow', { artist: displayArtist })}>
+            <div className="relative flex h-12 w-12 items-center justify-center">
+              <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-violet-300/40 bg-violet-950 text-sm font-black shadow-[0_0_24px_rgba(124,58,237,0.28)]">
+                {avatarUrl ? <Image src={avatarUrl} alt={displayArtist} width={48} height={48} className="h-full w-full object-cover" /> : displayArtist.slice(0, 1).toUpperCase()}
+              </span>
+              {following ? (
+                <span className="absolute -bottom-1.5 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border border-violet-300/40 bg-[#160d25] text-violet-300 shadow-lg">
+                  <Check className="h-3 w-3" strokeWidth={3} />
+                </span>
+              ) : (
+                <span className="absolute -bottom-1.5 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border border-[#08050c] bg-rose-500 text-white shadow-lg">
+                  <Plus className="h-3 w-3" strokeWidth={3.5} />
+                </span>
+              )}
+            </div>
             <span className="mt-3 block text-[10px] font-bold text-white/85">{following ? t('feed.modes.following') : t('feed.followAction')}</span>
           </button>
 
