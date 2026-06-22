@@ -461,6 +461,10 @@ export function ForYouScreen() {
   const previewPlayerB = useAudioPlayer(null, PREVIEW_PLAYER_OPTIONS);
   const [activeFeed, setActiveFeed] = useState<'foryou' | 'following' | 'explore'>('foryou');
   const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
+  const songsRef = useRef(songs);
+  useEffect(() => {
+    songsRef.current = songs;
+  }, [songs]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -546,7 +550,7 @@ export function ForYouScreen() {
 
   const preparePreviewSlot = useCallback((slotKey: PreviewSlotKey, index: number): Promise<boolean> => {
     if (!isFocused) return Promise.resolve(false);
-    const song = songs[index];
+    const song = songsRef.current[index];
     if (!song?.audio_url) return Promise.resolve(false);
 
     const { player, state } = getPreviewSlot(slotKey);
@@ -594,7 +598,7 @@ export function ForYouScreen() {
 
     state.pending = pending;
     return pending;
-  }, [getPreviewSlot, isFocused, songs]);
+  }, [getPreviewSlot, isFocused]);
 
   const findPreparedSlot = useCallback((index: number): PreviewSlotKey | null => {
     if (previewSlotA.current.index === index && previewSlotA.current.ready) return 'a';
@@ -687,7 +691,7 @@ export function ForYouScreen() {
     }
 
     const { player, state } = getPreviewSlot(slotKey);
-    const song = state.index == null ? null : songs[state.index];
+    const song = state.index == null ? null : songsRef.current[state.index];
     if (!song || state.songId !== song.id) return false;
 
     const token = state.token;
@@ -731,13 +735,14 @@ export function ForYouScreen() {
     setFeedPlayerVolume(player, 1);
     setFeedPlayerMuted(player, false);
     return true;
-  }, [getPreviewSlot, isFocused, pausePreviewSlot, songs]);
+  }, [getPreviewSlot, isFocused, pausePreviewSlot]);
 
   const transitionToIndex = useCallback(async (index: number, force = false) => {
     if (!isFocused) return;
-    if (songs.length === 0) return;
-    const nextIndex = Math.max(0, Math.min(songs.length - 1, index));
-    const nextSong = songs[nextIndex];
+    const currentSongs = songsRef.current;
+    if (currentSongs.length === 0) return;
+    const nextIndex = Math.max(0, Math.min(currentSongs.length - 1, index));
+    const nextSong = currentSongs[nextIndex];
     const previousIndex = activeIndexRef.current;
     activeIndexRef.current = nextIndex;
     setActiveIndex((currentIndex) => currentIndex === nextIndex ? currentIndex : nextIndex);
@@ -790,7 +795,7 @@ export function ForYouScreen() {
     currentHookSongId.current = nextSong.id;
     const swipeDirection = nextIndex >= previousIndex ? 1 : -1;
     const continuationIndex = nextIndex + swipeDirection;
-    if (continuationIndex >= 0 && continuationIndex < songs.length) {
+    if (continuationIndex >= 0 && continuationIndex < currentSongs.length) {
       void ensurePreviewSlot(continuationIndex);
     }
 
@@ -805,7 +810,6 @@ export function ForYouScreen() {
     isFocused,
     pausePreviewSlot,
     queueNeighborPrewarm,
-    songs,
   ]);
 
   useEffect(() => {
@@ -821,7 +825,7 @@ export function ForYouScreen() {
         }
 
         const state = slotKey === 'a' ? previewSlotA.current : previewSlotB.current;
-        const song = state.index == null ? null : songs[state.index];
+        const song = state.index == null ? null : songsRef.current[state.index];
         if (!song || state.songId !== song.id) return;
 
         const { start, end } = getHookRange(song);
@@ -867,7 +871,7 @@ export function ForYouScreen() {
       subscriptionA.remove();
       subscriptionB.remove();
     };
-  }, [previewPlayerA, previewPlayerB, songs]);
+  }, [previewPlayerA, previewPlayerB]);
 
   useEffect(() => {
     let mounted = true;
@@ -943,7 +947,7 @@ export function ForYouScreen() {
     }
 
     resetMainPlayer();
-    if (!loading && songs.length > 0) {
+    if (!loading && songsRef.current.length > 0) {
       void transitionToIndex(activeIndexRef.current, true);
     }
 
@@ -957,7 +961,6 @@ export function ForYouScreen() {
     isFocused,
     loading,
     resetMainPlayer,
-    songs.length,
     stopAllPreviewPlayers,
     transitionToIndex,
   ]);
