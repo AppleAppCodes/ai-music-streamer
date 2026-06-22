@@ -6,14 +6,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
-  Check,
   ChevronDown,
   ChevronUp,
   Compass,
   Heart,
   Loader2,
   Music2,
-  Play,
   Plus,
   Save,
   Settings2,
@@ -54,8 +52,6 @@ interface FeedProfile {
 
 type FeedSongRecord = Song & {
   profiles?: FeedProfile | null;
-  song_feed_clips?: FeedClip | FeedClip[] | null;
-  song_feed_stats?: FeedStats | FeedStats[] | null;
 };
 
 type FeedSong = Song & {
@@ -87,13 +83,7 @@ interface FeedCardProps {
 
 const DEFAULT_HOOK_DURATION_SECONDS = 20;
 
-function getSingleRelation<T>(relation?: T | T[] | null): T | null {
-  if (Array.isArray(relation)) return relation[0] || null;
-  return relation || null;
-}
-
-function getClip(record: FeedSongRecord): FeedClip {
-  const relation = getSingleRelation(record.song_feed_clips);
+function getClip(record: FeedSongRecord, relation?: FeedClip | null): FeedClip {
   const fallbackEnd = Math.max(1, Math.min(record.duration || DEFAULT_HOOK_DURATION_SECONDS, DEFAULT_HOOK_DURATION_SECONDS));
 
   const rawStart = Math.max(0, Number(relation?.hook_start_seconds) || 0);
@@ -114,8 +104,8 @@ function getClip(record: FeedSongRecord): FeedClip {
   };
 }
 
-function getStats(record: FeedSongRecord): FeedStats {
-  return getSingleRelation(record.song_feed_stats) || {
+function getStats(record: FeedSongRecord, relation?: FeedStats | null): FeedStats {
+  return relation || {
     song_id: record.id,
     likes_count: 0,
   };
@@ -159,15 +149,10 @@ const FeedCard = React.memo(function FeedCard({
   onUserInteraction,
 }: FeedCardProps) {
   const { t } = useTranslation();
-  const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const lastTapRef = useRef(0);
   const heartTimerRef = useRef<number | null>(null);
   const [showHeartBurst, setShowHeartBurst] = useState(false);
-  const [failedVideoUrl, setFailedVideoUrl] = useState<string | null>(null);
-  const videoUrl = song.clip.video_url || null;
-  const hasPlayableVideo = Boolean(videoUrl) && failedVideoUrl !== videoUrl;
-  const mediaRef = hasPlayableVideo ? videoRef : audioRef;
   const displayArtist = song.artist_name || song.creatorName || 'Creator';
   const avatarUrl = song.profiles?.avatar_url;
 
@@ -223,14 +208,12 @@ const FeedCard = React.memo(function FeedCard({
   }, [seekToHookStart]);
 
   useEffect(() => {
-    const media = mediaRef.current;
+    const media = audioRef.current;
     if (!media) return;
 
     media.muted = muted;
     if (!active) {
       media.pause();
-      audioRef.current?.pause();
-      videoRef.current?.pause();
       return;
     }
 
@@ -247,14 +230,8 @@ const FeedCard = React.memo(function FeedCard({
             });
           return;
         }
-
-        if (media === videoRef.current && videoUrl) {
-          setFailedVideoUrl(videoUrl);
-        }
       });
     };
-    const audioElement = audioRef.current;
-    const videoElement = videoRef.current;
 
     if (media.readyState >= 1) {
       startAtHook();
@@ -265,17 +242,15 @@ const FeedCard = React.memo(function FeedCard({
     return () => {
       media.removeEventListener('loadedmetadata', startAtHook);
       media.pause();
-      audioElement?.pause();
-      videoElement?.pause();
     };
-  }, [active, mediaRef, muted, onAutoplayBlocked, playFromHook, soundUnlocked, videoUrl]);
+  }, [active, muted, onAutoplayBlocked, playFromHook, soundUnlocked]);
 
   useEffect(() => () => {
     if (heartTimerRef.current) window.clearTimeout(heartTimerRef.current);
   }, []);
 
   const keepInsideHook = () => {
-    const media = mediaRef.current;
+    const media = audioRef.current;
     if (!media) return;
 
     const { start, end } = seekToHookStart(media);
@@ -305,7 +280,7 @@ const FeedCard = React.memo(function FeedCard({
   };
 
   const unlockSoundFromGesture = () => {
-    const media = mediaRef.current;
+    const media = audioRef.current;
     if (media) {
       media.muted = false;
       playFromHook(media).catch(() => {});
@@ -314,7 +289,7 @@ const FeedCard = React.memo(function FeedCard({
   };
 
   const toggleMute = () => {
-    const media = mediaRef.current;
+    const media = audioRef.current;
     if (media) {
       media.muted = !muted;
       if (muted) {
@@ -327,74 +302,96 @@ const FeedCard = React.memo(function FeedCard({
   };
 
   return (
-    <article className="relative flex h-full w-full snap-start snap-always items-center justify-center bg-[#050505] px-0 py-0 md:px-4 md:py-5">
+    <article className="relative flex h-full w-full snap-start snap-always items-center justify-center overflow-hidden bg-[#050505] px-4 pb-24 pt-24 sm:px-8 md:pb-12 md:pt-20">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_18%,rgba(168,85,247,0.24),transparent_33%),radial-gradient(circle_at_18%_78%,rgba(45,212,191,0.14),transparent_30%),linear-gradient(145deg,#050505_0%,#10081c_48%,#050505_100%)]" />
+        <div className="yoriax-feed-orb yoriax-feed-orb--purple" />
+        <div className="yoriax-feed-orb yoriax-feed-orb--teal" />
+        <div className="absolute left-[-8%] right-[-8%] top-[37%] h-px -rotate-[14deg] bg-violet-400/15" />
+        <div className="absolute bottom-[25%] left-[-8%] right-[-8%] h-px rotate-[18deg] bg-teal-300/10" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,rgba(0,0,0,0.52)_100%)]" />
+      </div>
+
       <div
-        className="relative h-full w-full max-w-[470px] overflow-hidden bg-[#111] shadow-2xl shadow-black/60 md:max-h-[calc(100dvh-2.5rem)] md:rounded-[1.75rem] md:border md:border-white/10"
+        className="relative flex h-full w-full max-w-[560px] flex-col items-center justify-center"
         onPointerDown={(event) => {
           if (!(event.target as HTMLElement).closest('button, a, input')) unlockSoundFromGesture();
         }}
         onPointerUp={handlePointerUp}
       >
-        <div className="absolute inset-0">
-          <Image src={song.clip.cover_url || song.cover_url} alt="" fill sizes="100vw" className="h-full w-full scale-110 object-cover opacity-45 blur-2xl" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/90" />
-        </div>
-
-        {hasPlayableVideo ? (
-          <video
-            ref={videoRef}
-            src={videoUrl || undefined}
-            poster={song.clip.cover_url || song.cover_url}
-            playsInline
-            muted={muted}
-            loop
-            preload={active ? 'auto' : 'metadata'}
-            onError={() => {
-              if (videoUrl) setFailedVideoUrl(videoUrl);
-            }}
-            onTimeUpdate={keepInsideHook}
-            className="relative h-full w-full object-cover"
-          />
-        ) : (
-          <Image src={song.clip.cover_url || song.cover_url} alt={song.title} fill sizes="(max-width: 768px) 100vw, 470px" className="relative h-full w-full object-cover" />
-        )}
-
         <audio
           ref={audioRef}
           src={song.audio_url}
           preload={active ? 'auto' : 'metadata'}
-          onTimeUpdate={hasPlayableVideo ? undefined : keepInsideHook}
+          onTimeUpdate={keepInsideHook}
         />
 
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/90" />
+        <div className="relative z-10 flex w-full flex-col items-center">
+          <div className="relative w-[min(76vw,350px)] max-w-full">
+            <div className="absolute -inset-3 rotate-3 rounded-[2rem] border border-violet-400/25 bg-violet-400/[0.025]" />
+            <div className="relative aspect-square overflow-hidden rounded-[1.65rem] border border-white/15 bg-[#130b20] shadow-[0_28px_80px_rgba(124,58,237,0.28)]">
+              {song.clip.cover_url || song.cover_url ? (
+                <Image
+                  src={song.clip.cover_url || song.cover_url}
+                  alt={song.title}
+                  fill
+                  sizes="(max-width: 768px) 76vw, 350px"
+                  priority={active}
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-950 via-[#160b24] to-black">
+                  <Music2 className="h-20 w-20 text-violet-300/45" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20" />
+            </div>
+            <div className="absolute -bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full border border-violet-400/35 bg-[#0a0710]/90 px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-xl backdrop-blur-xl">
+              <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shadow-[0_0_10px_rgba(168,85,247,0.9)]" />
+              Yoriax Select
+            </div>
+          </div>
 
-        {showHeartBurst ? (
-          <Heart className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-28 w-28 -translate-x-1/2 -translate-y-1/2 animate-pulse fill-rose-500 text-rose-500 drop-shadow-[0_0_35px_rgba(244,63,94,0.75)]" />
-        ) : null}
+          <div className="mt-9 w-full max-w-[420px] px-2 pr-20 text-left sm:px-0 sm:pr-24">
+            <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-sm font-black text-violet-400 transition-colors hover:text-violet-300 hover:underline">
+              {displayArtist}
+            </Link>
+            <h1 className="mt-1 truncate text-3xl font-black tracking-tight text-white sm:text-4xl">{song.title}</h1>
+            <button
+              type="button"
+              onClick={onListen}
+              className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-black shadow-[0_0_30px_rgba(255,255,255,0.18)] transition-transform hover:scale-[1.02]"
+            >
+              <Music2 className="h-4 w-4" />
+              {t('feed.listenFull')}
+            </button>
+          </div>
+        </div>
 
         {isAdmin ? (
           <button
             type="button"
             onClick={onEdit}
-            className="absolute left-4 top-20 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white backdrop-blur-md transition-colors hover:bg-black/70"
+            className="absolute left-0 top-0 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-black/35 text-white/80 backdrop-blur-xl transition-colors hover:bg-white/10 hover:text-white"
             aria-label={t('feed.editHook', { title: song.title })}
           >
             <Settings2 className="h-5 w-5" />
           </button>
         ) : null}
 
-        <div className="absolute bottom-[calc(9.5rem+env(safe-area-inset-bottom))] right-3 z-20 flex flex-col items-center gap-4 text-white md:bottom-28" onPointerDown={(event) => event.stopPropagation()}>
+        <div className="absolute right-0 top-1/2 z-20 flex -translate-y-[18%] flex-col items-center gap-4 text-white" onPointerDown={(event) => event.stopPropagation()}>
           <button type="button" onClick={onFollow} className="group relative" aria-label={following ? t('feed.unfollow', { artist: displayArtist }) : t('feed.follow', { artist: displayArtist })}>
-            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-violet-950 text-sm font-black shadow-lg">
+            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-violet-300/40 bg-violet-950 text-sm font-black shadow-[0_0_24px_rgba(124,58,237,0.28)]">
               {avatarUrl ? <Image src={avatarUrl} alt={displayArtist} width={48} height={48} className="h-full w-full object-cover" /> : displayArtist.slice(0, 1).toUpperCase()}
             </span>
-            <span className={`absolute -bottom-2 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border-2 border-[#111] ${following ? 'bg-white text-black' : 'bg-rose-500 text-white'}`}>
-              {following ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" strokeWidth={4} />}
+            <span className="absolute -bottom-2 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border-2 border-[#08050c] bg-[#160d25] text-violet-300">
+              <Plus className="h-4 w-4" strokeWidth={3.5} />
             </span>
+            <span className="mt-3 block text-[10px] font-bold text-white/85">{following ? t('feed.modes.following') : t('feed.followAction')}</span>
           </button>
 
           <button type="button" onClick={() => onLike()} className="flex flex-col items-center gap-1" aria-label={liked ? t('feed.unlike', { title: song.title }) : t('feed.like', { title: song.title })}>
-            <Heart className={`h-8 w-8 drop-shadow-lg transition-transform active:scale-75 ${liked ? 'fill-rose-500 text-rose-500' : 'fill-black/20 text-white'}`} strokeWidth={2.3} />
+            <Heart className={`h-8 w-8 drop-shadow-lg transition-transform active:scale-75 ${liked ? 'fill-violet-500 text-violet-400' : 'fill-black/20 text-white'}`} strokeWidth={2.3} />
             <span className="text-[11px] font-bold">{formatCount(song.stats.likes_count)}</span>
           </button>
 
@@ -408,27 +405,9 @@ const FeedCard = React.memo(function FeedCard({
           </button>
         </div>
 
-        <div className="absolute inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-10 p-5 pr-20 md:bottom-0" onPointerDown={(event) => event.stopPropagation()}>
-          <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-violet-300">
-            <Music2 className="h-4 w-4" />
-            {t('feed.yoriaxHook')}
-          </div>
-          <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-sm font-bold text-white/80 transition-colors hover:text-white hover:underline">
-            @{displayArtist}
-          </Link>
-          <h1 className="mt-1 truncate text-3xl font-black tracking-tight text-white">{song.title}</h1>
-          <p className="mt-2 line-clamp-2 text-sm leading-5 text-white/70">
-            {song.description || t('feed.defaultDescription', { genre: song.genre || 'AI Music' })}
-          </p>
-          <button
-            type="button"
-            onClick={onListen}
-            className="mt-4 flex w-fit items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-black shadow-[0_0_30px_rgba(255,255,255,0.25)] transition-transform hover:scale-[1.02] sm:px-6 sm:py-3.5 sm:text-base"
-          >
-            <Play className="h-4 w-4 fill-current" />
-            {t('feed.listenFull')}
-          </button>
-        </div>
+        {showHeartBurst ? (
+          <Heart className="pointer-events-none absolute left-1/2 top-[42%] z-30 h-28 w-28 -translate-x-1/2 -translate-y-1/2 animate-pulse fill-violet-500 text-violet-400 drop-shadow-[0_0_35px_rgba(124,58,237,0.75)]" />
+        ) : null}
       </div>
     </article>
   );
@@ -473,22 +452,42 @@ export default function FeedPage() {
   useEffect(() => {
     const loadFeed = async () => {
       setLoading(true);
-      const [{ data: songData, error }, { data: sessionData }] = await Promise.all([
+      const [
+        { data: songData, error },
+        { data: clipData, error: clipError },
+        { data: statsData, error: statsError },
+        { data: sessionData },
+      ] = await Promise.all([
         supabase
           .from('songs')
-          .select('id, title, artist_name, cover_url, plays, genre, created_at, creator_id, duration, audio_url, profiles!songs_creator_id_fkey(username, avatar_url), song_feed_clips(song_id, video_url, cover_url, hook_start_seconds, hook_end_seconds), song_feed_stats(song_id, likes_count)')
+          .select('id, title, artist_name, cover_url, plays, genre, created_at, creator_id, duration, audio_url, profiles!songs_creator_id_fkey(username, avatar_url)')
           .order('plays', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(80),
+        supabase
+          .from('song_feed_clips')
+          .select('song_id, video_url, cover_url, hook_start_seconds, hook_end_seconds'),
+        supabase
+          .from('song_feed_stats')
+          .select('song_id, likes_count'),
         supabase.auth.getSession(),
       ]);
 
       if (error) console.error('Failed to load feed:', error);
+      if (clipError) console.error('Failed to load feed clips:', clipError);
+      if (statsError) console.error('Failed to load feed stats:', statsError);
+
+      const clipBySongId = new Map(
+        ((clipData || []) as FeedClip[]).map((clip) => [clip.song_id, clip]),
+      );
+      const statsBySongId = new Map(
+        ((statsData || []) as FeedStats[]).map((stats) => [stats.song_id, stats]),
+      );
 
       const feedSongs = ((songData || []) as unknown as FeedSongRecord[]).map((song) => ({
         ...song,
-        clip: getClip(song),
-        stats: getStats(song),
+        clip: getClip(song, clipBySongId.get(song.id)),
+        stats: getStats(song, statsBySongId.get(song.id)),
       }));
 
       const session = sessionData.session;

@@ -142,6 +142,7 @@
     "editHook": "Edit {{title}} Feed Hook",
     "unfollow": "Unfollow {{artist}}",
     "follow": "Follow {{artist}}",
+    "followAction": "Follow",
     "unlike": "Unlike {{title}}",
     "like": "Like {{title}}",
     "shareIcon": "Share",

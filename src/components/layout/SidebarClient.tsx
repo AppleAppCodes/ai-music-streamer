@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserCheck, Sparkles } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
 import { isAdminUser, isCreatorUser } from '@/lib/admin';
@@ -18,15 +19,33 @@ export default function SidebarClient({
   appVersionLabel?: string;
 }) {
   const { t } = useTranslation();
+  const pathname = usePathname();
   
   const isCreator = isCreatorUser(user);
   const isAdmin = isAdminUser(user);
 
   if (!user) return null;
 
+  const navLinkClass = (href: string) => {
+    const active = href === '/' ? pathname === href : pathname?.startsWith(href);
+    return `group relative flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-bold transition-all ${
+      active
+        ? 'border-violet-400/30 bg-gradient-to-r from-violet-500/20 via-violet-500/10 to-transparent text-white shadow-[0_12px_34px_rgba(76,29,149,0.18)]'
+        : 'border-transparent text-white/58 hover:border-white/8 hover:bg-white/[0.055] hover:text-white'
+    }`;
+  };
+
+  const iconClass = (href: string) => {
+    const active = href === '/' ? pathname === href : pathname?.startsWith(href);
+    return `h-5 w-5 transition-colors ${active ? 'text-violet-300' : 'text-white/42 group-hover:text-violet-300'}`;
+  };
+
   return (
-    <div className="hidden w-52 bg-black h-full md:flex flex-col pt-6 pb-24 border-r border-white/5">
-      <div className="px-5 mb-8">
+    <aside className="relative hidden h-full w-60 shrink-0 flex-col overflow-hidden border-r border-white/8 bg-[linear-gradient(180deg,rgba(23,17,31,0.96),rgba(5,5,5,0.98))] pb-24 pt-6 md:flex">
+      <div className="pointer-events-none absolute -left-24 top-24 h-56 w-56 rounded-full bg-violet-600/12 blur-[80px]" />
+      <div className="pointer-events-none absolute -right-28 bottom-20 h-52 w-52 rounded-full bg-teal-400/8 blur-[80px]" />
+
+      <div className="relative mb-8 px-5">
         <Link href="/" className="flex items-center gap-4 group">
           <Image
             src="/brand/yoriax-logo.png"
@@ -39,53 +58,53 @@ export default function SidebarClient({
         </Link>
       </div>
 
-      <div className="px-3 mb-6">
-        <p className="px-3 text-xs font-semibold text-muted tracking-wider uppercase mb-3">{t('nav.discover')}</p>
-        <nav className="space-y-1">
-          <Link href="/" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
-            <Home className="w-5 h-5 group-hover:text-primary transition-colors" />
+      <div className="relative mb-6 px-3">
+        <p className="mb-3 px-3 text-[10px] font-black uppercase tracking-[0.22em] text-white/30">{t('nav.discover')}</p>
+        <nav className="space-y-1.5">
+          <Link href="/" className={navLinkClass('/')}>
+            <Home className={iconClass('/')} />
             {t('nav.home')}
           </Link>
-          <Link href="/feed" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
-            <Sparkles className="w-5 h-5 group-hover:text-primary transition-colors" />
+          <Link href="/feed" className={navLinkClass('/feed')}>
+            <Sparkles className={iconClass('/feed')} />
             {t('nav.feed')}
           </Link>
-          <Link href="/charts/viral" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
-            <TrendingUp className="w-5 h-5 group-hover:text-primary transition-colors" />
+          <Link href="/charts/viral" className={navLinkClass('/charts/viral')}>
+            <TrendingUp className={iconClass('/charts/viral')} />
             {t('nav.viralCharts')}
           </Link>
-          <Link href="/artists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
-            <Mic2 className="w-5 h-5 group-hover:text-primary transition-colors" />
+          <Link href="/artists" className={navLinkClass('/artists')}>
+            <Mic2 className={iconClass('/artists')} />
             {t('home.quickAccess.artists')}
           </Link>
-          <Link href="/discover/playlists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
-            <ListMusic className="w-5 h-5 group-hover:text-primary transition-colors" />
+          <Link href="/discover/playlists" className={navLinkClass('/discover/playlists')}>
+            <ListMusic className={iconClass('/discover/playlists')} />
             {t('nav.discoverPlaylists')}
           </Link>
         </nav>
       </div>
 
-      <div className="px-3 mb-6">
-        <p className="px-3 text-xs font-semibold text-muted tracking-wider uppercase mb-3">{t('nav.library')}</p>
-        <nav className="space-y-1">
-          <Link href="/playlists" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
-            <Library className="w-5 h-5 group-hover:text-primary transition-colors" />
+      <div className="relative mb-6 px-3">
+        <p className="mb-3 px-3 text-[10px] font-black uppercase tracking-[0.22em] text-white/30">{t('nav.library')}</p>
+        <nav className="space-y-1.5">
+          <Link href="/playlists" className={navLinkClass('/playlists')}>
+            <Library className={iconClass('/playlists')} />
             {t('nav.myPlaylists')}
           </Link>
-          <Link href="/collection/tracks" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
-            <Heart className="w-5 h-5 group-hover:text-primary transition-colors" />
+          <Link href="/collection/tracks" className={navLinkClass('/collection/tracks')}>
+            <Heart className={iconClass('/collection/tracks')} />
             {t('nav.likedSongs')}
           </Link>
-          <Link href="/following" className="flex items-center gap-4 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-white hover:bg-primary/10 group rounded-md transition-all">
-            <UserCheck className="w-5 h-5 group-hover:text-primary transition-colors" />
+          <Link href="/following" className={navLinkClass('/following')}>
+            <UserCheck className={iconClass('/following')} />
             {t('nav.following')}
           </Link>
         </nav>
       </div>
 
-      <div className="px-3 mt-auto">
+      <div className="relative mt-auto px-3">
         {isCreator && (
-          <Link href="/upload" className="flex items-center gap-4 px-3 py-2.5 mb-2 text-sm font-bold text-white bg-white/10 hover:bg-white/20 rounded-md transition-colors border border-white/10">
+          <Link href="/upload" className="mb-2 flex items-center gap-3 rounded-2xl border border-violet-300/20 bg-violet-500/14 px-3 py-3 text-sm font-black text-white transition-colors hover:bg-violet-500/22">
             <PlusCircle className="w-5 h-5" />
             {t('nav.upload')}
           </Link>
@@ -111,6 +130,6 @@ export default function SidebarClient({
           </div>
         ) : null}
       </div>
-    </div>
+    </aside>
   );
 }

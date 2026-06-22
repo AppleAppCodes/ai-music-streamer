@@ -1,19 +1,20 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #000000;
+  --color-background: #050505;
   --color-foreground: #ffffff;
-  --color-primary: #7c3aed; /* Violet 600 */
-  --color-primary-hover: #6d28d9; /* Violet 700 */
-  --color-accent: #2dd4bf; /* Teal 400 */
-  --color-surface: #0a0a0a; /* Very dark gray */
-  --color-surface-hover: #171717; /* Slightly lighter gray */
-  --color-surface-active: #262626;
-  --color-muted: #a3a3a3; /* Neutral 400 */
-  --color-border: #262626; /* Neutral 800 */
+  --color-primary: #7c3aed;
+  --color-primary-hover: #6d28d9;
+  --color-primary-light: #a855f7;
+  --color-accent: #2dd4bf;
+  --color-surface: #17111f;
+  --color-surface-hover: #211833;
+  --color-surface-active: #2d2142;
+  --color-muted: rgba(255, 255, 255, 0.56);
+  --color-border: rgba(255, 255, 255, 0.1);
   
-  --font-sans: var(--font-geist-sans), sans-serif;
-  --font-mono: var(--font-geist-mono), monospace;
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
 }
 
 :root {
@@ -22,6 +23,9 @@
 
 body {
   background-color: var(--color-background);
+  background-image:
+    radial-gradient(circle at 76% 8%, rgba(124, 58, 237, 0.11), transparent 28rem),
+    radial-gradient(circle at 8% 72%, rgba(45, 212, 191, 0.06), transparent 26rem);
   color: var(--color-foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -53,10 +57,12 @@ input, textarea, p, h1, h2, h3, h4, span {
 }
 
 @utility glass-panel {
-  background-color: rgba(10, 10, 10, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background:
+    linear-gradient(145deg, rgba(33, 24, 51, 0.72), rgba(9, 7, 14, 0.82));
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
 }
 
 @utility no-scrollbar {
@@ -78,6 +84,59 @@ input, textarea, p, h1, h2, h3, h4, span {
 
 .animate-pulseGlow {
   animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+@keyframes yoriaxFeedPurpleDrift {
+  0%, 100% {
+    opacity: 0.48;
+    transform: translate3d(-34px, -22px, 0) scale(0.92);
+  }
+  50% {
+    opacity: 0.78;
+    transform: translate3d(34px, 48px, 0) scale(1.12);
+  }
+}
+
+@keyframes yoriaxFeedTealDrift {
+  0%, 100% {
+    opacity: 0.18;
+    transform: translate3d(28px, 42px, 0) scale(1.08);
+  }
+  50% {
+    opacity: 0.38;
+    transform: translate3d(-36px, -20px, 0) scale(0.9);
+  }
+}
+
+.yoriax-feed-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(18px);
+  will-change: transform, opacity;
+}
+
+.yoriax-feed-orb--purple {
+  right: -8rem;
+  top: 2rem;
+  width: min(34rem, 78vw);
+  height: min(34rem, 78vw);
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.62), rgba(124, 58, 237, 0.04) 70%);
+  animation: yoriaxFeedPurpleDrift 14s ease-in-out infinite;
+}
+
+.yoriax-feed-orb--teal {
+  bottom: -6rem;
+  left: -9rem;
+  width: min(28rem, 68vw);
+  height: min(28rem, 68vw);
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.38), rgba(45, 212, 191, 0.02) 70%);
+  animation: yoriaxFeedTealDrift 11s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yoriax-feed-orb {
+    animation: none;
+  }
 }
 
 .player-slider {
