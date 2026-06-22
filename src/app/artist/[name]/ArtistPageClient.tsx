@@ -126,7 +126,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
   const router = useRouter();
   
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue, isShuffling, toggleShuffle } = usePlayer();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   
   const [songs, setSongs] = useState<Song[]>([]);
   const [showAllSongs, setShowAllSongs] = useState(false);
@@ -500,14 +500,14 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
+    <div className="yoriax-page flex-1 overflow-y-auto pb-32">
       {/* Background Banner */}
       <div className="absolute top-0 left-0 right-0 h-[600px] overflow-hidden pointer-events-none z-0">
         {bannerUrl ? (
@@ -532,7 +532,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
           />
         )}
       </div>
-      <div className="absolute top-0 left-0 right-0 h-[600px] bg-gradient-to-b from-black/10 via-[#0A0A0A]/70 to-[#0A0A0A] pointer-events-none z-0" />
+      <div className="pointer-events-none absolute left-0 right-0 top-0 z-0 h-[600px] bg-gradient-to-b from-black/10 via-background/70 to-background" />
       
       {/* Hero Content */}
       <div className="relative pt-20 px-6 md:px-10 pb-4 md:pb-8 flex flex-col md:flex-row w-full items-center md:items-end gap-4 md:gap-10 min-h-[250px] md:min-h-[380px] z-10 group">
@@ -564,7 +564,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
           )}
 
           <div className="flex items-center gap-2 mb-2 text-sm text-white/90">
-            <BadgeCheck className="w-5 h-5 text-blue-400 fill-blue-400/20" />
+            <BadgeCheck className="w-5 h-5 fill-primary/20 text-primary-light" />
             <span>Verifizierter Künstler</span>
           </div>
           
@@ -632,7 +632,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
 
 
       {/* Main Content Area */}
-      <div className="relative bg-[#0A0A0A] px-6 md:px-10 py-6 min-h-screen z-10">
+      <div className="relative z-10 min-h-screen border-t border-white/5 bg-background/80 px-6 py-6 backdrop-blur-2xl md:px-10">
         
         {/* Action Bar */}
         <div className="flex flex-wrap items-center gap-4 sm:gap-6 mb-10">
@@ -879,13 +879,13 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
             <div className="flex items-center gap-3 mb-6">
               <button 
                 onClick={() => setAlbumFilter('albums')}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${albumFilter === 'albums' ? 'bg-white text-black' : 'bg-[#282828] text-white hover:bg-[#333]'}`}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${albumFilter === 'albums' ? 'bg-white text-black' : 'bg-surface-hover text-white hover:bg-surface-active'}`}
               >
                 Alben
               </button>
               <button 
                 onClick={() => setAlbumFilter('singles')}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${albumFilter === 'singles' ? 'bg-white text-black' : 'bg-[#282828] text-white hover:bg-[#333]'}`}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${albumFilter === 'singles' ? 'bg-white text-black' : 'bg-surface-hover text-white hover:bg-surface-active'}`}
               >
                 Singles und EPs
               </button>
@@ -904,7 +904,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
                            router.push(`/album/${release.id}`);
                          }
                        }}
-                       className="group flex flex-col gap-3 p-4 bg-[#181818] hover:bg-[#282828] transition-colors rounded-xl cursor-pointer"
+                       className="yoriax-card-interactive group flex cursor-pointer flex-col gap-3 rounded-2xl p-4"
                      >
                        <div className="relative aspect-square w-full rounded-md shadow-lg overflow-hidden bg-[#333]">
                           <Image src={release.cover_url} alt={release.title} fill sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw" className="object-cover" loading="lazy" />

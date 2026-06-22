@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/utils/supabase/client';
 import { X, Plus, Minus, Music, Loader2, Search } from 'lucide-react';
+import Image from 'next/image';
 
 interface AddToPlaylistModalProps {
   songId: string;
@@ -23,7 +24,7 @@ interface PlaylistSongRef {
 }
 
 export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId, onRemoveFromCurrent }: AddToPlaylistModalProps) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [alreadyIn, setAlreadyIn] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -158,7 +159,7 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
   const modal = (
     <div className="fixed inset-0 z-[180] flex items-end justify-center bg-black/80 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
       <div 
-        className="mb-[env(safe-area-inset-bottom)] flex max-h-[84dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#181818] shadow-2xl shadow-black/60 sm:mb-0 sm:max-h-[720px] sm:rounded-xl"
+        className="yoriax-card mb-[env(safe-area-inset-bottom)] flex max-h-[84dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[2rem] sm:mb-0 sm:max-h-[720px] sm:rounded-[1.75rem]"
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -185,7 +186,7 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Playlist suchen"
               aria-label="Playlist suchen"
-              className="w-full rounded-md border border-white/10 bg-white/10 py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/45 focus:border-white/25 focus:bg-white/15"
+              className="yoriax-input w-full rounded-xl py-2 pl-9 pr-3 text-sm placeholder:text-white/45"
             />
           </label>
         </div>
@@ -241,10 +242,9 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
                     <Plus className="w-5 h-5 text-white" />
                   )}
                   {playlist.cover_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={playlist.cover_url} alt={playlist.title} className="w-12 h-12 rounded object-cover shadow-md bg-[#282828]" />
+                    <Image src={playlist.cover_url} alt={playlist.title} width={48} height={48} className="h-12 w-12 rounded-xl bg-surface-hover object-cover shadow-md" />
                   ) : (
-                    <div className="w-12 h-12 rounded bg-[#282828] flex items-center justify-center shadow-md">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-hover shadow-md">
                       <Music className="w-5 h-5 text-white/40" />
                     </div>
                   )}

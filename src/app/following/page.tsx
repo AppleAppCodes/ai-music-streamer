@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
 import { Play, Pause, Music } from 'lucide-react';
@@ -19,7 +19,7 @@ interface ArtistWithSongs {
 }
 
 export default function FollowingPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const { playSong, currentSong, isPlaying, togglePlayPause } = usePlayer();
 
@@ -79,19 +79,14 @@ export default function FollowingPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
-      {/* Background */}
-      <div className="absolute top-0 left-0 right-0 h-[400px] pointer-events-none z-0">
-        <div className="w-full h-full bg-gradient-to-b from-emerald-900/30 via-[#0A0A0A]/80 to-[#0A0A0A]" />
-      </div>
-
+    <div className="yoriax-page flex-1 overflow-y-auto pb-32">
       {/* Header */}
       <div className="relative pt-16 px-6 md:px-10 pb-6 z-10">
         <p className="text-sm text-white/50 uppercase tracking-wider font-semibold mb-1">Dein Feed</p>
@@ -103,7 +98,7 @@ export default function FollowingPage() {
 
         {artistsWithSongs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-6">
+            <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
               <Music className="w-12 h-12 text-white/20" />
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Noch keine Künstler</h2>
@@ -144,7 +139,7 @@ export default function FollowingPage() {
                       return (
                         <div
                           key={song.id}
-                          className="group relative flex flex-col gap-3 p-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all duration-300 cursor-pointer"
+                          className="yoriax-card-interactive group relative flex cursor-pointer flex-col gap-3 rounded-2xl p-3.5"
                         >
                           {/* Cover */}
                           <div className="relative aspect-square w-full rounded-lg overflow-hidden shadow-lg">

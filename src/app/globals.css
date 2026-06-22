@@ -65,6 +65,68 @@ input, textarea, p, h1, h2, h3, h4, span {
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
 }
 
+.yoriax-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 86% 2%, rgba(124, 58, 237, 0.2), transparent 30rem),
+    radial-gradient(circle at 4% 78%, rgba(45, 212, 191, 0.09), transparent 26rem),
+    #050505;
+}
+
+.yoriax-page::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+}
+
+.yoriax-card {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background:
+    linear-gradient(145deg, rgba(33, 24, 51, 0.72), rgba(9, 7, 14, 0.88));
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+}
+
+.yoriax-card-interactive {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(145deg, rgba(33, 24, 51, 0.58), rgba(9, 7, 14, 0.82));
+  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.2);
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.yoriax-card-interactive:hover {
+  border-color: rgba(168, 85, 247, 0.34);
+  background:
+    linear-gradient(145deg, rgba(45, 33, 66, 0.76), rgba(12, 9, 18, 0.92));
+  transform: translateY(-2px);
+}
+
+.yoriax-input {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(5, 5, 5, 0.54);
+  color: white;
+  outline: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.yoriax-input:focus {
+  border-color: rgba(168, 85, 247, 0.58);
+  background: rgba(15, 10, 22, 0.82);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
 @utility no-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */

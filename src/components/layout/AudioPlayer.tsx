@@ -251,7 +251,7 @@ export default function AudioPlayer() {
 
     return (
       <div
-        className={`absolute bottom-full mb-4 w-[min(18rem,calc(100vw-1rem))] overflow-hidden rounded-xl border border-white/10 bg-[#242424]/95 py-2 text-sm text-white shadow-2xl shadow-black/40 backdrop-blur-xl md:w-72 ${positionClassName}`}
+        className={`yoriax-card absolute bottom-full mb-4 w-[min(18rem,calc(100vw-1rem))] overflow-hidden rounded-2xl py-2 text-sm text-white md:w-72 ${positionClassName}`}
         onClick={(event) => event.stopPropagation()}
       >
         <Link
@@ -396,7 +396,7 @@ export default function AudioPlayer() {
             {currentSong.cover_url ? (
               <Image src={currentSong.cover_url} alt={currentSong.title} width={56} height={56} className="h-11 w-11 shrink-0 rounded-md object-cover shadow-md md:h-14 md:w-14" />
             ) : (
-              <div className="h-11 w-11 shrink-0 rounded-md bg-[#282828] flex items-center justify-center md:h-14 md:w-14 shadow-md">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-hover shadow-md md:h-14 md:w-14">
                 <Music className="w-5 h-5 text-white/20 md:w-6 md:h-6" />
               </div>
             )}
@@ -439,7 +439,7 @@ export default function AudioPlayer() {
         <div className="flex items-center gap-6 mb-2">
           <button
             onClick={toggleShuffle}
-            className={`transition-colors ${isShuffling ? 'text-indigo-500' : 'text-muted hover:text-white'}`}
+            className={`transition-colors ${isShuffling ? 'text-primary-light' : 'text-muted hover:text-white'}`}
           >
             <Shuffle className="w-4 h-4" />
           </button>
@@ -465,7 +465,7 @@ export default function AudioPlayer() {
           </button>
           <button
             onClick={toggleRepeat}
-            className={`transition-colors ${repeatMode !== 'none' ? 'text-indigo-500' : 'text-muted hover:text-white'}`}
+            className={`transition-colors ${repeatMode !== 'none' ? 'text-primary-light' : 'text-muted hover:text-white'}`}
           >
             {repeatMode === 'one' ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
           </button>

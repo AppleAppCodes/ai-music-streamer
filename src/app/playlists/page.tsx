@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { ArrowLeft, Heart, Library, Music, Plus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
@@ -31,7 +31,7 @@ interface SavedPlaylist {
 
 export default function PlaylistsPage() {
   const { t } = useTranslation();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -109,18 +109,14 @@ export default function PlaylistsPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
-      <div className="absolute top-0 left-0 right-0 h-[400px] pointer-events-none z-0">
-        <div className="w-full h-full bg-gradient-to-b from-indigo-900/30 via-[#0A0A0A]/80 to-[#0A0A0A]" />
-      </div>
-
+    <div className="yoriax-page flex-1 overflow-y-auto pb-32">
       <button
         type="button"
         onClick={() => router.back()}
@@ -152,7 +148,7 @@ export default function PlaylistsPage() {
               href="/collection/tracks"
               className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.055] p-3.5 shadow-xl shadow-black/20 transition-all hover:border-white/20 hover:bg-white/[0.09] md:max-w-xl"
             >
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_22px_rgba(168,85,247,0.35)]">
+              <div className="bg-gradient-primary flex h-16 w-16 shrink-0 items-center justify-center rounded-xl shadow-[0_0_22px_rgba(168,85,247,0.35)]">
                 <Heart className="h-8 w-8 fill-white text-white" />
               </div>
               <div className="min-w-0 flex-1">
@@ -194,11 +190,11 @@ export default function PlaylistsPage() {
                     <Link
                       key={playlist.id}
                       href={playlistRoute}
-                      className="group relative flex items-center gap-3 rounded-2xl bg-white/[0.03] p-3 transition-all duration-300 hover:bg-white/[0.08] sm:flex-col sm:items-stretch sm:gap-3 sm:p-3.5"
+                      className="yoriax-card-interactive group relative flex items-center gap-3 rounded-2xl p-3 sm:flex-col sm:items-stretch sm:gap-3 sm:p-3.5"
                     >
-                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#282828] flex items-center justify-center shadow-lg sm:aspect-square sm:h-auto sm:w-full sm:rounded-lg">
+                      <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-hover shadow-lg sm:aspect-square sm:h-auto sm:w-full">
                         {playlist.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111' ? (
-                          <div className="w-full h-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 flex items-center justify-center">
+                          <div className="bg-gradient-primary flex h-full w-full items-center justify-center">
                             <Sparkles className="h-8 w-8 text-white sm:h-16 sm:w-16" />
                           </div>
                         ) : playlist.cover_url ? (
@@ -261,9 +257,9 @@ export default function PlaylistsPage() {
                   <Link
                     key={playlist.id}
                     href={`/playlist/${playlist.id}`}
-                    className="group relative flex items-center gap-3 rounded-2xl bg-white/[0.03] p-3 transition-all duration-300 hover:bg-white/[0.08] sm:flex-col sm:items-stretch sm:gap-3 sm:p-3.5"
+                    className="yoriax-card-interactive group relative flex items-center gap-3 rounded-2xl p-3 sm:flex-col sm:items-stretch sm:gap-3 sm:p-3.5"
                   >
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#282828] flex items-center justify-center shadow-lg sm:aspect-square sm:h-auto sm:w-full sm:rounded-lg">
+                    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-hover shadow-lg sm:aspect-square sm:h-auto sm:w-full">
                       {playlist.cover_url ? (
                         <Image
                           src={playlist.cover_url}

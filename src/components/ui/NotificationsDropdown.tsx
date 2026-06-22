@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Bell, Check, Circle } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -22,7 +22,7 @@ export default function NotificationsDropdown({ user }: { user: SupabaseUser | n
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
 
   useEffect(() => {
@@ -129,13 +129,13 @@ export default function NotificationsDropdown({ user }: { user: SupabaseUser | n
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 md:w-96 bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[100]">
+        <div className="yoriax-card absolute right-0 z-[100] mt-2 w-80 overflow-hidden rounded-2xl md:w-96">
           <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/20">
             <h3 className="font-bold text-white">Benachrichtigungen</h3>
             {unreadCount > 0 && (
               <button 
                 onClick={markAllAsRead}
-                className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+                className="flex items-center gap-1 text-xs text-primary-light transition-colors hover:text-white"
               >
                 <Check className="w-3 h-3" />
                 Alle als gelesen markieren
@@ -158,14 +158,14 @@ export default function NotificationsDropdown({ user }: { user: SupabaseUser | n
                     className={`w-full text-left p-4 flex gap-3 transition-colors ${
                       notification.is_read 
                         ? 'hover:bg-white/5' 
-                        : 'bg-indigo-500/5 hover:bg-indigo-500/10'
+                        : 'bg-primary/10 hover:bg-primary/15'
                     }`}
                   >
                     <div className="flex-shrink-0 mt-1">
                       {notification.is_read ? (
                         <Circle className="w-2 h-2 text-white/20 fill-white/20" />
                       ) : (
-                        <Circle className="w-2 h-2 text-indigo-500 fill-indigo-500" />
+                        <Circle className="w-2 h-2 fill-primary-light text-primary-light" />
                       )}
                     </div>
                     <div>

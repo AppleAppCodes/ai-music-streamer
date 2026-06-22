@@ -280,7 +280,7 @@ export default function LoginPageClient({ locale }: { locale: SupportedLocale })
     <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-black">
       {/* Background Effects */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-600/30 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/20 blur-[120px] rounded-full pointer-events-none" />
+      <div className="pointer-events-none absolute bottom-[-20%] right-[-10%] h-[50%] w-[50%] rounded-full bg-primary/20 blur-[120px]" />
       
       {/* Texture Overlay */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/stardust.png")' }} />
@@ -339,7 +339,7 @@ export default function LoginPageClient({ locale }: { locale: SupportedLocale })
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="yoriax-input w-full rounded-xl px-4 py-3 placeholder-white/30"
                 placeholder="hello@example.com"
                 required
               />
@@ -351,7 +351,7 @@ export default function LoginPageClient({ locale }: { locale: SupportedLocale })
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="yoriax-input w-full rounded-xl px-4 py-3 placeholder-white/30"
                 placeholder="••••••••"
                 required
               />

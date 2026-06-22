@@ -65,7 +65,7 @@ export default function PlaylistAddButton({
       </button>
 
       {showMenu && (
-        <div className={`absolute right-0 ${openUpwards ? 'bottom-full mb-1' : 'top-full mt-1'} w-56 bg-[#282828] rounded-md shadow-[0_8px_30px_rgb(0,0,0,0.5)] border border-white/5 overflow-hidden z-[100] py-1`}>
+        <div className={`yoriax-card absolute right-0 ${openUpwards ? 'bottom-full mb-1' : 'top-full mt-1'} z-[100] w-56 overflow-hidden rounded-xl py-1`}>
           <button 
             className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
             onClick={(e) => {

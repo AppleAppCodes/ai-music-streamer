@@ -6,7 +6,7 @@ import Link from 'next/link';
 export default function DownloadPage() {
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] pb-32">
+    <div className="yoriax-page flex-1 overflow-y-auto pb-32">
       {/* Hero Section similar to the screenshot */}
       <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24 mt-10">
         <div className="relative rounded-[2.5rem] overflow-hidden bg-gradient-to-br from-primary to-accent shadow-2xl">
@@ -68,7 +68,7 @@ export default function DownloadPage() {
                     <div className="w-2/3 h-4 bg-white/5 rounded"></div>
                   </div>
                   <div className="flex-1 h-full flex flex-col gap-4">
-                    <div className="w-full h-32 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-xl border border-white/5"></div>
+                    <div className="h-32 w-full rounded-xl border border-white/5 bg-gradient-to-r from-primary/20 to-accent/15"></div>
                     <div className="flex gap-3">
                       <div className="flex-1 aspect-square bg-[#111] rounded-xl border border-white/5"></div>
                       <div className="flex-1 aspect-square bg-[#111] rounded-xl border border-white/5"></div>
@@ -105,7 +105,7 @@ export default function DownloadPage() {
           </div>
           
           <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-white/5 border border-white/10">
-            <div className="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center mb-6">
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 text-primary-light">
               <ShieldCheck className="w-8 h-8" />
             </div>
             <h3 className="text-xl font-bold text-white mb-3">Sicheres Streaming</h3>

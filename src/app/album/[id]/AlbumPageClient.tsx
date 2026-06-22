@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
@@ -42,7 +42,7 @@ export default function AlbumPageClient({ albumId }: { albumId: string }) {
   const router = useRouter();
   
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue } = usePlayer();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   
   const [album, setAlbum] = useState<AlbumData | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
@@ -223,7 +223,7 @@ export default function AlbumPageClient({ albumId }: { albumId: string }) {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen bg-[#0A0A0A]">
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
@@ -232,18 +232,13 @@ export default function AlbumPageClient({ albumId }: { albumId: string }) {
   if (!album) return null;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
-      {/* Background Gradient matching cover or generic */}
-      <div className="absolute top-0 left-0 right-0 h-[400px] pointer-events-none z-0">
-        <div className="w-full h-full bg-gradient-to-b from-blue-900/40 via-[#0A0A0A]/80 to-[#0A0A0A]" />
-      </div>
-      
+    <div className="yoriax-page flex-1 overflow-y-auto pb-32">
       {/* Hero Content */}
       <div className="relative pt-24 px-6 md:px-10 pb-8 flex items-end gap-6 z-10 group">
         
         {/* Cover Art */}
         <div 
-          className="relative w-48 h-48 md:w-56 md:h-56 shadow-2xl shrink-0 group/cover cursor-pointer rounded-xl overflow-hidden bg-[#282828] flex items-center justify-center"
+          className="group/cover relative flex h-48 w-48 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-[1.75rem] border border-primary-light/20 bg-surface-hover shadow-2xl md:h-56 md:w-56"
           onClick={() => isOwner && fileInputRef.current?.click()}
         >
           {album.cover_url ? (
@@ -303,7 +298,7 @@ export default function AlbumPageClient({ albumId }: { albumId: string }) {
       </div>
 
       {/* Main Content Area */}
-      <div className="relative bg-[#0A0A0A] px-6 md:px-10 py-6 min-h-screen z-10">
+      <div className="relative z-10 min-h-screen border-t border-white/5 bg-background/80 px-6 py-6 backdrop-blur-2xl md:px-10">
         
         {/* Action Bar */}
         <div className="flex items-center gap-6 mb-10">
@@ -329,7 +324,7 @@ export default function AlbumPageClient({ albumId }: { albumId: string }) {
               </button>
               
               {isMenuOpen && (
-                <div className="absolute left-0 mt-2 w-56 bg-[#282828] rounded-md shadow-lg border border-white/10 overflow-hidden z-50 py-1">
+                <div className="yoriax-card absolute left-0 z-50 mt-2 w-56 overflow-hidden rounded-xl py-1">
                   <button 
                     className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
                     onClick={() => { setIsMenuOpen(false); setIsEditModalOpen(true); }}
@@ -458,7 +453,7 @@ export default function AlbumPageClient({ albumId }: { albumId: string }) {
       {/* Edit Details Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center backdrop-blur-sm p-4" onClick={() => setIsEditModalOpen(false)}>
-          <div className="bg-[#282828] rounded-xl w-full max-w-[520px] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="yoriax-card w-full max-w-[520px] overflow-hidden rounded-[1.75rem]" onClick={e => e.stopPropagation()}>
             <div className="p-6 flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">

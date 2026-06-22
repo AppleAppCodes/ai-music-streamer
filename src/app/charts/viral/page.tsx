@@ -627,7 +627,7 @@ export default function ViralChartsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-1 items-center justify-center bg-[#0A0A0A]">
+      <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
         <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
       </div>
     );
@@ -754,7 +754,7 @@ export default function ViralChartsPage() {
 
       {isAdmin && isAddSongModalOpen && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" onClick={() => setIsAddSongModalOpen(false)}>
-          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#181818] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="yoriax-card w-full max-w-lg rounded-3xl p-6" onClick={(e) => e.stopPropagation()}>
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-400">{t('charts.admin.modal.eyebrow')}</p>

@@ -42,7 +42,7 @@ export default function SongCard({ song, creatorName = 'Creator', className = ''
             priority={priority}
           />
         ) : (
-          <div className="w-full h-full bg-[#282828] flex items-center justify-center">
+          <div className="flex h-full w-full items-center justify-center bg-surface-hover">
             <Music className="h-12 w-12 text-white/20" />
           </div>
         )}

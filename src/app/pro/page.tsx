@@ -30,11 +30,11 @@ export default function ProPricingPage() {
   return (
     <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center p-6 bg-gradient-to-br from-black via-zinc-900 to-black relative overflow-hidden">
       {/* Background Effects */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/20 blur-[120px] rounded-full pointer-events-none" />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[800px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-[120px]" />
       <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-purple-500/20 blur-[100px] rounded-full pointer-events-none" />
 
       <div className="z-10 text-center max-w-3xl mb-12">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-bold tracking-wide uppercase mb-6">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-bold uppercase tracking-wide text-primary-light">
           <Headphones className="w-4 h-4" />
           Das ultimative Hörerlebnis
         </div>
@@ -47,8 +47,8 @@ export default function ProPricingPage() {
       </div>
 
       <div className="z-10 w-full max-w-lg">
-        <div className="relative rounded-3xl p-1 bg-gradient-to-b from-indigo-500/50 to-purple-500/50">
-          <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/20 to-purple-500/20 blur-xl -z-10" />
+        <div className="bg-gradient-primary relative rounded-3xl p-1">
+          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-primary/25 to-accent/20 blur-xl" />
           
           <div className="bg-zinc-950/90 backdrop-blur-xl rounded-[22px] p-8 md:p-10 border border-white/10">
             <div className="flex items-center justify-between mb-8">
@@ -99,8 +99,8 @@ export default function ProPricingPage() {
 function Feature({ text }: { text: string }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-        <CheckCircle2 className="w-3 h-3 text-indigo-400" />
+      <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary/20">
+        <CheckCircle2 className="w-3 h-3 text-primary-light" />
       </div>
       <span className="text-white/80 font-medium">{text}</span>
     </div>

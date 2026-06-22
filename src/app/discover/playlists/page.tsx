@@ -116,12 +116,7 @@ export default function DiscoverPlaylistsPage() {
   const hasResults = playlists.length > 0;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] relative pb-32">
-      {/* Background Gradient Header */}
-      <div className="absolute top-0 left-0 right-0 h-[400px] pointer-events-none z-0">
-        <div className="w-full h-full bg-gradient-to-b from-indigo-900/20 via-[#0A0A0A]/80 to-[#0A0A0A]" />
-      </div>
-
+    <div className="yoriax-page flex-1 overflow-y-auto pb-32">
       <button
         type="button"
         onClick={() => router.back()}
@@ -146,7 +141,7 @@ export default function DiscoverPlaylistsPage() {
               placeholder={t('playlists.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/10 border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+              className="yoriax-input w-full rounded-full py-2 pl-10 pr-4 text-sm placeholder:text-white/40"
             />
           </div>
         </div>
@@ -261,9 +256,9 @@ function PlaylistCard({ official, playlist }: { official: boolean; playlist: Pla
           : 'border-white/8 bg-white/[0.03] hover:border-primary/30 hover:bg-white/[0.075]'
       }`}
     >
-      <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[#282828] shadow-lg flex items-center justify-center">
+      <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-surface-hover shadow-lg">
         {playlist.id === 'daily-new-releases' ? (
-          <div className="w-full h-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 flex items-center justify-center">
+          <div className="bg-gradient-primary flex h-full w-full items-center justify-center">
             <Sparkles className="h-16 w-16 text-white" />
           </div>
         ) : playlist.cover_url ? (

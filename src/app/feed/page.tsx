@@ -6,18 +6,19 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
-  Check,
   ChevronDown,
   ChevronUp,
-  Compass,
+  Check,
   Heart,
   Loader2,
   Music2,
+  Pause,
+  Play,
   Plus,
   Save,
   Settings2,
   Share2,
-  Sparkles,
+  SlidersHorizontal,
   Upload,
   Users,
   Volume2,
@@ -154,6 +155,7 @@ const FeedCard = React.memo(function FeedCard({
   const lastTapRef = useRef(0);
   const heartTimerRef = useRef<number | null>(null);
   const [showHeartBurst, setShowHeartBurst] = useState(false);
+  const [isMediaPlaying, setIsMediaPlaying] = useState(false);
   const displayArtist = song.artist_name || song.creatorName || 'Creator';
   const avatarUrl = song.profiles?.avatar_url;
 
@@ -302,8 +304,22 @@ const FeedCard = React.memo(function FeedCard({
     onToggleMute();
   };
 
+  const togglePlayback = () => {
+    const media = audioRef.current;
+    if (!media) return;
+
+    if (media.paused) {
+      seekToHookStart(media);
+      media.play().catch(() => {});
+      onUserInteraction();
+      return;
+    }
+
+    media.pause();
+  };
+
   return (
-    <article className="relative flex h-full w-full snap-start snap-always items-center justify-center overflow-hidden bg-[#050505] px-4 pb-24 pt-24 sm:px-8 md:pb-12 md:pt-20">
+    <article className="relative flex h-full w-full snap-start snap-always items-start justify-center overflow-hidden bg-[#050505] px-4 pb-24 sm:px-8 md:pb-12">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_18%,rgba(168,85,247,0.24),transparent_33%),radial-gradient(circle_at_18%_78%,rgba(45,212,191,0.14),transparent_30%),linear-gradient(145deg,#050505_0%,#10081c_48%,#050505_100%)]" />
         <div className="yoriax-feed-orb yoriax-feed-orb--purple" />
@@ -314,7 +330,7 @@ const FeedCard = React.memo(function FeedCard({
       </div>
 
       <div
-        className="relative flex h-full w-full max-w-[560px] flex-col items-center justify-center"
+        className="relative flex h-full w-full max-w-[430px] flex-col items-center justify-start pt-[clamp(7rem,14vh,9rem)]"
         onPointerDown={(event) => {
           if (!(event.target as HTMLElement).closest('button, a, input')) unlockSoundFromGesture();
         }}
@@ -325,10 +341,12 @@ const FeedCard = React.memo(function FeedCard({
           src={song.audio_url}
           preload={active ? 'auto' : 'metadata'}
           onTimeUpdate={keepInsideHook}
+          onPlay={() => setIsMediaPlaying(true)}
+          onPause={() => setIsMediaPlaying(false)}
         />
 
         <div className="relative z-10 flex w-full flex-col items-center">
-          <div className="relative w-[min(76vw,350px)] max-w-full">
+          <div className="relative w-[min(82vw,42vh,350px)] max-w-full">
             <div className="absolute -inset-3 rotate-3 rounded-[2rem] border border-violet-400/25 bg-violet-400/[0.025]" />
             <div className="relative aspect-square overflow-hidden rounded-[1.65rem] border border-white/15 bg-[#130b20] shadow-[0_28px_80px_rgba(124,58,237,0.28)]">
               {song.clip.cover_url || song.cover_url ? (
@@ -336,7 +354,7 @@ const FeedCard = React.memo(function FeedCard({
                   src={song.clip.cover_url || song.cover_url}
                   alt={song.title}
                   fill
-                  sizes="(max-width: 768px) 76vw, 350px"
+                  sizes="(max-width: 768px) 82vw, 350px"
                   priority={active}
                   className="object-cover"
                 />
@@ -353,11 +371,11 @@ const FeedCard = React.memo(function FeedCard({
             </div>
           </div>
 
-          <div className="mt-9 w-full max-w-[420px] px-2 pr-20 text-left sm:px-0 sm:pr-24">
-            <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-sm font-black text-violet-400 transition-colors hover:text-violet-300 hover:underline">
+          <div className="mt-9 w-full px-1 pr-20 text-left sm:pr-24">
+            <Link href={`/artist/${encodeURIComponent(displayArtist)}`} className="text-[15px] font-black tracking-wide text-violet-500 transition-colors hover:text-violet-300 hover:underline">
               {displayArtist}
             </Link>
-            <h1 className="mt-1 truncate text-3xl font-black tracking-tight text-white sm:text-4xl">{song.title}</h1>
+            <h1 className="mt-1 truncate text-[28px] font-black leading-tight tracking-[-0.03em] text-white sm:text-[32px]">{song.title}</h1>
             <button
               type="button"
               onClick={onListen}
@@ -373,14 +391,14 @@ const FeedCard = React.memo(function FeedCard({
           <button
             type="button"
             onClick={onEdit}
-            className="absolute left-0 top-0 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-black/35 text-white/80 backdrop-blur-xl transition-colors hover:bg-white/10 hover:text-white"
+            className="absolute left-0 top-[clamp(7rem,14vh,9rem)] z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-black/35 text-white/80 backdrop-blur-xl transition-colors hover:bg-white/10 hover:text-white"
             aria-label={t('feed.editHook', { title: song.title })}
           >
             <Settings2 className="h-5 w-5" />
           </button>
         ) : null}
 
-        <div className="absolute right-0 top-1/2 z-20 flex -translate-y-[18%] flex-col items-center gap-4 text-white" onPointerDown={(event) => event.stopPropagation()}>
+        <div className="absolute right-0 top-[calc(clamp(7rem,14vh,9rem)+min(82vw,42vh,350px)-3.4rem)] z-20 flex flex-col items-center gap-[18px] text-white" onPointerDown={(event) => event.stopPropagation()}>
           <button type="button" onClick={onFollow} className="group flex flex-col items-center" aria-label={following ? t('feed.unfollow', { artist: displayArtist }) : t('feed.follow', { artist: displayArtist })}>
             <div className="relative flex h-12 w-12 items-center justify-center">
               <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-violet-300/40 bg-violet-950 text-sm font-black shadow-[0_0_24px_rgba(124,58,237,0.28)]">
@@ -399,6 +417,10 @@ const FeedCard = React.memo(function FeedCard({
             <span className="mt-3 block text-[10px] font-bold text-white/85">{following ? t('feed.modes.following') : t('feed.followAction')}</span>
           </button>
 
+          <button type="button" onClick={togglePlayback} className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-black shadow-xl transition-transform active:scale-90" aria-label={isMediaPlaying ? 'Pausieren' : 'Abspielen'}>
+            {isMediaPlaying ? <Pause className="h-6 w-6 fill-current" /> : <Play className="ml-0.5 h-6 w-6 fill-current" />}
+          </button>
+
           <button type="button" onClick={() => onLike()} className="flex flex-col items-center gap-1" aria-label={liked ? t('feed.unlike', { title: song.title }) : t('feed.like', { title: song.title })}>
             <Heart className={`h-8 w-8 drop-shadow-lg transition-transform active:scale-75 ${liked ? 'fill-violet-500 text-violet-400' : 'fill-black/20 text-white'}`} strokeWidth={2.3} />
             <span className="text-[11px] font-bold">{formatCount(song.stats.likes_count)}</span>
@@ -409,10 +431,11 @@ const FeedCard = React.memo(function FeedCard({
             <span className="text-[11px] font-bold">{t('feed.shareIcon')}</span>
           </button>
 
-          <button type="button" onClick={toggleMute} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md" aria-label={muted ? t('feed.unmute') : t('feed.mute')}>
-            {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-          </button>
         </div>
+
+        <button type="button" onClick={toggleMute} className="absolute left-0 top-[calc(clamp(7rem,14vh,9rem)+3.5rem)] z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white backdrop-blur-md" aria-label={muted ? t('feed.unmute') : t('feed.mute')}>
+          {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+        </button>
 
         {showHeartBurst ? (
           <Heart className="pointer-events-none absolute left-1/2 top-[42%] z-30 h-28 w-28 -translate-x-1/2 -translate-y-1/2 animate-pulse fill-violet-500 text-violet-400 drop-shadow-[0_0_35px_rgba(124,58,237,0.75)]" />
@@ -449,6 +472,7 @@ export default function FeedPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [inactiveGenres, setInactiveGenres] = useState<Set<string>>(new Set());
+  const [genreFilterOpen, setGenreFilterOpen] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Array<HTMLElement | null>>([]);
   const scrollRafRef = useRef<number | null>(null);
@@ -542,7 +566,7 @@ export default function FeedPage() {
   }, [songs]);
 
   const displayedSongs = useMemo(() => {
-    const filteredSongs = inactiveGenres.size > 0 
+    const filteredSongs = mode === 'explore' && inactiveGenres.size > 0
       ? songs.filter(song => !song.genre || !inactiveGenres.has(song.genre)) 
       : songs;
 
@@ -565,9 +589,35 @@ export default function FeedPage() {
   const changeMode = (nextMode: FeedMode) => {
     itemRefs.current = [];
     setActiveIndex(0);
+    setGenreFilterOpen(false);
     scrollerRef.current?.scrollTo({ top: 0 });
     setMode(nextMode);
   };
+
+  const resetExplorePosition = useCallback(() => {
+    setActiveIndex(0);
+    scrollerRef.current?.scrollTo({ top: 0 });
+  }, []);
+
+  const toggleGenre = useCallback((genre: string) => {
+    setInactiveGenres((currentGenres) => {
+      const nextGenres = new Set(currentGenres);
+      if (nextGenres.has(genre)) nextGenres.delete(genre);
+      else nextGenres.add(genre);
+      return nextGenres;
+    });
+    resetExplorePosition();
+  }, [resetExplorePosition]);
+
+  const selectAllGenres = useCallback(() => {
+    setInactiveGenres(new Set());
+    resetExplorePosition();
+  }, [resetExplorePosition]);
+
+  const deselectAllGenres = useCallback(() => {
+    setInactiveGenres(new Set(availableGenres));
+    resetExplorePosition();
+  }, [availableGenres, resetExplorePosition]);
 
   useEffect(() => {
     if (activeIndex < displayedSongs.length) return;
@@ -852,27 +902,27 @@ export default function FeedPage() {
     }
   };
 
-  const modeOptions: Array<{ id: FeedMode; label: string; icon: typeof Sparkles }> = [
-    { id: 'for-you', label: t('feed.modes.forYou'), icon: Sparkles },
-    { id: 'following', label: t('feed.modes.following'), icon: Users },
-    { id: 'explore', label: t('feed.modes.explore'), icon: Compass },
+  const modeOptions: Array<{ id: FeedMode; label: string }> = [
+    { id: 'for-you', label: t('feed.modes.forYou') },
+    { id: 'following', label: t('feed.modes.following') },
+    { id: 'explore', label: t('feed.modes.explore') },
   ];
 
   const activeSong = displayedSongs[activeIndex];
 
   return (
-    <div className="fixed inset-0 z-[80] overflow-hidden bg-[#050505]">
-      <Link href="/" className="absolute left-4 top-4 z-40 rounded-full bg-black/35 px-3 py-2 text-xs font-black uppercase tracking-[0.22em] text-white/85 backdrop-blur-md transition-colors hover:text-white">
+    <div className="fixed inset-0 z-[55] overflow-hidden bg-[#050505]">
+      <Link href="/" className="absolute left-6 top-6 z-40 hidden text-xs font-black uppercase tracking-[0.24em] text-white/85 transition-colors hover:text-white md:block">
         Yoriax
       </Link>
 
-      <div className="absolute left-1/2 top-4 z-40 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/10 bg-black/35 p-1 backdrop-blur-md">
+      <div className="absolute left-1/2 top-[max(1.5rem,env(safe-area-inset-top))] z-40 flex -translate-x-1/2 items-center gap-8 whitespace-nowrap sm:gap-10 md:top-7">
         {modeOptions.map(({ id, label }) => (
           <button
             key={id}
             type="button"
             onClick={() => changeMode(id)}
-            className={`rounded-full px-3 py-2 text-xs font-black transition-colors sm:px-4 sm:text-sm ${mode === id ? 'bg-white text-black' : 'text-white/65 hover:text-white'}`}
+            className={`text-lg font-black tracking-tight transition-colors sm:text-xl ${mode === id ? 'text-white' : 'text-white/45 hover:text-white/75'}`}
           >
             {label}
           </button>
@@ -880,35 +930,82 @@ export default function FeedPage() {
       </div>
 
       {mode === 'explore' && availableGenres.length > 0 ? (
-        <div className="absolute left-0 right-0 top-[4.5rem] z-40">
-          <div className="flex w-full items-center gap-2 overflow-x-auto px-4 pb-2 no-scrollbar">
-            {availableGenres.map((genre) => {
-              const isActive = !inactiveGenres.has(genre);
-              return (
+        <div className="absolute left-4 top-[4.75rem] z-50 md:left-8 md:top-20">
+          <button
+            type="button"
+            onClick={() => setGenreFilterOpen((open) => !open)}
+            className={`flex h-11 items-center gap-2 rounded-full border px-3.5 text-xs font-black backdrop-blur-xl transition-colors ${
+              genreFilterOpen || inactiveGenres.size > 0
+                ? 'border-violet-400/45 bg-violet-500/20 text-white'
+                : 'border-white/12 bg-black/40 text-white/75 hover:bg-white/10 hover:text-white'
+            }`}
+            aria-expanded={genreFilterOpen}
+            aria-controls="explore-genre-filter"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {t('feed.filters.genres')}
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/75">
+              {availableGenres.length - inactiveGenres.size}/{availableGenres.length}
+            </span>
+          </button>
+
+          {genreFilterOpen ? (
+            <div id="explore-genre-filter" className="yoriax-card mt-3 w-[min(22rem,calc(100vw-2rem))] rounded-3xl p-4">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-black text-white">{t('feed.filters.title')}</p>
+                  <p className="mt-1 text-xs leading-5 text-white/45">{t('feed.filters.description')}</p>
+                </div>
                 <button
-                  key={genre}
                   type="button"
-                  onClick={() => {
-                    setInactiveGenres((prev) => {
-                      const next = new Set(prev);
-                      if (isActive) next.add(genre);
-                      else next.delete(genre);
-                      return next;
-                    });
-                    setActiveIndex(0);
-                    scrollerRef.current?.scrollTo({ top: 0 });
-                  }}
-                  className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-colors ${
-                    isActive
-                      ? 'bg-white text-black'
-                      : 'border border-white/10 bg-black/40 text-white/60 hover:bg-black/60 hover:text-white'
-                  }`}
+                  onClick={() => setGenreFilterOpen(false)}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+                  aria-label={t('feed.filters.close')}
                 >
-                  {genre}
+                  <X className="h-4 w-4" />
                 </button>
-              );
-            })}
-          </div>
+              </div>
+
+              <div className="mb-4 flex gap-2">
+                <button type="button" onClick={selectAllGenres} className="rounded-full bg-white px-3 py-1.5 text-[11px] font-black text-black">
+                  {t('feed.filters.selectAll')}
+                </button>
+                <button type="button" onClick={deselectAllGenres} className="rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-[11px] font-black text-white/70 hover:bg-white/10 hover:text-white">
+                  {t('feed.filters.deselectAll')}
+                </button>
+              </div>
+
+              <div className="flex max-h-64 flex-wrap gap-2 overflow-y-auto pr-1 no-scrollbar">
+                {availableGenres.map((genre) => {
+                  const isActive = !inactiveGenres.has(genre);
+                  return (
+                    <button
+                      key={genre}
+                      type="button"
+                      onClick={() => toggleGenre(genre)}
+                      className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors ${
+                        isActive
+                          ? 'border-violet-400/45 bg-violet-500/20 text-white'
+                          : 'border-white/8 bg-black/25 text-white/35 hover:border-white/15 hover:text-white/65'
+                      }`}
+                      aria-pressed={isActive}
+                    >
+                      <span className={`flex h-4 w-4 items-center justify-center rounded-full border ${isActive ? 'border-violet-300 bg-violet-400 text-black' : 'border-white/20'}`}>
+                        {isActive ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+                      </span>
+                      {genre}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {mode === 'explore' && inactiveGenres.size > 0 && !genreFilterOpen ? (
+        <div className="pointer-events-none absolute left-4 top-[8rem] z-40 rounded-full border border-violet-400/20 bg-black/35 px-3 py-1.5 text-[10px] font-bold text-violet-200 backdrop-blur-md md:left-8 md:top-[8.25rem]">
+          {t('feed.filters.active', { count: availableGenres.length - inactiveGenres.size })}
         </div>
       ) : null}
 
@@ -973,7 +1070,7 @@ export default function FeedPage() {
             })}
           </div>
 
-          <div className="absolute left-4 top-1/2 z-30 flex -translate-y-1/2 flex-col gap-3 md:left-auto md:right-5">
+          <div className="absolute right-5 top-1/2 z-30 hidden -translate-y-1/2 flex-col gap-3 md:flex">
             <button type="button" onClick={() => scrollToIndex(activeIndex - 1)} disabled={activeIndex === 0} className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 disabled:opacity-25" aria-label={t('feed.nav.prev')}>
               <ChevronUp className="h-6 w-6" />
             </button>
@@ -992,7 +1089,7 @@ export default function FeedPage() {
 
       {editingSong ? (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" onClick={() => setEditingSong(null)}>
-          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#181818] p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+          <div className="yoriax-card w-full max-w-lg rounded-3xl p-6" onClick={(event) => event.stopPropagation()}>
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-400">{t('feed.admin.eyebrow')}</p>

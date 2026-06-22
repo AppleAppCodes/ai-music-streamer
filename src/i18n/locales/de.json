@@ -162,7 +162,16 @@
     "modes": {
       "forYou": "Für dich",
       "following": "Gefolgt",
-      "explore": "Entdecken"
+      "explore": "Explore"
+    },
+    "filters": {
+      "genres": "Genres",
+      "title": "Genres auswählen",
+      "description": "Aktiviere nur die Genres, die du im Explore-Feed hören möchtest.",
+      "selectAll": "Alle auswählen",
+      "deselectAll": "Alle abwählen",
+      "active": "{{count}} Genres aktiv",
+      "close": "Genre-Filter schließen"
     },
     "empty": {
       "followingTitle": "Noch keine gefolgten Künstler",

@@ -6,6 +6,7 @@ import { User, ExternalLink } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { isAdminUser } from '@/lib/admin';
 import { notifyPlayerForceSignOut } from '@/lib/player-events';
+import Image from 'next/image';
 
 interface ProfileDropdownProps {
   user: SupabaseUser;
@@ -38,8 +39,7 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
         className="w-8 h-8 rounded-full overflow-hidden border border-purple-500/30 hover:border-purple-500 transition-all focus:outline-none focus:ring-2 focus:ring-purple-500/50"
       >
         {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
+          <Image src={avatarUrl} alt={username} width={32} height={32} className="h-full w-full object-cover" />
         ) : (
           <div className="w-full h-full bg-purple-900/40 flex items-center justify-center text-purple-300">
             <User className="w-4 h-4" />
@@ -48,7 +48,7 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-56 bg-black/80 backdrop-blur-xl text-white rounded-2xl shadow-[0_0_30px_rgba(168,85,247,0.15)] z-50 border border-purple-500/20 py-2 text-sm animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden">
+        <div className="yoriax-card absolute right-0 z-50 mt-3 w-56 overflow-hidden rounded-2xl py-2 text-sm text-white animate-in fade-in slide-in-from-top-2 duration-200">
           <Link 
             href="/settings#konto" 
             onClick={() => setIsOpen(false)}
@@ -69,7 +69,7 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
           <Link
             href="mailto:apply@yoriax.com?subject=Bewerbung%20als%20KI-Künstler%20bei%20Yoriax" 
             onClick={() => setIsOpen(false)}
-            className="flex items-center justify-between mt-1 px-4 py-2.5 mx-2 rounded-lg bg-gradient-to-r from-purple-500/20 to-indigo-500/20 hover:from-purple-500/30 hover:to-indigo-500/30 text-purple-200 transition-all font-bold border border-purple-500/20"
+            className="mx-2 mt-1 flex items-center justify-between rounded-lg border border-primary-light/20 bg-gradient-to-r from-primary/25 to-accent/10 px-4 py-2.5 font-bold text-primary-light transition-all hover:from-primary/35 hover:to-accent/15"
           >
             <span>Als Künstler bewerben</span>
             <ExternalLink className="w-4 h-4 opacity-70" />
@@ -80,7 +80,7 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
             <Link 
               href="/admin" 
               onClick={() => setIsOpen(false)}
-              className="flex items-center justify-between px-4 py-2.5 mx-2 rounded-lg hover:bg-indigo-500/20 text-indigo-400 transition-colors font-semibold"
+              className="mx-2 flex items-center justify-between rounded-lg px-4 py-2.5 font-semibold text-primary-light transition-colors hover:bg-primary/20"
             >
               <span>Admin Dashboard</span>
             </Link>

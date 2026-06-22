@@ -5,6 +5,8 @@ import {
   FlatList,
   Image,
   InteractionManager,
+  Modal,
+  ScrollView,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   StyleSheet,
@@ -14,7 +16,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, type ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth-context';
 import {
   loadFeedLikeCount,
@@ -269,6 +271,7 @@ const FeedItem = memo(function FeedItem({
   onPlayFull,
   onTogglePlay,
   isLiked,
+  likeCount,
   isFollowingArtist,
   showFollowButton,
   onToggleLike,
@@ -283,6 +286,7 @@ const FeedItem = memo(function FeedItem({
   onPlayFull: (item: FeedPreviewSong) => void;
   onTogglePlay: () => void;
   isLiked: boolean;
+  likeCount: number;
   isFollowingArtist: boolean;
   showFollowButton: boolean;
   onToggleLike: (item: FeedPreviewSong) => void;
@@ -359,7 +363,7 @@ const FeedItem = memo(function FeedItem({
 
         <TouchableOpacity style={styles.actionButton} onPress={() => onToggleLike(item)}>
           <Ionicons name="heart" size={32} color={isLiked ? theme.colors.primary : "white"} />
-          <Text style={styles.actionText}>{item.likes_count ?? 0}</Text>
+          <Text style={styles.actionText}>{likeCount}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton}>
@@ -371,14 +375,181 @@ const FeedItem = memo(function FeedItem({
   );
 }, (previous, next) => (
   previous.item.id === next.item.id
-  && previous.item.likes_count === next.item.likes_count
   && previous.isActive === next.isActive
   && previous.isCurrentSong === next.isCurrentSong
   && previous.isPlaying === next.isPlaying
   && previous.isLiked === next.isLiked
+  && previous.likeCount === next.likeCount
   && previous.isFollowingArtist === next.isFollowingArtist
   && previous.showFollowButton === next.showFollowButton
 ));
+
+const GenreFilterModal = memo(function GenreFilterModal({
+  disabledGenres,
+  genres,
+  onClose,
+  onDeselectAll,
+  onSelectAll,
+  onToggleGenre,
+  visible,
+}: {
+  disabledGenres: Set<string>;
+  genres: string[];
+  onClose: () => void;
+  onDeselectAll: () => void;
+  onSelectAll: () => void;
+  onToggleGenre: (genre: string) => void;
+  visible: boolean;
+}) {
+  const activeCount = genres.filter((genre) => !disabledGenres.has(genre)).length;
+
+  return (
+    <Modal
+      animationType="slide"
+      onRequestClose={onClose}
+      transparent
+      visible={visible}
+    >
+      <View style={styles.genreModalOverlay}>
+        <TouchableOpacity
+          activeOpacity={1}
+          accessibilityLabel="Genre-Filter schließen"
+          onPress={onClose}
+          style={styles.genreModalBackdrop}
+        />
+
+        <View style={styles.genreModalCard}>
+          <View style={styles.genreModalHandle} />
+
+          <View style={styles.genreModalHeader}>
+            <View style={styles.genreModalHeading}>
+              <Text style={styles.genreModalEyebrow}>EXPLORE FILTER</Text>
+              <Text style={styles.genreModalTitle}>Genres auswählen</Text>
+              <Text style={styles.genreModalDescription}>
+                Wähle aus, welche Genres im Explore-Feed erscheinen.
+              </Text>
+            </View>
+            <TouchableOpacity
+              accessibilityLabel="Genre-Filter schließen"
+              accessibilityRole="button"
+              onPress={onClose}
+              style={styles.genreModalClose}
+            >
+              <Ionicons name="close" size={22} color={theme.colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.genreFilterSummary}>
+            <Text style={styles.genreFilterSummaryText}>
+              {activeCount} von {genres.length} aktiv
+            </Text>
+            <View style={styles.genreFilterQuickActions}>
+              <TouchableOpacity onPress={onSelectAll} style={styles.genreFilterSelectAll}>
+                <Text style={styles.genreFilterSelectAllText}>Alle auswählen</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onDeselectAll} style={styles.genreFilterDeselectAll}>
+                <Text style={styles.genreFilterDeselectAllText}>Alle abwählen</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ScrollView
+            contentContainerStyle={styles.genreChipGrid}
+            showsVerticalScrollIndicator={false}
+            style={styles.genreScrollView}
+          >
+            {genres.map((genre) => {
+              const isActive = !disabledGenres.has(genre);
+
+              return (
+                <TouchableOpacity
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isActive }}
+                  activeOpacity={0.82}
+                  key={genre}
+                  onPress={() => onToggleGenre(genre)}
+                  style={[
+                    styles.genreChip,
+                    isActive ? styles.genreChipActive : styles.genreChipInactive,
+                  ]}
+                >
+                  <View style={[
+                    styles.genreChipCheck,
+                    isActive && styles.genreChipCheckActive,
+                  ]}>
+                    {isActive ? (
+                      <Ionicons name="checkmark" size={13} color={theme.colors.background} />
+                    ) : null}
+                  </View>
+                  <Text style={[
+                    styles.genreChipText,
+                    !isActive && styles.genreChipTextInactive,
+                  ]}>
+                    {genre}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={onClose}
+            style={styles.genreModalDone}
+          >
+            <Text style={styles.genreModalDoneText}>Fertig</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+});
+
+type FeedEmptyStateProps = {
+  eyebrow: string;
+  icon: ComponentProps<typeof Ionicons>['name'];
+  message: string;
+  primaryAction: () => void;
+  primaryLabel: string;
+  secondaryAction: (() => void) | null;
+  secondaryLabel: string | null;
+  title: string;
+};
+
+const FeedEmptyState = memo(function FeedEmptyState({
+  eyebrow,
+  icon,
+  message,
+  primaryAction,
+  primaryLabel,
+  secondaryAction,
+  secondaryLabel,
+  title,
+}: FeedEmptyStateProps) {
+  return (
+    <View style={styles.emptyContainer}>
+      <View style={styles.emptyCard}>
+        <View style={styles.emptyIcon}>
+          <Ionicons name={icon} size={28} color={theme.colors.text} />
+        </View>
+        <Text style={styles.emptyEyebrow}>{eyebrow}</Text>
+        <Text style={styles.emptyTitle}>{title}</Text>
+        <Text style={styles.emptyMessage}>{message}</Text>
+
+        <View style={styles.emptyActions}>
+          <TouchableOpacity activeOpacity={0.86} style={styles.emptyPrimaryButton} onPress={primaryAction}>
+            <Text style={styles.emptyPrimaryText}>{primaryLabel}</Text>
+          </TouchableOpacity>
+          {secondaryLabel && secondaryAction ? (
+            <TouchableOpacity activeOpacity={0.86} style={styles.emptySecondaryButton} onPress={secondaryAction}>
+              <Text style={styles.emptySecondaryText}>{secondaryLabel}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </View>
+    </View>
+  );
+});
 
 type PreviewSlotKey = 'a' | 'b';
 
@@ -460,17 +631,40 @@ export function ForYouScreen() {
   const previewPlayerA = useAudioPlayer(null, PREVIEW_PLAYER_OPTIONS);
   const previewPlayerB = useAudioPlayer(null, PREVIEW_PLAYER_OPTIONS);
   const [activeFeed, setActiveFeed] = useState<'foryou' | 'following' | 'explore'>('foryou');
-  const [songs, setSongs] = useState<FeedPreviewSong[]>([]);
-  const songsRef = useRef(songs);
-  useEffect(() => {
-    songsRef.current = songs;
-  }, [songs]);
+  const [allSongs, setAllSongs] = useState<FeedPreviewSong[]>([]);
+  const songsRef = useRef<FeedPreviewSong[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [feedPlayingSongId, setFeedPlayingSongId] = useState<string | null>(null);
   const [likedSongsMap, setLikedSongsMap] = useState<Record<string, boolean>>({});
+  const [likeCountsMap, setLikeCountsMap] = useState<Record<string, number>>({});
   const [followedArtistsMap, setFollowedArtistsMap] = useState<Record<string, boolean>>({});
+  const [disabledGenres, setDisabledGenres] = useState<Set<string>>(new Set());
+  const [genreFilterVisible, setGenreFilterVisible] = useState(false);
+  const listRef = useRef<FlatList<FeedPreviewSong>>(null);
+
+  const availableGenres = useMemo(() => Array.from(new Set(
+    allSongs
+      .map((song) => song.genre?.trim())
+      .filter((genre): genre is string => Boolean(genre)),
+  )).sort((first, second) => first.localeCompare(second, 'de')), [allSongs]);
+
+  const songs = useMemo(() => {
+    const hasActiveFilter = activeFeed === 'explore'
+      && availableGenres.some((genre) => disabledGenres.has(genre));
+    if (!hasActiveFilter) return allSongs;
+
+    return allSongs.filter((song) => {
+      const genre = song.genre?.trim();
+      if (!genre) return false;
+      return !disabledGenres.has(genre);
+    });
+  }, [activeFeed, allSongs, availableGenres, disabledGenres]);
+
+  useEffect(() => {
+    songsRef.current = songs;
+  }, [songs]);
 
   // Track currently visible item to avoid playing the same song repeatedly
   const currentHookSongId = useRef<string | null>(null);
@@ -899,24 +1093,24 @@ export function ForYouScreen() {
 
         if (mounted) {
           const initialLikedMap: Record<string, boolean> = {};
+          const initialLikeCountsMap: Record<string, number> = {};
           const initialFollowedMap: Record<string, boolean> = {};
 
           nextSongs.forEach(s => {
             if (s.isLiked) initialLikedMap[s.id] = true;
+            initialLikeCountsMap[s.id] = s.likes_count ?? 0;
           });
           followedArtistNames.forEach((artistName) => {
             initialFollowedMap[artistName] = true;
           });
 
           setLikedSongsMap(initialLikedMap);
+          setLikeCountsMap(initialLikeCountsMap);
           setFollowedArtistsMap(initialFollowedMap);
           currentHookSongId.current = null;
           activeIndexRef.current = 0;
           setActiveIndex(0);
-          setSongs(nextSongs.map((song) => ({
-            ...song,
-            isFollowingArtist: !!initialFollowedMap[getArtistName(song)],
-          })));
+          setAllSongs(nextSongs);
         }
       } catch (loadError) {
         if (mounted) {
@@ -1046,30 +1240,23 @@ export function ForYouScreen() {
     if (!user) return;
     const isCurrentlyLiked = !!likedSongsMap[item.id];
     const newStatus = !isCurrentlyLiked;
-    const optimisticCount = Math.max(0, (item.likes_count ?? 0) + (newStatus ? 1 : -1));
+    const previousCount = likeCountsMap[item.id] ?? item.likes_count ?? 0;
+    const optimisticCount = Math.max(0, previousCount + (newStatus ? 1 : -1));
     
     setLikedSongsMap(prev => ({ ...prev, [item.id]: newStatus }));
-    setSongs(prev => prev.map(s => s.id === item.id ? { ...s, likes_count: optimisticCount, isLiked: newStatus } : s));
+    setLikeCountsMap(prev => ({ ...prev, [item.id]: optimisticCount }));
 
     try {
       const confirmedStatus = await toggleLike(user.id, item.id, isCurrentlyLiked);
       const confirmedCount = await loadFeedLikeCount(item.id);
 
       setLikedSongsMap(prev => ({ ...prev, [item.id]: confirmedStatus }));
-      setSongs(prev => prev.map(s => s.id === item.id ? {
-        ...s,
-        isLiked: confirmedStatus,
-        likes_count: confirmedCount,
-      } : s));
+      setLikeCountsMap(prev => ({ ...prev, [item.id]: confirmedCount }));
     } catch {
       setLikedSongsMap(prev => ({ ...prev, [item.id]: isCurrentlyLiked }));
-      setSongs(prev => prev.map(s => s.id === item.id ? {
-        ...s,
-        isLiked: isCurrentlyLiked,
-        likes_count: item.likes_count ?? 0,
-      } : s));
+      setLikeCountsMap(prev => ({ ...prev, [item.id]: previousCount }));
     }
-  }, [user, likedSongsMap]);
+  }, [likeCountsMap, likedSongsMap, user]);
 
   const handleToggleFollow = useCallback(async (item: FeedPreviewSong) => {
     if (!user) return;
@@ -1078,43 +1265,119 @@ export function ForYouScreen() {
     const nextStatus = !isCurrentlyFollowing;
 
     setFollowedArtistsMap(prev => ({ ...prev, [artistName]: nextStatus }));
-    setSongs(prev => prev.map(song => getArtistName(song) === artistName ? {
-      ...song,
-      isFollowingArtist: nextStatus,
-    } : song));
 
     try {
       const confirmedStatus = await toggleArtistFollow(user.id, artistName, isCurrentlyFollowing);
       setFollowedArtistsMap(prev => ({ ...prev, [artistName]: confirmedStatus }));
-      setSongs(prev => prev.map(song => getArtistName(song) === artistName ? {
-        ...song,
-        isFollowingArtist: confirmedStatus,
-      } : song));
     } catch {
       setFollowedArtistsMap(prev => ({ ...prev, [artistName]: isCurrentlyFollowing }));
-      setSongs(prev => prev.map(song => getArtistName(song) === artistName ? {
-        ...song,
-        isFollowingArtist: isCurrentlyFollowing,
-      } : song));
     }
   }, [followedArtistsMap, user]);
 
+  const resetExploreAfterFilterChange = useCallback(() => {
+    transitionToken.current += 1;
+    pendingTransitionIndex.current = null;
+    currentHookSongId.current = null;
+    activeIndexRef.current = 0;
+    setActiveIndex(0);
+    stopAllPreviewPlayers();
+    listRef.current?.scrollToOffset({ animated: false, offset: 0 });
+  }, [stopAllPreviewPlayers]);
+
+  const handleToggleGenre = useCallback((genre: string) => {
+    setDisabledGenres((currentGenres) => {
+      const nextGenres = new Set(currentGenres);
+      if (nextGenres.has(genre)) nextGenres.delete(genre);
+      else nextGenres.add(genre);
+      return nextGenres;
+    });
+    resetExploreAfterFilterChange();
+  }, [resetExploreAfterFilterChange]);
+
+  const handleSelectAllGenres = useCallback(() => {
+    setDisabledGenres(new Set());
+    resetExploreAfterFilterChange();
+  }, [resetExploreAfterFilterChange]);
+
+  const handleDeselectAllGenres = useCallback(() => {
+    setDisabledGenres(new Set(availableGenres));
+    resetExploreAfterFilterChange();
+  }, [availableGenres, resetExploreAfterFilterChange]);
+
+  const handleFeedChange = useCallback((nextFeed: 'foryou' | 'following' | 'explore') => {
+    setGenreFilterVisible(false);
+    setActiveFeed(nextFeed);
+  }, []);
+
+  const activeGenreCount = useMemo(
+    () => availableGenres.filter((genre) => !disabledGenres.has(genre)).length,
+    [availableGenres, disabledGenres],
+  );
+
   const renderTopTabs = useCallback(() => (
     <View style={[styles.topTabs, { top: Math.max(insets.top + 10, 60) }]}>
-      <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveFeed('foryou')}>
+      <TouchableOpacity activeOpacity={0.8} onPress={() => handleFeedChange('foryou')}>
         <Text style={[styles.topTab, activeFeed === 'foryou' && styles.topTabActive]}>Für dich</Text>
       </TouchableOpacity>
-      <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveFeed('following')}>
+      <TouchableOpacity activeOpacity={0.8} onPress={() => handleFeedChange('following')}>
         <Text style={[styles.topTab, activeFeed === 'following' && styles.topTabActive]}>Gefolgt</Text>
       </TouchableOpacity>
-      <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveFeed('explore')}>
+      <TouchableOpacity activeOpacity={0.8} onPress={() => handleFeedChange('explore')}>
         <Text style={[styles.topTab, activeFeed === 'explore' && styles.topTabActive]}>Explore</Text>
       </TouchableOpacity>
     </View>
-  ), [activeFeed, insets.top]);
+  ), [activeFeed, handleFeedChange, insets.top]);
 
-  const renderEmptyState = useCallback(() => {
-    const copy = activeFeed === 'following'
+  const renderExploreFilter = useCallback(() => {
+    if (activeFeed !== 'explore' || availableGenres.length === 0) return null;
+
+    return (
+      <>
+        <TouchableOpacity
+          accessibilityLabel="Explore-Genres filtern"
+          accessibilityRole="button"
+          activeOpacity={0.84}
+          onPress={() => setGenreFilterVisible(true)}
+          style={[
+            styles.exploreFilterButton,
+            { top: Math.max(insets.top + 56, 106) },
+            activeGenreCount < availableGenres.length && styles.exploreFilterButtonActive,
+          ]}
+        >
+          <Ionicons name="options-outline" size={18} color={theme.colors.text} />
+          <Text style={styles.exploreFilterButtonText}>Genres</Text>
+          <View style={styles.exploreFilterCount}>
+            <Text style={styles.exploreFilterCountText}>
+              {activeGenreCount}/{availableGenres.length}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <GenreFilterModal
+          disabledGenres={disabledGenres}
+          genres={availableGenres}
+          onClose={() => setGenreFilterVisible(false)}
+          onDeselectAll={handleDeselectAllGenres}
+          onSelectAll={handleSelectAllGenres}
+          onToggleGenre={handleToggleGenre}
+          visible={genreFilterVisible}
+        />
+      </>
+    );
+  }, [
+    activeFeed,
+    activeGenreCount,
+    availableGenres,
+    disabledGenres,
+    genreFilterVisible,
+    handleDeselectAllGenres,
+    handleSelectAllGenres,
+    handleToggleGenre,
+    insets.top,
+  ]);
+
+  const emptyStateCopy = useMemo<FeedEmptyStateProps>(() => (
+    activeFeed === 'following'
       ? {
           icon: 'people-outline' as const,
           eyebrow: 'Gefolgt',
@@ -1123,54 +1386,41 @@ export function ForYouScreen() {
           primaryLabel: 'Artists entdecken',
           primaryAction: () => navigation.navigate('Artists'),
           secondaryLabel: 'Explore öffnen',
-          secondaryAction: () => setActiveFeed('explore'),
+          secondaryAction: () => handleFeedChange('explore'),
         }
       : activeFeed === 'explore'
-        ? {
-            icon: 'compass-outline' as const,
-            eyebrow: 'Explore',
-            title: 'Noch keine Explore-Hooks',
-            message: 'Sobald neue Hooks verfügbar sind, landen sie hier zuerst.',
-            primaryLabel: 'Für dich öffnen',
-            primaryAction: () => setActiveFeed('foryou'),
-            secondaryLabel: null,
-            secondaryAction: null,
-          }
-        : {
-            icon: 'sparkles-outline' as const,
-            eyebrow: 'Für dich',
-            title: 'Dein Feed wird vorbereitet',
-            message: 'Höre und like Songs, damit YORIAX deinen Feed besser kuratieren kann.',
-            primaryLabel: 'Explore öffnen',
-            primaryAction: () => setActiveFeed('explore'),
-            secondaryLabel: null,
-            secondaryAction: null,
-          };
-
-    return (
-      <View style={styles.emptyContainer}>
-        <View style={styles.emptyCard}>
-          <View style={styles.emptyIcon}>
-            <Ionicons name={copy.icon} size={28} color={theme.colors.text} />
-          </View>
-          <Text style={styles.emptyEyebrow}>{copy.eyebrow}</Text>
-          <Text style={styles.emptyTitle}>{copy.title}</Text>
-          <Text style={styles.emptyMessage}>{copy.message}</Text>
-
-          <View style={styles.emptyActions}>
-            <TouchableOpacity activeOpacity={0.86} style={styles.emptyPrimaryButton} onPress={copy.primaryAction}>
-              <Text style={styles.emptyPrimaryText}>{copy.primaryLabel}</Text>
-            </TouchableOpacity>
-            {copy.secondaryLabel && copy.secondaryAction ? (
-              <TouchableOpacity activeOpacity={0.86} style={styles.emptySecondaryButton} onPress={copy.secondaryAction}>
-                <Text style={styles.emptySecondaryText}>{copy.secondaryLabel}</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
-      </View>
-    );
-  }, [activeFeed, navigation]);
+        ? allSongs.length > 0
+          ? {
+              icon: 'options-outline' as const,
+              eyebrow: 'Explore Filter',
+              title: 'Keine Genres ausgewählt',
+              message: 'Aktiviere mindestens ein Genre, damit passende Hooks erscheinen.',
+              primaryLabel: 'Genres auswählen',
+              primaryAction: () => setGenreFilterVisible(true),
+              secondaryLabel: 'Alle auswählen',
+              secondaryAction: handleSelectAllGenres,
+            }
+          : {
+              icon: 'compass-outline' as const,
+              eyebrow: 'Explore',
+              title: 'Noch keine Explore-Hooks',
+              message: 'Sobald neue Hooks verfügbar sind, landen sie hier zuerst.',
+              primaryLabel: 'Für dich öffnen',
+              primaryAction: () => handleFeedChange('foryou'),
+              secondaryLabel: null,
+              secondaryAction: null,
+            }
+      : {
+          icon: 'sparkles-outline' as const,
+          eyebrow: 'Für dich',
+          title: 'Dein Feed wird vorbereitet',
+          message: 'Höre und like Songs, damit YORIAX deinen Feed besser kuratieren kann.',
+          primaryLabel: 'Explore öffnen',
+          primaryAction: () => handleFeedChange('explore'),
+          secondaryLabel: null,
+          secondaryAction: null,
+        }
+  ), [activeFeed, allSongs.length, handleFeedChange, handleSelectAllGenres, navigation]);
 
   const renderItem = useCallback(({ item, index }: { item: FeedPreviewSong; index: number }) => {
     const isActive = index === activeIndex;
@@ -1205,6 +1455,7 @@ export function ForYouScreen() {
           }
         }}
         isLiked={!!likedSongsMap[item.id]}
+        likeCount={likeCountsMap[item.id] ?? item.likes_count ?? 0}
         isFollowingArtist={!!followedArtistsMap[getArtistName(item)]}
         showFollowButton={activeFeed !== 'following'}
         onToggleLike={handleToggleLike}
@@ -1222,6 +1473,7 @@ export function ForYouScreen() {
     handleToggleLike,
     itemHeight,
     itemWidth,
+    likeCountsMap,
     likedSongsMap,
     pausePreviewSlot,
     transitionToIndex,
@@ -1260,8 +1512,10 @@ export function ForYouScreen() {
   if (songs.length === 0) {
     return (
       <View style={styles.container}>
+        <AnimatedCiBackdrop />
         {renderTopTabs()}
-        {renderEmptyState()}
+        {renderExploreFilter()}
+        <FeedEmptyState {...emptyStateCopy} />
       </View>
     );
   }
@@ -1270,8 +1524,10 @@ export function ForYouScreen() {
     <View style={styles.container}>
       <AnimatedCiBackdrop />
       {renderTopTabs()}
+      {renderExploreFilter()}
 
       <FlatList
+        ref={listRef}
         data={songs}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
@@ -1331,6 +1587,222 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+  exploreFilterButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(10,7,16,0.78)',
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    left: 18,
+    minHeight: 42,
+    paddingHorizontal: 12,
+    position: 'absolute',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    zIndex: 20,
+  },
+  exploreFilterButtonActive: {
+    backgroundColor: 'rgba(124,58,237,0.24)',
+    borderColor: 'rgba(168,85,247,0.58)',
+  },
+  exploreFilterButtonText: {
+    color: theme.colors.text,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  exploreFilterCount: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 999,
+    justifyContent: 'center',
+    minHeight: 22,
+    minWidth: 38,
+    paddingHorizontal: 7,
+  },
+  exploreFilterCountText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  genreModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  genreModalBackdrop: {
+    backgroundColor: 'rgba(0,0,0,0.68)',
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  genreModalCard: {
+    backgroundColor: theme.colors.surface,
+    borderColor: 'rgba(168,85,247,0.24)',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderWidth: 1,
+    maxHeight: '82%',
+    paddingBottom: 28,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: -12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 30,
+  },
+  genreModalHandle: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 999,
+    height: 5,
+    marginBottom: 18,
+    width: 46,
+  },
+  genreModalHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 16,
+    justifyContent: 'space-between',
+  },
+  genreModalHeading: {
+    flex: 1,
+  },
+  genreModalEyebrow: {
+    color: theme.colors.primaryLight,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 2.1,
+    marginBottom: 7,
+  },
+  genreModalTitle: {
+    color: theme.colors.text,
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  genreModalDescription: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 19,
+    marginTop: 7,
+  },
+  genreModalClose: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 999,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  genreFilterSummary: {
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+    borderBottomWidth: 1,
+    marginTop: 20,
+    paddingBottom: 16,
+  },
+  genreFilterSummaryText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+  genreFilterQuickActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  genreFilterSelectAll: {
+    backgroundColor: theme.colors.text,
+    borderRadius: 999,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+  genreFilterSelectAllText: {
+    color: theme.colors.background,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  genreFilterDeselectAll: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+  genreFilterDeselectAllText: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  genreScrollView: {
+    marginTop: 16,
+    maxHeight: 300,
+  },
+  genreChipGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 9,
+    paddingBottom: 4,
+  },
+  genreChip: {
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  genreChipActive: {
+    backgroundColor: 'rgba(124,58,237,0.22)',
+    borderColor: 'rgba(168,85,247,0.5)',
+  },
+  genreChipInactive: {
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  genreChipCheck: {
+    alignItems: 'center',
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 18,
+    justifyContent: 'center',
+    width: 18,
+  },
+  genreChipCheckActive: {
+    backgroundColor: theme.colors.primaryLight,
+    borderColor: theme.colors.primaryLight,
+  },
+  genreChipText: {
+    color: theme.colors.text,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  genreChipTextInactive: {
+    color: 'rgba(255,255,255,0.38)',
+  },
+  genreModalDone: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 999,
+    justifyContent: 'center',
+    marginTop: 18,
+    minHeight: 50,
+  },
+  genreModalDoneText: {
+    color: theme.colors.text,
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
   },
   emptyContainer: {
     alignItems: 'center',

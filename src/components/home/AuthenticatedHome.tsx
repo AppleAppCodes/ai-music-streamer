@@ -329,7 +329,7 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
     {
       title: t('home.quickAccess.favorites'),
       icon: Heart,
-      color: "bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500",
+      color: "bg-gradient-primary",
       images: ["linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)"],
       link: "/collection/tracks"
     },
