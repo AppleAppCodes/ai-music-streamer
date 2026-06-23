@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   eyebrow: {
-    color: theme.colors.accent,
+    color: theme.colors.primaryLight,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 2.2,

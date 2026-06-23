@@ -4,8 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import yoriaxLogo from '../../assets/yoriax-logo.png';
 import yoriaxSymbol from '../../assets/yoriax-symbol.png';
-import yoriaxLoginSymbol from '../../assets/yoriax-login-symbol.png';
-import yoriaxLoginWordmark from '../../assets/yoriax-login-wordmark.png';
+
 
 export function YoriaxMark({ size = 34 }: { size?: number }) {
   return <Image source={yoriaxSymbol} style={{ height: size, width: size }} resizeMode="contain" alt="YORIAX" />;
@@ -18,8 +17,7 @@ export function YoriaxLogo() {
 export function YoriaxLoginLogo() {
   return (
     <View style={styles.loginLogo}>
-      <Image source={yoriaxLoginSymbol} style={styles.loginLogoSymbol} resizeMode="contain" alt="" />
-      <Image source={yoriaxLoginWordmark} style={styles.loginLogoWordmark} resizeMode="contain" alt="YORIAX" />
+      <Image source={yoriaxSymbol} style={styles.loginLogoSymbol} resizeMode="contain" alt="YORIAX" />
     </View>
   );
 }
