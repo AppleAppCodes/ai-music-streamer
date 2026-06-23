@@ -174,6 +174,7 @@ const translations = {
     },
     playlist: {
       back: 'Zurück',
+      dailyNewReleasesCopy: 'Die neuesten Uploads auf YORIAX.',
       empty: 'Diese Playlist ist leer.',
       loading: 'Playlist wird geladen...',
       play: 'Abspielen',
@@ -190,6 +191,7 @@ const translations = {
       curatedEmpty: 'Noch keine kuratierten offiziellen Playlists.',
       curatedSection: 'Kuratierte offizielle Playlists',
       curatedSectionCopy: 'Von YORIAX ausgewählte Sammlungen.',
+      dailyNewReleasesCopy: 'Die neuesten Uploads auf YORIAX.',
       empty: 'Keine Playlists gefunden',
       emptyCopy: 'Zu deiner Suche gibt es aktuell keine öffentlichen Playlists.',
       eyebrow: 'ENTDECKEN',
@@ -471,6 +473,7 @@ const translations = {
     },
     playlist: {
       back: 'Back',
+      dailyNewReleasesCopy: 'The newest uploads on YORIAX.',
       empty: 'This playlist is empty.',
       loading: 'Loading playlist...',
       play: 'Play',
@@ -487,6 +490,7 @@ const translations = {
       curatedEmpty: 'No curated official playlists yet.',
       curatedSection: 'Curated official playlists',
       curatedSectionCopy: 'Collections selected by YORIAX.',
+      dailyNewReleasesCopy: 'The newest uploads on YORIAX.',
       empty: 'No playlists found',
       emptyCopy: 'There are no public playlists matching your search.',
       eyebrow: 'DISCOVER',

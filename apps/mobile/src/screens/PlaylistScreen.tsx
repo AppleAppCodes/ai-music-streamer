@@ -1,5 +1,7 @@
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useState, memo, useCallback } from 'react';
+import { ActivityIndicator, Animated, Easing, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState, memo, useCallback, useRef } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { theme } from '../theme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -15,6 +17,117 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
 function SongSeparator() {
   return <View style={styles.songSeparator} />;
+}
+
+function DailyNewReleasesHeroBackground() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const videoPlayer = useVideoPlayer(require('../../assets/yoriax_intro.MOV'), (player) => {
+    player.loop = true;
+    player.muted = true;
+    player.play();
+  });
+
+  useEffect(() => {
+    videoPlayer.play();
+
+    return () => {
+      videoPlayer.pause();
+    };
+  }, [videoPlayer]);
+
+  return (
+    <View pointerEvents="none" style={styles.dailyHeroBackground}>
+      <VideoView
+        contentFit="cover"
+        nativeControls={false}
+        player={videoPlayer}
+        style={styles.dailyHeroVideo}
+      />
+      <LinearGradient
+        colors={['rgba(5,5,6,0.32)', 'rgba(8,7,14,0.72)', theme.colors.background]}
+        locations={[0, 0.52, 1]}
+        style={styles.dailyHeroOverlay}
+      />
+    </View>
+  );
+}
+
+function PlayingVisualizer({ active }: { active: boolean }) {
+  const bars = useRef([
+    new Animated.Value(0.32),
+    new Animated.Value(0.58),
+    new Animated.Value(0.42),
+  ]).current;
+
+  useEffect(() => {
+    if (!active) {
+      bars.forEach((bar) => {
+        bar.stopAnimation();
+        bar.setValue(0.32);
+      });
+      return;
+    }
+
+    const loops = bars.map((bar, index) => (
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(index * 90),
+          Animated.timing(bar, {
+            duration: 210,
+            easing: Easing.inOut(Easing.quad),
+            toValue: 1,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bar, {
+            duration: 230,
+            easing: Easing.inOut(Easing.quad),
+            toValue: index === 1 ? 0.38 : 0.54,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bar, {
+            duration: 190,
+            easing: Easing.inOut(Easing.quad),
+            toValue: index === 2 ? 0.9 : 0.68,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bar, {
+            duration: 220,
+            easing: Easing.inOut(Easing.quad),
+            toValue: 0.32,
+            useNativeDriver: true,
+          }),
+        ]),
+      )
+    ));
+
+    loops.forEach((loop) => loop.start());
+
+    return () => {
+      loops.forEach((loop) => loop.stop());
+    };
+  }, [active, bars]);
+
+  if (!active) return null;
+
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.visualizer}
+    >
+      {bars.map((bar, index) => (
+        <Animated.View
+          key={index}
+          style={[
+            styles.visualizerBar,
+            {
+              transform: [{ scaleY: bar }],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
 }
 
 const MemoizedSongRow = memo(function SongRow({
@@ -54,11 +167,7 @@ const MemoizedSongRow = memo(function SongRow({
 
       <Text style={styles.songMeta}>{formatPlays(song.plays)}</Text>
 
-      {isActive && isPlaying && (
-        <View style={styles.playingIndicator}>
-          <Text style={styles.playingText}>▶</Text>
-        </View>
-      )}
+      <PlayingVisualizer active={isActive && isPlaying} />
     </TouchableOpacity>
   );
 });
@@ -121,6 +230,11 @@ export function PlaylistScreen({ route, navigation }: Props) {
     );
   }, [activeSong?.id, handlePlaySong, isPlaying]);
 
+  const isDailyNewReleases = playlist?.id === DAILY_NEW_RELEASES_PLAYLIST_ID;
+  const playlistDescription = isDailyNewReleases
+    ? t('playlist.dailyNewReleasesCopy')
+    : playlist?.description;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -153,32 +267,35 @@ export function PlaylistScreen({ route, navigation }: Props) {
           updateCellsBatchingPeriod={32}
           windowSize={7}
           ListHeaderComponent={
-            <View style={styles.playlistHero}>
-              {playlist.id === DAILY_NEW_RELEASES_PLAYLIST_ID ? (
-                <YoriaxPlaylistCover size={200} radius={20} style={styles.playlistCover} />
-              ) : playlist.cover_url ? (
-                <Image source={{ uri: playlist.cover_url }} style={styles.playlistCover} alt="" />
-              ) : (
-                <View style={[styles.playlistCover, styles.playlistFallback]}>
-                  <Text style={styles.playlistFallbackText}>♪</Text>
-                </View>
-              )}
-              <Text style={styles.playlistTitle}>{playlist.title}</Text>
-              <Text style={styles.playlistMeta}>
-                {playlist.is_public ? t('playlist.publicMeta') : t('playlist.privateMeta')} • {songs.length} {t('common.songs')}
-              </Text>
-              {playlist.description ? (
-                <Text style={styles.playlistDescription}>{playlist.description}</Text>
-              ) : null}
+            <View style={[styles.playlistHero, isDailyNewReleases && styles.dailyPlaylistHero]}>
+              {isDailyNewReleases ? <DailyNewReleasesHeroBackground /> : null}
+              <View style={styles.playlistHeroContent}>
+                {isDailyNewReleases ? (
+                  <YoriaxPlaylistCover size={200} radius={20} style={styles.playlistCover} />
+                ) : playlist.cover_url ? (
+                  <Image source={{ uri: playlist.cover_url }} style={styles.playlistCover} alt="" />
+                ) : (
+                  <View style={[styles.playlistCover, styles.playlistFallback]}>
+                    <Text style={styles.playlistFallbackText}>♪</Text>
+                  </View>
+                )}
+                <Text style={styles.playlistTitle}>{playlist.title}</Text>
+                <Text style={styles.playlistMeta}>
+                  {playlist.is_public ? t('playlist.publicMeta') : t('playlist.privateMeta')} • {songs.length} {t('common.songs')}
+                </Text>
+                {playlistDescription ? (
+                  <Text style={styles.playlistDescription}>{playlistDescription}</Text>
+                ) : null}
 
-              {songs.length > 0 ? (
-                <TouchableOpacity
-                  style={styles.playAllButton}
-                  onPress={() => handlePlaySong(songs[0], 0)}
-                >
-                  <Text style={styles.playAllText}>{t('playlist.play')}</Text>
-                </TouchableOpacity>
-              ) : null}
+                {songs.length > 0 ? (
+                  <TouchableOpacity
+                    style={styles.playAllButton}
+                    onPress={() => handlePlaySong(songs[0], 0)}
+                  >
+                    <Text style={styles.playAllText}>{t('playlist.play')}</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             </View>
           }
           ListEmptyComponent={
@@ -235,11 +352,40 @@ const styles = StyleSheet.create({
   },
   playlistHero: {
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 30,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    overflow: 'hidden',
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  dailyPlaylistHero: {
+    backgroundColor: theme.colors.background,
+  },
+  dailyHeroBackground: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  dailyHeroVideo: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  dailyHeroOverlay: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  playlistHeroContent: {
+    alignItems: 'center',
+    width: '100%',
   },
   playlistCover: {
     width: 200,
@@ -348,19 +494,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  playingIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: theme.colors.text,
+  visualizer: {
     alignItems: 'center',
+    backgroundColor: 'rgba(124,58,237,0.16)',
+    borderColor: 'rgba(168,85,247,0.42)',
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 3,
+    height: 24,
     justifyContent: 'center',
     marginLeft: 8,
+    paddingHorizontal: 6,
+    width: 28,
   },
-  playingText: {
-    color: theme.colors.background,
-    fontSize: 10,
-    fontWeight: '900',
+  visualizerBar: {
+    backgroundColor: theme.colors.primaryLight,
+    borderRadius: 2,
+    height: 14,
+    shadowColor: theme.colors.primaryLight,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.34,
+    shadowRadius: 6,
+    width: 3,
   },
   emptyBox: {
     alignItems: 'center',

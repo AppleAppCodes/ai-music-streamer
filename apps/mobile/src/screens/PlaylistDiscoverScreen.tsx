@@ -274,6 +274,10 @@ const PlaylistCard = memo(function PlaylistCard({
 }) {
   const { t } = useI18n();
   const tint = ACCENTS[accent];
+  const isDailyNewReleases = playlist.id === DAILY_NEW_RELEASES_PLAYLIST_ID;
+  const description = isDailyNewReleases
+    ? t('playlistDiscover.dailyNewReleasesCopy')
+    : playlist.description;
 
   return (
     <TouchableOpacity
@@ -286,7 +290,7 @@ const PlaylistCard = memo(function PlaylistCard({
         colors={[`${tint}24`, 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0.02)']}
         style={StyleSheet.absoluteFill}
       />
-      {playlist.id === DAILY_NEW_RELEASES_PLAYLIST_ID ? (
+      {isDailyNewReleases ? (
         <YoriaxPlaylistCover size={82} radius={18} />
       ) : (
         <CoverArt uri={playlist.cover_url} size={82} radius={18} />
@@ -298,8 +302,8 @@ const PlaylistCard = memo(function PlaylistCard({
         <Text style={styles.cardCreator} numberOfLines={1}>
           {t('playlistDiscover.by', { creator: playlist.creatorName })}
         </Text>
-        {playlist.description ? (
-          <Text style={styles.cardDescription} numberOfLines={2}>{playlist.description}</Text>
+        {description ? (
+          <Text style={styles.cardDescription} numberOfLines={2}>{description}</Text>
         ) : (
           <Text style={styles.cardDescription} numberOfLines={1}>
             {t('playlistDiscover.publicPlaylist')}
