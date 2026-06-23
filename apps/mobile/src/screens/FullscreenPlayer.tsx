@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
 import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { t, locale } from '../lib/i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -227,8 +228,8 @@ export function FullscreenPlayer({ navigation }: Props) {
       [
         activeSong.artist_name || activeSong.creatorName || 'Creator',
         activeSong.genre ? `Genre: ${activeSong.genre}` : null,
-        duration ? `Dauer: ${formatDuration(duration)}` : null,
-        `Streams: ${activeSong.plays.toLocaleString('de-DE')}`,
+        duration ? `${t('duration')}: ${formatDuration(duration)}` : null,
+        `${t('streams')}: ${activeSong.plays.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US')}`,
       ].filter(Boolean).join('\n'),
     );
   };
@@ -236,7 +237,7 @@ export function FullscreenPlayer({ navigation }: Props) {
   const handleShareSong = () => {
     if (!activeSong) return;
     void Share.share({
-      message: `Hoer ${activeSong.title} auf YORIAX: https://www.yoriax.com/song/${activeSong.id}`,
+      message: t('shareMessage').replace('{title}', activeSong.title).replace('{id}', activeSong.id),
       title: activeSong.title,
     });
   };
@@ -249,11 +250,11 @@ export function FullscreenPlayer({ navigation }: Props) {
       pause();
       sleepTimerRef.current = null;
     }, minutes * 60 * 1000);
-    Alert.alert('Sleeptimer aktiv', `Die Wiedergabe stoppt in ${minutes} Minuten.`);
+    Alert.alert(t('sleepTimerActive'), t('sleepTimerActiveSub').replace('{minutes}', String(minutes)));
   };
 
   const handleSleepTimer = () => {
-    const options = ['Abbrechen', '5 Minuten', '10 Minuten', '15 Minuten', '30 Minuten', 'Timer löschen'];
+    const options = [t('cancel'), t('minutes5'), t('minutes10'), t('minutes15'), t('minutes30'), t('deleteTimer')];
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         { options, cancelButtonIndex: 0, destructiveButtonIndex: 5 },
@@ -270,13 +271,13 @@ export function FullscreenPlayer({ navigation }: Props) {
       return;
     }
 
-    Alert.alert('Sleeptimer', undefined, [
-      { text: '5 Minuten', onPress: () => scheduleSleepTimer(5) },
-      { text: '10 Minuten', onPress: () => scheduleSleepTimer(10) },
-      { text: '15 Minuten', onPress: () => scheduleSleepTimer(15) },
-      { text: '30 Minuten', onPress: () => scheduleSleepTimer(30) },
+    Alert.alert(t('sleeptimer'), undefined, [
+      { text: t('minutes5'), onPress: () => scheduleSleepTimer(5) },
+      { text: t('minutes10'), onPress: () => scheduleSleepTimer(10) },
+      { text: t('minutes15'), onPress: () => scheduleSleepTimer(15) },
+      { text: t('minutes30'), onPress: () => scheduleSleepTimer(30) },
       {
-        text: 'Timer löschen',
+        text: t('deleteTimer'),
         style: 'destructive',
         onPress: () => {
           if (sleepTimerRef.current) {
@@ -285,12 +286,12 @@ export function FullscreenPlayer({ navigation }: Props) {
           }
         },
       },
-      { text: 'Abbrechen', style: 'cancel' },
+      { text: t('cancel'), style: 'cancel' },
     ]);
   };
 
   const handleContextMenu = () => {
-    const options = ['Abbrechen', 'Song-Details', 'Sleeptimer', 'Teilen'];
+    const options = [t('cancel'), t('songDetails'), t('sleeptimer'), t('share')];
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         { options, cancelButtonIndex: 0 },
@@ -301,11 +302,11 @@ export function FullscreenPlayer({ navigation }: Props) {
         }
       );
     } else {
-      Alert.alert('Optionen', undefined, [
-        { text: 'Song-Details', onPress: handleSongDetails },
-        { text: 'Sleeptimer', onPress: handleSleepTimer },
-        { text: 'Teilen', onPress: handleShareSong },
-        { text: 'Abbrechen', style: 'cancel' }
+      Alert.alert(t('options'), undefined, [
+        { text: t('songDetails'), onPress: handleSongDetails },
+        { text: t('sleeptimer'), onPress: handleSleepTimer },
+        { text: t('share'), onPress: handleShareSong },
+        { text: t('cancel'), style: 'cancel' }
       ]);
     }
   };  if (!activeSong) {
@@ -314,7 +315,7 @@ export function FullscreenPlayer({ navigation }: Props) {
         <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
           <Ionicons name="chevron-down" size={32} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Kein Song aktiv</Text>
+        <Text style={styles.title}>{t('noActiveSong')}</Text>
       </View>
     );
   }
@@ -381,7 +382,7 @@ export function FullscreenPlayer({ navigation }: Props) {
               <View style={styles.actionButtons}>
                 <Animated.View style={{ transform: [{ scale: saveScale }] }}>
                   <TouchableOpacity 
-                    accessibilityLabel={isCurrentSongLiked ? 'Speicherorte ändern' : 'Zu Lieblingssongs hinzufügen'}
+                    accessibilityLabel={isCurrentSongLiked ? t('changeSaveLocations') : t('addToFavorites')}
                     accessibilityRole="button"
                     style={[
                       styles.saveButton,
@@ -393,7 +394,7 @@ export function FullscreenPlayer({ navigation }: Props) {
                   >
                     <Ionicons 
                       name={isCurrentSongLiked ? 'heart' : 'add'}
-                      size={isCurrentSongLiked ? 21 : 25}
+                      size={isCurrentSongLiked ? 18 : 22}
                       color={isAdPlaying ? theme.colors.muted : isCurrentSongLiked ? theme.colors.text : theme.colors.primaryLight}
                     />
                   </TouchableOpacity>
@@ -440,7 +441,7 @@ export function FullscreenPlayer({ navigation }: Props) {
           <TouchableOpacity
             onPress={toggleRepeat}
             style={styles.secondaryControlButton}
-            accessibilityLabel={repeatMode === 'one' ? 'Aktuellen Song wiederholen' : repeatMode === 'all' ? 'Playlist wiederholen' : 'Wiederholung aus'}
+            accessibilityLabel={repeatMode === 'one' ? t('repeatOne') : repeatMode === 'all' ? t('repeatAll') : t('repeatOff')}
           >
             <View style={styles.repeatIconWrap}>
               <Ionicons name="repeat" size={24} color={repeatActive ? theme.colors.text : theme.colors.muted} />
@@ -487,10 +488,10 @@ export function FullscreenPlayer({ navigation }: Props) {
               <Ionicons name="heart" size={16} color={theme.colors.text} />
             </View>
             <Text style={styles.saveToastText} numberOfLines={1}>
-              Hinzugefügt zu: Lieblingssongs.
+              {t('addedToFavoritesToast')}
             </Text>
             <TouchableOpacity activeOpacity={0.78} onPress={handleToastChange} hitSlop={8}>
-              <Text style={styles.saveToastAction}>Ändern</Text>
+              <Text style={styles.saveToastAction}>{t('change')}</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -588,13 +589,13 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primaryLight,
     borderRadius: 999,
     borderWidth: 2,
-    height: 44,
+    height: 38,
     justifyContent: 'center',
     shadowColor: theme.colors.primaryLight,
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.24,
     shadowRadius: 10,
-    width: 44,
+    width: 38,
   },
   saveButtonActive: {
     backgroundColor: theme.colors.primary,

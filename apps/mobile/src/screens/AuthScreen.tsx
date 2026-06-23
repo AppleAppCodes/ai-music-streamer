@@ -14,6 +14,7 @@ import { TurnstileChallenge } from '../components/TurnstileChallenge';
 import { useAuth } from '../lib/auth-context';
 import { hasTurnstileConfig } from '../lib/env';
 import { theme } from '../theme';
+import { t } from '../lib/i18n';
 
 type AuthMode = 'sign-in' | 'sign-up';
 
@@ -111,10 +112,9 @@ export function AuthScreen() {
       style={styles.screen}
     >
       <View style={styles.card}>
-        <Text style={styles.title}>{isSignUp ? 'Registrieren' : 'Willkommen'}</Text>
+        <Text style={styles.title}>{isSignUp ? t('signUp') : t('welcome')}</Text>
         <Text style={styles.copy}>
-          Melde dich mit deinem bestehenden Yoriax Account an. Die native App nutzt dieselbe
-          Supabase-Session wie unsere Plattformdaten.
+          {t('authDescription')}
         </Text>
 
         {!authReady ? (
@@ -160,7 +160,7 @@ export function AuthScreen() {
                 <View style={styles.googleIcon}>
                   <Text style={styles.googleIconText}>G</Text>
                 </View>
-                <Text style={styles.googleButtonText}>Mit Google fortfahren</Text>
+                <Text style={styles.googleButtonText}>{t('continueWithGoogle')}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -168,13 +168,13 @@ export function AuthScreen() {
 
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>oder</Text>
+          <Text style={styles.dividerText}>{t('or')}</Text>
           <View style={styles.dividerLine} />
         </View>
 
         <View style={styles.form}>
           <View style={styles.field}>
-            <Text style={styles.label}>E-Mail</Text>
+            <Text style={styles.label}>{t('email')}</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="email"
@@ -189,12 +189,12 @@ export function AuthScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Passwort</Text>
+            <Text style={styles.label}>{t('password')}</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete={isSignUp ? 'new-password' : 'current-password'}
               onChangeText={setPassword}
-              placeholder="Mindestens 6 Zeichen"
+              placeholder={t('passwordPlaceholder')}
               placeholderTextColor={theme.colors.subtle}
               secureTextEntry
               style={styles.input}
@@ -210,7 +210,7 @@ export function AuthScreen() {
           onToken={setCaptchaToken}
         />
         <Text style={styles.captchaHelp}>
-          {captchaReady ? 'Sicherheitspruefung abgeschlossen.' : 'Bitte bestaetige die Sicherheitspruefung, bevor du dich einloggst.'}
+          {captchaReady ? t('securityCheckComplete') : t('securityCheckPending')}
         </Text>
 
         {message || captchaError || lastError ? (
@@ -229,7 +229,7 @@ export function AuthScreen() {
             <ActivityIndicator color="#0b0b0b" />
           ) : (
             <Text style={styles.primaryButtonText}>
-              {!captchaReady ? 'Sicherheitspruefung bestaetigen' : isSignUp ? 'Account erstellen' : 'Einloggen'}
+              {!captchaReady ? t('verifySecurity') : isSignUp ? t('createAccount') : t('login')}
             </Text>
           )}
         </TouchableOpacity>
@@ -243,7 +243,7 @@ export function AuthScreen() {
           style={styles.secondaryButton}
         >
           <Text style={styles.secondaryButtonText}>
-            {isSignUp ? 'Schon einen Account? Einloggen' : 'Noch keinen Account? Registrieren'}
+            {isSignUp ? t('hasAccount') : t('noAccount')}
           </Text>
         </TouchableOpacity>
       </View>

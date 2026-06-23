@@ -17,6 +17,7 @@ import { useMusicPreferences } from '../lib/music-preferences-context';
 import type { Song } from '../lib/types';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
+import { t } from '../lib/i18n';
 
 type HomeNavigation = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Home'>,
@@ -69,7 +70,7 @@ export function HomeScreen() {
       void writePersistedCache(cacheKey, nextData);
     } catch (loadError) {
       if (!hasCachedData && !forceRefresh) {
-        setError(loadError instanceof Error ? loadError.message : 'Home konnte nicht geladen werden.');
+        setError(loadError instanceof Error ? loadError.message : t('loadHomeError'));
       }
     } finally {
       if (forceRefresh) {
@@ -93,32 +94,32 @@ export function HomeScreen() {
     {
       accent: theme.colors.primaryLight, // Purple
       icon: 'heart',
-      label: 'Lieblingssongs',
-      subtitle: 'Deine gespeicherten Tracks',
+      label: t('favorites'),
+      subtitle: t('favoritesSub'),
       onPress: () => navigation.navigate('LikedSongs'),
       gradientColors: ['rgba(168,85,247,0.25)', 'rgba(168,85,247,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
       accent: '#eab308', // Yellow
       icon: 'trending-up',
-      label: 'Charts',
-      subtitle: 'Viral, Daily, Artists',
+      label: t('charts'),
+      subtitle: t('chartsSub'),
       onPress: () => navigation.navigate('Charts'),
       gradientColors: ['rgba(234,179,8,0.25)', 'rgba(234,179,8,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
       accent: '#0d9488', // Teal
       icon: 'mic',
-      label: 'Künstler',
-      subtitle: 'Neue Creator entdecken',
+      label: t('artists'),
+      subtitle: t('artistsSub'),
       onPress: () => navigation.navigate('Artists'),
       gradientColors: ['rgba(13,148,136,0.25)', 'rgba(13,148,136,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
       accent: '#06b6d4', // Cyan
       icon: 'library',
-      label: 'Playlists',
-      subtitle: 'Community & kuratiert',
+      label: t('playlists'),
+      subtitle: t('playlistsSub'),
       onPress: () => navigation.navigate('PlaylistDiscover'),
       gradientColors: ['rgba(6,182,212,0.25)', 'rgba(6,182,212,0.05)', 'rgba(255,255,255,0.02)'],
     },
@@ -171,14 +172,14 @@ export function HomeScreen() {
         ))}
       </View>
 
-      {loading && !data ? <StateCard title="Startseite wird vorbereitet" message="Deine YORIAX-Auswahl ist gleich bereit." loading /> : null}
-      {error ? <StateCard icon="warning" title="Home konnte nicht geladen werden" message={error} /> : null}
+      {loading && !data ? <StateCard title={t('preparingHome')} message={t('preparingHomeSub')} loading /> : null}
+      {error ? <StateCard icon="warning" title={t('loadHomeError')} message={error} /> : null}
 
       {data ? (
         <View style={styles.sections}>
-          <SongRail title="Trending heute" songs={data.trendingSongs} />
-          <SongRail title="Für dich ausgewählt" songs={data.recommendedSongs} />
-          <SongRail title="Neu auf YORIAX" songs={data.latestSongs} />
+          <SongRail title={t('trendingToday')} songs={data.trendingSongs} />
+          <SongRail title={t('selectedForYou')} songs={data.recommendedSongs} />
+          <SongRail title={t('newOnYoriax')} songs={data.latestSongs} />
         </View>
       ) : null}
     </ScrollView>
@@ -224,7 +225,7 @@ const SongRailItem = memo(function SongRailItem({
       <Text style={styles.songArtist} numberOfLines={1}>
         {song.artist_name || song.creatorName || 'Creator'}
       </Text>
-      <Text style={styles.songMeta}>{formatPlays(song.plays)} Streams</Text>
+      <Text style={styles.songMeta}>{formatPlays(song.plays)} {t('streams')}</Text>
     </TouchableOpacity>
   );
 });
