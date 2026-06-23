@@ -167,13 +167,33 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
     };
   }, [miniCenterOffsetY, miniScaleX, miniScaleY]);
 
-  const expandedContentAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(morphProgress.value, [0, 0.5, 0.82, 1], [0, 0, 0.88, 1]),
-    transform: [
-      {
-        translateY: interpolate(morphProgress.value, [0, 1], [18, 0]),
-      },
-    ],
+  const artworkBackdropAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(morphProgress.value, [0, 0.68, 0.92, 1], [0, 0, 0.62, 1]),
+  }), []);
+
+  const expandedContentAnimatedStyle = useAnimatedStyle(() => {
+    const progress = morphProgress.value;
+    const currentScaleX = interpolate(progress, [0, 1], [miniScaleX, 1]);
+    const currentScaleY = interpolate(progress, [0, 1], [miniScaleY, 1]);
+
+    return {
+      opacity: interpolate(progress, [0, 0.78, 0.94, 1], [0, 0, 0.92, 1]),
+      transform: [
+        {
+          scaleX: 1 / Math.max(0.001, currentScaleX),
+        },
+        {
+          scaleY: 1 / Math.max(0.001, currentScaleY),
+        },
+        {
+          translateY: interpolate(progress, [0.82, 1], [10, 0]),
+        },
+      ],
+    };
+  }, [miniScaleX, miniScaleY]);
+
+  const morphVeilAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(morphProgress.value, [0, 0.08, 0.82, 0.96, 1], [0, 0.94, 0.9, 0.18, 0]),
   }), []);
 
   const miniSnapshotAnimatedStyle = useAnimatedStyle(() => ({
@@ -446,8 +466,13 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
     <View style={styles.container} pointerEvents="box-none">
       <GestureDetector gesture={playerPanGesture}>
         <Animated.View style={[styles.playerSurface, playerSurfaceStyle]}>
+      <LinearGradient
+        colors={['#160a24', '#090712', '#050506']}
+        locations={[0, 0.54, 1]}
+        style={StyleSheet.absoluteFill}
+      />
       {activeSong.cover_url && (
-        <View style={StyleSheet.absoluteFill}>
+        <Animated.View style={[StyleSheet.absoluteFill, artworkBackdropAnimatedStyle]}>
           <Image 
             source={{ uri: activeSong.cover_url }} 
             style={StyleSheet.absoluteFill} 
@@ -458,7 +483,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
             colors={['rgba(12,10,18,0.2)', 'rgba(12,10,18,0.56)', 'rgba(12,10,18,0.92)']}
             style={StyleSheet.absoluteFill}
           />
-        </View>
+        </Animated.View>
       )}
 
       <Animated.View style={[styles.expandedContent, expandedContentAnimatedStyle]}>
@@ -588,6 +613,18 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
         
         </View>
       </Animated.View>
+
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.morphVeil, morphVeilAnimatedStyle]}
+      >
+        <LinearGradient
+          colors={['rgba(22,10,36,0.96)', 'rgba(9,7,18,0.94)', 'rgba(5,5,6,0.98)']}
+          locations={[0, 0.58, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.morphVeilGlow} />
+      </Animated.View>
         </Animated.View>
       </GestureDetector>
 
@@ -684,6 +721,29 @@ const styles = StyleSheet.create({
   },
   expandedContent: {
     flex: 1,
+    zIndex: 2,
+  },
+  morphVeil: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 4,
+  },
+  morphVeilGlow: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 180,
+    bottom: -150,
+    height: 280,
+    opacity: 0.1,
+    position: 'absolute',
+    right: -120,
+    shadowColor: theme.colors.primaryLight,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.34,
+    shadowRadius: 70,
+    width: 280,
   },
   header: {
     paddingHorizontal: 20,
