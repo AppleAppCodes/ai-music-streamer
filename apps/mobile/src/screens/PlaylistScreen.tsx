@@ -3,11 +3,13 @@ import { useEffect, useState, memo, useCallback } from 'react';
 import { theme } from '../theme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { loadPlaylistDetails } from '../lib/music-data';
+import { DAILY_NEW_RELEASES_PLAYLIST_ID, loadPlaylistDetails } from '../lib/music-data';
 import type { Playlist, Song } from '../lib/types';
 import { usePlayerControls } from '../lib/player-context';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPlays } from '../lib/format';
+import { YoriaxPlaylistCover } from '../components/YoriaxUI';
+import { useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
@@ -62,6 +64,7 @@ const MemoizedSongRow = memo(function SongRow({
 });
 
 export function PlaylistScreen({ route, navigation }: Props) {
+  const { t } = useI18n();
   const { playlistId } = route.params;
   
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
@@ -90,7 +93,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
         }
       } catch (err) {
         if (mounted) {
-          setError(err instanceof Error ? err.message : 'Playlist konnte nicht geladen werden.');
+          setError(err instanceof Error ? err.message : t('playlist.loadError'));
         }
       } finally {
         if (mounted) setLoading(false);
@@ -102,7 +105,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
     return () => {
       mounted = false;
     };
-  }, [playlistId]);
+  }, [playlistId, t]);
 
   const renderSong = useCallback(({ item, index }: { item: Song; index: number }) => {
     const isActive = activeSong?.id === item.id;
@@ -123,14 +126,14 @@ export function PlaylistScreen({ route, navigation }: Props) {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={28} color={theme.colors.primary} />
-          <Text style={styles.backText}>Zurück</Text>
+          <Text style={styles.backText}>{t('playlist.back')}</Text>
         </TouchableOpacity>
       </View>
 
       {loading ? (
         <View style={styles.centerBox}>
           <ActivityIndicator color={theme.colors.text} size="large" />
-          <Text style={styles.centerText}>Playlist wird geladen...</Text>
+          <Text style={styles.centerText}>{t('playlist.loading')}</Text>
         </View>
       ) : error ? (
         <View style={styles.centerBox}>
@@ -151,7 +154,9 @@ export function PlaylistScreen({ route, navigation }: Props) {
           windowSize={7}
           ListHeaderComponent={
             <View style={styles.playlistHero}>
-              {playlist.cover_url ? (
+              {playlist.id === DAILY_NEW_RELEASES_PLAYLIST_ID ? (
+                <YoriaxPlaylistCover size={200} radius={20} style={styles.playlistCover} />
+              ) : playlist.cover_url ? (
                 <Image source={{ uri: playlist.cover_url }} style={styles.playlistCover} alt="" />
               ) : (
                 <View style={[styles.playlistCover, styles.playlistFallback]}>
@@ -160,7 +165,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
               )}
               <Text style={styles.playlistTitle}>{playlist.title}</Text>
               <Text style={styles.playlistMeta}>
-                {playlist.is_public ? 'Öffentliche Playlist' : 'Private Playlist'} • {songs.length} Songs
+                {playlist.is_public ? t('playlist.publicMeta') : t('playlist.privateMeta')} • {songs.length} {t('common.songs')}
               </Text>
               {playlist.description ? (
                 <Text style={styles.playlistDescription}>{playlist.description}</Text>
@@ -171,14 +176,14 @@ export function PlaylistScreen({ route, navigation }: Props) {
                   style={styles.playAllButton}
                   onPress={() => handlePlaySong(songs[0], 0)}
                 >
-                  <Text style={styles.playAllText}>Abspielen</Text>
+                  <Text style={styles.playAllText}>{t('playlist.play')}</Text>
                 </TouchableOpacity>
               ) : null}
             </View>
           }
           ListEmptyComponent={
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>Diese Playlist ist leer.</Text>
+              <Text style={styles.emptyText}>{t('playlist.empty')}</Text>
             </View>
           }
         />

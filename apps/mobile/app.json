@@ -10,7 +10,7 @@
     "backgroundColor": "#050505",
     "ios": {
       "bundleIdentifier": "com.yoriax.app",
-      "buildNumber": "85",
+      "buildNumber": "86",
       "usesAppleSignIn": true,
       "supportsTablet": false,
       "infoPlist": {
@@ -44,7 +44,21 @@
       "expo-status-bar",
       "expo-font",
       "expo-asset",
-      "expo-localization"
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": [
+              "de",
+              "en"
+            ],
+            "android": [
+              "de",
+              "en"
+            ]
+          }
+        }
+      ]
     ],
     "extra": {
       "yoriaxReleaseStage": "production",

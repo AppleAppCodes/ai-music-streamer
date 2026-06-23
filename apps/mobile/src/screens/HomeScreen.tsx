@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, RefreshControl } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useMemo, useState, memo, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +17,7 @@ import { useMusicPreferences } from '../lib/music-preferences-context';
 import type { Song } from '../lib/types';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
-import { t } from '../lib/i18n';
+import { useI18n } from '../lib/i18n';
 
 type HomeNavigation = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Home'>,
@@ -36,6 +36,7 @@ type QuickTile = {
 const HOME_CACHE_PREFIX = 'yoriax:home:v1:';
 
 export function HomeScreen() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { favoriteGenres, revision: preferenceRevision } = useMusicPreferences();
   const navigation = useNavigation<HomeNavigation>();
@@ -45,99 +46,114 @@ export function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async (forceRefresh = false) => {
-    if (!user) return;
-    const cacheKey = `${HOME_CACHE_PREFIX}${user.id}:${favoriteGenres.join(',')}`;
-    let hasCachedData = false;
+  useEffect(() => {
+    let mounted = true;
 
-    if (!forceRefresh) {
+    async function load() {
+      if (!user) return;
+
+      const cacheKey = `${HOME_CACHE_PREFIX}${user.id}:${favoriteGenres.join(',')}`;
+      let hasCachedData = false;
       setLoading(true);
       setError(null);
+
       const cachedData = await readPersistedCache<HomeMusicData>(cacheKey);
-      if (cachedData) {
+      if (mounted && cachedData) {
         hasCachedData = true;
         setData(cachedData);
         setLoading(false);
       }
-    } else {
-      setRefreshing(true);
+
+      try {
+        const nextData = await loadHomeMusic(user.id);
+        if (!mounted) return;
+        setData(nextData);
+        setError(null);
+        setLoading(false);
+        void writePersistedCache(cacheKey, nextData);
+      } catch (loadError) {
+        if (mounted && !hasCachedData) {
+          setError(loadError instanceof Error ? loadError.message : t('home.error'));
+          setLoading(false);
+        }
+      }
     }
+
+    load();
+
+    return () => {
+      mounted = false;
+    };
+  }, [favoriteGenres, preferenceRevision, t, user]);
+
+  const refreshHome = useCallback(async () => {
+    if (!user || refreshing) return;
+
+    const cacheKey = `${HOME_CACHE_PREFIX}${user.id}:${favoriteGenres.join(',')}`;
+    setRefreshing(true);
+    setError(null);
 
     try {
       const nextData = await loadHomeMusic(user.id);
       setData(nextData);
-      setError(null);
       void writePersistedCache(cacheKey, nextData);
     } catch (loadError) {
-      if (!hasCachedData && !forceRefresh) {
-        setError(loadError instanceof Error ? loadError.message : t('loadHomeError'));
-      }
+      setError(loadError instanceof Error ? loadError.message : t('home.refreshError'));
     } finally {
-      if (forceRefresh) {
-        setRefreshing(false);
-      } else {
-        setLoading(false);
-      }
+      setRefreshing(false);
     }
-  }, [user, favoriteGenres]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadData(false);
-  }, [loadData, preferenceRevision]);
-
-  const onRefresh = useCallback(() => {
-    void loadData(true);
-  }, [loadData]);
+  }, [favoriteGenres, refreshing, t, user]);
 
   const quickTiles = useMemo<QuickTile[]>(() => [
     {
       accent: theme.colors.primaryLight, // Purple
       icon: 'heart',
-      label: t('favorites'),
-      subtitle: t('favoritesSub'),
+      label: t('home.favorites'),
+      subtitle: t('home.favoritesSubtitle'),
       onPress: () => navigation.navigate('LikedSongs'),
       gradientColors: ['rgba(168,85,247,0.25)', 'rgba(168,85,247,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
       accent: '#eab308', // Yellow
       icon: 'trending-up',
-      label: t('charts'),
-      subtitle: t('chartsSub'),
+      label: t('home.charts'),
+      subtitle: t('home.chartsSubtitle'),
       onPress: () => navigation.navigate('Charts'),
       gradientColors: ['rgba(234,179,8,0.25)', 'rgba(234,179,8,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
       accent: '#0d9488', // Teal
       icon: 'mic',
-      label: t('artists'),
-      subtitle: t('artistsSub'),
+      label: t('home.artists'),
+      subtitle: t('home.artistsSubtitle'),
       onPress: () => navigation.navigate('Artists'),
       gradientColors: ['rgba(13,148,136,0.25)', 'rgba(13,148,136,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
       accent: '#06b6d4', // Cyan
       icon: 'library',
-      label: t('playlists'),
-      subtitle: t('playlistsSub'),
+      label: t('home.playlists'),
+      subtitle: t('home.playlistsSubtitle'),
       onPress: () => navigation.navigate('PlaylistDiscover'),
       gradientColors: ['rgba(6,182,212,0.25)', 'rgba(6,182,212,0.05)', 'rgba(255,255,255,0.02)'],
     },
-  ], [navigation]);
+  ], [navigation, t]);
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 18 }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
+      refreshControl={(
         <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={theme.colors.primaryLight}
           colors={[theme.colors.primaryLight]}
+          onRefresh={() => { void refreshHome(); }}
+          progressBackgroundColor={theme.colors.surface}
+          progressViewOffset={insets.top + 8}
+          refreshing={refreshing}
+          tintColor={theme.colors.primaryLight}
         />
-      }
+      )}
+      showsVerticalScrollIndicator={false}
     >
       <LinearGradient
         colors={['rgba(88,28,135,0.45)', 'rgba(12,10,18,0)']}
@@ -172,14 +188,14 @@ export function HomeScreen() {
         ))}
       </View>
 
-      {loading && !data ? <StateCard title={t('preparingHome')} message={t('preparingHomeSub')} loading /> : null}
-      {error ? <StateCard icon="warning" title={t('loadHomeError')} message={error} /> : null}
+      {loading && !data ? <StateCard title={t('home.loading')} message={t('home.loadingCopy')} loading /> : null}
+      {error ? <StateCard icon="warning" title={t('home.error')} message={error} /> : null}
 
       {data ? (
         <View style={styles.sections}>
-          <SongRail title={t('trendingToday')} songs={data.trendingSongs} />
-          <SongRail title={t('selectedForYou')} songs={data.recommendedSongs} />
-          <SongRail title={t('newOnYoriax')} songs={data.latestSongs} />
+          <SongRail title={t('home.trending')} songs={data.trendingSongs} />
+          <SongRail title={t('home.forYouSelected')} songs={data.recommendedSongs} />
+          <SongRail title={t('home.latest')} songs={data.latestSongs} />
         </View>
       ) : null}
     </ScrollView>
@@ -203,6 +219,8 @@ const SongRailItem = memo(function SongRailItem({
   onPlay: (song: Song, list: Song[], index: number) => void;
   onToggle: () => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -223,9 +241,9 @@ const SongRailItem = memo(function SongRailItem({
         {song.title}
       </Text>
       <Text style={styles.songArtist} numberOfLines={1}>
-        {song.artist_name || song.creatorName || 'Creator'}
+        {song.artist_name || song.creatorName || t('common.creator')}
       </Text>
-      <Text style={styles.songMeta}>{formatPlays(song.plays)} {t('streams')}</Text>
+      <Text style={styles.songMeta}>{formatPlays(song.plays)} {t('common.streams')}</Text>
     </TouchableOpacity>
   );
 });

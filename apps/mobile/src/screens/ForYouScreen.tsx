@@ -29,6 +29,7 @@ import {
   toggleLike,
 } from '../lib/music-data';
 import { usePlayerControls } from '../lib/player-context';
+import { usePlayerOverlay } from '../lib/player-overlay-context';
 import type { FeedPreviewSong } from '../lib/types';
 import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +38,7 @@ import { useAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import { useI18n } from '../lib/i18n';
 
 const DEFAULT_HOOK_DURATION_SECONDS = 20;
 
@@ -293,6 +295,7 @@ const FeedItem = memo(function FeedItem({
   onToggleLike: (item: FeedPreviewSong) => void;
   onToggleFollow: (item: FeedPreviewSong) => void;
 }) {
+  const { t } = useI18n();
   const artistName = getArtistName(item);
   const coverSize = Math.max(220, Math.min(itemWidth - 64, itemHeight * 0.4, 350));
   const coverTop = Math.max(126, itemHeight * 0.14);
@@ -325,7 +328,7 @@ const FeedItem = memo(function FeedItem({
             onPress={() => onPlayFull(item)}
           >
             <Ionicons name="musical-notes" size={14} color="#000" />
-            <Text style={styles.fullSongText}>Ganzen Song hören</Text>
+            <Text style={styles.fullSongText}>{t('forYou.fullSong')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -336,7 +339,9 @@ const FeedItem = memo(function FeedItem({
             style={styles.actionButton}
             onPress={() => onToggleFollow(item)}
             accessibilityRole="button"
-            accessibilityLabel={isFollowingArtist ? `${artistName} nicht mehr folgen` : `${artistName} folgen`}
+            accessibilityLabel={isFollowingArtist
+              ? t('forYou.unfollowArtist', { artist: artistName })
+              : t('forYou.followArtist', { artist: artistName })}
             accessibilityState={{ selected: isFollowingArtist }}
           >
             <View
@@ -351,7 +356,9 @@ const FeedItem = memo(function FeedItem({
                 color={theme.colors.primaryLight}
               />
             </View>
-            <Text style={styles.actionText}>{isFollowingArtist ? 'Gefolgt' : 'Folgen'}</Text>
+            <Text style={styles.actionText}>
+              {isFollowingArtist ? t('forYou.followed') : t('forYou.follow')}
+            </Text>
           </TouchableOpacity>
         ) : null}
 
@@ -369,7 +376,7 @@ const FeedItem = memo(function FeedItem({
 
         <TouchableOpacity style={styles.actionButton}>
           <Ionicons name="share-social" size={32} color="white" />
-          <Text style={styles.actionText}>Teilen</Text>
+          <Text style={styles.actionText}>{t('forYou.share')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -402,6 +409,7 @@ const GenreFilterModal = memo(function GenreFilterModal({
   onToggleGenre: (genre: string) => void;
   visible: boolean;
 }) {
+  const { t } = useI18n();
   const activeCount = genres.filter((genre) => !disabledGenres.has(genre)).length;
 
   return (
@@ -414,7 +422,7 @@ const GenreFilterModal = memo(function GenreFilterModal({
       <View style={styles.genreModalOverlay}>
         <TouchableOpacity
           activeOpacity={1}
-          accessibilityLabel="Genre-Filter schließen"
+          accessibilityLabel={t('forYou.filterClose')}
           onPress={onClose}
           style={styles.genreModalBackdrop}
         />
@@ -425,13 +433,11 @@ const GenreFilterModal = memo(function GenreFilterModal({
           <View style={styles.genreModalHeader}>
             <View style={styles.genreModalHeading}>
               <Text style={styles.genreModalEyebrow}>EXPLORE FILTER</Text>
-              <Text style={styles.genreModalTitle}>Genres auswählen</Text>
-              <Text style={styles.genreModalDescription}>
-                Wähle aus, welche Genres im Explore-Feed erscheinen.
-              </Text>
+              <Text style={styles.genreModalTitle}>{t('forYou.filterGenres')}</Text>
+              <Text style={styles.genreModalDescription}>{t('forYou.filterCopy')}</Text>
             </View>
             <TouchableOpacity
-              accessibilityLabel="Genre-Filter schließen"
+              accessibilityLabel={t('forYou.filterClose')}
               accessibilityRole="button"
               onPress={onClose}
               style={styles.genreModalClose}
@@ -442,14 +448,14 @@ const GenreFilterModal = memo(function GenreFilterModal({
 
           <View style={styles.genreFilterSummary}>
             <Text style={styles.genreFilterSummaryText}>
-              {activeCount} von {genres.length} aktiv
+              {t('forYou.filterSummary', { active: activeCount, total: genres.length })}
             </Text>
             <View style={styles.genreFilterQuickActions}>
               <TouchableOpacity onPress={onSelectAll} style={styles.genreFilterSelectAll}>
-                <Text style={styles.genreFilterSelectAllText}>Alle auswählen</Text>
+                <Text style={styles.genreFilterSelectAllText}>{t('forYou.all')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={onDeselectAll} style={styles.genreFilterDeselectAll}>
-                <Text style={styles.genreFilterDeselectAllText}>Alle abwählen</Text>
+                <Text style={styles.genreFilterDeselectAllText}>{t('forYou.deselectAll')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -498,7 +504,7 @@ const GenreFilterModal = memo(function GenreFilterModal({
             onPress={onClose}
             style={styles.genreModalDone}
           >
-            <Text style={styles.genreModalDoneText}>Fertig</Text>
+            <Text style={styles.genreModalDoneText}>{t('common.done')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -624,7 +630,9 @@ async function waitForFeedPlayersToStop(players: AudioPlayer[], timeoutMs = 400)
 
 export function ForYouScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { openPlayer } = usePlayerOverlay();
   const isFocused = useIsFocused();
   const { user } = useAuth();
   const { revision: preferenceRevision } = useMusicPreferences();
@@ -1116,7 +1124,7 @@ export function ForYouScreen() {
         }
       } catch (loadError) {
         if (mounted) {
-          setError(loadError instanceof Error ? loadError.message : 'Feed konnte nicht geladen werden.');
+          setError(loadError instanceof Error ? loadError.message : t('errors.feedLoad'));
         }
       } finally {
         if (mounted) setLoading(false);
@@ -1125,7 +1133,7 @@ export function ForYouScreen() {
 
     load();
     return () => { mounted = false; };
-  }, [user, activeFeed, preferenceRevision, resetMainPlayer, stopAllPreviewPlayers]);
+  }, [user, activeFeed, preferenceRevision, resetMainPlayer, stopAllPreviewPlayers, t]);
 
   const clearDragSettleTimer = useCallback(() => {
     if (!dragSettleTimer.current) return;
@@ -1225,12 +1233,12 @@ export function ForYouScreen() {
         await stopAllPreviewPlayersAndWait();
         setQueue([item], 0);
         await playSong(item, { startAt: 0 });
-        navigation.navigate('FullscreenPlayer');
+        openPlayer();
       } finally {
         fullSongTransitionActive.current = false;
       }
     })();
-  }, [navigation, playSong, setQueue, stopAllPreviewPlayersAndWait]);
+  }, [openPlayer, playSong, setQueue, stopAllPreviewPlayersAndWait]);
 
   const getItemLayout = useCallback((_: ArrayLike<FeedPreviewSong> | null | undefined, index: number) => ({
     length: itemHeight,
@@ -1319,16 +1327,22 @@ export function ForYouScreen() {
   const renderTopTabs = useCallback(() => (
     <View style={[styles.topTabs, { top: Math.max(insets.top + 10, 60) }]}>
       <TouchableOpacity activeOpacity={0.8} onPress={() => handleFeedChange('foryou')}>
-        <Text style={[styles.topTab, activeFeed === 'foryou' && styles.topTabActive]}>Für dich</Text>
+        <Text style={[styles.topTab, activeFeed === 'foryou' && styles.topTabActive]}>
+          {t('forYou.forYou')}
+        </Text>
       </TouchableOpacity>
       <TouchableOpacity activeOpacity={0.8} onPress={() => handleFeedChange('following')}>
-        <Text style={[styles.topTab, activeFeed === 'following' && styles.topTabActive]}>Gefolgt</Text>
+        <Text style={[styles.topTab, activeFeed === 'following' && styles.topTabActive]}>
+          {t('forYou.followed')}
+        </Text>
       </TouchableOpacity>
       <TouchableOpacity activeOpacity={0.8} onPress={() => handleFeedChange('explore')}>
-        <Text style={[styles.topTab, activeFeed === 'explore' && styles.topTabActive]}>Explore</Text>
+        <Text style={[styles.topTab, activeFeed === 'explore' && styles.topTabActive]}>
+          {t('forYou.explore')}
+        </Text>
       </TouchableOpacity>
     </View>
-  ), [activeFeed, handleFeedChange, insets.top]);
+  ), [activeFeed, handleFeedChange, insets.top, t]);
 
   const renderExploreFilter = useCallback(() => {
     if (activeFeed !== 'explore' || availableGenres.length === 0) return null;
@@ -1336,7 +1350,7 @@ export function ForYouScreen() {
     return (
       <>
         <TouchableOpacity
-          accessibilityLabel="Explore-Genres filtern"
+          accessibilityLabel={t('forYou.filterLabel')}
           accessibilityRole="button"
           activeOpacity={0.84}
           onPress={() => setGenreFilterVisible(true)}
@@ -1347,7 +1361,7 @@ export function ForYouScreen() {
           ]}
         >
           <Ionicons name="options-outline" size={18} color={theme.colors.text} />
-          <Text style={styles.exploreFilterButtonText}>Genres</Text>
+          <Text style={styles.exploreFilterButtonText}>{t('forYou.genres')}</Text>
           <View style={styles.exploreFilterCount}>
             <Text style={styles.exploreFilterCountText}>
               {activeGenreCount}/{availableGenres.length}
@@ -1376,53 +1390,54 @@ export function ForYouScreen() {
     handleSelectAllGenres,
     handleToggleGenre,
     insets.top,
+    t,
   ]);
 
   const emptyStateCopy = useMemo<FeedEmptyStateProps>(() => (
     activeFeed === 'following'
       ? {
           icon: 'people-outline' as const,
-          eyebrow: 'Gefolgt',
-          title: 'Noch keine gefolgten Artists',
-          message: 'Folge Artists, damit hier nur Hooks von deinen Favoriten erscheinen.',
-          primaryLabel: 'Artists entdecken',
+          eyebrow: t('forYou.followed'),
+          title: t('forYou.followingEmptyTitle'),
+          message: t('forYou.followingEmptyMessage'),
+          primaryLabel: t('forYou.artistsDiscover'),
           primaryAction: () => navigation.navigate('Artists'),
-          secondaryLabel: 'Explore öffnen',
+          secondaryLabel: t('forYou.openExplore'),
           secondaryAction: () => handleFeedChange('explore'),
         }
       : activeFeed === 'explore'
         ? allSongs.length > 0
           ? {
               icon: 'options-outline' as const,
-              eyebrow: 'Explore Filter',
-              title: 'Keine Genres ausgewählt',
-              message: 'Aktiviere mindestens ein Genre, damit passende Hooks erscheinen.',
-              primaryLabel: 'Genres auswählen',
+              eyebrow: t('forYou.exploreFilter'),
+              title: t('forYou.genresEmptyTitle'),
+              message: t('forYou.genresEmptyMessage'),
+              primaryLabel: t('forYou.filterGenres'),
               primaryAction: () => setGenreFilterVisible(true),
-              secondaryLabel: 'Alle auswählen',
+              secondaryLabel: t('forYou.all'),
               secondaryAction: handleSelectAllGenres,
             }
           : {
               icon: 'compass-outline' as const,
-              eyebrow: 'Explore',
-              title: 'Noch keine Explore-Hooks',
-              message: 'Sobald neue Hooks verfügbar sind, landen sie hier zuerst.',
-              primaryLabel: 'Für dich öffnen',
+              eyebrow: t('forYou.explore'),
+              title: t('forYou.exploreEmptyTitle'),
+              message: t('forYou.exploreEmptyMessage'),
+              primaryLabel: t('forYou.openForYou'),
               primaryAction: () => handleFeedChange('foryou'),
               secondaryLabel: null,
               secondaryAction: null,
             }
       : {
           icon: 'sparkles-outline' as const,
-          eyebrow: 'Für dich',
-          title: 'Dein Feed wird vorbereitet',
-          message: 'Höre und like Songs, damit YORIAX deinen Feed besser kuratieren kann.',
-          primaryLabel: 'Explore öffnen',
+          eyebrow: t('forYou.forYou'),
+          title: t('forYou.forYouEmptyTitle'),
+          message: t('forYou.forYouEmptyMessage'),
+          primaryLabel: t('forYou.openExplore'),
           primaryAction: () => handleFeedChange('explore'),
           secondaryLabel: null,
           secondaryAction: null,
         }
-  ), [activeFeed, allSongs.length, handleFeedChange, handleSelectAllGenres, navigation]);
+  ), [activeFeed, allSongs.length, handleFeedChange, handleSelectAllGenres, navigation, t]);
 
   const renderItem = useCallback(({ item, index }: { item: FeedPreviewSong; index: number }) => {
     const isActive = index === activeIndex;

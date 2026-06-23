@@ -7,13 +7,14 @@ import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
 const PROFANITY_LIST = ['nazi', 'hitler', 'fuck', 'shit', 'bitch', 'asshole', 'cunt', 'dick', 'pussy', 'whore', 'slut', 'fagot', 'nigger', 'nigga', 'retard'];
 
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'Fehler beim Speichern.';
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
 
 function containsProfanity(text: string) {
@@ -38,6 +39,7 @@ function getImageContentType(extension: string) {
 }
 
 export function ProfileScreen({ navigation }: Props) {
+  const { t } = useI18n();
   const { authReady, deleteAccount, user, signOut } = useAuth();
   
   const initialUsername = user?.user_metadata?.username || user?.email?.split('@')[0] || 'User';
@@ -64,19 +66,19 @@ export function ProfileScreen({ navigation }: Props) {
 
   const handleSave = async () => {
     if (!authReady || !supabase || !user) {
-      Alert.alert('Nicht möglich', 'Dein Profil kann gerade nicht gespeichert werden, weil die App nicht verbunden ist.');
+      Alert.alert(t('profile.notConnected'), t('profile.notConnectedCopy'));
       return;
     }
 
     const trimmedUsername = username.trim();
 
     if (trimmedUsername.length < 3) {
-      Alert.alert('Benutzername zu kurz', 'Der Benutzername muss mindestens 3 Zeichen lang sein.');
+      Alert.alert(t('profile.usernameShort'), t('profile.usernameShortCopy'));
       return;
     }
 
     if (containsProfanity(trimmedUsername)) {
-      Alert.alert('Benutzername nicht erlaubt', 'Dieser Benutzername enthält nicht erlaubte Wörter. Bitte wähle einen anderen.');
+      Alert.alert(t('profile.usernameForbidden'), t('profile.usernameForbiddenCopy'));
       return;
     }
 
@@ -119,7 +121,7 @@ export function ProfileScreen({ navigation }: Props) {
 
       if (profileError) {
         if (profileError.code === '23505') {
-          throw new Error('Dieser Benutzername ist leider schon vergeben.');
+          throw new Error(t('profile.duplicateUsername'));
         }
         throw profileError;
       }
@@ -135,9 +137,9 @@ export function ProfileScreen({ navigation }: Props) {
 
       setUsername(trimmedUsername);
       setAvatarUrl(nextAvatarUrl);
-      Alert.alert('Gespeichert', 'Deine Änderungen wurden erfolgreich gespeichert.');
+      Alert.alert(t('profile.saved'), t('profile.savedCopy'));
     } catch (error) {
-      Alert.alert('Fehler beim Speichern', getErrorMessage(error));
+      Alert.alert(t('profile.saveError'), getErrorMessage(error, t('profile.saveError')));
     } finally {
       setIsSaving(false);
     }
@@ -151,33 +153,33 @@ export function ProfileScreen({ navigation }: Props) {
 
     if (!result.ok) {
       setIsDeleting(false);
-      Alert.alert('Account konnte nicht gelöscht werden', result.message);
+      Alert.alert(t('profile.deleteFailed'), result.message);
       return;
     }
 
     Alert.alert(
-      'Account gelöscht',
-      'Dein Yoriax Account und die damit verbundenen Daten wurden dauerhaft gelöscht.',
+      t('profile.deleteDone'),
+      t('profile.deleteDoneCopy'),
     );
   };
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Account löschen?',
-      'Dein Profil, deine Uploads, Playlists, Likes, Kommentare und Anmeldedaten werden dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.',
+      t('profile.deleteConfirm'),
+      t('profile.deleteConfirmCopy'),
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Weiter',
+          text: t('profile.continue'),
           style: 'destructive',
           onPress: () => {
             Alert.alert(
-              'Endgültig löschen',
-              'Möchtest du deinen Yoriax Account jetzt endgültig löschen?',
+              t('profile.deleteFinal'),
+              t('profile.deleteFinalCopy'),
               [
-                { text: 'Abbrechen', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                  text: 'Account löschen',
+                  text: t('profile.delete'),
                   style: 'destructive',
                   onPress: () => {
                     void performAccountDeletion();
@@ -200,10 +202,10 @@ export function ProfileScreen({ navigation }: Props) {
               <Ionicons name="settings-outline" size={20} color={theme.colors.text} />
             </View>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Einstellungen</Text>
+          <Text style={styles.headerTitle}>{t('profile.settings')}</Text>
         </View>
         <TouchableOpacity onPress={() => void signOut()} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>{t('profile.logout')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -220,24 +222,24 @@ export function ProfileScreen({ navigation }: Props) {
                   </View>
                 )}
               </TouchableOpacity>
-              <Text style={styles.avatarLabel}>Profilbild</Text>
-              <Text style={styles.avatarHint}>Empfohlen: 400x400px</Text>
+              <Text style={styles.avatarLabel}>{t('profile.avatar')}</Text>
+              <Text style={styles.avatarHint}>{t('profile.avatarHint')}</Text>
             </View>
 
             <View style={styles.formColumn}>
-              <Text style={styles.inputLabel}>Benutzername</Text>
+              <Text style={styles.inputLabel}>{t('profile.username')}</Text>
               <View style={styles.inputBox}>
                 <Ionicons name="person-outline" size={18} color={theme.colors.muted} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   value={username}
                   onChangeText={setUsername}
-                  placeholder="Dein Name"
+                  placeholder={t('profile.usernamePlaceholder')}
                   placeholderTextColor={theme.colors.muted}
                 />
               </View>
 
-              <Text style={styles.inputLabel}>E-Mail Adresse</Text>
+              <Text style={styles.inputLabel}>{t('profile.email')}</Text>
               <View style={styles.inputBoxDisabled}>
                 <TextInput
                   style={styles.inputDisabled}
@@ -245,7 +247,7 @@ export function ProfileScreen({ navigation }: Props) {
                   editable={false}
                 />
               </View>
-              <Text style={styles.inputHint}>Die E-Mail Adresse kann derzeit nicht geändert werden.</Text>
+              <Text style={styles.inputHint}>{t('profile.emailHint')}</Text>
             </View>
           </View>
           <View style={styles.cardFooter}>
@@ -255,7 +257,7 @@ export function ProfileScreen({ navigation }: Props) {
               ) : (
                 <>
                   <Ionicons name="save-outline" size={18} color="#000" />
-                  <Text style={styles.saveButtonText}>Änderungen speichern</Text>
+                  <Text style={styles.saveButtonText}>{t('profile.save')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -263,7 +265,7 @@ export function ProfileScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.accountSection}>
-          <Text style={styles.sectionLabel}>Personalisierung</Text>
+          <Text style={styles.sectionLabel}>{t('profile.personalization')}</Text>
           <TouchableOpacity
             accessibilityRole="button"
             activeOpacity={0.84}
@@ -274,31 +276,27 @@ export function ProfileScreen({ navigation }: Props) {
               <Ionicons name="sparkles" size={22} color={theme.colors.primaryLight} />
             </View>
             <View style={styles.preferenceCopy}>
-              <Text style={styles.preferenceTitle}>Lieblingsgenres</Text>
-              <Text style={styles.preferenceText}>
-                Passe die Auswahl für Home und deinen Für-dich-Feed jederzeit an.
-              </Text>
+              <Text style={styles.preferenceTitle}>{t('profile.favoriteGenres')}</Text>
+              <Text style={styles.preferenceText}>{t('profile.favoriteGenresCopy')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.accountSection}>
-          <Text style={styles.sectionLabel}>Account</Text>
+          <Text style={styles.sectionLabel}>{t('profile.account')}</Text>
           <View style={styles.dangerCard}>
             <View style={styles.dangerHeader}>
               <View style={styles.dangerIcon}>
                 <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
               </View>
               <View style={styles.dangerCopy}>
-                <Text style={styles.dangerTitle}>Account löschen</Text>
-                <Text style={styles.dangerText}>
-                  Löscht deinen Yoriax Account einschließlich Profil, Uploads, Playlists, Likes und Kommentaren dauerhaft.
-                </Text>
+                <Text style={styles.dangerTitle}>{t('profile.delete')}</Text>
+                <Text style={styles.dangerText}>{t('profile.deleteCopy')}</Text>
               </View>
             </View>
             <TouchableOpacity
-              accessibilityLabel="Account löschen"
+              accessibilityLabel={t('profile.delete')}
               accessibilityRole="button"
               disabled={isDeleting}
               onPress={handleDeleteAccount}
@@ -309,7 +307,7 @@ export function ProfileScreen({ navigation }: Props) {
               ) : (
                 <>
                   <Ionicons name="trash-outline" size={18} color="#fff" />
-                  <Text style={styles.deleteButtonText}>Account löschen</Text>
+                  <Text style={styles.deleteButtonText}>{t('profile.delete')}</Text>
                 </>
               )}
             </TouchableOpacity>

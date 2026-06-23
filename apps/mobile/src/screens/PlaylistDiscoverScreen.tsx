@@ -4,11 +4,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
-import { loadDiscoverPlaylists, type DiscoverPlaylistsData } from '../lib/music-data';
+import { BackButton, CoverArt, StateCard, YoriaxPlaylistCover } from '../components/YoriaxUI';
+import {
+  DAILY_NEW_RELEASES_PLAYLIST_ID,
+  loadDiscoverPlaylists,
+  type DiscoverPlaylistsData,
+} from '../lib/music-data';
 import type { DiscoverPlaylist } from '../lib/types';
 import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
+import { useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PlaylistDiscover'>;
 type Accent = 'teal' | 'purple';
@@ -44,6 +49,7 @@ function PlaylistItemSeparator() {
 }
 
 export function PlaylistDiscoverScreen({ navigation }: Props) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [data, setData] = useState<DiscoverPlaylistsData | null>(null);
@@ -60,7 +66,7 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
         const nextData = await loadDiscoverPlaylists(query);
         if (mounted) setData(nextData);
       } catch {
-        if (mounted) setError('Konnte Playlists nicht laden.');
+        if (mounted) setError(t('playlistDiscover.loadError'));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -72,7 +78,7 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
       mounted = false;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, t]);
 
   const officialPlaylists = data?.officialPlaylists ?? EMPTY_PLAYLISTS;
   const communityPlaylists = data?.communityPlaylists ?? EMPTY_PLAYLISTS;
@@ -89,10 +95,10 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
         kind: 'section',
         accent: 'teal',
         count: officialPlaylists.length,
-        emptyText: 'Noch keine kuratierten offiziellen Playlists.',
+        emptyText: t('playlistDiscover.curatedEmpty'),
         icon: 'sparkles',
-        subtitle: 'Von YORIAX ausgewählte Sammlungen.',
-        title: 'Kuratierte offizielle Playlists',
+        subtitle: t('playlistDiscover.curatedSectionCopy'),
+        title: t('playlistDiscover.curatedSection'),
       },
     ];
 
@@ -101,17 +107,17 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
         items.push({ kind: 'playlist', accent: 'teal', playlist });
       });
     } else {
-      items.push({ kind: 'empty', text: 'Noch keine kuratierten offiziellen Playlists.' });
+      items.push({ kind: 'empty', text: t('playlistDiscover.curatedEmpty') });
     }
 
     items.push({
       kind: 'section',
       accent: 'purple',
       count: communityPlaylists.length,
-      emptyText: 'Noch keine Community Playlists.',
+      emptyText: t('playlistDiscover.communityEmpty'),
       icon: 'people',
-      subtitle: 'Öffentliche Playlists anderer Nutzer.',
-      title: 'Community Playlists',
+      subtitle: t('playlistDiscover.communitySectionCopy'),
+      title: t('playlistDiscover.communitySection'),
     });
 
     if (communityPlaylists.length > 0) {
@@ -119,11 +125,11 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
         items.push({ kind: 'playlist', accent: 'purple', playlist });
       });
     } else {
-      items.push({ kind: 'empty', text: 'Noch keine Community Playlists.' });
+      items.push({ kind: 'empty', text: t('playlistDiscover.communityEmpty') });
     }
 
     return items;
-  }, [communityPlaylists, error, loading, officialPlaylists, totalPlaylists]);
+  }, [communityPlaylists, error, loading, officialPlaylists, t, totalPlaylists]);
   const renderListItem = useCallback(({ item }: { item: PlaylistListItem }) => {
     if (item.kind === 'section') {
       return (
@@ -164,7 +170,7 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
       <View style={[styles.header, { paddingTop: insets.top + 18 }]}>
         <BackButton onPress={() => navigation.goBack()} />
         <View style={styles.headerText}>
-          <Text style={styles.headerEyebrow}>ENTDECKEN</Text>
+          <Text style={styles.headerEyebrow}>{t('playlistDiscover.eyebrow')}</Text>
           <Text style={styles.headerTitle}>Playlists</Text>
         </View>
       </View>
@@ -189,10 +195,8 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
               <View style={styles.heroIcon}>
                 <Ionicons name="library" size={30} color={theme.colors.text} />
               </View>
-              <Text style={styles.heroTitle}>Community & kuratiert</Text>
-              <Text style={styles.heroMeta}>
-                Finde offizielle YORIAX-Sammlungen und öffentliche Playlists aus der Community.
-              </Text>
+              <Text style={styles.heroTitle}>{t('playlistDiscover.community')}</Text>
+              <Text style={styles.heroMeta}>{t('playlistDiscover.communityCopy')}</Text>
             </View>
 
             <View style={styles.searchBox}>
@@ -201,7 +205,7 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
                 autoCapitalize="none"
                 autoCorrect={false}
                 onChangeText={setQuery}
-                placeholder="Playlists durchsuchen"
+                placeholder={t('playlistDiscover.search')}
                 placeholderTextColor={theme.colors.subtle}
                 returnKeyType="search"
                 style={styles.searchInput}
@@ -210,11 +214,11 @@ export function PlaylistDiscoverScreen({ navigation }: Props) {
             </View>
 
             {loading ? (
-              <StateCard title="Playlists werden geladen" message="Wir holen öffentliche Sammlungen." loading />
+              <StateCard title={t('playlistDiscover.loading')} message={t('playlistDiscover.loadingCopy')} loading />
             ) : error ? (
-              <StateCard icon="warning" title="Playlists nicht verfügbar" message={error} />
+              <StateCard icon="warning" title={t('playlistDiscover.unavailable')} message={error} />
             ) : totalPlaylists === 0 ? (
-              <StateCard icon="search" title="Keine Playlists gefunden" message="Zu deiner Suche gibt es aktuell keine öffentlichen Playlists." />
+              <StateCard icon="search" title={t('playlistDiscover.empty')} message={t('playlistDiscover.emptyCopy')} />
             ) : null}
           </View>
         }
@@ -268,6 +272,7 @@ const PlaylistCard = memo(function PlaylistCard({
   onOpen: (playlistId: string) => void;
   playlist: DiscoverPlaylist;
 }) {
+  const { t } = useI18n();
   const tint = ACCENTS[accent];
 
   return (
@@ -281,18 +286,24 @@ const PlaylistCard = memo(function PlaylistCard({
         colors={[`${tint}24`, 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0.02)']}
         style={StyleSheet.absoluteFill}
       />
-      <CoverArt uri={playlist.cover_url} size={82} radius={18} />
+      {playlist.id === DAILY_NEW_RELEASES_PLAYLIST_ID ? (
+        <YoriaxPlaylistCover size={82} radius={18} />
+      ) : (
+        <CoverArt uri={playlist.cover_url} size={82} radius={18} />
+      )}
       <View style={styles.cardText}>
         <Text style={[styles.cardTitle, playlist.isOfficial && { color: tint }]} numberOfLines={1}>
           {playlist.title}
         </Text>
         <Text style={styles.cardCreator} numberOfLines={1}>
-          Von {playlist.creatorName}
+          {t('playlistDiscover.by', { creator: playlist.creatorName })}
         </Text>
         {playlist.description ? (
           <Text style={styles.cardDescription} numberOfLines={2}>{playlist.description}</Text>
         ) : (
-          <Text style={styles.cardDescription} numberOfLines={1}>Öffentliche Playlist</Text>
+          <Text style={styles.cardDescription} numberOfLines={1}>
+            {t('playlistDiscover.publicPlaylist')}
+          </Text>
         )}
       </View>
       <Ionicons name="chevron-forward" size={18} color={theme.colors.subtle} />

@@ -6,6 +6,7 @@ import {
   saveMusicPreferences,
   type MusicPreferences,
 } from './music-preferences';
+import { useI18n } from './i18n';
 
 interface MusicPreferencesContextValue extends MusicPreferences {
   error: string | null;
@@ -46,6 +47,7 @@ function AuthenticatedMusicPreferencesProvider({
   children,
   userId,
 }: PropsWithChildren<{ userId: string }>) {
+  const { t } = useI18n();
   const [preferences, setPreferences] = useState<MusicPreferences>(EMPTY_MUSIC_PREFERENCES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +62,7 @@ function AuthenticatedMusicPreferencesProvider({
       })
       .catch((loadError) => {
         if (!mounted) return;
-        setError(loadError instanceof Error ? loadError.message : 'Musikgeschmack konnte nicht geladen werden.');
+        setError(loadError instanceof Error ? loadError.message : t('errors.preferencesLoad'));
         setPreferences({ ...EMPTY_MUSIC_PREFERENCES, onboardingCompleted: true });
       })
       .finally(() => {
@@ -70,7 +72,7 @@ function AuthenticatedMusicPreferencesProvider({
     return () => {
       mounted = false;
     };
-  }, [userId]);
+  }, [t, userId]);
 
   const save = useCallback(async (favoriteGenres: string[], onboardingSkipped = false) => {
     const nextPreferences = await saveMusicPreferences(userId, favoriteGenres, onboardingSkipped);

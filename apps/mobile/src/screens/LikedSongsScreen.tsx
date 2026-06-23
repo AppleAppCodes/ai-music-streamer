@@ -13,6 +13,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
 import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
 import { formatDuration } from '../lib/format';
+import { useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LikedSongs'>;
 const EMPTY_SONGS: Song[] = [];
@@ -37,6 +38,8 @@ const LikedSongRow = memo(function LikedSongRow({
   onPlay: (song: Song, index: number) => void;
   song: Song;
 }) {
+  const { t } = useI18n();
+
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -46,7 +49,9 @@ const LikedSongRow = memo(function LikedSongRow({
       <CoverArt uri={song.cover_url} size={52} radius={12} />
       <View style={styles.rowText}>
         <Text style={[styles.rowTitle, active && styles.rowTitleActive]} numberOfLines={1}>{song.title}</Text>
-        <Text style={styles.rowMeta} numberOfLines={1}>{song.artist_name || song.creatorName || 'Creator'}</Text>
+        <Text style={styles.rowMeta} numberOfLines={1}>
+          {song.artist_name || song.creatorName || t('common.creator')}
+        </Text>
       </View>
       {active && isPlaying ? <Ionicons name="volume-high" size={18} color={theme.colors.primaryLight} /> : null}
       <TouchableOpacity
@@ -65,6 +70,7 @@ const LikedSongRow = memo(function LikedSongRow({
 });
 
 export function LikedSongsScreen({ navigation }: Props) {
+  const { locale, t } = useI18n();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [data, setData] = useState<LibraryMusicData | null>(null);
@@ -86,7 +92,7 @@ export function LikedSongsScreen({ navigation }: Props) {
         if (mounted) setData(nextData);
       } catch (loadError) {
         if (mounted) {
-          setError(loadError instanceof Error ? loadError.message : 'Konnte Lieblingssongs nicht laden.');
+          setError(loadError instanceof Error ? loadError.message : t('liked.error'));
         }
       } finally {
         if (mounted) setLoading(false);
@@ -98,7 +104,7 @@ export function LikedSongsScreen({ navigation }: Props) {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [t, user]);
 
   const likedSongs = data?.likedSongs ?? EMPTY_SONGS;
 
@@ -123,41 +129,44 @@ export function LikedSongsScreen({ navigation }: Props) {
   const handleContextMenu = useCallback((song: Song) => {
     Alert.alert(
       song.title,
-      'Was möchtest du tun?',
+      t('liked.menuCopy'),
       [
         {
-          text: 'Teilen',
+          text: t('player.share'),
           onPress: () => {
             void Share.share({
-              message: `Hoer ${song.title} auf YORIAX: https://www.yoriax.com/song/${song.id}`,
+              message: t('player.shareMessage', {
+                title: song.title,
+                url: `https://www.yoriax.com/song/${song.id}`,
+              }),
               title: song.title,
             });
           },
         },
-        { text: 'Zur Playlist hinzufügen', onPress: () => setPlaylistSongId(song.id) },
+        { text: t('liked.addToPlaylist'), onPress: () => setPlaylistSongId(song.id) },
         {
-          text: 'Zum Künstler',
+          text: t('liked.openArtist'),
           onPress: () => navigation.navigate('Artist', { artistId: song.artist_name || song.creatorName || song.creator_id || 'unknown' }),
         },
         {
-          text: 'Song-Details',
+          text: t('player.details'),
           onPress: () => {
             Alert.alert(
               song.title,
               [
-                song.artist_name || song.creatorName || 'Creator',
+                song.artist_name || song.creatorName || t('common.creator'),
                 song.genre ? `Genre: ${song.genre}` : null,
-                song.duration ? `Dauer: ${formatDuration(song.duration)}` : null,
-                `Streams: ${song.plays.toLocaleString('de-DE')}`,
+                song.duration ? t('player.duration', { duration: formatDuration(song.duration) }) : null,
+                `${t('common.streams')}: ${song.plays.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US')}`,
               ].filter(Boolean).join('\n'),
             );
           },
         },
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ],
       { cancelable: true },
     );
-  }, [navigation]);
+  }, [locale, navigation, t]);
 
   const renderSong = useCallback(({ item, index }: { item: Song; index: number }) => {
     const active = activeSong?.id === item.id;
@@ -206,8 +215,8 @@ export function LikedSongsScreen({ navigation }: Props) {
               </View>
               <View style={styles.heroText}>
                 <Text style={styles.eyebrow}>PLAYLIST</Text>
-                <Text style={styles.heroTitle}>Lieblingssongs</Text>
-                <Text style={styles.heroMeta}>{likedSongs.length} Songs</Text>
+                <Text style={styles.heroTitle}>{t('liked.title')}</Text>
+                <Text style={styles.heroMeta}>{likedSongs.length} {t('common.songs')}</Text>
               </View>
             </View>
 
@@ -231,11 +240,11 @@ export function LikedSongsScreen({ navigation }: Props) {
             </View>
 
             {loading ? (
-              <StateCard title="Lieblingssongs werden geladen" message="Deine gespeicherten Tracks werden synchronisiert." loading />
+              <StateCard title={t('liked.loading')} message={t('liked.loadingCopy')} loading />
             ) : error ? (
-              <StateCard icon="warning" title="Konnte nicht geladen werden" message={error} />
+              <StateCard icon="warning" title={t('liked.error')} message={error} />
             ) : likedSongs.length === 0 ? (
-              <StateCard icon="heart-outline" title="Noch keine Lieblingssongs" message="Tippe bei Songs auf das Herz, dann erscheinen sie hier." />
+              <StateCard icon="heart-outline" title={t('liked.empty')} message={t('liked.emptyCopy')} />
             ) : null}
           </>
         }

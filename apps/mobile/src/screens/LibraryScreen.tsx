@@ -10,10 +10,12 @@ import { theme } from '../theme';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { useI18n } from '../lib/i18n';
 
 const LIBRARY_CACHE_PREFIX = 'yoriax:library:v1:';
 
 export function LibraryScreen() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [data, setData] = useState<LibraryMusicData | null>(null);
@@ -47,7 +49,7 @@ export function LibraryScreen() {
         void writePersistedCache(cacheKey, nextData);
       } catch (loadError) {
         if (mounted && !hasCachedData) {
-          setError(loadError instanceof Error ? loadError.message : 'Bibliothek konnte nicht geladen werden.');
+          setError(loadError instanceof Error ? loadError.message : t('library.loading'));
           setLoading(false);
         }
       }
@@ -58,7 +60,7 @@ export function LibraryScreen() {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [t, user]);
 
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { activeSong, isPlaying, playSong, setQueue } = usePlayerControls();
@@ -70,7 +72,7 @@ export function LibraryScreen() {
 
   return (
     <View style={[styles.stack, { paddingTop: insets.top + 18 }]}>
-      <Text style={styles.title}>Bibliothek</Text>
+      <Text style={styles.title}>{t('library.title')}</Text>
       <TouchableOpacity
         style={styles.row}
         onPress={() => navigation.navigate('LikedSongs')}
@@ -79,15 +81,17 @@ export function LibraryScreen() {
           <Text style={styles.heart}>♥</Text>
         </View>
         <View style={styles.rowText}>
-          <Text style={styles.rowTitle}>Lieblingssongs</Text>
-          <Text style={styles.rowMeta}>{data?.likedSongs.length ?? 0} Songs in deinem Account</Text>
+          <Text style={styles.rowTitle}>{t('library.favorites')}</Text>
+          <Text style={styles.rowMeta}>
+            {t('library.accountSongs', { count: data?.likedSongs.length ?? 0 })}
+          </Text>
         </View>
       </TouchableOpacity>
 
       {loading && !data ? (
         <View style={styles.stateBox}>
           <ActivityIndicator color={theme.colors.text} />
-          <Text style={styles.stateText}>Bibliothek wird geladen</Text>
+          <Text style={styles.stateText}>{t('library.loading')}</Text>
         </View>
       ) : null}
 
@@ -99,7 +103,7 @@ export function LibraryScreen() {
 
       {data ? (
         <>
-          <SectionTitle title="Meine Playlists" />
+          <SectionTitle title={t('library.myPlaylists')} />
           {data.playlists.length > 0 ? (
             <View style={styles.list}>
               {data.playlists.slice(0, 8).map((playlist) => (
@@ -107,10 +111,10 @@ export function LibraryScreen() {
               ))}
             </View>
           ) : (
-            <EmptyBlock title="Noch keine Playlists" copy="Sobald du Playlists erstellst, werden sie hier synchronisiert." />
+            <EmptyBlock title={t('library.emptyPlaylists')} copy={t('library.emptyPlaylistsCopy')} />
           )}
 
-          <SectionTitle title="Zuletzt gehört" />
+          <SectionTitle title={t('library.recentlyPlayed')} />
           {data.likedSongs.length > 0 ? (
             <View style={styles.list}>
               {data.likedSongs.slice(0, 8).map((song, index, arr) => {
@@ -129,7 +133,7 @@ export function LibraryScreen() {
               })}
             </View>
           ) : (
-            <EmptyBlock title="Noch keine Songs gehört" copy="Deine zuletzt gehörten Songs erscheinen hier." />
+            <EmptyBlock title={t('library.emptyHistory')} copy={t('library.emptyHistoryCopy')} />
           )}
         </>
       ) : null}
@@ -156,6 +160,8 @@ const SongRow = memo(function SongRow({
   isPlaying: boolean; 
   onPlay: (song: Song, index: number, list: Song[]) => void; 
 }) {
+  const { t } = useI18n();
+
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -174,7 +180,7 @@ const SongRow = memo(function SongRow({
           {song.title}
         </Text>
         <Text style={styles.itemMeta} numberOfLines={1}>
-          {song.artist_name || song.creatorName || 'Creator'}
+          {song.artist_name || song.creatorName || t('common.creator')}
         </Text>
       </View>
       <Text style={styles.rowPlayState}>{isActive && isPlaying ? 'II' : '▶'}</Text>
@@ -183,6 +189,7 @@ const SongRow = memo(function SongRow({
 });
 
 const PlaylistRow = memo(function PlaylistRow({ playlist }: { playlist: Playlist }) {
+  const { t } = useI18n();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   return (
@@ -201,7 +208,9 @@ const PlaylistRow = memo(function PlaylistRow({ playlist }: { playlist: Playlist
         <Text style={styles.itemTitle} numberOfLines={1}>
           {playlist.title}
         </Text>
-        <Text style={styles.itemMeta}>{playlist.is_public ? 'Oeffentlich' : 'Privat'}</Text>
+        <Text style={styles.itemMeta}>
+          {playlist.is_public ? t('common.public') : t('common.private')}
+        </Text>
       </View>
     </TouchableOpacity>
   );

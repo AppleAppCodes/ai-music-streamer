@@ -3,27 +3,39 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatDuration } from '../lib/format';
 import { usePlayer } from '../lib/player-context';
 import { theme } from '../theme';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/types';
 import { CoverArt } from './YoriaxUI';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useI18n } from '../lib/i18n';
 
-export function MiniPlayer() {
+export const MINI_PLAYER_LAYOUT = {
+  bottom: 94,
+  height: 77,
+  horizontalInset: 14,
+} as const;
+
+export function MiniPlayer({ onExpand }: { onExpand: () => void }) {
+  return (
+    <TouchableOpacity
+      style={styles.shell}
+      activeOpacity={0.94}
+      onPress={onExpand}
+    >
+      <MiniPlayerPreview />
+    </TouchableOpacity>
+  );
+}
+
+export function MiniPlayerPreview({ interactive = true }: { interactive?: boolean }) {
+  const { t } = useI18n();
   const { activeSong, currentTime, duration, error, isBuffering, isPlaying, toggle } = usePlayer();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   if (!activeSong) return null;
 
   const progress = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
   return (
-    <TouchableOpacity
-      style={styles.shell}
-      activeOpacity={0.9}
-      onPress={() => navigation.navigate('FullscreenPlayer')}
-    >
+    <View style={styles.preview}>
       {activeSong.cover_url && (
         <View style={StyleSheet.absoluteFill}>
           <Image source={{ uri: activeSong.cover_url }} style={StyleSheet.absoluteFill} blurRadius={10} alt="" />
@@ -45,12 +57,18 @@ export function MiniPlayer() {
             {activeSong.title}
           </Text>
           <Text style={[styles.meta, error ? styles.metaError : null]} numberOfLines={1}>
-            {error || activeSong.artist_name || activeSong.creatorName || 'Creator'}
+            {error || activeSong.artist_name || activeSong.creatorName || t('common.creator')}
           </Text>
         </View>
 
         <Text style={styles.time}>{formatDuration(currentTime)}</Text>
-        <TouchableOpacity accessibilityRole="button" activeOpacity={0.85} onPress={toggle} style={styles.button}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          activeOpacity={0.85}
+          disabled={!interactive}
+          onPress={toggle}
+          style={styles.button}
+        >
           {isBuffering ? (
             <ActivityIndicator color="#050505" size="small" />
           ) : (
@@ -63,7 +81,7 @@ export function MiniPlayer() {
           )}
         </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -73,15 +91,20 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.borderStrong,
     borderRadius: theme.radii.lg,
     borderWidth: 1,
-    bottom: 94,
-    left: 14,
+    bottom: MINI_PLAYER_LAYOUT.bottom,
+    height: MINI_PLAYER_LAYOUT.height,
+    left: MINI_PLAYER_LAYOUT.horizontalInset,
     overflow: 'hidden',
     position: 'absolute',
-    right: 14,
+    right: MINI_PLAYER_LAYOUT.horizontalInset,
     shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.18,
     shadowRadius: 26,
+  },
+  preview: {
+    flex: 1,
+    overflow: 'hidden',
   },
   progressTrack: {
     backgroundColor: 'rgba(255,255,255,0.12)',

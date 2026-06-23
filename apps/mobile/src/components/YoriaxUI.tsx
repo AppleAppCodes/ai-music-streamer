@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import yoriaxSymbol from '../../assets/yoriax-symbol.png';
-
+import yoriaxAppIcon from '../../assets/icon.png';
 
 export function YoriaxMark({ size = 34 }: { size?: number }) {
   return <Image source={yoriaxSymbol} style={{ height: size, width: size }} resizeMode="contain" alt="YORIAX" />;
@@ -94,6 +94,25 @@ export function CoverArt({
     <View style={[{ width: size, height: size, borderRadius: radius }, styles.cover, styles.coverFallback, style]}>
       <YoriaxMark size={size * 0.42} />
     </View>
+  );
+}
+
+export function YoriaxPlaylistCover({
+  radius = 18,
+  size,
+  style,
+}: {
+  radius?: number;
+  size: number;
+  style?: StyleProp<ImageStyle>;
+}) {
+  return (
+    <Image
+      source={yoriaxAppIcon}
+      style={[{ borderRadius: radius, height: size, width: size }, styles.cover, style]}
+      resizeMode="cover"
+      alt="YORIAX"
+    />
   );
 }
 
