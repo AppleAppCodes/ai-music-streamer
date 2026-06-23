@@ -1,4 +1,4 @@
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useState, memo, useCallback } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,7 +71,18 @@ export function LibraryScreen() {
   }, [setQueue, playSong]);
 
   return (
-    <View style={[styles.stack, { paddingTop: insets.top + 18 }]}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.stack,
+        {
+          paddingBottom: insets.bottom + (activeSong ? 220 : 130),
+          paddingTop: insets.top + 18,
+        },
+      ]}
+      scrollEventThrottle={16}
+      showsVerticalScrollIndicator={false}
+      style={styles.scroll}
+    >
       <Text style={styles.title}>{t('library.title')}</Text>
       <TouchableOpacity
         style={styles.row}
@@ -137,7 +148,7 @@ export function LibraryScreen() {
           )}
         </>
       ) : null}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -226,11 +237,14 @@ function EmptyBlock({ title, copy }: { title: string; copy: string }) {
 }
 
 const styles = StyleSheet.create({
-  stack: {
+  scroll: {
     backgroundColor: theme.colors.background,
     flex: 1,
+  },
+  stack: {
+    backgroundColor: theme.colors.background,
+    flexGrow: 1,
     gap: 16,
-    paddingBottom: 170,
     paddingHorizontal: theme.spacing.screen,
   },
   title: {

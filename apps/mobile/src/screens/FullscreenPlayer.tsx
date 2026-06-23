@@ -1,10 +1,9 @@
 import {
   ActionSheetIOS,
   Alert,
-  Animated,
-  Easing,
+  Animated as RNAnimated,
+  Easing as RNEasing,
   Image,
-  PanResponder,
   Platform,
   Share,
   StyleSheet,
@@ -14,6 +13,17 @@ import {
   View,
 } from 'react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Animated, {
+  Easing as ReanimatedEasing,
+  cancelAnimation,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { theme } from '../theme';
@@ -23,7 +33,6 @@ import { checkIsLiked, toggleLike } from '../lib/music-data';
 import { RootStackParamList } from '../navigation/types';
 import { formatDuration } from '../lib/format';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
 import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
@@ -36,16 +45,16 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   const { locale, t } = useI18n();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
-  const { height: screenHeight } = useWindowDimensions();
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const [isLiked, setIsLiked] = useState(false);
   const [likedSongId, setLikedSongId] = useState<string | null>(null);
   const [isLikeLoading, setIsLikeLoading] = useState(false);
   const [isPlaylistModalVisible, setIsPlaylistModalVisible] = useState(false);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const morphProgress = useRef(new Animated.Value(0)).current;
-  const saveButtonScale = useRef(new Animated.Value(1)).current;
-  const [saveToastAnimation] = useState(() => new Animated.Value(0));
+  const morphProgress = useSharedValue(0);
+  const saveButtonScale = useRef(new RNAnimated.Value(1)).current;
+  const [saveToastAnimation] = useState(() => new RNAnimated.Value(0));
   const [saveToastVisible, setSaveToastVisible] = useState(false);
   const [saveToastSongId, setSaveToastSongId] = useState<string | null>(null);
   const { 
@@ -57,116 +66,141 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   const repeatActive = repeatMode !== 'none';
   const miniPlayerTop = screenHeight - MINI_PLAYER_LAYOUT.bottom - MINI_PLAYER_LAYOUT.height;
   const morphDistance = Math.max(1, miniPlayerTop);
+  const miniPlayerWidth = Math.max(1, screenWidth - MINI_PLAYER_LAYOUT.horizontalInset * 2);
+  const miniScaleX = miniPlayerWidth / Math.max(1, screenWidth);
+  const miniScaleY = MINI_PLAYER_LAYOUT.height / Math.max(1, screenHeight);
+  const miniCenterOffsetY = miniPlayerTop + MINI_PLAYER_LAYOUT.height / 2 - screenHeight / 2;
+  const finishDismiss = useCallback(() => {
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
-    const entranceAnimation = Animated.spring(morphProgress, {
+    morphProgress.value = withSpring(1, {
       damping: 25,
       mass: 0.88,
       stiffness: 230,
-      toValue: 1,
-      useNativeDriver: false,
     });
-    entranceAnimation.start();
 
     return () => {
-      entranceAnimation.stop();
+      cancelAnimation(morphProgress);
     };
   }, [morphProgress]);
 
   const resetDrag = useCallback(() => {
-    Animated.spring(morphProgress, {
+    morphProgress.value = withSpring(1, {
       damping: 24,
       mass: 0.86,
       stiffness: 270,
-      toValue: 1,
-      useNativeDriver: false,
-    }).start();
+    });
   }, [morphProgress]);
 
   const dismissPlayer = useCallback((velocity = 0) => {
     const duration = Math.max(160, Math.min(260, 230 - Math.max(0, velocity) * 35));
 
-    Animated.timing(morphProgress, {
+    morphProgress.value = withTiming(0, {
       duration,
-      easing: Easing.inOut(Easing.cubic),
-      toValue: 0,
-      useNativeDriver: false,
-    }).start(({ finished }) => {
-      if (finished) onClose();
+      easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+    }, (finished) => {
+      if (finished) runOnJS(finishDismiss)();
     });
-  }, [morphProgress, onClose]);
+  }, [finishDismiss, morphProgress]);
 
-  const playerPanResponder = useMemo(
+  const playerPanGesture = useMemo(
     () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_event, gesture) =>
-          gesture.dy > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.1,
-        onPanResponderMove: (_event, gesture) => {
-          const nextProgress = 1 - Math.max(0, gesture.dy) / morphDistance;
-          morphProgress.setValue(Math.max(0, Math.min(1, nextProgress)));
-        },
-        onPanResponderRelease: (_event, gesture) => {
-          const projectedDistance = gesture.dy + Math.max(0, gesture.vy) * 180;
-          if (projectedDistance > morphDistance * 0.32 || gesture.vy > 1.1) {
-            dismissPlayer(gesture.vy);
+      Gesture.Pan()
+        .activeOffsetY(6)
+        .failOffsetX([-36, 36])
+        .onUpdate((event) => {
+          if (event.translationY <= 0) return;
+
+          morphProgress.value = Math.max(0, Math.min(1, 1 - event.translationY / morphDistance));
+        })
+        .onEnd((event) => {
+          const projectedDistance = event.translationY + Math.max(0, event.velocityY) * 0.18;
+
+          if (projectedDistance > morphDistance * 0.3 || event.velocityY > 1050) {
+            const duration = Math.max(145, Math.min(235, 235 - Math.max(0, event.velocityY) * 0.025));
+            morphProgress.value = withTiming(0, {
+              duration,
+              easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+            }, (finished) => {
+              if (finished) runOnJS(finishDismiss)();
+            });
             return;
           }
-          resetDrag();
-        },
-        onPanResponderTerminate: resetDrag,
-      }),
-    [dismissPlayer, morphDistance, morphProgress, resetDrag],
+
+          morphProgress.value = withSpring(1, {
+            damping: 25,
+            mass: 0.86,
+            stiffness: 285,
+            velocity: -event.velocityY / Math.max(1, morphDistance),
+          });
+        })
+        .onFinalize((_event, success) => {
+          if (!success && morphProgress.value > 0 && morphProgress.value < 1) {
+            morphProgress.value = withSpring(1, {
+              damping: 25,
+              mass: 0.86,
+              stiffness: 285,
+            });
+          }
+        }),
+    [finishDismiss, morphDistance, morphProgress],
   );
 
-  const playerSurfaceStyle = useMemo(() => ({
-    borderRadius: morphProgress.interpolate({
-      inputRange: [0, 1],
-      outputRange: [theme.radii.lg, 0],
-    }),
-    bottom: morphProgress.interpolate({
-      inputRange: [0, 1],
-      outputRange: [MINI_PLAYER_LAYOUT.bottom, 0],
-    }),
-    left: morphProgress.interpolate({
-      inputRange: [0, 1],
-      outputRange: [MINI_PLAYER_LAYOUT.horizontalInset, 0],
-    }),
-    right: morphProgress.interpolate({
-      inputRange: [0, 1],
-      outputRange: [MINI_PLAYER_LAYOUT.horizontalInset, 0],
-    }),
-    top: morphProgress.interpolate({
-      inputRange: [0, 1],
-      outputRange: [miniPlayerTop, 0],
-    }),
-  }), [miniPlayerTop, morphProgress]);
+  const playerSurfaceStyle = useAnimatedStyle(() => {
+    const progress = morphProgress.value;
 
-  const expandedContentOpacity = useMemo(() => morphProgress.interpolate({
-    inputRange: [0, 0.48, 0.82, 1],
-    outputRange: [0, 0, 0.82, 1],
-  }), [morphProgress]);
+    return {
+      borderRadius: interpolate(progress, [0, 0.88, 1], [theme.radii.lg, 8, 0]),
+      transform: [
+        {
+          translateY: interpolate(progress, [0, 1], [miniCenterOffsetY, 0]),
+        },
+        {
+          scaleX: interpolate(progress, [0, 1], [miniScaleX, 1]),
+        },
+        {
+          scaleY: interpolate(progress, [0, 1], [miniScaleY, 1]),
+        },
+      ],
+    };
+  }, [miniCenterOffsetY, miniScaleX, miniScaleY]);
 
-  const collapsedContentOpacity = useMemo(() => morphProgress.interpolate({
-    inputRange: [0, 0.24, 0.56],
-    outputRange: [1, 1, 0],
-  }), [morphProgress]);
+  const expandedContentAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(morphProgress.value, [0, 0.5, 0.82, 1], [0, 0, 0.88, 1]),
+    transform: [
+      {
+        translateY: interpolate(morphProgress.value, [0, 1], [18, 0]),
+      },
+    ],
+  }), []);
+
+  const miniSnapshotAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(morphProgress.value, [0, 0.18, 0.42], [1, 1, 0]),
+    transform: [
+      {
+        scale: interpolate(morphProgress.value, [0, 0.42], [1, 0.985]),
+      },
+    ],
+  }), []);
 
   const animateSaveButton = useCallback(() => {
     saveButtonScale.stopAnimation();
-    Animated.sequence([
-      Animated.timing(saveButtonScale, {
+    RNAnimated.sequence([
+      RNAnimated.timing(saveButtonScale, {
         duration: 90,
-        easing: Easing.out(Easing.quad),
+        easing: RNEasing.out(RNEasing.quad),
         toValue: 0.84,
         useNativeDriver: true,
       }),
-      Animated.spring(saveButtonScale, {
+      RNAnimated.spring(saveButtonScale, {
         damping: 8,
         stiffness: 420,
         toValue: 1.08,
         useNativeDriver: true,
       }),
-      Animated.spring(saveButtonScale, {
+      RNAnimated.spring(saveButtonScale, {
         damping: 10,
         stiffness: 360,
         toValue: 1,
@@ -231,7 +265,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
       saveToastTimerRef.current = null;
     }
 
-    Animated.timing(saveToastAnimation, {
+    RNAnimated.timing(saveToastAnimation, {
       duration: 170,
       toValue: 0,
       useNativeDriver: true,
@@ -249,7 +283,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
     setSaveToastVisible(true);
     saveToastAnimation.stopAnimation();
     saveToastAnimation.setValue(0);
-    Animated.spring(saveToastAnimation, {
+    RNAnimated.spring(saveToastAnimation, {
       bounciness: 5,
       speed: 22,
       toValue: 1,
@@ -410,34 +444,24 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-      <Animated.View
-        style={[styles.playerSurface, playerSurfaceStyle]}
-        {...playerPanResponder.panHandlers}
-      >
+      <GestureDetector gesture={playerPanGesture}>
+        <Animated.View style={[styles.playerSurface, playerSurfaceStyle]}>
       {activeSong.cover_url && (
         <View style={StyleSheet.absoluteFill}>
           <Image 
             source={{ uri: activeSong.cover_url }} 
             style={StyleSheet.absoluteFill} 
-            blurRadius={50} 
+            blurRadius={24}
             alt="" 
           />
-          <BlurView intensity={65} tint="dark" style={StyleSheet.absoluteFill} />
           <LinearGradient
-            colors={['rgba(12,10,18,0.25)', 'rgba(12,10,18,0.55)', 'rgba(12,10,18,0.85)']}
+            colors={['rgba(12,10,18,0.2)', 'rgba(12,10,18,0.56)', 'rgba(12,10,18,0.92)']}
             style={StyleSheet.absoluteFill}
           />
         </View>
       )}
 
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.collapsedPreview, { opacity: collapsedContentOpacity }]}
-      >
-        <MiniPlayerPreview interactive={false} />
-      </Animated.View>
-
-      <Animated.View style={[styles.expandedContent, { opacity: expandedContentOpacity }]}>
+      <Animated.View style={[styles.expandedContent, expandedContentAnimatedStyle]}>
         <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
           <TouchableOpacity onPress={() => dismissPlayer()} style={styles.closeButton} hitSlop={10}>
             <Ionicons name="chevron-down" size={32} color={theme.colors.text} />
@@ -474,7 +498,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
               </TouchableOpacity>
             </View>
             <View style={styles.actionButtons}>
-              <Animated.View style={{ transform: [{ scale: saveButtonScale }] }}>
+              <RNAnimated.View style={{ transform: [{ scale: saveButtonScale }] }}>
                 <TouchableOpacity
                   accessibilityLabel={isCurrentSongLiked ? t('player.changeDestinations') : t('player.addToFavorites')}
                   accessibilityRole="button"
@@ -493,7 +517,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
                     color={isAdPlaying ? theme.colors.muted : isCurrentSongLiked ? theme.colors.text : theme.colors.primaryLight}
                   />
                 </TouchableOpacity>
-              </Animated.View>
+              </RNAnimated.View>
             </View>
           </View>
         </View>
@@ -564,10 +588,18 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
         
         </View>
       </Animated.View>
+        </Animated.View>
+      </GestureDetector>
+
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.miniSnapshot, miniSnapshotAnimatedStyle]}
+      >
+        <MiniPlayerPreview interactive={false} />
       </Animated.View>
 
       {saveToastVisible && saveToastSongId === activeSong.id ? (
-        <Animated.View
+        <RNAnimated.View
           pointerEvents="box-none"
           style={[
             styles.saveToastContainer,
@@ -594,7 +626,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
               <Text style={styles.saveToastAction}>{t('common.change')}</Text>
             </TouchableOpacity>
           </View>
-        </Animated.View>
+        </RNAnimated.View>
       ) : null}
 
       <AddToPlaylistModal 
@@ -620,21 +652,35 @@ const styles = StyleSheet.create({
   },
   playerSurface: {
     backgroundColor: theme.colors.background,
+    bottom: 0,
     borderColor: theme.colors.borderStrong,
     borderWidth: 1,
+    left: 0,
     overflow: 'hidden',
     position: 'absolute',
+    right: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 18 },
     shadowOpacity: 0.42,
     shadowRadius: 34,
-  },
-  collapsedPreview: {
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    right: 0,
     top: 0,
+    zIndex: 1,
+  },
+  miniSnapshot: {
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radii.lg,
+    borderWidth: 1,
+    bottom: MINI_PLAYER_LAYOUT.bottom,
+    height: MINI_PLAYER_LAYOUT.height,
+    left: MINI_PLAYER_LAYOUT.horizontalInset,
+    overflow: 'hidden',
+    position: 'absolute',
+    right: MINI_PLAYER_LAYOUT.horizontalInset,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.18,
+    shadowRadius: 26,
+    zIndex: 2,
   },
   expandedContent: {
     flex: 1,

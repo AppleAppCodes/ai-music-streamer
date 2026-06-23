@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from './src/lib/auth-context';
 
 import { PlayerProvider, usePlayerShell } from './src/lib/player-context';
@@ -17,17 +18,19 @@ import { I18nProvider, useI18n } from './src/lib/i18n';
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <I18nProvider>
-        <AuthProvider>
-          <MusicPreferencesProvider>
-            <PlayerProvider>
-              <AppShell />
-            </PlayerProvider>
-          </MusicPreferencesProvider>
-        </AuthProvider>
-      </I18nProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <MusicPreferencesProvider>
+              <PlayerProvider>
+                <AppShell />
+              </PlayerProvider>
+            </MusicPreferencesProvider>
+          </AuthProvider>
+        </I18nProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -104,6 +107,9 @@ function AppShell() {
 
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.background,
