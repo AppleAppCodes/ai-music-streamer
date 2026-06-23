@@ -3,14 +3,14 @@
     "name": "Yoriax",
     "slug": "yoriax",
     "scheme": "yoriax",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#050505",
     "ios": {
       "bundleIdentifier": "com.yoriax.app",
-      "buildNumber": "79",
+      "buildNumber": "80",
       "usesAppleSignIn": true,
       "supportsTablet": false,
       "infoPlist": {
