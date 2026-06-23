@@ -80,7 +80,7 @@ function mapDiscoverPlaylist(row: PlaylistRow): DiscoverPlaylist {
     user_id: row.user_id ?? null,
     title: row.title,
     description: row.description ?? null,
-    cover_url: row.cover_url ?? null,
+    cover_url: isDailyNewReleases ? 'local://yoriax-symbol' : (row.cover_url ?? null),
     is_public: row.is_public ?? null,
     created_at: row.created_at ?? null,
     creatorName,
@@ -473,7 +473,7 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
       user_id: 'system',
       title: 'Daily New Releases',
       description: 'Die neuesten Uploads auf YORIAX, maximal ein Song pro Künstler.',
-      cover_url: null,
+      cover_url: 'local://yoriax-symbol',
       is_public: true,
       created_at: new Date().toISOString(),
     };

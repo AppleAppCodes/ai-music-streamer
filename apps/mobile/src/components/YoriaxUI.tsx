@@ -83,7 +83,11 @@ export function CoverArt({
   style?: StyleProp<ImageStyle>;
 }) {
   if (uri) {
-    return <Image source={{ uri }} style={[{ width: size, height: size, borderRadius: radius }, styles.cover, style]} alt="" />;
+    const source = uri === 'local://yoriax-symbol'
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ? require('../../assets/yoriax-symbol.png')
+      : { uri };
+    return <Image source={source} style={[{ width: size, height: size, borderRadius: radius }, styles.cover, style]} resizeMode="cover" alt="" />;
   }
 
   return (

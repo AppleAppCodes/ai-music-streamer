@@ -121,7 +121,10 @@ export function RootNavigator() {
         <Stack.Screen 
           name="FullscreenPlayer" 
           component={FullscreenPlayer}
-          options={{ presentation: 'fullScreenModal' }}
+          options={{ 
+            presentation: 'transparentModal',
+            animation: 'fade',
+          }}
         />
         <Stack.Screen 
           name="Artist" 

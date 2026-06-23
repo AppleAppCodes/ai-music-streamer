@@ -1,2 +1,6 @@
 *.ipa
 build-*.ipa
+*.apk
+*.aab
+build-*.apk
+build-*.aab

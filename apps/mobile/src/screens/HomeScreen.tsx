@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, RefreshControl } from 'react-native';
 import { useEffect, useMemo, useState, memo, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CoverArt, IconButton, StateCard, YoriaxLogo } from '../components/YoriaxUI';
+import { CoverArt, IconButton, StateCard } from '../components/YoriaxUI';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
 import { loadHomeMusic, type HomeMusicData } from '../lib/music-data';
@@ -41,47 +41,53 @@ export function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [data, setData] = useState<HomeMusicData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
+  const loadData = useCallback(async (forceRefresh = false) => {
+    if (!user) return;
+    const cacheKey = `${HOME_CACHE_PREFIX}${user.id}:${favoriteGenres.join(',')}`;
+    let hasCachedData = false;
 
-    async function load() {
-      if (!user) return;
-
-      const cacheKey = `${HOME_CACHE_PREFIX}${user.id}:${favoriteGenres.join(',')}`;
-      let hasCachedData = false;
+    if (!forceRefresh) {
       setLoading(true);
       setError(null);
-
       const cachedData = await readPersistedCache<HomeMusicData>(cacheKey);
-      if (mounted && cachedData) {
+      if (cachedData) {
         hasCachedData = true;
         setData(cachedData);
         setLoading(false);
       }
-
-      try {
-        const nextData = await loadHomeMusic(user.id);
-        if (!mounted) return;
-        setData(nextData);
-        setError(null);
-        setLoading(false);
-        void writePersistedCache(cacheKey, nextData);
-      } catch (loadError) {
-        if (mounted && !hasCachedData) {
-          setError(loadError instanceof Error ? loadError.message : 'Home konnte nicht geladen werden.');
-          setLoading(false);
-        }
-      }
+    } else {
+      setRefreshing(true);
     }
 
-    load();
+    try {
+      const nextData = await loadHomeMusic(user.id);
+      setData(nextData);
+      setError(null);
+      void writePersistedCache(cacheKey, nextData);
+    } catch (loadError) {
+      if (!hasCachedData && !forceRefresh) {
+        setError(loadError instanceof Error ? loadError.message : 'Home konnte nicht geladen werden.');
+      }
+    } finally {
+      if (forceRefresh) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [user, favoriteGenres]);
 
-    return () => {
-      mounted = false;
-    };
-  }, [favoriteGenres, preferenceRevision, user]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadData(false);
+  }, [loadData, preferenceRevision]);
+
+  const onRefresh = useCallback(() => {
+    void loadData(true);
+  }, [loadData]);
 
   const quickTiles = useMemo<QuickTile[]>(() => [
     {
@@ -123,13 +129,20 @@ export function HomeScreen() {
       style={styles.container}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 18 }]}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={theme.colors.primaryLight}
+          colors={[theme.colors.primaryLight]}
+        />
+      }
     >
       <LinearGradient
         colors={['rgba(88,28,135,0.45)', 'rgba(12,10,18,0)']}
         style={styles.topGradient}
       />
       <View style={styles.header}>
-        <YoriaxLogo />
         <IconButton icon="person-circle-outline" onPress={() => navigation.navigate('Profile')} />
       </View>
 
@@ -271,7 +284,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
   },
   quickGrid: {
     flexDirection: 'row',

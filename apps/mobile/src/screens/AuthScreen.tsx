@@ -111,8 +111,7 @@ export function AuthScreen() {
       style={styles.screen}
     >
       <View style={styles.card}>
-        <Text style={styles.eyebrow}>Yoriax Account</Text>
-        <Text style={styles.title}>{isSignUp ? 'Registrieren' : 'Willkommen zurueck'}</Text>
+        <Text style={styles.title}>{isSignUp ? 'Registrieren' : 'Willkommen'}</Text>
         <Text style={styles.copy}>
           Melde dich mit deinem bestehenden Yoriax Account an. Die native App nutzt dieselbe
           Supabase-Session wie unsere Plattformdaten.

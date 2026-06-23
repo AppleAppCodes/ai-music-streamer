@@ -11,7 +11,7 @@ import { AuthScreen } from './src/screens/AuthScreen';
 import { MusicPreferencesOnboarding } from './src/screens/MusicPreferencesScreen';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { theme } from './src/theme';
-import { YoriaxLoginLogo, YoriaxMark } from './src/components/YoriaxUI';
+import { YoriaxMark } from './src/components/YoriaxUI';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
 export default function App() {
@@ -67,11 +67,7 @@ function AppShell() {
         />
       )}
 
-      {!signedIn && !initializing && (
-        <View style={styles.header}>
-          <YoriaxLoginLogo />
-        </View>
-      )}
+
 
       <View style={{ flex: 1 }}>
         {appInitializing ? (

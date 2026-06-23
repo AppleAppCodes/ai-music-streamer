@@ -1,4 +1,4 @@
-import { Alert, ActionSheetIOS, Animated, Image, PanResponder, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ActionSheetIOS, Animated, Dimensions, Image, PanResponder, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { theme } from '../theme';
 import { usePlayer } from '../lib/player-context';
@@ -14,6 +14,8 @@ import Slider from '@react-native-community/slider';
 import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 type Props = NativeStackScreenProps<RootStackParamList, 'FullscreenPlayer'>;
 
 export function FullscreenPlayer({ navigation }: Props) {
@@ -25,7 +27,8 @@ export function FullscreenPlayer({ navigation }: Props) {
   const [isPlaylistModalVisible, setIsPlaylistModalVisible] = useState(false);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [translateY] = useState(() => new Animated.Value(0));
+  const [translateY] = useState(() => new Animated.Value(SCREEN_HEIGHT));
+  const [saveScale] = useState(() => new Animated.Value(1));
   const [saveToastAnimation] = useState(() => new Animated.Value(0));
   const [saveToastVisible, setSaveToastVisible] = useState(false);
   const [saveToastSongId, setSaveToastSongId] = useState<string | null>(null);
@@ -36,6 +39,47 @@ export function FullscreenPlayer({ navigation }: Props) {
   const activeSongId = activeSong?.id;
   const isCurrentSongLiked = Boolean(activeSongId && likedSongId === activeSongId && isLiked);
   const repeatActive = repeatMode !== 'none';
+
+  useEffect(() => {
+    Animated.spring(translateY, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 90,
+      friction: 12,
+    }).start();
+  }, [translateY]);
+
+  const handleClose = useCallback(() => {
+    Animated.timing(translateY, {
+      toValue: SCREEN_HEIGHT,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => {
+      navigation.goBack();
+    });
+  }, [navigation, translateY]);
+
+  const animateSaveButton = useCallback(() => {
+    Animated.sequence([
+      Animated.timing(saveScale, {
+        toValue: 0.8,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(saveScale, {
+        toValue: 1.2,
+        friction: 3,
+        tension: 140,
+        useNativeDriver: true,
+      }),
+      Animated.spring(saveScale, {
+        toValue: 1,
+        friction: 4,
+        tension: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [saveScale]);
 
   const resetDrag = useCallback(() => {
     Animated.spring(translateY, {
@@ -52,18 +96,18 @@ export function FullscreenPlayer({ navigation }: Props) {
         onMoveShouldSetPanResponder: (_event, gesture) =>
           gesture.dy > 12 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.15,
         onPanResponderMove: (_event, gesture) => {
-          translateY.setValue(Math.max(0, Math.min(gesture.dy, 190)));
+          translateY.setValue(Math.max(0, gesture.dy));
         },
         onPanResponderRelease: (_event, gesture) => {
-          if (gesture.dy > 105 || gesture.vy > 0.85) {
-            navigation.goBack();
+          if (gesture.dy > 120 || gesture.vy > 0.5) {
+            handleClose();
             return;
           }
           resetDrag();
         },
         onPanResponderTerminate: resetDrag,
       }),
-    [navigation, resetDrag, translateY],
+    [handleClose, resetDrag, translateY],
   );
 
   useEffect(() => {
@@ -152,6 +196,7 @@ export function FullscreenPlayer({ navigation }: Props) {
 
   const handleSavePress = useCallback(async () => {
     if (!user || !activeSong || isLikeLoading || isAdPlaying) return;
+    animateSaveButton();
     if (isCurrentSongLiked) {
       setIsPlaylistModalVisible(true);
       return;
@@ -161,6 +206,7 @@ export function FullscreenPlayer({ navigation }: Props) {
     if (nextStatus) showSaveToast(activeSong.id);
   }, [
     activeSong,
+    animateSaveButton,
     isAdPlaying,
     isCurrentSongLiked,
     isLikeLoading,
@@ -262,12 +308,10 @@ export function FullscreenPlayer({ navigation }: Props) {
         { text: 'Abbrechen', style: 'cancel' }
       ]);
     }
-  };
-
-  if (!activeSong) {
+  };  if (!activeSong) {
     return (
       <View style={styles.container}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
+        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
           <Ionicons name="chevron-down" size={32} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Kein Song aktiv</Text>
@@ -278,83 +322,85 @@ export function FullscreenPlayer({ navigation }: Props) {
   const timeRemaining = Math.max(0, duration - currentTime);
 
   return (
-    <View style={styles.container}>
-      {activeSong.cover_url && (
-        <View style={StyleSheet.absoluteFill}>
-          <Image 
-            source={{ uri: activeSong.cover_url }} 
-            style={StyleSheet.absoluteFill} 
-            blurRadius={50} 
-            alt="" 
-          />
-          <BlurView intensity={65} tint="dark" style={StyleSheet.absoluteFill} />
-          <LinearGradient
-            colors={['rgba(12,10,18,0.25)', 'rgba(12,10,18,0.55)', 'rgba(12,10,18,0.85)']}
-            style={StyleSheet.absoluteFill}
-          />
-        </View>
-      )}
-
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <Animated.View
         style={[styles.foreground, { transform: [{ translateY }] }]}
         {...playerPanResponder.panHandlers}
       >
-      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton} hitSlop={10}>
-          <Ionicons name="chevron-down" size={32} color={theme.colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleContextMenu} style={styles.menuButton} hitSlop={10}>
-          <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.content}>
-        {activeSong.cover_url ? (
-          <Image source={{ uri: activeSong.cover_url }} style={styles.cover} alt="" />
-        ) : (
-          <View style={[styles.cover, styles.coverFallback]}>
-            <Text style={styles.coverFallbackText}>Y</Text>
+        {activeSong.cover_url && (
+          <View style={StyleSheet.absoluteFill}>
+            <Image 
+              source={{ uri: activeSong.cover_url }} 
+              style={StyleSheet.absoluteFill} 
+              blurRadius={50} 
+              alt="" 
+            />
+            <BlurView intensity={65} tint="dark" style={StyleSheet.absoluteFill} />
+            <LinearGradient
+              colors={['rgba(12,10,18,0.25)', 'rgba(12,10,18,0.55)', 'rgba(12,10,18,0.85)']}
+              style={StyleSheet.absoluteFill}
+            />
           </View>
         )}
 
-        <View style={styles.infoContainer}>
-          <View style={styles.titleRow}>
-            <View style={styles.titleTextContainer}>
-              <Text style={styles.title} numberOfLines={1}>{activeSong.title}</Text>
-              <TouchableOpacity onPress={() => {
-                navigation.goBack();
-                setTimeout(() => {
-	                navigation.navigate('Artist', {
-	                    artistId: activeSong.artist_name || activeSong.creatorName || activeSong.creator_id || 'unknown'
-	                  });
-                }, 300);
-              }}>
-                <Text style={styles.artist} numberOfLines={1}>
-                  {activeSong.artist_name || activeSong.creatorName || 'Creator'}
-                </Text>
-              </TouchableOpacity>
+        <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
+          <TouchableOpacity onPress={handleClose} style={styles.closeButton} hitSlop={10}>
+            <Ionicons name="chevron-down" size={32} color={theme.colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleContextMenu} style={styles.menuButton} hitSlop={10}>
+            <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.content}>
+          {activeSong.cover_url ? (
+            <Image source={{ uri: activeSong.cover_url }} style={styles.cover} alt="" />
+          ) : (
+            <View style={[styles.cover, styles.coverFallback]}>
+              <Text style={styles.coverFallbackText}>Y</Text>
             </View>
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                accessibilityLabel={isCurrentSongLiked ? 'Speicherorte ändern' : 'Zu Lieblingssongs hinzufügen'}
-                accessibilityRole="button"
-                style={[
-                  styles.saveButton,
-                  isCurrentSongLiked && styles.saveButtonActive,
-                ]}
-                onPress={() => { void handleSavePress(); }}
-                disabled={isLikeLoading || isAdPlaying}
-                hitSlop={12}
-              >
-                <Ionicons 
-                  name={isCurrentSongLiked ? 'heart' : 'add'}
-                  size={isCurrentSongLiked ? 21 : 25}
-                  color={isAdPlaying ? theme.colors.muted : isCurrentSongLiked ? theme.colors.text : theme.colors.primaryLight}
-                />
-              </TouchableOpacity>
+          )}
+
+          <View style={styles.infoContainer}>
+            <View style={styles.titleRow}>
+              <View style={styles.titleTextContainer}>
+                <Text style={styles.title} numberOfLines={1}>{activeSong.title}</Text>
+                <TouchableOpacity onPress={() => {
+                  handleClose();
+                  setTimeout(() => {
+ 	                  navigation.navigate('Artist', {
+ 	                      artistId: activeSong.artist_name || activeSong.creatorName || activeSong.creator_id || 'unknown'
+ 	                    });
+                  }, 300);
+                }}>
+                  <Text style={styles.artist} numberOfLines={1}>
+                    {activeSong.artist_name || activeSong.creatorName || 'Creator'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.actionButtons}>
+                <Animated.View style={{ transform: [{ scale: saveScale }] }}>
+                  <TouchableOpacity 
+                    accessibilityLabel={isCurrentSongLiked ? 'Speicherorte ändern' : 'Zu Lieblingssongs hinzufügen'}
+                    accessibilityRole="button"
+                    style={[
+                      styles.saveButton,
+                      isCurrentSongLiked && styles.saveButtonActive,
+                    ]}
+                    onPress={() => { void handleSavePress(); }}
+                    disabled={isLikeLoading || isAdPlaying}
+                    hitSlop={12}
+                  >
+                    <Ionicons 
+                      name={isCurrentSongLiked ? 'heart' : 'add'}
+                      size={isCurrentSongLiked ? 21 : 25}
+                      color={isAdPlaying ? theme.colors.muted : isCurrentSongLiked ? theme.colors.text : theme.colors.primaryLight}
+                    />
+                  </TouchableOpacity>
+                </Animated.View>
+              </View>
             </View>
           </View>
-        </View>
 
         <View style={styles.progressContainer}>
           <Slider

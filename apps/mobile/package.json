@@ -15,10 +15,14 @@
     "ios:device": "expo run:ios --device",
     "prebuild": "expo prebuild",
     "typecheck": "tsc --noEmit",
+    "eas:preview:android": "eas build --platform android --profile preview",
     "eas:preview:ios": "eas build --platform ios --profile preview",
+    "eas:production:android": "eas build --platform android --profile production",
     "eas:production:ios": "eas build --platform ios --profile production",
+    "eas:submit:android": "eas submit --platform android --profile production",
     "eas:submit:ios": "eas submit --platform ios --profile production",
-    "testflight": "eas build --platform ios --profile production --auto-submit"
+    "testflight": "eas build --platform ios --profile production --auto-submit",
+    "playstore": "eas build --platform android --profile production --auto-submit"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
