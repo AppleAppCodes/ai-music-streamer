@@ -8,6 +8,7 @@ import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
 import { loadArtistsData, type ArtistStat } from '../lib/music-data';
 import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
+import { useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Artists'>;
 type ArtistsNavigation = NativeStackNavigationProp<RootStackParamList, 'Artists'>;
@@ -19,6 +20,8 @@ const ArtistCard = memo(function ArtistCard({
   item: ArtistStat;
   navigation: ArtistsNavigation;
 }) {
+  const { t } = useI18n();
+
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -35,7 +38,7 @@ const ArtistCard = memo(function ArtistCard({
           <Text style={styles.artistName} numberOfLines={1}>{item.name}</Text>
           <View style={styles.statsRow}>
             <Ionicons name="musical-notes" size={12} color={theme.colors.accent} />
-            <Text style={styles.statsText}>{item.songsCount} {item.songsCount === 1 ? 'Song' : 'Songs'}</Text>
+            <Text style={styles.statsText}>{item.songsCount} {t('common.songs')}</Text>
           </View>
         </View>
       </View>
@@ -44,6 +47,7 @@ const ArtistCard = memo(function ArtistCard({
 });
 
 export function ArtistsScreen({ navigation }: Props) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [artists, setArtists] = useState<ArtistStat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +63,7 @@ export function ArtistsScreen({ navigation }: Props) {
         const data = await loadArtistsData();
         if (mounted) setArtists(data);
       } catch {
-        if (mounted) setError('Konnte Künstler nicht laden.');
+        if (mounted) setError(t('artists.unavailable'));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -69,7 +73,7 @@ export function ArtistsScreen({ navigation }: Props) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [t]);
 
   const renderArtist = useCallback(({ item }: { item: ArtistStat }) => (
     <ArtistCard
@@ -109,22 +113,22 @@ export function ArtistsScreen({ navigation }: Props) {
               />
               <Ionicons name="mic" size={38} color={theme.colors.text} />
             </View>
-            <Text style={styles.eyebrow}>ENTDECKEN</Text>
-            <Text style={styles.heroTitle}>Künstler entdecken</Text>
-            <Text style={styles.heroMeta}>Cover und Creator aus dem YORIAX-Kosmos.</Text>
+            <Text style={styles.eyebrow}>{t('artists.eyebrow')}</Text>
+            <Text style={styles.heroTitle}>{t('artists.title')}</Text>
+            <Text style={styles.heroMeta}>{t('artists.heroCopy')}</Text>
             <View style={styles.statsBadge}>
               <Ionicons name="people" size={14} color={theme.colors.text} />
-              <Text style={styles.statsBadgeText}>{artists.length} Künstler</Text>
+              <Text style={styles.statsBadgeText}>{t('artists.count', { count: artists.length })}</Text>
             </View>
           </View>
         }
         ListEmptyComponent={
           loading ? (
-            <StateCard title="Künstler werden geladen" message="Wir suchen aktuelle Creator und Videos." loading />
+            <StateCard title={t('artists.loading')} message={t('artists.loadingCopy')} loading />
           ) : error ? (
-            <StateCard icon="warning" title="Künstler nicht verfügbar" message={error} />
+            <StateCard icon="warning" title={t('artists.unavailable')} message={error} />
           ) : (
-            <StateCard icon="mic-outline" title="Keine Künstler gefunden" message="Sobald Songs veröffentlicht sind, erscheinen die Künstler hier." />
+            <StateCard icon="mic-outline" title={t('artists.empty')} message={t('artists.emptyCopy')} />
           )
         }
       />

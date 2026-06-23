@@ -12,6 +12,7 @@ import { usePlayerControls } from '../lib/player-context';
 import type { Song } from '../lib/types';
 import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
+import { useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Charts'>;
 type ChartTab = 'viral' | 'daily' | 'artists';
@@ -55,6 +56,8 @@ const ChartPanelItem = memo(function ChartPanelItem({
   onPlaySong: (songs: Song[], index: number) => void;
   songs: Song[];
 }) {
+  const { t } = useI18n();
+
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -72,7 +75,9 @@ const ChartPanelItem = memo(function ChartPanelItem({
       <CoverArt uri={song.cover_url} size={50} radius={12} />
       <View style={styles.rowText}>
         <Text style={[styles.rowTitle, active && { color: accentColor }]} numberOfLines={1}>{song.title}</Text>
-        <Text style={styles.rowMeta} numberOfLines={1}>{song.artist_name || song.creatorName || 'Creator'}</Text>
+        <Text style={styles.rowMeta} numberOfLines={1}>
+          {song.artist_name || song.creatorName || t('common.creator')}
+        </Text>
       </View>
       <View style={styles.rowRight}>
         <Text style={styles.metric}>{metricLabel}</Text>
@@ -91,6 +96,7 @@ const ArtistChartItem = memo(function ArtistChartItem({
   index: number;
   onOpenArtist: (artistName: string) => void;
 }) {
+  const { t } = useI18n();
   const accentColor = ACCENTS.teal;
 
   return (
@@ -106,12 +112,12 @@ const ArtistChartItem = memo(function ArtistChartItem({
           {artist.name}
         </Text>
         <Text style={styles.rowMeta} numberOfLines={1}>
-          {artist.songsCount} {artist.songsCount === 1 ? 'Song' : 'Songs'}
+          {artist.songsCount} {t('common.songs')}
         </Text>
       </View>
       <View style={styles.rowRight}>
         <Text style={styles.metricValue}>{formatPlays(artist.plays)}</Text>
-        <Text style={styles.metric}>Streams</Text>
+        <Text style={styles.metric}>{t('common.streams')}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -165,6 +171,7 @@ function ChartListHeader({
 }
 
 export function ChartsScreen({ navigation }: Props) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [data, setData] = useState<ChartsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -196,7 +203,7 @@ export function ChartsScreen({ navigation }: Props) {
         void writePersistedCache(CHARTS_CACHE_KEY, fetchedData);
       } catch {
         if (mounted && !hasCachedData) {
-          setError('Konnte Charts nicht laden.');
+          setError(t('charts.unavailable'));
           setLoading(false);
         }
       }
@@ -206,7 +213,7 @@ export function ChartsScreen({ navigation }: Props) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [t]);
 
   const handlePlayChart = useCallback((chartSongs: Song[]) => {
     if (chartSongs.length === 0) return;
@@ -260,12 +267,12 @@ export function ChartsScreen({ navigation }: Props) {
         accentColor={accentColor}
         active={active}
         isPlaying={isPlaying}
-        metricLabel={activeTab === 'viral' ? 'Streams' : 'Heute'}
+        metricLabel={activeTab === 'viral' ? t('common.streams') : t('charts.today')}
         onPlaySong={handlePlaySong}
         songs={currentSongs}
       />
     );
-  }, [accentColor, activeSong?.id, activeTab, currentSongs, handlePlaySong, isPlaying, openArtist]);
+  }, [accentColor, activeSong?.id, activeTab, currentSongs, handlePlaySong, isPlaying, openArtist, t]);
 
   return (
     <View style={styles.container}>
@@ -289,11 +296,11 @@ export function ChartsScreen({ navigation }: Props) {
 
       {loading && !data ? (
         <View style={styles.stateContainer}>
-          <StateCard title="Charts werden geladen" message="Wir holen die aktuellen YORIAX-Rankings." loading />
+          <StateCard title={t('charts.loading')} message={t('charts.loadingCopy')} loading />
         </View>
       ) : error ? (
         <View style={styles.stateContainer}>
-          <StateCard icon="warning" title="Charts nicht verfügbar" message={error} />
+          <StateCard icon="warning" title={t('charts.unavailable')} message={error} />
         </View>
       ) : (
         <FlatList
@@ -306,10 +313,10 @@ export function ChartsScreen({ navigation }: Props) {
             <View style={styles.emptyChart}>
               <StateCard
                 icon={activeTab === 'artists' ? 'mic-outline' : 'stats-chart'}
-                title={activeTab === 'artists' ? 'Noch keine Künstler' : 'Noch keine Songs'}
+                title={activeTab === 'artists' ? t('charts.emptyArtists') : t('charts.emptySongs')}
                 message={activeTab === 'artists'
-                  ? 'Sobald Songs veröffentlicht sind, erscheinen Künstler-Charts hier.'
-                  : 'Diese Charts füllen sich, sobald neue Plays gezählt werden.'}
+                  ? t('charts.emptyArtistsCopy')
+                  : t('charts.emptySongsCopy')}
               />
             </View>
           }
@@ -321,11 +328,15 @@ export function ChartsScreen({ navigation }: Props) {
               isChartPlaying={isChartPlaying}
               onPlay={activeTab === 'artists' ? undefined : () => handlePlayChart(currentSongs)}
               subtitle={activeTab === 'viral'
-                ? 'Songs mit der stärksten Plattform-Dynamik.'
+                ? t('charts.viralSubtitle')
                 : activeTab === 'daily'
-                  ? 'Was heute auf YORIAX am meisten gehört wird.'
-                  : 'Künstler mit den stärksten Gesamt-Streams auf YORIAX.'}
-              title={activeTab === 'viral' ? 'Viral Charts' : activeTab === 'daily' ? 'Daily Charts' : 'Artist Charts'}
+                  ? t('charts.dailySubtitle')
+                  : t('charts.artistSubtitle')}
+              title={activeTab === 'viral'
+                ? t('charts.viralTitle')
+                : activeTab === 'daily'
+                  ? t('charts.dailyTitle')
+                  : t('charts.artistTitle')}
             />
           }
           maxToRenderPerBatch={8}

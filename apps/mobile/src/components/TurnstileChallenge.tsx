@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { turnstileBaseUrl, turnstileSiteKey } from '../lib/env';
 import { theme } from '../theme';
+import { useI18n } from '../lib/i18n';
 
 type TurnstileMessage =
   | { type: 'ready' }
@@ -20,6 +21,7 @@ function escapeHtml(value: string) {
 }
 
 export function TurnstileChallenge({ onError, onToken }: TurnstileChallengeProps) {
+  const { t } = useI18n();
   const html = useMemo(() => {
     const siteKey = escapeHtml(turnstileSiteKey);
 
@@ -96,25 +98,25 @@ export function TurnstileChallenge({ onError, onToken }: TurnstileChallengeProps
 
       if (message.type === 'expired') {
         onToken(null);
-        onError('Sicherheitspruefung abgelaufen. Bitte warte auf eine neue Pruefung.');
+        onError(t('turnstile.expired'));
         return;
       }
 
       if (message.type === 'error') {
         onToken(null);
-        onError(`Sicherheitspruefung konnte nicht geladen werden${message.code ? ` (${message.code})` : ''}.`);
+        onError(t('turnstile.loadFailed', { code: message.code ? ` (${message.code})` : '' }));
       }
     } catch {
       onToken(null);
-      onError('Sicherheitspruefung konnte nicht gelesen werden.');
+      onError(t('turnstile.readFailed'));
     }
   }
 
   if (!turnstileSiteKey) {
     return (
       <View style={styles.missingBox}>
-        <Text style={styles.missingTitle}>Turnstile Env fehlt</Text>
-        <Text style={styles.missingText}>EXPO_PUBLIC_TURNSTILE_SITE_KEY ist fuer Native Login erforderlich.</Text>
+        <Text style={styles.missingTitle}>{t('turnstile.envMissing')}</Text>
+        <Text style={styles.missingText}>{t('turnstile.envMissingCopy')}</Text>
       </View>
     );
   }
@@ -131,7 +133,7 @@ export function TurnstileChallenge({ onError, onToken }: TurnstileChallengeProps
         mixedContentMode="always"
         onError={() => {
           onToken(null);
-          onError('Sicherheitspruefung konnte nicht geladen werden.');
+          onError(t('turnstile.loadFailed', { code: '' }));
         }}
         onMessage={handleMessage}
         originWhitelist={['*']}

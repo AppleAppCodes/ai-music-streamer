@@ -20,6 +20,7 @@ import {
   removeSongFromPlaylist,
 } from '../lib/music-data';
 import type { Playlist } from '../lib/types';
+import { useI18n } from '../lib/i18n';
 
 interface AddToPlaylistModalProps {
   visible: boolean;
@@ -62,6 +63,8 @@ const PlaylistModalRow = memo(function PlaylistModalRow({
   playlist: Playlist;
   selected: boolean;
 }) {
+  const { t } = useI18n();
+
   return (
     <TouchableOpacity
       activeOpacity={0.84}
@@ -78,7 +81,9 @@ const PlaylistModalRow = memo(function PlaylistModalRow({
       </View>
       <View style={styles.playlistInfo}>
         <Text style={styles.playlistTitle} numberOfLines={1}>{playlist.title}</Text>
-        <Text style={styles.playlistMeta}>{playlist.is_public ? 'Öffentlich' : 'Privat'}</Text>
+        <Text style={styles.playlistMeta}>
+          {playlist.is_public ? t('common.public') : t('common.private')}
+        </Text>
       </View>
       <SelectionControl loading={loading} selected={selected} />
     </TouchableOpacity>
@@ -92,6 +97,7 @@ export function AddToPlaylistModal({
   isLiked = false,
   onToggleLiked,
 }: AddToPlaylistModalProps) {
+  const { t } = useI18n();
   const { user } = useAuth();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<Set<string>>(new Set());
@@ -176,12 +182,12 @@ export function AddToPlaylistModal({
 
   const handleCreatePlaylist = useCallback(() => {
     Alert.prompt(
-      'Neue Playlist',
-      'Wie soll die Playlist heißen?',
+      t('save.title'),
+      t('save.playlistName'),
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Erstellen',
+          text: t('save.create'),
           onPress: async (text?: string) => {
             if (!text?.trim() || !user) return;
             setLoading(true);
@@ -200,7 +206,7 @@ export function AddToPlaylistModal({
       ],
       'plain-text',
     );
-  }, [songId, user]);
+  }, [songId, t, user]);
 
   const renderPlaylist = useCallback(({ item }: { item: Playlist }) => (
     <PlaylistModalRow
@@ -225,10 +231,10 @@ export function AddToPlaylistModal({
           <View style={styles.handle} />
           <View style={styles.header}>
             <View>
-              <Text style={styles.eyebrow}>YORIAX SPEICHERN</Text>
-              <Text style={styles.title}>Speichern in</Text>
+              <Text style={styles.eyebrow}>YORIAX</Text>
+              <Text style={styles.title}>{t('save.saveIn')}</Text>
             </View>
-            <TouchableOpacity accessibilityLabel="Auswahl schließen" onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity accessibilityLabel={t('save.close')} onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={theme.colors.text} />
             </TouchableOpacity>
           </View>
@@ -257,8 +263,8 @@ export function AddToPlaylistModal({
                         <Ionicons name="heart" size={23} color={theme.colors.text} />
                       </View>
                       <View style={styles.playlistInfo}>
-                        <Text style={styles.playlistTitle}>Lieblingssongs</Text>
-                        <Text style={styles.playlistMeta}>Deine gespeicherten Songs</Text>
+                        <Text style={styles.playlistTitle}>{t('save.favorites')}</Text>
+                        <Text style={styles.playlistMeta}>{t('save.favoritesCopy')}</Text>
                       </View>
                       <SelectionControl loading={updatingLiked} selected={likedSelected} />
                     </TouchableOpacity>
@@ -271,7 +277,7 @@ export function AddToPlaylistModal({
                       <Ionicons name="add" size={24} color={theme.colors.text} />
                     </View>
                     <View style={styles.playlistInfo}>
-                      <Text style={styles.playlistTitle}>Neue Playlist erstellen</Text>
+                      <Text style={styles.playlistTitle}>{t('save.createPlaylist')}</Text>
                     </View>
                   </TouchableOpacity>
 
@@ -287,7 +293,7 @@ export function AddToPlaylistModal({
           )}
 
           <TouchableOpacity activeOpacity={0.88} onPress={onClose} style={styles.doneButton}>
-            <Text style={styles.doneButtonText}>Fertig</Text>
+            <Text style={styles.doneButtonText}>{t('common.done')}</Text>
           </TouchableOpacity>
         </View>
       </View>

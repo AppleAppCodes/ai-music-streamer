@@ -14,10 +14,12 @@ import { TurnstileChallenge } from '../components/TurnstileChallenge';
 import { useAuth } from '../lib/auth-context';
 import { hasTurnstileConfig } from '../lib/env';
 import { theme } from '../theme';
+import { useI18n } from '../lib/i18n';
 
 type AuthMode = 'sign-in' | 'sign-up';
 
 export function AuthScreen() {
+  const { t } = useI18n();
   const { authReady, lastError, signIn, signInWithApple, signInWithGoogle, signUp } = useAuth();
   const [mode, setMode] = useState<AuthMode>('sign-in');
   const [email, setEmail] = useState('');
@@ -68,7 +70,7 @@ export function AuthScreen() {
     if (!result.ok) {
       setMessage(result.message);
     } else if (result.needsEmailConfirmation) {
-      setMessage('Account angelegt. Bitte bestaetige deine E-Mail und melde dich danach an.');
+      setMessage(t('auth.accountCreated'));
       setMode('sign-in');
     }
 
@@ -111,20 +113,14 @@ export function AuthScreen() {
       style={styles.screen}
     >
       <View style={styles.card}>
-        <Text style={styles.eyebrow}>Yoriax Account</Text>
-        <Text style={styles.title}>{isSignUp ? 'Registrieren' : 'Willkommen zurueck'}</Text>
-        <Text style={styles.copy}>
-          Melde dich mit deinem bestehenden Yoriax Account an. Die native App nutzt dieselbe
-          Supabase-Session wie unsere Plattformdaten.
-        </Text>
+        <Text style={styles.eyebrow}>{t('auth.accountEyebrow')}</Text>
+        <Text style={styles.title}>{isSignUp ? t('auth.register') : t('auth.welcome')}</Text>
+        <Text style={styles.copy}>{t('auth.copy')}</Text>
 
         {!authReady ? (
           <View style={styles.warningBox}>
-            <Text style={styles.warningTitle}>Lokale Env fehlt</Text>
-            <Text style={styles.warningText}>
-              Fuer den Simulator braucht die App EXPO_PUBLIC_SUPABASE_URL und
-              EXPO_PUBLIC_SUPABASE_ANON_KEY.
-            </Text>
+            <Text style={styles.warningTitle}>{t('auth.localEnvMissing')}</Text>
+            <Text style={styles.warningText}>{t('auth.localEnvMissingCopy')}</Text>
           </View>
         ) : null}
 
@@ -161,7 +157,7 @@ export function AuthScreen() {
                 <View style={styles.googleIcon}>
                   <Text style={styles.googleIconText}>G</Text>
                 </View>
-                <Text style={styles.googleButtonText}>Mit Google fortfahren</Text>
+                <Text style={styles.googleButtonText}>{t('auth.googleContinue')}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -169,19 +165,19 @@ export function AuthScreen() {
 
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>oder</Text>
+          <Text style={styles.dividerText}>{t('auth.or')}</Text>
           <View style={styles.dividerLine} />
         </View>
 
         <View style={styles.form}>
           <View style={styles.field}>
-            <Text style={styles.label}>E-Mail</Text>
+            <Text style={styles.label}>{t('auth.email')}</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
               onChangeText={setEmail}
-              placeholder="du@yoriax.com"
+              placeholder={t('auth.emailPlaceholder')}
               placeholderTextColor={theme.colors.subtle}
               style={styles.input}
               textContentType="emailAddress"
@@ -190,12 +186,12 @@ export function AuthScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Passwort</Text>
+            <Text style={styles.label}>{t('auth.password')}</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete={isSignUp ? 'new-password' : 'current-password'}
               onChangeText={setPassword}
-              placeholder="Mindestens 6 Zeichen"
+              placeholder={t('auth.passwordPlaceholder')}
               placeholderTextColor={theme.colors.subtle}
               secureTextEntry
               style={styles.input}
@@ -211,7 +207,7 @@ export function AuthScreen() {
           onToken={setCaptchaToken}
         />
         <Text style={styles.captchaHelp}>
-          {captchaReady ? 'Sicherheitspruefung abgeschlossen.' : 'Bitte bestaetige die Sicherheitspruefung, bevor du dich einloggst.'}
+          {captchaReady ? t('auth.captchaComplete') : t('auth.captchaPrompt')}
         </Text>
 
         {message || captchaError || lastError ? (
@@ -230,7 +226,7 @@ export function AuthScreen() {
             <ActivityIndicator color="#0b0b0b" />
           ) : (
             <Text style={styles.primaryButtonText}>
-              {!captchaReady ? 'Sicherheitspruefung bestaetigen' : isSignUp ? 'Account erstellen' : 'Einloggen'}
+              {!captchaReady ? t('auth.captchaConfirm') : isSignUp ? t('auth.createAccount') : t('auth.login')}
             </Text>
           )}
         </TouchableOpacity>
@@ -244,7 +240,7 @@ export function AuthScreen() {
           style={styles.secondaryButton}
         >
           <Text style={styles.secondaryButtonText}>
-            {isSignUp ? 'Schon einen Account? Einloggen' : 'Noch keinen Account? Registrieren'}
+            {isSignUp ? t('auth.signInInstead') : t('auth.noAccount')}
           </Text>
         </TouchableOpacity>
       </View>

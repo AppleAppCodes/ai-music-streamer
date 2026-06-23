@@ -4,8 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import yoriaxLogo from '../../assets/yoriax-logo.png';
 import yoriaxSymbol from '../../assets/yoriax-symbol.png';
-import yoriaxLoginSymbol from '../../assets/yoriax-login-symbol.png';
-import yoriaxLoginWordmark from '../../assets/yoriax-login-wordmark.png';
+import yoriaxAppIcon from '../../assets/icon.png';
 
 export function YoriaxMark({ size = 34 }: { size?: number }) {
   return <Image source={yoriaxSymbol} style={{ height: size, width: size }} resizeMode="contain" alt="YORIAX" />;
@@ -13,15 +12,6 @@ export function YoriaxMark({ size = 34 }: { size?: number }) {
 
 export function YoriaxLogo() {
   return <Image source={yoriaxLogo} style={styles.logoImage} resizeMode="contain" alt="YORIAX" />;
-}
-
-export function YoriaxLoginLogo() {
-  return (
-    <View style={styles.loginLogo}>
-      <Image source={yoriaxLoginSymbol} style={styles.loginLogoSymbol} resizeMode="contain" alt="" />
-      <Image source={yoriaxLoginWordmark} style={styles.loginLogoWordmark} resizeMode="contain" alt="YORIAX" />
-    </View>
-  );
 }
 
 export function BackButton({ onPress, style }: { onPress: () => void; style?: StyleProp<ViewStyle> }) {
@@ -96,6 +86,25 @@ export function CoverArt({
   );
 }
 
+export function YoriaxPlaylistCover({
+  radius = 18,
+  size,
+  style,
+}: {
+  radius?: number;
+  size: number;
+  style?: StyleProp<ImageStyle>;
+}) {
+  return (
+    <Image
+      source={yoriaxAppIcon}
+      style={[{ borderRadius: radius, height: size, width: size }, styles.cover, style]}
+      resizeMode="cover"
+      alt="YORIAX"
+    />
+  );
+}
+
 export function GradientOrb({ style }: { style?: StyleProp<ViewStyle> }) {
   return (
     <LinearGradient
@@ -109,19 +118,6 @@ const styles = StyleSheet.create({
   logoImage: {
     height: 36,
     width: 158,
-  },
-  loginLogo: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  loginLogoSymbol: {
-    height: 44,
-    width: 44,
-  },
-  loginLogoWordmark: {
-    height: 34,
-    width: 136,
   },
   backButton: {
     alignItems: 'center',

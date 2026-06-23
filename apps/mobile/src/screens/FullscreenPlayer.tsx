@@ -1,10 +1,25 @@
-import { Alert, ActionSheetIOS, Animated, Image, PanResponder, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActionSheetIOS,
+  Alert,
+  Animated,
+  Easing,
+  Image,
+  PanResponder,
+  Platform,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { theme } from '../theme';
 import { usePlayer } from '../lib/player-context';
 import { useAuth } from '../lib/auth-context';
 import { checkIsLiked, toggleLike } from '../lib/music-data';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { formatDuration } from '../lib/format';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,20 +27,24 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
 import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
+import { MINI_PLAYER_LAYOUT, MiniPlayerPreview } from '../components/MiniPlayer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useI18n } from '../lib/i18n';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'FullscreenPlayer'>;
-
-export function FullscreenPlayer({ navigation }: Props) {
+export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
+  const { locale, t } = useI18n();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const [isLiked, setIsLiked] = useState(false);
   const [likedSongId, setLikedSongId] = useState<string | null>(null);
   const [isLikeLoading, setIsLikeLoading] = useState(false);
   const [isPlaylistModalVisible, setIsPlaylistModalVisible] = useState(false);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [translateY] = useState(() => new Animated.Value(0));
+  const morphProgress = useRef(new Animated.Value(0)).current;
+  const saveButtonScale = useRef(new Animated.Value(1)).current;
   const [saveToastAnimation] = useState(() => new Animated.Value(0));
   const [saveToastVisible, setSaveToastVisible] = useState(false);
   const [saveToastSongId, setSaveToastSongId] = useState<string | null>(null);
@@ -36,35 +55,125 @@ export function FullscreenPlayer({ navigation }: Props) {
   const activeSongId = activeSong?.id;
   const isCurrentSongLiked = Boolean(activeSongId && likedSongId === activeSongId && isLiked);
   const repeatActive = repeatMode !== 'none';
+  const miniPlayerTop = screenHeight - MINI_PLAYER_LAYOUT.bottom - MINI_PLAYER_LAYOUT.height;
+  const morphDistance = Math.max(1, miniPlayerTop);
+
+  useEffect(() => {
+    const entranceAnimation = Animated.spring(morphProgress, {
+      damping: 25,
+      mass: 0.88,
+      stiffness: 230,
+      toValue: 1,
+      useNativeDriver: false,
+    });
+    entranceAnimation.start();
+
+    return () => {
+      entranceAnimation.stop();
+    };
+  }, [morphProgress]);
 
   const resetDrag = useCallback(() => {
-    Animated.spring(translateY, {
-      toValue: 0,
-      useNativeDriver: true,
-      speed: 24,
-      bounciness: 4,
+    Animated.spring(morphProgress, {
+      damping: 24,
+      mass: 0.86,
+      stiffness: 270,
+      toValue: 1,
+      useNativeDriver: false,
     }).start();
-  }, [translateY]);
+  }, [morphProgress]);
+
+  const dismissPlayer = useCallback((velocity = 0) => {
+    const duration = Math.max(160, Math.min(260, 230 - Math.max(0, velocity) * 35));
+
+    Animated.timing(morphProgress, {
+      duration,
+      easing: Easing.inOut(Easing.cubic),
+      toValue: 0,
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (finished) onClose();
+    });
+  }, [morphProgress, onClose]);
 
   const playerPanResponder = useMemo(
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: (_event, gesture) =>
-          gesture.dy > 12 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.15,
+          gesture.dy > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.1,
         onPanResponderMove: (_event, gesture) => {
-          translateY.setValue(Math.max(0, Math.min(gesture.dy, 190)));
+          const nextProgress = 1 - Math.max(0, gesture.dy) / morphDistance;
+          morphProgress.setValue(Math.max(0, Math.min(1, nextProgress)));
         },
         onPanResponderRelease: (_event, gesture) => {
-          if (gesture.dy > 105 || gesture.vy > 0.85) {
-            navigation.goBack();
+          const projectedDistance = gesture.dy + Math.max(0, gesture.vy) * 180;
+          if (projectedDistance > morphDistance * 0.32 || gesture.vy > 1.1) {
+            dismissPlayer(gesture.vy);
             return;
           }
           resetDrag();
         },
         onPanResponderTerminate: resetDrag,
       }),
-    [navigation, resetDrag, translateY],
+    [dismissPlayer, morphDistance, morphProgress, resetDrag],
   );
+
+  const playerSurfaceStyle = useMemo(() => ({
+    borderRadius: morphProgress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [theme.radii.lg, 0],
+    }),
+    bottom: morphProgress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [MINI_PLAYER_LAYOUT.bottom, 0],
+    }),
+    left: morphProgress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [MINI_PLAYER_LAYOUT.horizontalInset, 0],
+    }),
+    right: morphProgress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [MINI_PLAYER_LAYOUT.horizontalInset, 0],
+    }),
+    top: morphProgress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [miniPlayerTop, 0],
+    }),
+  }), [miniPlayerTop, morphProgress]);
+
+  const expandedContentOpacity = useMemo(() => morphProgress.interpolate({
+    inputRange: [0, 0.48, 0.82, 1],
+    outputRange: [0, 0, 0.82, 1],
+  }), [morphProgress]);
+
+  const collapsedContentOpacity = useMemo(() => morphProgress.interpolate({
+    inputRange: [0, 0.24, 0.56],
+    outputRange: [1, 1, 0],
+  }), [morphProgress]);
+
+  const animateSaveButton = useCallback(() => {
+    saveButtonScale.stopAnimation();
+    Animated.sequence([
+      Animated.timing(saveButtonScale, {
+        duration: 90,
+        easing: Easing.out(Easing.quad),
+        toValue: 0.84,
+        useNativeDriver: true,
+      }),
+      Animated.spring(saveButtonScale, {
+        damping: 8,
+        stiffness: 420,
+        toValue: 1.08,
+        useNativeDriver: true,
+      }),
+      Animated.spring(saveButtonScale, {
+        damping: 10,
+        stiffness: 360,
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [saveButtonScale]);
 
   useEffect(() => {
     let mounted = true;
@@ -152,6 +261,8 @@ export function FullscreenPlayer({ navigation }: Props) {
 
   const handleSavePress = useCallback(async () => {
     if (!user || !activeSong || isLikeLoading || isAdPlaying) return;
+    animateSaveButton();
+
     if (isCurrentSongLiked) {
       setIsPlaylistModalVisible(true);
       return;
@@ -161,6 +272,7 @@ export function FullscreenPlayer({ navigation }: Props) {
     if (nextStatus) showSaveToast(activeSong.id);
   }, [
     activeSong,
+    animateSaveButton,
     isAdPlaying,
     isCurrentSongLiked,
     isLikeLoading,
@@ -179,10 +291,10 @@ export function FullscreenPlayer({ navigation }: Props) {
     Alert.alert(
       activeSong.title,
       [
-        activeSong.artist_name || activeSong.creatorName || 'Creator',
+        activeSong.artist_name || activeSong.creatorName || t('common.creator'),
         activeSong.genre ? `Genre: ${activeSong.genre}` : null,
-        duration ? `Dauer: ${formatDuration(duration)}` : null,
-        `Streams: ${activeSong.plays.toLocaleString('de-DE')}`,
+        duration ? t('player.duration', { duration: formatDuration(duration) }) : null,
+        `${t('common.streams')}: ${activeSong.plays.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US')}`,
       ].filter(Boolean).join('\n'),
     );
   };
@@ -190,7 +302,10 @@ export function FullscreenPlayer({ navigation }: Props) {
   const handleShareSong = () => {
     if (!activeSong) return;
     void Share.share({
-      message: `Hoer ${activeSong.title} auf YORIAX: https://www.yoriax.com/song/${activeSong.id}`,
+      message: t('player.shareMessage', {
+        title: activeSong.title,
+        url: `https://www.yoriax.com/song/${activeSong.id}`,
+      }),
       title: activeSong.title,
     });
   };
@@ -203,11 +318,22 @@ export function FullscreenPlayer({ navigation }: Props) {
       pause();
       sleepTimerRef.current = null;
     }, minutes * 60 * 1000);
-    Alert.alert('Sleeptimer aktiv', `Die Wiedergabe stoppt in ${minutes} Minuten.`);
+    Alert.alert(
+      t('player.sleepTimerActive'),
+      t('player.sleepTimerActiveCopy', { minutes }),
+    );
   };
 
   const handleSleepTimer = () => {
-    const options = ['Abbrechen', '5 Minuten', '10 Minuten', '15 Minuten', '30 Minuten', 'Timer löschen'];
+    const minuteLabel = (minutes: number) => locale === 'de' ? `${minutes} Minuten` : `${minutes} minutes`;
+    const options = [
+      t('common.cancel'),
+      minuteLabel(5),
+      minuteLabel(10),
+      minuteLabel(15),
+      minuteLabel(30),
+      t('player.timerDelete'),
+    ];
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         { options, cancelButtonIndex: 0, destructiveButtonIndex: 5 },
@@ -224,13 +350,13 @@ export function FullscreenPlayer({ navigation }: Props) {
       return;
     }
 
-    Alert.alert('Sleeptimer', undefined, [
-      { text: '5 Minuten', onPress: () => scheduleSleepTimer(5) },
-      { text: '10 Minuten', onPress: () => scheduleSleepTimer(10) },
-      { text: '15 Minuten', onPress: () => scheduleSleepTimer(15) },
-      { text: '30 Minuten', onPress: () => scheduleSleepTimer(30) },
+    Alert.alert(t('player.sleepTimer'), undefined, [
+      { text: minuteLabel(5), onPress: () => scheduleSleepTimer(5) },
+      { text: minuteLabel(10), onPress: () => scheduleSleepTimer(10) },
+      { text: minuteLabel(15), onPress: () => scheduleSleepTimer(15) },
+      { text: minuteLabel(30), onPress: () => scheduleSleepTimer(30) },
       {
-        text: 'Timer löschen',
+        text: t('player.timerDelete'),
         style: 'destructive',
         onPress: () => {
           if (sleepTimerRef.current) {
@@ -239,12 +365,17 @@ export function FullscreenPlayer({ navigation }: Props) {
           }
         },
       },
-      { text: 'Abbrechen', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
   const handleContextMenu = () => {
-    const options = ['Abbrechen', 'Song-Details', 'Sleeptimer', 'Teilen'];
+    const options = [
+      t('common.cancel'),
+      t('player.details'),
+      t('player.sleepTimer'),
+      t('player.share'),
+    ];
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         { options, cancelButtonIndex: 0 },
@@ -255,11 +386,11 @@ export function FullscreenPlayer({ navigation }: Props) {
         }
       );
     } else {
-      Alert.alert('Optionen', undefined, [
-        { text: 'Song-Details', onPress: handleSongDetails },
-        { text: 'Sleeptimer', onPress: handleSleepTimer },
-        { text: 'Teilen', onPress: handleShareSong },
-        { text: 'Abbrechen', style: 'cancel' }
+      Alert.alert(t('player.options'), undefined, [
+        { text: t('player.details'), onPress: handleSongDetails },
+        { text: t('player.sleepTimer'), onPress: handleSleepTimer },
+        { text: t('player.share'), onPress: handleShareSong },
+        { text: t('common.cancel'), style: 'cancel' },
       ]);
     }
   };
@@ -267,10 +398,10 @@ export function FullscreenPlayer({ navigation }: Props) {
   if (!activeSong) {
     return (
       <View style={styles.container}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
           <Ionicons name="chevron-down" size={32} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Kein Song aktiv</Text>
+        <Text style={styles.title}>{t('player.noSong')}</Text>
       </View>
     );
   }
@@ -278,7 +409,11 @@ export function FullscreenPlayer({ navigation }: Props) {
   const timeRemaining = Math.max(0, duration - currentTime);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} pointerEvents="box-none">
+      <Animated.View
+        style={[styles.playerSurface, playerSurfaceStyle]}
+        {...playerPanResponder.panHandlers}
+      >
       {activeSong.cover_url && (
         <View style={StyleSheet.absoluteFill}>
           <Image 
@@ -296,19 +431,23 @@ export function FullscreenPlayer({ navigation }: Props) {
       )}
 
       <Animated.View
-        style={[styles.foreground, { transform: [{ translateY }] }]}
-        {...playerPanResponder.panHandlers}
+        pointerEvents="none"
+        style={[styles.collapsedPreview, { opacity: collapsedContentOpacity }]}
       >
-      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton} hitSlop={10}>
-          <Ionicons name="chevron-down" size={32} color={theme.colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleContextMenu} style={styles.menuButton} hitSlop={10}>
-          <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-      </View>
+        <MiniPlayerPreview interactive={false} />
+      </Animated.View>
 
-      <View style={styles.content}>
+      <Animated.View style={[styles.expandedContent, { opacity: expandedContentOpacity }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
+          <TouchableOpacity onPress={() => dismissPlayer()} style={styles.closeButton} hitSlop={10}>
+            <Ionicons name="chevron-down" size={32} color={theme.colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleContextMenu} style={styles.menuButton} hitSlop={10}>
+            <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.content}>
         {activeSong.cover_url ? (
           <Image source={{ uri: activeSong.cover_url }} style={styles.cover} alt="" />
         ) : (
@@ -322,36 +461,39 @@ export function FullscreenPlayer({ navigation }: Props) {
             <View style={styles.titleTextContainer}>
               <Text style={styles.title} numberOfLines={1}>{activeSong.title}</Text>
               <TouchableOpacity onPress={() => {
-                navigation.goBack();
+                onClose();
                 setTimeout(() => {
-	                navigation.navigate('Artist', {
-	                    artistId: activeSong.artist_name || activeSong.creatorName || activeSong.creator_id || 'unknown'
-	                  });
+                  navigation.navigate('Artist', {
+                    artistId: activeSong.artist_name || activeSong.creatorName || activeSong.creator_id || 'unknown',
+                  });
                 }, 300);
               }}>
                 <Text style={styles.artist} numberOfLines={1}>
-                  {activeSong.artist_name || activeSong.creatorName || 'Creator'}
+                  {activeSong.artist_name || activeSong.creatorName || t('common.creator')}
                 </Text>
               </TouchableOpacity>
             </View>
             <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                accessibilityLabel={isCurrentSongLiked ? 'Speicherorte ändern' : 'Zu Lieblingssongs hinzufügen'}
-                accessibilityRole="button"
-                style={[
-                  styles.saveButton,
-                  isCurrentSongLiked && styles.saveButtonActive,
-                ]}
-                onPress={() => { void handleSavePress(); }}
-                disabled={isLikeLoading || isAdPlaying}
-                hitSlop={12}
-              >
-                <Ionicons 
-                  name={isCurrentSongLiked ? 'heart' : 'add'}
-                  size={isCurrentSongLiked ? 21 : 25}
-                  color={isAdPlaying ? theme.colors.muted : isCurrentSongLiked ? theme.colors.text : theme.colors.primaryLight}
-                />
-              </TouchableOpacity>
+              <Animated.View style={{ transform: [{ scale: saveButtonScale }] }}>
+                <TouchableOpacity
+                  accessibilityLabel={isCurrentSongLiked ? t('player.changeDestinations') : t('player.addToFavorites')}
+                  accessibilityRole="button"
+                  activeOpacity={0.82}
+                  style={[
+                    styles.saveButton,
+                    isCurrentSongLiked && styles.saveButtonActive,
+                  ]}
+                  onPress={() => { void handleSavePress(); }}
+                  disabled={isLikeLoading || isAdPlaying}
+                  hitSlop={12}
+                >
+                  <Ionicons
+                    name={isCurrentSongLiked ? 'heart' : 'add'}
+                    size={isCurrentSongLiked ? 15 : 17}
+                    color={isAdPlaying ? theme.colors.muted : isCurrentSongLiked ? theme.colors.text : theme.colors.primaryLight}
+                  />
+                </TouchableOpacity>
+              </Animated.View>
             </View>
           </View>
         </View>
@@ -394,7 +536,11 @@ export function FullscreenPlayer({ navigation }: Props) {
           <TouchableOpacity
             onPress={toggleRepeat}
             style={styles.secondaryControlButton}
-            accessibilityLabel={repeatMode === 'one' ? 'Aktuellen Song wiederholen' : repeatMode === 'all' ? 'Playlist wiederholen' : 'Wiederholung aus'}
+            accessibilityLabel={repeatMode === 'one'
+              ? t('player.repeatOne')
+              : repeatMode === 'all'
+                ? t('player.repeatAll')
+                : t('player.repeatNone')}
           >
             <View style={styles.repeatIconWrap}>
               <Ionicons name="repeat" size={24} color={repeatActive ? theme.colors.text : theme.colors.muted} />
@@ -416,7 +562,8 @@ export function FullscreenPlayer({ navigation }: Props) {
           </TouchableOpacity>
         </View>
         
-      </View>
+        </View>
+      </Animated.View>
       </Animated.View>
 
       {saveToastVisible && saveToastSongId === activeSong.id ? (
@@ -441,10 +588,10 @@ export function FullscreenPlayer({ navigation }: Props) {
               <Ionicons name="heart" size={16} color={theme.colors.text} />
             </View>
             <Text style={styles.saveToastText} numberOfLines={1}>
-              Hinzugefügt zu: Lieblingssongs.
+              {t('player.addedToFavorites')}
             </Text>
             <TouchableOpacity activeOpacity={0.78} onPress={handleToastChange} hitSlop={8}>
-              <Text style={styles.saveToastAction}>Ändern</Text>
+              <Text style={styles.saveToastAction}>{t('common.change')}</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -463,10 +610,33 @@ export function FullscreenPlayer({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 100,
   },
-  foreground: {
+  playerSurface: {
+    backgroundColor: theme.colors.background,
+    borderColor: theme.colors.borderStrong,
+    borderWidth: 1,
+    overflow: 'hidden',
+    position: 'absolute',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.42,
+    shadowRadius: 34,
+  },
+  collapsedPreview: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  expandedContent: {
     flex: 1,
   },
   header: {
@@ -541,14 +711,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(10,7,16,0.72)',
     borderColor: theme.colors.primaryLight,
     borderRadius: 999,
-    borderWidth: 2,
-    height: 44,
+    borderWidth: 1.5,
+    height: 30,
     justifyContent: 'center',
     shadowColor: theme.colors.primaryLight,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.24,
-    shadowRadius: 10,
-    width: 44,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    width: 30,
   },
   saveButtonActive: {
     backgroundColor: theme.colors.primary,

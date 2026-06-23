@@ -16,6 +16,7 @@ import {
 import { Platform } from 'react-native';
 import { apiBaseUrl, hasSupabaseConfig } from './env';
 import { supabase } from './supabase';
+import { useI18n } from './i18n';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -39,27 +40,27 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function normalizeAuthError(error: AuthError | Error | unknown): string {
+function normalizeAuthError(error: AuthError | Error | unknown, t: (key: string) => string): string {
   if (error instanceof Error) {
     const message = error.message;
     const lowerMessage = message.toLowerCase();
 
     if (lowerMessage.includes('captcha') || lowerMessage.includes('turnstile')) {
-      return 'Sicherheitspruefung fehlgeschlagen. Bitte warte kurz, bis die Pruefung abgeschlossen ist, und versuche es erneut.';
+      return t('auth.captchaFailed');
     }
 
     if (lowerMessage.includes('invalid login credentials')) {
-      return 'E-Mail oder Passwort ist nicht korrekt.';
+      return t('auth.invalidCredentials');
     }
 
     if (lowerMessage.includes('email not confirmed')) {
-      return 'Bitte bestaetige zuerst deine E-Mail-Adresse.';
+      return t('auth.emailUnconfirmed');
     }
 
     return message;
   }
 
-  return 'Anmeldung fehlgeschlagen. Bitte versuche es erneut.';
+  return t('auth.genericError');
 }
 
 function getOAuthRedirectUri() {
@@ -69,11 +70,10 @@ function getOAuthRedirectUri() {
   });
 }
 
-function missingConfigResult(): AuthResult {
+function missingConfigResult(t: (key: string) => string): AuthResult {
   return {
     ok: false,
-    message:
-      'Supabase ist in der nativen App lokal noch nicht konfiguriert. Lege EXPO_PUBLIC_SUPABASE_URL und EXPO_PUBLIC_SUPABASE_ANON_KEY an.',
+    message: t('auth.missingConfig'),
   };
 }
 
@@ -113,6 +113,7 @@ async function createAppleNonce() {
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const { t } = useI18n();
   const [session, setSession] = useState<Session | null>(null);
   const [initializing, setInitializing] = useState(hasSupabaseConfig && Boolean(supabase));
   const [lastError, setLastError] = useState<string | null>(null);
@@ -131,13 +132,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       .then(({ data, error }) => {
         if (!mounted) return;
         if (error) {
-          setLastError(normalizeAuthError(error));
+          setLastError(normalizeAuthError(error, t));
         }
         setSession(data.session ?? null);
       })
       .catch((error: unknown) => {
         if (mounted) {
-          setLastError(normalizeAuthError(error));
+          setLastError(normalizeAuthError(error, t));
         }
       })
       .finally(() => {
@@ -157,11 +158,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [t]);
 
   const signIn = useCallback(async (email: string, password: string, captchaToken?: string): Promise<AuthResult> => {
     if (!hasSupabaseConfig || !supabase) {
-      return missingConfigResult();
+      return missingConfigResult(t);
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -171,7 +172,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     });
 
     if (error) {
-      const message = normalizeAuthError(error);
+      const message = normalizeAuthError(error, t);
       setLastError(message);
       return { ok: false, message };
     }
@@ -179,11 +180,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setLastError(null);
     await triggerWelcomeEmail(data.session?.access_token);
     return { ok: true };
-  }, []);
+  }, [t]);
 
   const signUp = useCallback(async (email: string, password: string, captchaToken?: string): Promise<AuthResult> => {
     if (!hasSupabaseConfig || !supabase) {
-      return missingConfigResult();
+      return missingConfigResult(t);
     }
 
     const { data, error } = await supabase.auth.signUp({
@@ -193,7 +194,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     });
 
     if (error) {
-      const message = normalizeAuthError(error);
+      const message = normalizeAuthError(error, t);
       setLastError(message);
       return { ok: false, message };
     }
@@ -201,15 +202,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setLastError(null);
     await triggerWelcomeEmail(data.session?.access_token);
     return { ok: true, needsEmailConfirmation: !data.session };
-  }, []);
+  }, [t]);
 
   const signInWithApple = useCallback(async (): Promise<AuthResult> => {
     if (!hasSupabaseConfig || !supabase) {
-      return missingConfigResult();
+      return missingConfigResult(t);
     }
 
     if (Platform.OS !== 'ios') {
-      return { ok: false, message: 'Apple Login ist nur auf iPhone und iPad verfügbar.' };
+      return { ok: false, message: t('auth.appleOnly') };
     }
 
     try {
@@ -223,7 +224,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       });
 
       if (!credential.identityToken) {
-        const message = 'Apple hat kein gültiges Login-Token zurückgegeben.';
+        const message = t('auth.appleTokenMissing');
         setLastError(message);
         return { ok: false, message };
       }
@@ -235,7 +236,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       });
 
       if (error) {
-        const message = normalizeAuthError(error);
+        const message = normalizeAuthError(error, t);
         setLastError(message);
         return { ok: false, message };
       }
@@ -265,18 +266,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return { ok: true };
     } catch (error) {
       if (isRequestCanceledError(error)) {
-        return { ok: false, message: 'Apple Login wurde abgebrochen.' };
+        return { ok: false, message: t('auth.appleCanceled') };
       }
 
-      const message = normalizeAuthError(error);
+      const message = normalizeAuthError(error, t);
       setLastError(message);
       return { ok: false, message };
     }
-  }, []);
+  }, [t]);
 
   const signInWithGoogle = useCallback(async (): Promise<AuthResult> => {
     if (!hasSupabaseConfig || !supabase) {
-      return missingConfigResult();
+      return missingConfigResult(t);
     }
 
     const redirectTo = getOAuthRedirectUri();
@@ -289,13 +290,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
     });
 
     if (error) {
-      const message = normalizeAuthError(error);
+      const message = normalizeAuthError(error, t);
       setLastError(message);
       return { ok: false, message };
     }
 
     if (!data.url) {
-      const message = 'Google Login konnte nicht gestartet werden.';
+      const message = t('auth.googleStartFailed');
       setLastError(message);
       return { ok: false, message };
     }
@@ -303,7 +304,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
     if (result.type !== 'success') {
-      return { ok: false, message: 'Google Login wurde abgebrochen.' };
+      return { ok: false, message: t('auth.googleCanceled') };
     }
 
     try {
@@ -315,7 +316,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (code && typeof code === 'string') {
         const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
-          const message = normalizeAuthError(exchangeError);
+          const message = normalizeAuthError(exchangeError, t);
           setLastError(message);
           return { ok: false, message };
         }
@@ -330,7 +331,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           refresh_token: params.refresh_token as string,
         });
         if (sessionError) {
-          const message = normalizeAuthError(sessionError);
+          const message = normalizeAuthError(sessionError, t);
           setLastError(message);
           return { ok: false, message };
         }
@@ -347,24 +348,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return { ok: false, message };
         }
         
-        const message = 'Keine Login-Daten. URL: ' + result.url.substring(0, 100);
+        const message = t('auth.noLoginData', { url: result.url.substring(0, 100) });
         setLastError(message);
         return { ok: false, message };
       }
     } catch (oauthError) {
-      const message = normalizeAuthError(oauthError);
+      const message = normalizeAuthError(oauthError, t);
       setLastError(message);
       return { ok: false, message };
     }
-  }, []);
+  }, [t]);
 
   const deleteAccount = useCallback(async (): Promise<AuthResult> => {
     if (!hasSupabaseConfig || !supabase) {
-      return missingConfigResult();
+      return missingConfigResult(t);
     }
 
     if (!session?.access_token) {
-      return { ok: false, message: 'Bitte melde dich erneut an, bevor du deinen Account löschst.' };
+      return { ok: false, message: t('auth.reauthenticate') };
     }
 
     try {
@@ -377,7 +378,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const message =
           data?.error ||
           error?.message ||
-          'Der Account konnte nicht gelöscht werden. Bitte versuche es erneut.';
+          t('auth.deleteFailed');
         setLastError(message);
         return { ok: false, message };
       }
@@ -387,21 +388,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setLastError(null);
       return { ok: true };
     } catch (error) {
-      const message = normalizeAuthError(error);
+      const message = normalizeAuthError(error, t);
       setLastError(message);
       return { ok: false, message };
     }
-  }, [session?.access_token]);
+  }, [session?.access_token, t]);
 
   const signOut = useCallback(async (): Promise<AuthResult> => {
     if (!hasSupabaseConfig || !supabase) {
-      return missingConfigResult();
+      return missingConfigResult(t);
     }
 
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      const message = normalizeAuthError(error);
+      const message = normalizeAuthError(error, t);
       setLastError(message);
       return { ok: false, message };
     }
@@ -409,7 +410,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setSession(null);
     setLastError(null);
     return { ok: true };
-  }, []);
+  }, [t]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

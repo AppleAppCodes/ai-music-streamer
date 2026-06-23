@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useMemo, useState, memo, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CoverArt, IconButton, StateCard, YoriaxLogo } from '../components/YoriaxUI';
+import { CoverArt, IconButton, StateCard } from '../components/YoriaxUI';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
 import { loadHomeMusic, type HomeMusicData } from '../lib/music-data';
@@ -17,6 +17,7 @@ import { useMusicPreferences } from '../lib/music-preferences-context';
 import type { Song } from '../lib/types';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
+import { useI18n } from '../lib/i18n';
 
 type HomeNavigation = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Home'>,
@@ -35,12 +36,14 @@ type QuickTile = {
 const HOME_CACHE_PREFIX = 'yoriax:home:v1:';
 
 export function HomeScreen() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { favoriteGenres, revision: preferenceRevision } = useMusicPreferences();
   const navigation = useNavigation<HomeNavigation>();
   const insets = useSafeAreaInsets();
   const [data, setData] = useState<HomeMusicData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -70,7 +73,7 @@ export function HomeScreen() {
         void writePersistedCache(cacheKey, nextData);
       } catch (loadError) {
         if (mounted && !hasCachedData) {
-          setError(loadError instanceof Error ? loadError.message : 'Home konnte nicht geladen werden.');
+          setError(loadError instanceof Error ? loadError.message : t('home.error'));
           setLoading(false);
         }
       }
@@ -81,47 +84,75 @@ export function HomeScreen() {
     return () => {
       mounted = false;
     };
-  }, [favoriteGenres, preferenceRevision, user]);
+  }, [favoriteGenres, preferenceRevision, t, user]);
+
+  const refreshHome = useCallback(async () => {
+    if (!user || refreshing) return;
+
+    const cacheKey = `${HOME_CACHE_PREFIX}${user.id}:${favoriteGenres.join(',')}`;
+    setRefreshing(true);
+    setError(null);
+
+    try {
+      const nextData = await loadHomeMusic(user.id);
+      setData(nextData);
+      void writePersistedCache(cacheKey, nextData);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : t('home.refreshError'));
+    } finally {
+      setRefreshing(false);
+    }
+  }, [favoriteGenres, refreshing, t, user]);
 
   const quickTiles = useMemo<QuickTile[]>(() => [
     {
       accent: theme.colors.primaryLight, // Purple
       icon: 'heart',
-      label: 'Lieblingssongs',
-      subtitle: 'Deine gespeicherten Tracks',
+      label: t('home.favorites'),
+      subtitle: t('home.favoritesSubtitle'),
       onPress: () => navigation.navigate('LikedSongs'),
       gradientColors: ['rgba(168,85,247,0.25)', 'rgba(168,85,247,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
       accent: '#eab308', // Yellow
       icon: 'trending-up',
-      label: 'Charts',
-      subtitle: 'Viral, Daily, Artists',
+      label: t('home.charts'),
+      subtitle: t('home.chartsSubtitle'),
       onPress: () => navigation.navigate('Charts'),
       gradientColors: ['rgba(234,179,8,0.25)', 'rgba(234,179,8,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
       accent: '#0d9488', // Teal
       icon: 'mic',
-      label: 'Künstler',
-      subtitle: 'Neue Creator entdecken',
+      label: t('home.artists'),
+      subtitle: t('home.artistsSubtitle'),
       onPress: () => navigation.navigate('Artists'),
       gradientColors: ['rgba(13,148,136,0.25)', 'rgba(13,148,136,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
       accent: '#06b6d4', // Cyan
       icon: 'library',
-      label: 'Playlists',
-      subtitle: 'Community & kuratiert',
+      label: t('home.playlists'),
+      subtitle: t('home.playlistsSubtitle'),
       onPress: () => navigation.navigate('PlaylistDiscover'),
       gradientColors: ['rgba(6,182,212,0.25)', 'rgba(6,182,212,0.05)', 'rgba(255,255,255,0.02)'],
     },
-  ], [navigation]);
+  ], [navigation, t]);
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 18 }]}
+      refreshControl={(
+        <RefreshControl
+          colors={[theme.colors.primaryLight]}
+          onRefresh={() => { void refreshHome(); }}
+          progressBackgroundColor={theme.colors.surface}
+          progressViewOffset={insets.top + 8}
+          refreshing={refreshing}
+          tintColor={theme.colors.primaryLight}
+        />
+      )}
       showsVerticalScrollIndicator={false}
     >
       <LinearGradient
@@ -129,7 +160,6 @@ export function HomeScreen() {
         style={styles.topGradient}
       />
       <View style={styles.header}>
-        <YoriaxLogo />
         <IconButton icon="person-circle-outline" onPress={() => navigation.navigate('Profile')} />
       </View>
 
@@ -158,14 +188,14 @@ export function HomeScreen() {
         ))}
       </View>
 
-      {loading && !data ? <StateCard title="Startseite wird vorbereitet" message="Deine YORIAX-Auswahl ist gleich bereit." loading /> : null}
-      {error ? <StateCard icon="warning" title="Home konnte nicht geladen werden" message={error} /> : null}
+      {loading && !data ? <StateCard title={t('home.loading')} message={t('home.loadingCopy')} loading /> : null}
+      {error ? <StateCard icon="warning" title={t('home.error')} message={error} /> : null}
 
       {data ? (
         <View style={styles.sections}>
-          <SongRail title="Trending heute" songs={data.trendingSongs} />
-          <SongRail title="Für dich ausgewählt" songs={data.recommendedSongs} />
-          <SongRail title="Neu auf YORIAX" songs={data.latestSongs} />
+          <SongRail title={t('home.trending')} songs={data.trendingSongs} />
+          <SongRail title={t('home.forYouSelected')} songs={data.recommendedSongs} />
+          <SongRail title={t('home.latest')} songs={data.latestSongs} />
         </View>
       ) : null}
     </ScrollView>
@@ -189,6 +219,8 @@ const SongRailItem = memo(function SongRailItem({
   onPlay: (song: Song, list: Song[], index: number) => void;
   onToggle: () => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -209,9 +241,9 @@ const SongRailItem = memo(function SongRailItem({
         {song.title}
       </Text>
       <Text style={styles.songArtist} numberOfLines={1}>
-        {song.artist_name || song.creatorName || 'Creator'}
+        {song.artist_name || song.creatorName || t('common.creator')}
       </Text>
-      <Text style={styles.songMeta}>{formatPlays(song.plays)} Streams</Text>
+      <Text style={styles.songMeta}>{formatPlays(song.plays)} {t('common.streams')}</Text>
     </TouchableOpacity>
   );
 });
@@ -271,7 +303,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
   },
   quickGrid: {
     flexDirection: 'row',

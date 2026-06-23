@@ -17,6 +17,7 @@ import { MUSIC_GENRES } from '../lib/genre-catalog';
 import { useMusicPreferences } from '../lib/music-preferences-context';
 import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
+import { useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MusicPreferences'>;
 
@@ -56,17 +57,18 @@ function MusicPreferencesPicker({
   onClose?: () => void;
   onSave: (genres: string[], skipped: boolean) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [selectedGenres, setSelectedGenres] = useState(() => new Set(initialGenres));
   const [saving, setSaving] = useState(false);
   const selectedCount = selectedGenres.size;
-  const buttonLabel = allowSkip ? 'Meine Auswahl speichern' : 'Auswahl aktualisieren';
+  const buttonLabel = allowSkip ? t('onboarding.save') : t('onboarding.update');
 
   const selectionCopy = useMemo(() => {
-    if (selectedCount === 0) return 'Wähle mindestens ein Genre aus.';
-    if (selectedCount < 3) return `${selectedCount} ausgewählt · 3 oder mehr verbessern den Start`;
-    return `${selectedCount} Genres ausgewählt`;
-  }, [selectedCount]);
+    if (selectedCount === 0) return t('onboarding.minimum');
+    if (selectedCount < 3) return t('onboarding.selectedHint', { count: selectedCount });
+    return t('onboarding.selected', { count: selectedCount });
+  }, [selectedCount, t]);
 
   const toggleGenre = (genreId: string) => {
     setSelectedGenres((current) => {
@@ -84,8 +86,8 @@ function MusicPreferencesPicker({
       await onSave(skipped ? [] : Array.from(selectedGenres), skipped);
     } catch (error) {
       Alert.alert(
-        'Auswahl konnte nicht gespeichert werden',
-        error instanceof Error ? error.message : 'Bitte versuche es erneut.',
+        t('onboarding.saveError'),
+        error instanceof Error ? error.message : t('onboarding.tryAgain'),
       );
     } finally {
       setSaving(false);
@@ -101,7 +103,7 @@ function MusicPreferencesPicker({
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         {onClose ? (
           <TouchableOpacity
-            accessibilityLabel="Musikgeschmack schließen"
+            accessibilityLabel={t('onboarding.close')}
             accessibilityRole="button"
             onPress={onClose}
             style={styles.closeButton}
@@ -120,7 +122,7 @@ function MusicPreferencesPicker({
             onPress={() => void persist(true)}
             style={styles.skipButton}
           >
-            <Text style={styles.skipButtonText}>Überspringen</Text>
+            <Text style={styles.skipButtonText}>{t('onboarding.skip')}</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -129,12 +131,11 @@ function MusicPreferencesPicker({
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 150 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.eyebrow}>{allowSkip ? 'DEIN START BEI YORIAX' : 'MUSIKGESCHMACK'}</Text>
-        <Text style={styles.title}>Was hörst du gerne?</Text>
-        <Text style={styles.description}>
-          Deine Auswahl verbessert „Für dich ausgewählt“ auf Home und den swipebaren Für-dich-Feed.
-          Auch Genres ohne aktuelle Songs merken wir uns für spätere Releases.
+        <Text style={styles.eyebrow}>
+          {allowSkip ? t('onboarding.eyebrowStart') : t('onboarding.eyebrow')}
         </Text>
+        <Text style={styles.title}>{t('onboarding.title')}</Text>
+        <Text style={styles.description}>{t('onboarding.description')}</Text>
 
         <View style={styles.selectionStatus}>
           <Ionicons

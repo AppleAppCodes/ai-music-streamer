@@ -7,6 +7,7 @@ import { usePlayerControls } from '../lib/player-context';
 import { searchMusic } from '../lib/music-data';
 import type { Song } from '../lib/types';
 import { formatPlays } from '../lib/format';
+import { useI18n } from '../lib/i18n';
 
 const GENRE_SUGGESTIONS: Array<{
   label: string;
@@ -43,6 +44,8 @@ const SearchResultRow = memo(function SearchResultRow({
   onPlay: (song: Song, index: number) => void;
   song: Song;
 }) {
+  const { t } = useI18n();
+
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -62,7 +65,7 @@ const SearchResultRow = memo(function SearchResultRow({
           {song.title}
         </Text>
         <Text style={styles.songArtist} numberOfLines={1}>
-          {song.artist_name || song.creatorName || 'Creator'}
+          {song.artist_name || song.creatorName || t('common.creator')}
         </Text>
       </View>
 
@@ -82,13 +85,13 @@ const GenreSuggestions = memo(function GenreSuggestions({
 }: {
   onSelect: (genre: string) => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <View style={styles.genreSection}>
-      <Text style={styles.sectionEyebrow}>Schnellzugriff</Text>
-      <Text style={styles.sectionTitle}>Genres entdecken</Text>
-      <Text style={styles.sectionDescription}>
-        Tippe ein Genre an, um direkt passende Songs zu finden.
-      </Text>
+      <Text style={styles.sectionEyebrow}>{t('search.genresEyebrow')}</Text>
+      <Text style={styles.sectionTitle}>{t('search.genresTitle')}</Text>
+      <Text style={styles.sectionDescription}>{t('search.genresCopy')}</Text>
 
       <View style={styles.genreGrid}>
         {GENRE_SUGGESTIONS.map((genre) => (
@@ -111,6 +114,7 @@ const GenreSuggestions = memo(function GenreSuggestions({
 });
 
 export function SearchScreen() {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -153,7 +157,7 @@ export function SearchScreen() {
         const data = await searchMusic(debouncedQuery);
         if (mounted) setResults(data);
       } catch (err) {
-        if (mounted) setError(err instanceof Error ? err.message : 'Suche fehlgeschlagen');
+        if (mounted) setError(err instanceof Error ? err.message : t('search.error'));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -164,7 +168,7 @@ export function SearchScreen() {
     return () => {
       mounted = false;
     };
-  }, [debouncedQuery]);
+  }, [debouncedQuery, t]);
 
   const handlePlayResult = useCallback((song: Song, index: number) => {
     setQueue(results, index);
@@ -190,11 +194,11 @@ export function SearchScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 18 }]}>
-        <Text style={styles.title}>Suchen</Text>
+        <Text style={styles.title}>{t('search.title')}</Text>
         <View style={styles.searchBox}>
           <TextInput
             style={styles.input}
-            placeholder="Songs, Künstler oder Alben..."
+            placeholder={t('search.placeholder')}
             placeholderTextColor={theme.colors.muted}
             value={query}
             onChangeText={setQuery}
@@ -223,7 +227,7 @@ export function SearchScreen() {
           ) : isSearchPending || loading ? (
             <View style={styles.stateBox}>
               <ActivityIndicator color={theme.colors.text} />
-              <Text style={styles.stateText}>Suche läuft...</Text>
+              <Text style={styles.stateText}>{t('search.loading')}</Text>
             </View>
           ) : error ? (
             <View style={styles.errorBox}>
@@ -231,7 +235,7 @@ export function SearchScreen() {
             </View>
           ) : (
             <View style={styles.stateBox}>
-              <Text style={styles.stateText}>Keine Ergebnisse für {query}</Text>
+              <Text style={styles.stateText}>{t('search.noResults', { query })}</Text>
             </View>
           )
         }

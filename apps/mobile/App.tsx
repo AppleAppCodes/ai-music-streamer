@@ -4,36 +4,38 @@ import { useEffect } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/lib/auth-context';
-import { hasSupabaseConfig } from './src/lib/env';
 import { PlayerProvider, usePlayerShell } from './src/lib/player-context';
 import { MusicPreferencesProvider, useMusicPreferences } from './src/lib/music-preferences-context';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { MusicPreferencesOnboarding } from './src/screens/MusicPreferencesScreen';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { theme } from './src/theme';
-import { YoriaxLoginLogo, YoriaxMark } from './src/components/YoriaxUI';
+import { YoriaxMark } from './src/components/YoriaxUI';
+import { I18nProvider, useI18n } from './src/lib/i18n';
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <MusicPreferencesProvider>
-          <PlayerProvider>
-            <AppShell />
-          </PlayerProvider>
-        </MusicPreferencesProvider>
-      </AuthProvider>
+      <I18nProvider>
+        <AuthProvider>
+          <MusicPreferencesProvider>
+            <PlayerProvider>
+              <AppShell />
+            </PlayerProvider>
+          </MusicPreferencesProvider>
+        </AuthProvider>
+      </I18nProvider>
     </SafeAreaProvider>
   );
 }
 
 function AppShell() {
+  const { t } = useI18n();
   const { initializing, user } = useAuth();
   const { loading: preferencesLoading, onboardingCompleted } = useMusicPreferences();
   const { reset } = usePlayerShell();
   const signedIn = Boolean(user);
   const appInitializing = initializing || (signedIn && preferencesLoading);
-  const headerStatus = getHeaderStatus(initializing, user?.email ?? null);
 
   useEffect(() => {
     if (!signedIn) reset();
@@ -42,13 +44,6 @@ function AppShell() {
   return (
     <SafeAreaView style={styles.safeArea} edges={signedIn ? ['left', 'right'] : ['top', 'left', 'right', 'bottom']}>
       <StatusBar style="light" />
-      {!signedIn && !initializing && (
-        <View style={styles.header}>
-          <YoriaxLoginLogo />
-          <Text style={styles.connection} numberOfLines={1}>{headerStatus}</Text>
-        </View>
-      )}
-
       <View style={{ flex: 1 }}>
         {appInitializing ? (
           <View style={styles.launchScreen}>
@@ -60,7 +55,7 @@ function AppShell() {
               <YoriaxMark size={76} />
             </View>
             <Text style={styles.launchTitle}>YORIAX</Text>
-            <Text style={styles.launchSubtitle}>Dein Sound wird vorbereitet.</Text>
+            <Text style={styles.launchSubtitle}>{t('launch.preparing')}</Text>
             <ActivityIndicator color={theme.colors.primaryLight} style={styles.launchSpinner} />
           </View>
         ) : signedIn && !onboardingCompleted ? (
@@ -77,34 +72,10 @@ function AppShell() {
   );
 }
 
-function getHeaderStatus(initializing: boolean, email: string | null) {
-  if (!hasSupabaseConfig) return 'Supabase Env fehlt';
-  if (initializing) return 'YORIAX startet';
-  if (email) return `Angemeldet als ${email}`;
-  return 'Native Auth bereit';
-}
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.background,
-  },
-  header: {
-    alignItems: 'center',
-    borderBottomColor: theme.colors.border,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    gap: 16,
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  connection: {
-    flexShrink: 1,
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'right',
   },
   content: {
     padding: 20,

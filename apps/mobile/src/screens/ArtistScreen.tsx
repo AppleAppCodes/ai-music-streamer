@@ -12,6 +12,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../lib/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Artist'>;
 type StorageFile = { name: string; created_at?: string | null };
@@ -67,6 +68,7 @@ const ArtistSongRow = memo(function ArtistSongRow({
 });
 
 export function ArtistScreen({ route, navigation }: Props) {
+  const { locale, t } = useI18n();
   const { artistId: artistName } = route.params;
   const insets = useSafeAreaInsets();
   const [songs, setSongs] = useState<Song[]>([]);
@@ -139,14 +141,14 @@ export function ArtistScreen({ route, navigation }: Props) {
           setIsFollowing(Boolean(followResult.data));
         }
       } catch (err) {
-        if (mounted) setError(err instanceof Error ? err.message : 'Künstler konnte nicht geladen werden.');
+        if (mounted) setError(err instanceof Error ? err.message : t('artist.loadError'));
       } finally {
         if (mounted) setLoading(false);
       }
     }
     load();
     return () => { mounted = false; };
-  }, [artistName, user]);
+  }, [artistName, t, user]);
 
   const totalPlays = useMemo(
     () => songs.reduce((acc, song) => acc + (song.plays || 0), 0),
@@ -196,7 +198,10 @@ export function ArtistScreen({ route, navigation }: Props) {
 
   function handleShare() {
     void Share.share({
-      message: `Hoer ${artistName} auf YORIAX: https://www.yoriax.com/artist/${encodeURIComponent(artistName)}`,
+      message: t('artist.shareMessage', {
+        artist: artistName,
+        url: `https://www.yoriax.com/artist/${encodeURIComponent(artistName)}`,
+      }),
       title: artistName,
     });
   }
@@ -222,7 +227,10 @@ export function ArtistScreen({ route, navigation }: Props) {
         setIsFollowing(true);
       }
     } catch (followError) {
-      Alert.alert('Folgen nicht möglich', followError instanceof Error ? followError.message : 'Bitte versuche es erneut.');
+      Alert.alert(
+        t('artist.followError'),
+        followError instanceof Error ? followError.message : t('onboarding.tryAgain'),
+      );
     } finally {
       setFollowLoading(false);
     }
@@ -251,7 +259,7 @@ export function ArtistScreen({ route, navigation }: Props) {
         style={[styles.floatingBackButton, { top: insets.top + 10 }]}
       >
         <Ionicons name="chevron-back" size={18} color={theme.colors.text} />
-        <Text style={styles.floatingBackText}>Zurück</Text>
+        <Text style={styles.floatingBackText}>{t('artist.back')}</Text>
       </TouchableOpacity>
       <FlatList
         contentContainerStyle={styles.content}
@@ -268,18 +276,22 @@ export function ArtistScreen({ route, navigation }: Props) {
                   style={StyleSheet.absoluteFill}
                 />
                 <View style={styles.heroContent}>
-                  <VerifiedBadge />
+                  <VerifiedBadge label={t('artist.verified')} />
                   <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
-                  <Text style={styles.subtitle}>{monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen</Text>
-                  <Text style={styles.totalStreams}>{formatPlays(totalPlays)} Streams gesamt</Text>
+                  <Text style={styles.subtitle}>
+                    {t('artist.listeners', { value: monthlyListeners.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US') })}
+                  </Text>
+                  <Text style={styles.totalStreams}>{t('artist.totalStreams', { value: formatPlays(totalPlays) })}</Text>
                 </View>
               </ImageBackground>
             ) : (
               <View style={styles.hero}>
-                <VerifiedBadge />
+                <VerifiedBadge label={t('artist.verified')} />
                 <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
-                <Text style={styles.subtitle}>{monthlyListeners.toLocaleString('de-DE')} monatliche Hörer*innen</Text>
-                <Text style={styles.totalStreams}>{formatPlays(totalPlays)} Streams gesamt</Text>
+                <Text style={styles.subtitle}>
+                  {t('artist.listeners', { value: monthlyListeners.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US') })}
+                </Text>
+                <Text style={styles.totalStreams}>{t('artist.totalStreams', { value: formatPlays(totalPlays) })}</Text>
               </View>
             )}
 
@@ -334,10 +346,12 @@ export function ArtistScreen({ route, navigation }: Props) {
                     ) : (
                       <Ionicons name={isFollowing ? 'person' : 'person-add'} size={15} color={theme.colors.text} />
                     )}
-                    <Text style={styles.followButtonText}>{isFollowing ? 'Folge ich' : 'Folgen'}</Text>
+                    <Text style={styles.followButtonText}>
+                      {isFollowing ? t('artist.followed') : t('artist.follow')}
+                    </Text>
                   </TouchableOpacity>
                   <View style={styles.songCountPill}>
-                    <Text style={styles.songCountText}>{songs.length} {songs.length === 1 ? 'Song' : 'Songs'}</Text>
+                    <Text style={styles.songCountText}>{songs.length} {t('common.songs')}</Text>
                   </View>
                 </View>
                 {hasSocials ? (
@@ -350,7 +364,7 @@ export function ArtistScreen({ route, navigation }: Props) {
                     </View>
                   </View>
                 ) : null}
-                <Text style={styles.sectionTitle}>Beliebte Songs</Text>
+                <Text style={styles.sectionTitle}>{t('artist.popular')}</Text>
               </View>
             )}
           </>
@@ -365,13 +379,13 @@ export function ArtistScreen({ route, navigation }: Props) {
   );
 }
 
-function VerifiedBadge() {
+function VerifiedBadge({ label }: { label: string }) {
   return (
     <View style={styles.verifiedRow}>
       <View style={styles.verifiedIcon}>
         <Ionicons name="checkmark" size={12} color="#60a5fa" />
       </View>
-      <Text style={styles.verifiedText}>Verifizierter Künstler</Text>
+      <Text style={styles.verifiedText}>{label}</Text>
     </View>
   );
 }
@@ -387,6 +401,7 @@ function SocialLink({
   tint: string;
   url?: string | null;
 }) {
+  const { t } = useI18n();
   if (!url) return null;
   const normalizedUrl = normalizeExternalUrl(url);
   if (!normalizedUrl) return null;
@@ -398,7 +413,7 @@ function SocialLink({
       activeOpacity={0.84}
       onPress={() => {
         void Linking.openURL(normalizedUrl).catch(() => {
-          Alert.alert('Link nicht verfügbar', 'Dieser Social-Link konnte nicht geöffnet werden.');
+          Alert.alert(t('artist.linkError'), t('artist.linkErrorCopy'));
         });
       }}
       style={styles.socialButton}

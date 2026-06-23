@@ -5,6 +5,7 @@ import { activateExclusivePlaybackSession, addTrackRemoteCommandListeners, setTr
 import type { Song } from './types';
 import { useAuth } from './auth-context';
 import { supabase } from './supabase';
+import { useI18n } from './i18n';
 
 interface StorageListItem {
   name: string;
@@ -130,6 +131,7 @@ async function activateYoriaxPlaybackSession() {
 }
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const player = useMemo<AudioPlayer>(
     () => createAudioPlayer(null, { keepAudioSessionActive: true, updateInterval: 1000 }),
     [],
@@ -227,7 +229,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const playSong = useCallback(async (song: Song, options: PlayOptions = {}) => {
     if (!song.audio_url) {
-      setError('Dieser Song hat keine Audio-Datei.');
+      setError(t('player.audioMissing'));
       return;
     }
 
@@ -324,13 +326,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
       setLockScreenMetadata(player, song);
     } catch (playError) {
-      setError(playError instanceof Error ? playError.message : 'Playback konnte nicht gestartet werden.');
+      setError(playError instanceof Error ? playError.message : t('player.playbackFailed'));
     } finally {
       if (isCurrentRequest()) {
         setIsPreparingPlayback(false);
       }
     }
-  }, [player, isPro, songsPlayed, availableAds, adFrequency, rampPlayerVolume, setPlayerVolume]);
+  }, [player, isPro, songsPlayed, availableAds, adFrequency, rampPlayerVolume, setPlayerVolume, t]);
 
   const pause = useCallback(() => {
     player.pause();

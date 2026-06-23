@@ -3,7 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import type { NavigationState, PartialState } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { MainTabParamList, RootStackParamList } from './types';
 import { theme } from '../theme';
@@ -23,6 +23,8 @@ import { PlaylistDiscoverScreen } from '../screens/PlaylistDiscoverScreen';
 import { MusicPreferencesScreen } from '../screens/MusicPreferencesScreen';
 import { MiniPlayer } from '../components/MiniPlayer';
 import { usePlayerShell } from '../lib/player-context';
+import { PlayerOverlayProvider, usePlayerOverlay } from '../lib/player-overlay-context';
+import { useI18n } from '../lib/i18n';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -50,6 +52,8 @@ function getActiveRouteName(state: AppNavigationState | undefined): string | und
 }
 
 function MainTabs() {
+  const { t } = useI18n();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -99,17 +103,32 @@ function MainTabs() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Search" component={SearchScreen} options={{ title: 'Suche' }} />
-      <Tab.Screen name="ForYou" component={ForYouScreen} options={{ title: 'Für dich' }} />
-      <Tab.Screen name="Library" component={LibraryScreen} options={{ title: 'Bibliothek' }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: t('tabs.home') }} />
+      <Tab.Screen name="Search" component={SearchScreen} options={{ title: t('tabs.search') }} />
+      <Tab.Screen name="ForYou" component={ForYouScreen} options={{ title: t('tabs.forYou') }} />
+      <Tab.Screen name="Library" component={LibraryScreen} options={{ title: t('tabs.library') }} />
     </Tab.Navigator>
   );
 }
 
 export function RootNavigator() {
+  return (
+    <PlayerOverlayProvider>
+      <RootNavigationContent />
+    </PlayerOverlayProvider>
+  );
+}
+
+function RootNavigationContent() {
   const { hasActiveSong } = usePlayerShell();
+  const { closePlayer, isPlayerExpanded, openPlayer } = usePlayerOverlay();
   const [activeRoute, setActiveRoute] = useState<string>('Home');
+
+  useEffect(() => {
+    if (!hasActiveSong && isPlayerExpanded) {
+      closePlayer();
+    }
+  }, [closePlayer, hasActiveSong, isPlayerExpanded]);
 
   return (
     <NavigationContainer
@@ -118,11 +137,6 @@ export function RootNavigator() {
     >
       <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.background } }}>
         <Stack.Screen name="MainTabs" component={MainTabs} />
-        <Stack.Screen 
-          name="FullscreenPlayer" 
-          component={FullscreenPlayer}
-          options={{ presentation: 'fullScreenModal' }}
-        />
         <Stack.Screen 
           name="Artist" 
           component={ArtistScreen}
@@ -164,7 +178,10 @@ export function RootNavigator() {
           options={{ presentation: 'fullScreenModal' }}
         />
       </Stack.Navigator>
-      {hasActiveSong && activeRoute !== 'ForYou' ? <MiniPlayer /> : null}
+      {hasActiveSong && activeRoute !== 'ForYou' && !isPlayerExpanded ? (
+        <MiniPlayer onExpand={openPlayer} />
+      ) : null}
+      {hasActiveSong && isPlayerExpanded ? <FullscreenPlayer onClose={closePlayer} /> : null}
     </NavigationContainer>
   );
 }

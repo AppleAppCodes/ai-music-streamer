@@ -5,6 +5,7 @@ import type { DiscoverPlaylist, FeedClip, FeedPreviewSong, Playlist, Song } from
 const SONG_SELECT =
   'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at';
 const SONG_SELECT_WITH_PROFILE = `${SONG_SELECT}, profiles!songs_creator_id_fkey(username)`;
+export const DAILY_NEW_RELEASES_PLAYLIST_ID = 'da114eeb-ecea-5e55-9ee1-ea5e5da11111';
 
 type ProfileJoin = { username?: string | null } | { username?: string | null }[] | null;
 type SongRow = Song & { profiles?: ProfileJoin };
@@ -72,7 +73,7 @@ function isOfficialPlaylist(row: PlaylistRow, creatorName: string): boolean {
 }
 
 function mapDiscoverPlaylist(row: PlaylistRow): DiscoverPlaylist {
-  const isDailyNewReleases = row.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111';
+  const isDailyNewReleases = row.id === DAILY_NEW_RELEASES_PLAYLIST_ID;
   const creatorName = isDailyNewReleases ? 'YORIAX Team' : (getProfileUsername(row.profiles ?? null) || 'Unbekannt');
 
   return {
@@ -467,9 +468,9 @@ export async function loadArtistSongs(artistName: string): Promise<Song[]> {
 export async function loadPlaylistDetails(playlistId: string): Promise<{ playlist: Playlist; songs: Song[] }> {
   const client = requireClient();
 
-  if (playlistId === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111' || playlistId === 'daily-new-releases') {
+  if (playlistId === DAILY_NEW_RELEASES_PLAYLIST_ID || playlistId === 'daily-new-releases') {
     const playlist: Playlist = {
-      id: 'da114eeb-ecea-5e55-9ee1-ea5e5da11111',
+      id: DAILY_NEW_RELEASES_PLAYLIST_ID,
       user_id: 'system',
       title: 'Daily New Releases',
       description: 'Die neuesten Uploads auf YORIAX, maximal ein Song pro Künstler.',
