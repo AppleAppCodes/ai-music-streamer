@@ -12,6 +12,7 @@ import { MusicPreferencesOnboarding } from './src/screens/MusicPreferencesScreen
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { theme } from './src/theme';
 import { YoriaxLoginLogo, YoriaxMark } from './src/components/YoriaxUI';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 export default function App() {
   return (
@@ -34,6 +35,20 @@ function AppShell() {
   const signedIn = Boolean(user);
   const appInitializing = initializing || (signedIn && preferencesLoading);
 
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const videoPlayer = useVideoPlayer(require('./assets/yoriax_intro.MOV'), (player) => {
+    player.loop = true;
+    player.muted = true;
+    player.play();
+  });
+
+  useEffect(() => {
+    if (signedIn || initializing) {
+      videoPlayer.pause();
+    } else {
+      videoPlayer.play();
+    }
+  }, [videoPlayer, signedIn, initializing]);
 
   useEffect(() => {
     if (!signedIn) reset();
@@ -42,6 +57,16 @@ function AppShell() {
   return (
     <SafeAreaView style={styles.safeArea} edges={signedIn ? ['left', 'right'] : ['top', 'left', 'right', 'bottom']}>
       <StatusBar style="light" />
+      
+      {!signedIn && !initializing && (
+        <VideoView
+          style={StyleSheet.absoluteFill}
+          player={videoPlayer}
+          nativeControls={false}
+          contentFit="cover"
+        />
+      )}
+
       {!signedIn && !initializing && (
         <View style={styles.header}>
           <YoriaxLoginLogo />

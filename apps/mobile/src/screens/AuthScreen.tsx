@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     minHeight: 620,
   },
   card: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'rgba(23, 17, 31, 0.88)',
     borderColor: theme.colors.border,
     borderRadius: 30,
     borderWidth: 1,
