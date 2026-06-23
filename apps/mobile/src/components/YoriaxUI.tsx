@@ -2,7 +2,6 @@ import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View, typ
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
-import yoriaxLogo from '../../assets/yoriax-logo.png';
 import yoriaxSymbol from '../../assets/yoriax-symbol.png';
 
 
@@ -11,7 +10,7 @@ export function YoriaxMark({ size = 34 }: { size?: number }) {
 }
 
 export function YoriaxLogo() {
-  return <Image source={yoriaxLogo} style={styles.logoImage} resizeMode="contain" alt="YORIAX" />;
+  return <Image source={yoriaxSymbol} style={styles.logoImage} resizeMode="contain" alt="YORIAX" />;
 }
 
 export function YoriaxLoginLogo() {
@@ -105,8 +104,8 @@ export function GradientOrb({ style }: { style?: StyleProp<ViewStyle> }) {
 
 const styles = StyleSheet.create({
   logoImage: {
-    height: 36,
-    width: 158,
+    height: 38,
+    width: 38,
   },
   loginLogo: {
     alignItems: 'center',
