@@ -75,10 +75,10 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   useEffect(() => {
-    morphProgress.value = withSpring(1, {
-      damping: 25,
-      mass: 0.88,
-      stiffness: 230,
+    morphProgress.value = 0;
+    morphProgress.value = withTiming(1, {
+      duration: 420,
+      easing: ReanimatedEasing.bezier(0.18, 0.92, 0.18, 1),
     });
 
     return () => {
@@ -95,11 +95,11 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   }, [morphProgress]);
 
   const dismissPlayer = useCallback((velocity = 0) => {
-    const duration = Math.max(160, Math.min(260, 230 - Math.max(0, velocity) * 35));
+    const duration = Math.max(210, Math.min(330, 300 - Math.max(0, velocity) * 22));
 
     morphProgress.value = withTiming(0, {
       duration,
-      easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+      easing: ReanimatedEasing.bezier(0.22, 1, 0.36, 1),
     }, (finished) => {
       if (finished) runOnJS(finishDismiss)();
     });
@@ -152,11 +152,11 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
     const progress = morphProgress.value;
     const baseScaleX = interpolate(progress, [0, 1], [miniScaleX, 1]);
     const baseScaleY = interpolate(progress, [0, 1], [miniScaleY, 1]);
-    const dockPulseX = interpolate(progress, [0, 0.08, 0.16, 0.28, 1], [1, 1.035, 0.982, 1, 1]);
-    const dockPulseY = interpolate(progress, [0, 0.08, 0.16, 0.28, 1], [1, 1.12, 0.94, 1, 1]);
+    const dockPulseX = interpolate(progress, [0, 0.1, 0.2, 0.36, 1], [1, 1.045, 0.985, 1.012, 1]);
+    const dockPulseY = interpolate(progress, [0, 0.1, 0.2, 0.36, 1], [1, 1.16, 0.93, 1.018, 1]);
 
     return {
-      borderRadius: interpolate(progress, [0, 0.2, 0.72, 1], [theme.radii.lg, 34, 46, 0]),
+      borderRadius: interpolate(progress, [0, 0.16, 0.48, 0.86, 1], [theme.radii.lg, 30, 42, 26, 0]),
       transform: [
         {
           translateY: interpolate(progress, [0, 1], [miniCenterOffsetY, 0]),
@@ -172,7 +172,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   }, [miniCenterOffsetY, miniScaleX, miniScaleY]);
 
   const artworkBackdropAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(morphProgress.value, [0, 0.68, 0.92, 1], [0, 0, 0.62, 1]),
+    opacity: interpolate(morphProgress.value, [0, 0.42, 0.78, 1], [0, 0.18, 0.72, 1]),
   }), []);
 
   const expandedContentAnimatedStyle = useAnimatedStyle(() => {
@@ -181,7 +181,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
     const currentScaleY = interpolate(progress, [0, 1], [miniScaleY, 1]);
 
     return {
-      opacity: interpolate(progress, [0, 0.78, 0.94, 1], [0, 0, 0.92, 1]),
+      opacity: interpolate(progress, [0, 0.46, 0.76, 1], [0, 0, 0.9, 1]),
       transform: [
         {
           scaleX: 1 / Math.max(0.001, currentScaleX),
@@ -190,14 +190,14 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
           scaleY: 1 / Math.max(0.001, currentScaleY),
         },
         {
-          translateY: interpolate(progress, [0.82, 1], [10, 0]),
+          translateY: interpolate(progress, [0.5, 1], [18, 0]),
         },
       ],
     };
   }, [miniScaleX, miniScaleY]);
 
   const morphVeilAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(morphProgress.value, [0, 0.08, 0.3, 0.62, 1], [0, 0.78, 0.36, 0, 0]),
+    opacity: interpolate(morphProgress.value, [0, 0.08, 0.32, 0.68, 1], [0, 0.92, 0.5, 0.08, 0]),
   }), []);
 
   const miniSnapshotAnimatedStyle = useAnimatedStyle(() => ({
@@ -210,16 +210,16 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   }), []);
 
   const dockBubbleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(morphProgress.value, [0, 0.05, 0.2, 0.4], [0, 0.95, 0.62, 0]),
+    opacity: interpolate(morphProgress.value, [0, 0.06, 0.22, 0.48], [0, 1, 0.72, 0]),
     transform: [
       {
-        translateY: interpolate(morphProgress.value, [0, 0.12, 0.4], [0, -5, 10]),
+        translateY: interpolate(morphProgress.value, [0, 0.14, 0.48], [0, -8, 14]),
       },
       {
-        scaleX: interpolate(morphProgress.value, [0, 0.08, 0.18, 0.4], [0.98, 1.05, 0.96, 0.9]),
+        scaleX: interpolate(morphProgress.value, [0, 0.1, 0.22, 0.48], [0.98, 1.06, 0.965, 0.92]),
       },
       {
-        scaleY: interpolate(morphProgress.value, [0, 0.08, 0.18, 0.4], [0.98, 1.14, 0.92, 0.9]),
+        scaleY: interpolate(morphProgress.value, [0, 0.1, 0.22, 0.48], [0.98, 1.18, 0.92, 0.9]),
       },
     ],
   }), []);

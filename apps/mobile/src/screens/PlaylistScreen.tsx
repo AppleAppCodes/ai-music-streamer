@@ -19,7 +19,29 @@ function SongSeparator() {
   return <View style={styles.songSeparator} />;
 }
 
-function DailyNewReleasesHeroBackground({ player }: { player: ReturnType<typeof useVideoPlayer> }) {
+function DailyNewReleasesHeroBackground({ active }: { active: boolean }) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const player = useVideoPlayer(require('../../assets/yoriax_intro.MOV'), (videoPlayer) => {
+    videoPlayer.loop = true;
+    videoPlayer.muted = true;
+  });
+
+  useEffect(() => {
+    if (active) {
+      player.play();
+    } else {
+      player.pause();
+    }
+
+    return () => {
+      try {
+        player.pause();
+      } catch {
+        // Ignore native player teardown races while leaving the screen.
+      }
+    };
+  }, [active, player]);
+
   return (
     <View pointerEvents="none" style={styles.dailyHeroBackground}>
       <VideoView
@@ -165,13 +187,10 @@ export function PlaylistScreen({ route, navigation }: Props) {
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const backTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { activeSong, isPlaying, playSong, setQueue } = usePlayerControls();
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const dailyVideoPlayer = useVideoPlayer(require('../../assets/yoriax_intro.MOV'), (player) => {
-    player.loop = true;
-    player.muted = true;
-  });
 
   const handlePlaySong = useCallback((song: Song, index: number) => {
     setQueue(songs, index);
@@ -206,6 +225,13 @@ export function PlaylistScreen({ route, navigation }: Props) {
     };
   }, [playlistId, t]);
 
+  useEffect(() => () => {
+    if (backTimerRef.current) {
+      clearTimeout(backTimerRef.current);
+      backTimerRef.current = null;
+    }
+  }, []);
+
   const renderSong = useCallback(({ item, index }: { item: Song; index: number }) => {
     const isActive = activeSong?.id === item.id;
 
@@ -225,34 +251,27 @@ export function PlaylistScreen({ route, navigation }: Props) {
     ? t('playlist.dailyNewReleasesCopy')
     : playlist?.description;
 
-  useEffect(() => {
-    if (isDailyNewReleases && !loading && !error) {
-      dailyVideoPlayer.play();
-      return () => {
-        dailyVideoPlayer.pause();
-      };
-    }
-
-    dailyVideoPlayer.pause();
-    return undefined;
-  }, [dailyVideoPlayer, error, isDailyNewReleases, loading]);
-
   const handleBackPress = useCallback(() => {
-    try {
-      dailyVideoPlayer.pause();
-    } catch {
-      // Ignore native player teardown races while leaving the screen.
-    }
+    if (isLeaving) return;
 
-    requestAnimationFrame(() => {
+    setIsLeaving(true);
+
+    const navigateBack = () => {
       if (navigation.canGoBack()) {
         navigation.goBack();
         return;
       }
 
       navigation.navigate('MainTabs', { screen: 'Home' });
-    });
-  }, [dailyVideoPlayer, navigation]);
+    };
+
+    if (isDailyNewReleases) {
+      backTimerRef.current = setTimeout(navigateBack, 120);
+      return;
+    }
+
+    navigateBack();
+  }, [isDailyNewReleases, isLeaving, navigation]);
 
   return (
     <View style={styles.container}>
@@ -287,7 +306,9 @@ export function PlaylistScreen({ route, navigation }: Props) {
           windowSize={7}
           ListHeaderComponent={
             <View style={[styles.playlistHero, isDailyNewReleases && styles.dailyPlaylistHero]}>
-              {isDailyNewReleases ? <DailyNewReleasesHeroBackground player={dailyVideoPlayer} /> : null}
+              {isDailyNewReleases && !isLeaving ? (
+                <DailyNewReleasesHeroBackground active={!loading && !error && !isLeaving} />
+              ) : null}
               <View style={styles.playlistHeroContent}>
                 {isDailyNewReleases ? (
                   <YoriaxPlaylistCover size={200} radius={20} style={styles.playlistCover} />
