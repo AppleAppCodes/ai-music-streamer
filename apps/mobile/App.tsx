@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from './src/lib/auth-context';
@@ -35,7 +35,6 @@ export default function App() {
 }
 
 function AppShell() {
-  const { t } = useI18n();
   const { initializing, user } = useAuth();
   const { loading: preferencesLoading, onboardingCompleted } = useMusicPreferences();
   const { reset } = usePlayerShell();
@@ -78,18 +77,7 @@ function AppShell() {
 
       <View style={{ flex: 1 }}>
         {appInitializing ? (
-          <View style={styles.launchScreen}>
-            <LinearGradient
-              colors={['rgba(124,58,237,0.32)', 'rgba(45,212,191,0.12)', 'transparent']}
-              style={styles.launchGlow}
-            />
-            <View style={styles.launchMark}>
-              <YoriaxMark size={76} />
-            </View>
-            <Text style={styles.launchTitle}>YORIAX</Text>
-            <Text style={styles.launchSubtitle}>{t('launch.preparing')}</Text>
-            <ActivityIndicator color={theme.colors.primaryLight} style={styles.launchSpinner} />
-          </View>
+          <LaunchScreen />
         ) : signedIn && !onboardingCompleted ? (
           <MusicPreferencesOnboarding />
         ) : signedIn ? (
@@ -101,6 +89,166 @@ function AppShell() {
         )}
       </View>
     </SafeAreaView>
+  );
+}
+
+function LaunchScreen() {
+  const { t } = useI18n();
+  const pulse = useRef(new Animated.Value(0)).current;
+  const float = useRef(new Animated.Value(0)).current;
+  const shimmer = useRef(new Animated.Value(0)).current;
+  const bars = useRef([
+    new Animated.Value(0.28),
+    new Animated.Value(0.58),
+    new Animated.Value(0.4),
+    new Animated.Value(0.82),
+  ]).current;
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          duration: 950,
+          easing: Easing.inOut(Easing.quad),
+          toValue: 1,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          duration: 950,
+          easing: Easing.inOut(Easing.quad),
+          toValue: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    const floatLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(float, {
+          duration: 1400,
+          easing: Easing.inOut(Easing.quad),
+          toValue: 1,
+          useNativeDriver: true,
+        }),
+        Animated.timing(float, {
+          duration: 1400,
+          easing: Easing.inOut(Easing.quad),
+          toValue: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    const shimmerLoop = Animated.loop(
+      Animated.timing(shimmer, {
+        duration: 1450,
+        easing: Easing.out(Easing.cubic),
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    );
+    const barLoops = bars.map((bar, index) => (
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(index * 95),
+          Animated.timing(bar, {
+            duration: 260,
+            easing: Easing.inOut(Easing.quad),
+            toValue: 1,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bar, {
+            duration: 280,
+            easing: Easing.inOut(Easing.quad),
+            toValue: index % 2 === 0 ? 0.34 : 0.48,
+            useNativeDriver: true,
+          }),
+        ]),
+      )
+    ));
+
+    pulseLoop.start();
+    floatLoop.start();
+    shimmerLoop.start();
+    barLoops.forEach((loop) => loop.start());
+
+    return () => {
+      pulseLoop.stop();
+      floatLoop.stop();
+      shimmerLoop.stop();
+      barLoops.forEach((loop) => loop.stop());
+    };
+  }, [bars, float, pulse, shimmer]);
+
+  const glowScale = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.92, 1.08],
+  });
+  const markScale = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.96, 1.04],
+  });
+  const markTranslateY = float.interpolate({
+    inputRange: [0, 1],
+    outputRange: [4, -6],
+  });
+  const shimmerTranslateX = shimmer.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-120, 120],
+  });
+
+  return (
+    <View style={styles.launchScreen}>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.launchGlow,
+          {
+            opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.54, 0.94] }),
+            transform: [{ scale: glowScale }],
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={['rgba(124,58,237,0.42)', 'rgba(45,212,191,0.18)', 'transparent']}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.launchMark,
+          {
+            transform: [{ translateY: markTranslateY }, { scale: markScale }],
+          },
+        ]}
+      >
+        <View style={styles.launchMarkHalo} />
+        <YoriaxMark size={76} />
+      </Animated.View>
+
+      <Text style={styles.launchTitle}>YORIAX</Text>
+      <Text style={styles.launchSubtitle}>{t('launch.preparing')}</Text>
+
+      <View style={styles.launchVisualizer}>
+        {bars.map((bar, index) => (
+          <Animated.View
+            key={index}
+            style={[
+              styles.launchVisualizerBar,
+              { transform: [{ scaleY: bar }] },
+            ]}
+          />
+        ))}
+      </View>
+
+      <View style={styles.launchProgress}>
+        <Animated.View
+          style={[
+            styles.launchProgressShimmer,
+            { transform: [{ translateX: shimmerTranslateX }] },
+          ]}
+        />
+      </View>
+    </View>
   );
 }
 
@@ -124,12 +272,14 @@ const styles = StyleSheet.create({
   },
   launchScreen: {
     alignItems: 'center',
+    backgroundColor: theme.colors.background,
     flex: 1,
     justifyContent: 'center',
     overflow: 'hidden',
     padding: 32,
   },
   launchGlow: {
+    overflow: 'hidden',
     borderRadius: 220,
     height: 360,
     position: 'absolute',
@@ -145,7 +295,18 @@ const styles = StyleSheet.create({
     height: 112,
     justifyContent: 'center',
     marginBottom: 22,
+    shadowColor: theme.colors.primaryLight,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.36,
+    shadowRadius: 28,
     width: 112,
+  },
+  launchMarkHalo: {
+    backgroundColor: 'rgba(124,58,237,0.2)',
+    borderRadius: 46,
+    height: 92,
+    position: 'absolute',
+    width: 92,
   },
   launchTitle: {
     color: theme.colors.text,
@@ -160,7 +321,37 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 8,
   },
-  launchSpinner: {
-    marginTop: 20,
+  launchVisualizer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 5,
+    height: 28,
+    justifyContent: 'center',
+    marginTop: 24,
+  },
+  launchVisualizerBar: {
+    backgroundColor: theme.colors.primaryLight,
+    borderRadius: 3,
+    height: 24,
+    shadowColor: theme.colors.primaryLight,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    width: 5,
+  },
+  launchProgress: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 999,
+    height: 4,
+    marginTop: 18,
+    overflow: 'hidden',
+    width: 120,
+  },
+  launchProgressShimmer: {
+    backgroundColor: theme.colors.accent,
+    borderRadius: 999,
+    height: 4,
+    opacity: 0.9,
+    width: 54,
   },
 });

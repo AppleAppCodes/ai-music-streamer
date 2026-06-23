@@ -19,28 +19,13 @@ function SongSeparator() {
   return <View style={styles.songSeparator} />;
 }
 
-function DailyNewReleasesHeroBackground() {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const videoPlayer = useVideoPlayer(require('../../assets/yoriax_intro.MOV'), (player) => {
-    player.loop = true;
-    player.muted = true;
-    player.play();
-  });
-
-  useEffect(() => {
-    videoPlayer.play();
-
-    return () => {
-      videoPlayer.pause();
-    };
-  }, [videoPlayer]);
-
+function DailyNewReleasesHeroBackground({ player }: { player: ReturnType<typeof useVideoPlayer> }) {
   return (
     <View pointerEvents="none" style={styles.dailyHeroBackground}>
       <VideoView
         contentFit="cover"
         nativeControls={false}
-        player={videoPlayer}
+        player={player}
         style={styles.dailyHeroVideo}
       />
       <LinearGradient
@@ -182,6 +167,11 @@ export function PlaylistScreen({ route, navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const { activeSong, isPlaying, playSong, setQueue } = usePlayerControls();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const dailyVideoPlayer = useVideoPlayer(require('../../assets/yoriax_intro.MOV'), (player) => {
+    player.loop = true;
+    player.muted = true;
+  });
 
   const handlePlaySong = useCallback((song: Song, index: number) => {
     setQueue(songs, index);
@@ -235,10 +225,39 @@ export function PlaylistScreen({ route, navigation }: Props) {
     ? t('playlist.dailyNewReleasesCopy')
     : playlist?.description;
 
+  useEffect(() => {
+    if (isDailyNewReleases && !loading && !error) {
+      dailyVideoPlayer.play();
+      return () => {
+        dailyVideoPlayer.pause();
+      };
+    }
+
+    dailyVideoPlayer.pause();
+    return undefined;
+  }, [dailyVideoPlayer, error, isDailyNewReleases, loading]);
+
+  const handleBackPress = useCallback(() => {
+    try {
+      dailyVideoPlayer.pause();
+    } catch {
+      // Ignore native player teardown races while leaving the screen.
+    }
+
+    requestAnimationFrame(() => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        return;
+      }
+
+      navigation.navigate('MainTabs', { screen: 'Home' });
+    });
+  }, [dailyVideoPlayer, navigation]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
           <Ionicons name="chevron-back" size={28} color={theme.colors.primary} />
           <Text style={styles.backText}>{t('playlist.back')}</Text>
         </TouchableOpacity>
@@ -268,7 +287,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
           windowSize={7}
           ListHeaderComponent={
             <View style={[styles.playlistHero, isDailyNewReleases && styles.dailyPlaylistHero]}>
-              {isDailyNewReleases ? <DailyNewReleasesHeroBackground /> : null}
+              {isDailyNewReleases ? <DailyNewReleasesHeroBackground player={dailyVideoPlayer} /> : null}
               <View style={styles.playlistHeroContent}>
                 {isDailyNewReleases ? (
                   <YoriaxPlaylistCover size={200} radius={20} style={styles.playlistCover} />

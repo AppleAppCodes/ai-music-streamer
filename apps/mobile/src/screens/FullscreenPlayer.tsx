@@ -150,18 +150,22 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
 
   const playerSurfaceStyle = useAnimatedStyle(() => {
     const progress = morphProgress.value;
+    const baseScaleX = interpolate(progress, [0, 1], [miniScaleX, 1]);
+    const baseScaleY = interpolate(progress, [0, 1], [miniScaleY, 1]);
+    const dockPulseX = interpolate(progress, [0, 0.08, 0.16, 0.28, 1], [1, 1.035, 0.982, 1, 1]);
+    const dockPulseY = interpolate(progress, [0, 0.08, 0.16, 0.28, 1], [1, 1.12, 0.94, 1, 1]);
 
     return {
-      borderRadius: interpolate(progress, [0, 0.88, 1], [theme.radii.lg, 8, 0]),
+      borderRadius: interpolate(progress, [0, 0.2, 0.72, 1], [theme.radii.lg, 34, 46, 0]),
       transform: [
         {
           translateY: interpolate(progress, [0, 1], [miniCenterOffsetY, 0]),
         },
         {
-          scaleX: interpolate(progress, [0, 1], [miniScaleX, 1]),
+          scaleX: baseScaleX * dockPulseX,
         },
         {
-          scaleY: interpolate(progress, [0, 1], [miniScaleY, 1]),
+          scaleY: baseScaleY * dockPulseY,
         },
       ],
     };
@@ -193,7 +197,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   }, [miniScaleX, miniScaleY]);
 
   const morphVeilAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(morphProgress.value, [0, 0.08, 0.82, 0.96, 1], [0, 0.94, 0.9, 0.18, 0]),
+    opacity: interpolate(morphProgress.value, [0, 0.08, 0.3, 0.62, 1], [0, 0.78, 0.36, 0, 0]),
   }), []);
 
   const miniSnapshotAnimatedStyle = useAnimatedStyle(() => ({
@@ -201,6 +205,21 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
     transform: [
       {
         scale: interpolate(morphProgress.value, [0, 0.42], [1, 0.985]),
+      },
+    ],
+  }), []);
+
+  const dockBubbleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(morphProgress.value, [0, 0.05, 0.2, 0.4], [0, 0.95, 0.62, 0]),
+    transform: [
+      {
+        translateY: interpolate(morphProgress.value, [0, 0.12, 0.4], [0, -5, 10]),
+      },
+      {
+        scaleX: interpolate(morphProgress.value, [0, 0.08, 0.18, 0.4], [0.98, 1.05, 0.96, 0.9]),
+      },
+      {
+        scaleY: interpolate(morphProgress.value, [0, 0.08, 0.18, 0.4], [0.98, 1.14, 0.92, 0.9]),
       },
     ],
   }), []);
@@ -635,6 +654,18 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
         <MiniPlayerPreview interactive={false} />
       </Animated.View>
 
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.dockBubble, dockBubbleAnimatedStyle]}
+      >
+        <LinearGradient
+          colors={['rgba(168,85,247,0.38)', 'rgba(45,212,191,0.18)', 'rgba(255,255,255,0.08)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+
       {saveToastVisible && saveToastSongId === activeSong.id ? (
         <RNAnimated.View
           pointerEvents="box-none"
@@ -719,6 +750,22 @@ const styles = StyleSheet.create({
     shadowRadius: 26,
     zIndex: 2,
   },
+  dockBubble: {
+    borderColor: 'rgba(168,85,247,0.34)',
+    borderRadius: theme.radii.lg,
+    borderWidth: 1,
+    bottom: MINI_PLAYER_LAYOUT.bottom,
+    height: MINI_PLAYER_LAYOUT.height,
+    left: MINI_PLAYER_LAYOUT.horizontalInset,
+    overflow: 'hidden',
+    position: 'absolute',
+    right: MINI_PLAYER_LAYOUT.horizontalInset,
+    shadowColor: theme.colors.primaryLight,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.42,
+    shadowRadius: 28,
+    zIndex: 3,
+  },
   expandedContent: {
     flex: 1,
     zIndex: 2,
@@ -733,17 +780,17 @@ const styles = StyleSheet.create({
   },
   morphVeilGlow: {
     backgroundColor: theme.colors.primary,
-    borderRadius: 180,
-    bottom: -150,
-    height: 280,
-    opacity: 0.1,
+    borderRadius: 220,
+    bottom: -170,
+    height: 340,
+    opacity: 0.16,
     position: 'absolute',
-    right: -120,
+    right: -130,
     shadowColor: theme.colors.primaryLight,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.34,
-    shadowRadius: 70,
-    width: 280,
+    shadowOpacity: 0.42,
+    shadowRadius: 82,
+    width: 340,
   },
   header: {
     paddingHorizontal: 20,
