@@ -4,6 +4,7 @@ import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import type { NavigationState, PartialState } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
+import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { MainTabParamList, RootStackParamList } from './types';
@@ -23,6 +24,7 @@ import { ArtistsScreen } from '../screens/ArtistsScreen';
 import { PlaylistDiscoverScreen } from '../screens/PlaylistDiscoverScreen';
 import { MusicPreferencesScreen } from '../screens/MusicPreferencesScreen';
 import { MiniPlayer } from '../components/MiniPlayer';
+import { LiquidGlassSurface } from '../components/LiquidGlass';
 import { usePlayerShell } from '../lib/player-context';
 import { PlayerOverlayProvider, usePlayerOverlay } from '../lib/player-overlay-context';
 import { useI18n } from '../lib/i18n';
@@ -62,12 +64,21 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarBackground: () => (
+          <LiquidGlassSurface
+            intensity={route.name === 'ForYou' ? 34 : 42}
+            pointerEvents="none"
+            radius={26}
+            style={StyleSheet.absoluteFill}
+            variant={route.name === 'ForYou' ? 'pill' : 'chrome'}
+          />
+        ),
         tabBarStyle: {
-          backgroundColor: route.name === 'ForYou' ? 'rgba(0,0,0,0.28)' : 'rgba(12,10,18,0.96)',
-          borderColor: route.name === 'ForYou' ? 'rgba(255,255,255,0.16)' : theme.colors.borderStrong,
+          backgroundColor: 'transparent',
+          borderColor: 'transparent',
           borderRadius: 26,
           borderTopWidth: 0,
-          borderWidth: 1,
+          borderWidth: 0,
           bottom: tabBarBottomInset,
           elevation: 0,
           height: 68,

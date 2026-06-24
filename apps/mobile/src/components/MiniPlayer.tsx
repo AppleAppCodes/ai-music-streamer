@@ -7,6 +7,7 @@ import { CoverArt } from './YoriaxUI';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useI18n } from '../lib/i18n';
+import { LiquidGlassSurface } from './LiquidGlass';
 
 export const MINI_PLAYER_LAYOUT = {
   bottom: 124,
@@ -18,7 +19,7 @@ export const MINI_PLAYER_RADIUS = 34;
 
 export function MiniPlayer({ onExpand }: { onExpand: () => void }) {
   return (
-    <View style={styles.shell}>
+    <LiquidGlassSurface radius={MINI_PLAYER_RADIUS} style={styles.shell} contentStyle={styles.shellContent} variant="chrome">
       <TouchableOpacity
         style={styles.shellButton}
         activeOpacity={0.94}
@@ -26,7 +27,7 @@ export function MiniPlayer({ onExpand }: { onExpand: () => void }) {
       >
         <MiniPlayerPreview />
       </TouchableOpacity>
-    </View>
+    </LiquidGlassSurface>
   );
 }
 
@@ -92,9 +93,7 @@ export function MiniPlayerPreview({ interactive = true }: { interactive?: boolea
 const styles = StyleSheet.create({
   shell: {
     backgroundColor: 'transparent',
-    borderColor: theme.colors.borderStrong,
     borderRadius: MINI_PLAYER_RADIUS,
-    borderWidth: 1,
     bottom: MINI_PLAYER_LAYOUT.bottom,
     height: MINI_PLAYER_LAYOUT.height,
     left: MINI_PLAYER_LAYOUT.horizontalInset,
@@ -105,6 +104,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.18,
     shadowRadius: 26,
+  },
+  shellContent: {
+    flex: 1,
   },
   shellButton: {
     flex: 1,

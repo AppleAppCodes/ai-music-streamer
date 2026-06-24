@@ -8,6 +8,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CoverArt, IconButton, StateCard } from '../components/YoriaxUI';
+import { LiquidGlassSurface } from '../components/LiquidGlass';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
 import { loadHomeMusic, type HomeMusicData } from '../lib/music-data';
@@ -167,17 +168,19 @@ export function HomeScreen() {
             activeOpacity={0.8}
             style={styles.quickTileShell}
           >
-            <LinearGradient
-              colors={['rgba(14,14,16,0.98)', 'rgba(14,14,16,0.92)', `${tile.accent}10`]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.quickTile, { borderColor: `${tile.accent}8A` }]}
-            >
+            <LiquidGlassSurface radius={22} style={styles.quickTile} contentStyle={styles.quickTileContent} variant="panel" intensity={24}>
+              <LinearGradient
+                pointerEvents="none"
+                colors={[`${tile.accent}24`, 'rgba(255,255,255,0.03)', `${tile.accent}0D`]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
               <View style={[styles.quickIcon, { backgroundColor: `${tile.accent}24` }]}>
                 <Ionicons name={tile.icon} size={24} color={tile.accent} />
               </View>
               <Text style={styles.quickLabel} numberOfLines={1}>{tile.label}</Text>
-            </LinearGradient>
+            </LiquidGlassSurface>
           </TouchableOpacity>
         ))}
       </View>
@@ -309,15 +312,16 @@ const styles = StyleSheet.create({
     width: '48.5%',
   },
   quickTile: {
-    alignItems: 'center',
     borderRadius: 22,
-    borderWidth: 1.5,
+    minHeight: 72,
+    width: '100%',
+  },
+  quickTileContent: {
+    alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
-    minHeight: 76,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    width: '100%',
   },
   quickIcon: {
     alignItems: 'center',
