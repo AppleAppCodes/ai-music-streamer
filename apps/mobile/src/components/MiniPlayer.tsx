@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useI18n } from '../lib/i18n';
 
 export const MINI_PLAYER_LAYOUT = {
-  bottom: 94,
+  bottom: 124,
   height: 77,
   horizontalInset: 14,
 } as const;

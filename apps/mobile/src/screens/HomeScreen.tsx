@@ -30,7 +30,6 @@ type QuickTile = {
   label: string;
   onPress: () => void;
   subtitle: string;
-  gradientColors: readonly [string, string, string];
 };
 
 const HOME_CACHE_PREFIX = 'yoriax:home:v1:';
@@ -111,7 +110,6 @@ export function HomeScreen() {
       label: t('home.favorites'),
       subtitle: t('home.favoritesSubtitle'),
       onPress: () => navigation.navigate('LikedSongs'),
-      gradientColors: ['rgba(168,85,247,0.25)', 'rgba(168,85,247,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
       accent: '#eab308', // Yellow
@@ -119,7 +117,6 @@ export function HomeScreen() {
       label: t('home.charts'),
       subtitle: t('home.chartsSubtitle'),
       onPress: () => navigation.navigate('Charts'),
-      gradientColors: ['rgba(234,179,8,0.25)', 'rgba(234,179,8,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
       accent: '#0d9488', // Teal
@@ -127,7 +124,6 @@ export function HomeScreen() {
       label: t('home.artists'),
       subtitle: t('home.artistsSubtitle'),
       onPress: () => navigation.navigate('Artists'),
-      gradientColors: ['rgba(13,148,136,0.25)', 'rgba(13,148,136,0.05)', 'rgba(255,255,255,0.02)'],
     },
     {
       accent: '#06b6d4', // Cyan
@@ -135,7 +131,6 @@ export function HomeScreen() {
       label: t('home.playlists'),
       subtitle: t('home.playlistsSubtitle'),
       onPress: () => navigation.navigate('PlaylistDiscover'),
-      gradientColors: ['rgba(6,182,212,0.25)', 'rgba(6,182,212,0.05)', 'rgba(255,255,255,0.02)'],
     },
   ], [navigation, t]);
 
@@ -170,19 +165,18 @@ export function HomeScreen() {
             key={tile.label}
             onPress={tile.onPress}
             activeOpacity={0.8}
-            style={{ width: '48%' }}
+            style={styles.quickTileShell}
           >
             <LinearGradient
-              colors={tile.gradientColors}
+              colors={['rgba(14,14,16,0.98)', 'rgba(14,14,16,0.92)', `${tile.accent}10`]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.quickTile}
+              style={[styles.quickTile, { borderColor: `${tile.accent}8A` }]}
             >
               <View style={[styles.quickIcon, { backgroundColor: `${tile.accent}24` }]}>
-                <Ionicons name={tile.icon} size={21} color={tile.accent} />
+                <Ionicons name={tile.icon} size={24} color={tile.accent} />
               </View>
               <Text style={styles.quickLabel} numberOfLines={1}>{tile.label}</Text>
-              <Text style={styles.quickSubtitle} numberOfLines={1}>{tile.subtitle}</Text>
             </LinearGradient>
           </TouchableOpacity>
         ))}
@@ -290,7 +284,7 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: theme.spacing.section,
-    paddingBottom: 170,
+    paddingBottom: 230,
     paddingHorizontal: theme.spacing.screen,
   },
   topGradient: {
@@ -308,34 +302,34 @@ const styles = StyleSheet.create({
   quickGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
+  },
+  quickTileShell: {
+    width: '48.5%',
   },
   quickTile: {
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.lg,
-    borderWidth: 1,
-    minHeight: 108,
-    padding: 14,
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 76,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     width: '100%',
   },
   quickIcon: {
     alignItems: 'center',
-    borderRadius: theme.radii.md,
-    height: 38,
+    borderRadius: 16,
+    height: 48,
     justifyContent: 'center',
-    marginBottom: 12,
-    width: 38,
+    width: 48,
   },
   quickLabel: {
     color: theme.colors.text,
-    fontSize: 15,
+    flex: 1,
+    fontSize: 17,
     fontWeight: '900',
-  },
-  quickSubtitle: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 4,
   },
   sections: {
     gap: 28,
