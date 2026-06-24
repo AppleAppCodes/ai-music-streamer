@@ -33,6 +33,7 @@ export interface Playlist {
   description?: string | null;
   cover_url?: string | null;
   is_public?: boolean | null;
+  is_official?: boolean | null;
   created_at?: string | null;
 }
 

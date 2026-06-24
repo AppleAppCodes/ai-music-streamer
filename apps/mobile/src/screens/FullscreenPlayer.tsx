@@ -50,8 +50,10 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   const [likedSongId, setLikedSongId] = useState<string | null>(null);
   const [isLikeLoading, setIsLikeLoading] = useState(false);
   const [isPlaylistModalVisible, setIsPlaylistModalVisible] = useState(false);
+  const [seekPreviewTime, setSeekPreviewTime] = useState<number | null>(null);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seekPreviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const morphProgress = useSharedValue(0);
   const saveButtonScale = useRef(new RNAnimated.Value(1)).current;
   const [saveToastAnimation] = useState(() => new RNAnimated.Value(0));
@@ -268,8 +270,41 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
       if (saveToastTimerRef.current) {
         clearTimeout(saveToastTimerRef.current);
       }
+      if (seekPreviewTimerRef.current) {
+        clearTimeout(seekPreviewTimerRef.current);
+      }
     };
   }, []);
+
+  const handleSeekStart = useCallback(() => {
+    if (isAdPlaying) return;
+    if (seekPreviewTimerRef.current) {
+      clearTimeout(seekPreviewTimerRef.current);
+      seekPreviewTimerRef.current = null;
+    }
+    setSeekPreviewTime(currentTime);
+  }, [currentTime, isAdPlaying]);
+
+  const handleSeekChange = useCallback((value: number) => {
+    if (isAdPlaying) return;
+    setSeekPreviewTime(value);
+  }, [isAdPlaying]);
+
+  const handleSeekComplete = useCallback((value: number) => {
+    if (isAdPlaying) return;
+    if (seekPreviewTimerRef.current) {
+      clearTimeout(seekPreviewTimerRef.current);
+      seekPreviewTimerRef.current = null;
+    }
+
+    setSeekPreviewTime(value);
+    void seekTo(value).finally(() => {
+      seekPreviewTimerRef.current = setTimeout(() => {
+        setSeekPreviewTime(null);
+        seekPreviewTimerRef.current = null;
+      }, 360);
+    });
+  }, [isAdPlaying, seekTo]);
 
   const toggleLikedStatus = useCallback(async (): Promise<boolean> => {
     if (!user || !activeSong || isLikeLoading) return isCurrentSongLiked;
@@ -476,7 +511,8 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
     );
   }
 
-  const timeRemaining = Math.max(0, duration - currentTime);
+  const displayedTime = seekPreviewTime ?? currentTime;
+  const timeRemaining = Math.max(0, duration - displayedTime);
 
   return (
     <View style={styles.container} pointerEvents="box-none">
@@ -568,15 +604,17 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
             style={styles.slider}
             minimumValue={0}
             maximumValue={duration > 0 ? duration : 1}
-            value={currentTime}
+            value={displayedTime}
             minimumTrackTintColor={theme.colors.text}
             maximumTrackTintColor="rgba(255,255,255,0.2)"
             thumbTintColor={theme.colors.text}
-            onSlidingComplete={(val) => { if (!isAdPlaying) void seekTo(val); }}
+            onSlidingStart={handleSeekStart}
+            onValueChange={handleSeekChange}
+            onSlidingComplete={handleSeekComplete}
             disabled={isAdPlaying}
           />
           <View style={styles.timeRow}>
-            <Text style={styles.timeText}>{formatDuration(currentTime)}</Text>
+            <Text style={styles.timeText}>{formatDuration(displayedTime)}</Text>
             <Text style={styles.timeText}>-{formatDuration(timeRemaining)}</Text>
           </View>
         </View>

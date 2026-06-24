@@ -1,7 +1,9 @@
-import React, { memo, useCallback, useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   FlatList,
   Modal,
   StyleSheet,
@@ -105,6 +107,37 @@ export function AddToPlaylistModal({
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [updatingLiked, setUpdatingLiked] = useState(false);
+  const [renderVisible, setRenderVisible] = useState(visible);
+  const sheetProgress = useRef(new Animated.Value(0)).current;
+
+  const animateSheet = useCallback((toValue: number, onFinished?: () => void) => {
+    sheetProgress.stopAnimation();
+    Animated.timing(sheetProgress, {
+      duration: toValue === 1 ? 240 : 170,
+      easing: toValue === 1 ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      toValue,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) onFinished?.();
+    });
+  }, [sheetProgress]);
+
+  const requestClose = useCallback(() => {
+    animateSheet(0, onClose);
+  }, [animateSheet, onClose]);
+
+  useEffect(() => {
+    if (visible) {
+      setRenderVisible(true);
+      sheetProgress.setValue(0);
+      requestAnimationFrame(() => animateSheet(1));
+      return;
+    }
+
+    if (renderVisible) {
+      animateSheet(0, () => setRenderVisible(false));
+    }
+  }, [animateSheet, renderVisible, sheetProgress, visible]);
 
   useEffect(() => {
     let mounted = true;
@@ -217,24 +250,47 @@ export function AddToPlaylistModal({
     />
   ), [handleTogglePlaylist, selectedPlaylistIds, updatingId]);
 
+  const backdropAnimatedStyle = {
+    opacity: sheetProgress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    }),
+  };
+
+  const contentAnimatedStyle = {
+    opacity: sheetProgress.interpolate({
+      inputRange: [0, 0.25, 1],
+      outputRange: [0.92, 1, 1],
+    }),
+    transform: [
+      {
+        translateY: sheetProgress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [420, 0],
+        }),
+      },
+    ],
+  };
+
   return (
     <Modal
-      animationType="slide"
+      animationType="none"
       onShow={() => setLikedSelected(isLiked)}
-      onRequestClose={onClose}
+      onRequestClose={requestClose}
       transparent
-      visible={visible}
+      visible={renderVisible}
     >
       <View style={styles.overlay}>
-        <TouchableOpacity activeOpacity={1} onPress={onClose} style={styles.backdrop} />
-        <View style={styles.content}>
+        <Animated.View pointerEvents="none" style={[styles.backdrop, backdropAnimatedStyle]} />
+        <TouchableOpacity activeOpacity={1} onPress={requestClose} style={styles.backdropTapTarget} />
+        <Animated.View style={[styles.content, contentAnimatedStyle]}>
           <View style={styles.handle} />
           <View style={styles.header}>
             <View>
               <Text style={styles.eyebrow}>YORIAX</Text>
               <Text style={styles.title}>{t('save.saveIn')}</Text>
             </View>
-            <TouchableOpacity accessibilityLabel={t('save.close')} onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity accessibilityLabel={t('save.close')} onPress={requestClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={theme.colors.text} />
             </TouchableOpacity>
           </View>
@@ -292,10 +348,10 @@ export function AddToPlaylistModal({
             />
           )}
 
-          <TouchableOpacity activeOpacity={0.88} onPress={onClose} style={styles.doneButton}>
+          <TouchableOpacity activeOpacity={0.88} onPress={requestClose} style={styles.doneButton}>
             <Text style={styles.doneButtonText}>{t('common.done')}</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -308,6 +364,13 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     backgroundColor: 'rgba(0,0,0,0.68)',
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  backdropTapTarget: {
     bottom: 0,
     left: 0,
     position: 'absolute',

@@ -68,13 +68,15 @@ function mapSong(row: SongRow): Song {
 }
 
 function isOfficialPlaylist(row: PlaylistRow, creatorName: string): boolean {
+  if (row.is_official === true) return true;
   const haystack = [row.title, row.description, creatorName].filter(Boolean).join(' ').toLowerCase();
   return OFFICIAL_PLAYLIST_SIGNALS.some((signal) => haystack.includes(signal));
 }
 
 function mapDiscoverPlaylist(row: PlaylistRow): DiscoverPlaylist {
   const isDailyNewReleases = row.id === DAILY_NEW_RELEASES_PLAYLIST_ID;
-  const creatorName = isDailyNewReleases ? 'YORIAX Team' : (getProfileUsername(row.profiles ?? null) || 'Unbekannt');
+  const isOfficial = isDailyNewReleases || isOfficialPlaylist(row, getProfileUsername(row.profiles ?? null) || '');
+  const creatorName = isOfficial ? 'YORIAX Team' : (getProfileUsername(row.profiles ?? null) || 'Unbekannt');
 
   return {
     id: row.id,
@@ -85,7 +87,7 @@ function mapDiscoverPlaylist(row: PlaylistRow): DiscoverPlaylist {
     is_public: row.is_public ?? null,
     created_at: row.created_at ?? null,
     creatorName,
-    isOfficial: isDailyNewReleases ? true : isOfficialPlaylist(row, creatorName),
+    isOfficial,
   };
 }
 
@@ -224,7 +226,7 @@ export async function loadDiscoverPlaylists(searchQuery = ''): Promise<DiscoverP
   const trimmedQuery = searchQuery.trim();
   let query = client
     .from('playlists')
-    .select('id, user_id, title, description, cover_url, is_public, created_at, profiles(username)')
+    .select('id, user_id, title, description, cover_url, is_public, is_official, created_at, profiles(username)')
     .eq('is_public', true)
     .order('created_at', { ascending: false })
     .limit(80);
