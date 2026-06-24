@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import yoriaxSymbol from '../../assets/yoriax-symbol.png';
 import yoriaxAppIcon from '../../assets/icon.png';
-import { LiquidGlassSurface } from './LiquidGlass';
 
 export function YoriaxMark({ size = 34 }: { size?: number }) {
   return <Image source={yoriaxSymbol} style={{ height: size, width: size }} resizeMode="contain" alt="YORIAX" />;
@@ -25,7 +24,6 @@ export function YoriaxLoginLogo() {
 export function BackButton({ onPress, style }: { onPress: () => void; style?: StyleProp<ViewStyle> }) {
   return (
     <TouchableOpacity accessibilityRole="button" onPress={onPress} style={[styles.backButton, style]}>
-      <LiquidGlassSurface pointerEvents="none" radius={theme.radii.round} style={StyleSheet.absoluteFill} variant="pill" />
       <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
     </TouchableOpacity>
   );
@@ -42,7 +40,6 @@ export function IconButton({
 }) {
   return (
     <TouchableOpacity accessibilityRole="button" onPress={onPress} style={[styles.iconButton, style]}>
-      <LiquidGlassSurface pointerEvents="none" radius={theme.radii.round} style={StyleSheet.absoluteFill} variant="pill" />
       <Ionicons name={icon} size={22} color={theme.colors.text} />
     </TouchableOpacity>
   );
@@ -148,18 +145,22 @@ const styles = StyleSheet.create({
   },
   backButton: {
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: theme.colors.border,
     borderRadius: theme.radii.round,
+    borderWidth: 1,
     height: 42,
     justifyContent: 'center',
-    overflow: 'hidden',
     width: 42,
   },
   iconButton: {
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: theme.colors.border,
     borderRadius: theme.radii.round,
+    borderWidth: 1,
     height: 44,
     justifyContent: 'center',
-    overflow: 'hidden',
     width: 44,
   },
   stateCard: {

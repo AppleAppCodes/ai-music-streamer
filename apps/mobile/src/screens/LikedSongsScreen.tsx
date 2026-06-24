@@ -115,12 +115,11 @@ export function LikedSongsScreen({ navigation }: Props) {
         {
           text: t('player.share'),
           onPress: () => {
+            const url = `https://www.yoriax.com/song/${song.id}`;
             void Share.share({
-              message: t('player.shareMessage', {
-                title: song.title,
-                url: `https://www.yoriax.com/song/${song.id}`,
-              }),
+              message: url,
               title: song.title,
+              url,
             });
           },
         },

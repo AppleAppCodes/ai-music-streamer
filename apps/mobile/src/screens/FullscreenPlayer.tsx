@@ -39,7 +39,6 @@ import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
 import { MINI_PLAYER_LAYOUT, MINI_PLAYER_RADIUS, MiniPlayerPreview } from '../components/MiniPlayer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../lib/i18n';
-import { LiquidGlassSurface } from '../components/LiquidGlass';
 
 export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
@@ -407,12 +406,11 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
 
   const handleShareSong = () => {
     if (!activeSong) return;
+    const url = `https://www.yoriax.com/song/${activeSong.id}`;
     void Share.share({
-      message: t('player.shareMessage', {
-        title: activeSong.title,
-        url: `https://www.yoriax.com/song/${activeSong.id}`,
-      }),
+      message: url,
       title: activeSong.title,
+      url,
     });
   };
 
@@ -541,12 +539,10 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
 
       <Animated.View style={[styles.expandedContent, expandedContentAnimatedStyle]}>
         <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-          <TouchableOpacity onPress={() => dismissPlayer()} style={styles.headerGlassButton} hitSlop={10}>
-            <LiquidGlassSurface pointerEvents="none" radius={theme.radii.round} style={StyleSheet.absoluteFill} variant="pill" />
+          <TouchableOpacity onPress={() => dismissPlayer()} style={styles.closeButton} hitSlop={10}>
             <Ionicons name="chevron-down" size={32} color={theme.colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleContextMenu} style={styles.headerGlassButton} hitSlop={10}>
-            <LiquidGlassSurface pointerEvents="none" radius={theme.radii.round} style={StyleSheet.absoluteFill} variant="pill" />
+          <TouchableOpacity onPress={handleContextMenu} style={styles.menuButton} hitSlop={10}>
             <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.text} />
           </TouchableOpacity>
         </View>
@@ -721,7 +717,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
             },
           ]}
         >
-          <LiquidGlassSurface radius={18} style={styles.saveToast} contentStyle={styles.saveToastContent} variant="toast">
+          <View style={styles.saveToast}>
             <View style={styles.saveToastIcon}>
               <Ionicons name="heart" size={16} color={theme.colors.text} />
             </View>
@@ -731,7 +727,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
             <TouchableOpacity activeOpacity={0.78} onPress={handleToastChange} hitSlop={8}>
               <Text style={styles.saveToastAction}>{t('common.change')}</Text>
             </TouchableOpacity>
-          </LiquidGlassSurface>
+          </View>
         </RNAnimated.View>
       ) : null}
 
@@ -842,14 +838,6 @@ const styles = StyleSheet.create({
   },
   menuButton: {
     padding: 8,
-  },
-  headerGlassButton: {
-    alignItems: 'center',
-    borderRadius: theme.radii.round,
-    height: 48,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 48,
   },
   content: {
     flex: 1,
@@ -1001,20 +989,21 @@ const styles = StyleSheet.create({
     zIndex: 30,
   },
   saveToast: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(23,17,31,0.97)',
+    borderColor: 'rgba(168,85,247,0.34)',
     borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
     maxWidth: 430,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
     shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.32,
     shadowRadius: 22,
     width: '100%',
-  },
-  saveToastContent: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 13,
-    paddingVertical: 12,
   },
   saveToastIcon: {
     alignItems: 'center',

@@ -23,7 +23,6 @@ import {
 } from '../lib/music-data';
 import type { Playlist } from '../lib/types';
 import { useI18n } from '../lib/i18n';
-import { LiquidGlassSurface } from './LiquidGlass';
 
 interface AddToPlaylistModalProps {
   visible: boolean;
@@ -284,76 +283,74 @@ export function AddToPlaylistModal({
       <View style={styles.overlay}>
         <Animated.View pointerEvents="none" style={[styles.backdrop, backdropAnimatedStyle]} />
         <TouchableOpacity activeOpacity={1} onPress={requestClose} style={styles.backdropTapTarget} />
-        <Animated.View style={[styles.contentShell, contentAnimatedStyle]}>
-          <LiquidGlassSurface radius={30} style={styles.contentGlass} contentStyle={styles.contentInner} variant="sheet">
-            <View style={styles.handle} />
-            <View style={styles.header}>
-              <View>
-                <Text style={styles.eyebrow}>YORIAX</Text>
-                <Text style={styles.title}>{t('save.saveIn')}</Text>
-              </View>
-              <TouchableOpacity accessibilityLabel={t('save.close')} onPress={requestClose} style={styles.closeBtn}>
-                <Ionicons name="close" size={24} color={theme.colors.text} />
-              </TouchableOpacity>
+        <Animated.View style={[styles.content, contentAnimatedStyle]}>
+          <View style={styles.handle} />
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.eyebrow}>YORIAX</Text>
+              <Text style={styles.title}>{t('save.saveIn')}</Text>
             </View>
+            <TouchableOpacity accessibilityLabel={t('save.close')} onPress={requestClose} style={styles.closeBtn}>
+              <Ionicons name="close" size={24} color={theme.colors.text} />
+            </TouchableOpacity>
+          </View>
 
-            {loading ? (
-              <View style={styles.centerBox}>
-                <ActivityIndicator color={theme.colors.primaryLight} />
-              </View>
-            ) : (
-              <FlatList
-                contentContainerStyle={styles.listContent}
-                data={playlists}
-                initialNumToRender={10}
-                ItemSeparatorComponent={PlaylistSeparator}
-                keyExtractor={(item) => item.id}
-                ListHeaderComponent={
-                  <>
-                    {onToggleLiked ? (
-                      <TouchableOpacity
-                        activeOpacity={0.84}
-                        disabled={updatingLiked}
-                        onPress={() => { void handleToggleLiked(); }}
-                        style={[styles.playlistRow, likedSelected && styles.playlistRowSelected]}
-                      >
-                        <View style={[styles.playlistIcon, styles.favoriteIcon, likedSelected && styles.favoriteIconSelected]}>
-                          <Ionicons name="heart" size={23} color={theme.colors.text} />
-                        </View>
-                        <View style={styles.playlistInfo}>
-                          <Text style={styles.playlistTitle}>{t('save.favorites')}</Text>
-                          <Text style={styles.playlistMeta}>{t('save.favoritesCopy')}</Text>
-                        </View>
-                        <SelectionControl loading={updatingLiked} selected={likedSelected} />
-                      </TouchableOpacity>
-                    ) : null}
-
-                    {onToggleLiked ? <View style={styles.divider} /> : null}
-
-                    <TouchableOpacity activeOpacity={0.84} onPress={handleCreatePlaylist} style={styles.playlistRow}>
-                      <View style={[styles.playlistIcon, styles.createPlaylistIcon]}>
-                        <Ionicons name="add" size={24} color={theme.colors.text} />
+          {loading ? (
+            <View style={styles.centerBox}>
+              <ActivityIndicator color={theme.colors.primaryLight} />
+            </View>
+          ) : (
+            <FlatList
+              contentContainerStyle={styles.listContent}
+              data={playlists}
+              initialNumToRender={10}
+              ItemSeparatorComponent={PlaylistSeparator}
+              keyExtractor={(item) => item.id}
+              ListHeaderComponent={
+                <>
+                  {onToggleLiked ? (
+                    <TouchableOpacity
+                      activeOpacity={0.84}
+                      disabled={updatingLiked}
+                      onPress={() => { void handleToggleLiked(); }}
+                      style={[styles.playlistRow, likedSelected && styles.playlistRowSelected]}
+                    >
+                      <View style={[styles.playlistIcon, styles.favoriteIcon, likedSelected && styles.favoriteIconSelected]}>
+                        <Ionicons name="heart" size={23} color={theme.colors.text} />
                       </View>
                       <View style={styles.playlistInfo}>
-                        <Text style={styles.playlistTitle}>{t('save.createPlaylist')}</Text>
+                        <Text style={styles.playlistTitle}>{t('save.favorites')}</Text>
+                        <Text style={styles.playlistMeta}>{t('save.favoritesCopy')}</Text>
                       </View>
+                      <SelectionControl loading={updatingLiked} selected={likedSelected} />
                     </TouchableOpacity>
+                  ) : null}
 
-                    {playlists.length > 0 ? <View style={styles.divider} /> : null}
-                  </>
-                }
-                maxToRenderPerBatch={10}
-                renderItem={renderPlaylist}
-                style={styles.list}
-                updateCellsBatchingPeriod={32}
-                windowSize={7}
-              />
-            )}
+                  {onToggleLiked ? <View style={styles.divider} /> : null}
 
-            <TouchableOpacity activeOpacity={0.88} onPress={requestClose} style={styles.doneButton}>
-              <Text style={styles.doneButtonText}>{t('common.done')}</Text>
-            </TouchableOpacity>
-          </LiquidGlassSurface>
+                  <TouchableOpacity activeOpacity={0.84} onPress={handleCreatePlaylist} style={styles.playlistRow}>
+                    <View style={[styles.playlistIcon, styles.createPlaylistIcon]}>
+                      <Ionicons name="add" size={24} color={theme.colors.text} />
+                    </View>
+                    <View style={styles.playlistInfo}>
+                      <Text style={styles.playlistTitle}>{t('save.createPlaylist')}</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {playlists.length > 0 ? <View style={styles.divider} /> : null}
+                </>
+              }
+              maxToRenderPerBatch={10}
+              renderItem={renderPlaylist}
+              style={styles.list}
+              updateCellsBatchingPeriod={32}
+              windowSize={7}
+            />
+          )}
+
+          <TouchableOpacity activeOpacity={0.88} onPress={requestClose} style={styles.doneButton}>
+            <Text style={styles.doneButtonText}>{t('common.done')}</Text>
+          </TouchableOpacity>
         </Animated.View>
       </View>
     </Modal>
@@ -380,20 +377,19 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
   },
-  contentShell: {
+  content: {
+    backgroundColor: '#120c1b',
+    borderColor: 'rgba(168,85,247,0.24)',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderWidth: 1,
     maxHeight: '82%',
     minHeight: 330,
+    paddingBottom: 28,
     shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: -10 },
     shadowOpacity: 0.22,
     shadowRadius: 30,
-  },
-  contentGlass: {
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-  },
-  contentInner: {
-    paddingBottom: 28,
   },
   handle: {
     alignSelf: 'center',
