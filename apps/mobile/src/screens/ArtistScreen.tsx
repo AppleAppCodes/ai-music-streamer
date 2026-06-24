@@ -2,7 +2,7 @@ import { ActivityIndicator, Alert, FlatList, Image, ImageBackground, Linking, Sh
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { theme } from '../theme';
 import { usePlayerControls } from '../lib/player-context';
-import { loadArtistSongs } from '../lib/music-data';
+import { loadArtistMedia, loadArtistSongs } from '../lib/music-data';
 import type { Song } from '../lib/types';
 import { formatPlays } from '../lib/format';
 import { supabase } from '../lib/supabase';
@@ -13,9 +13,9 @@ import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../lib/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../lib/i18n';
+import { ArtistVideoMedia } from '../components/ArtistVideoMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Artist'>;
-type StorageFile = { name: string; created_at?: string | null };
 type ArtistSocials = {
   instagram_url?: string | null;
   tiktok_url?: string | null;
@@ -75,6 +75,7 @@ export function ArtistScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [bannerVideoUrl, setBannerVideoUrl] = useState<string | null>(null);
   const [followLoading, setFollowLoading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [socials, setSocials] = useState<ArtistSocials | null>(null);
@@ -88,36 +89,19 @@ export function ArtistScreen({ route, navigation }: Props) {
       setLoading(true);
       setError(null);
       setBannerUrl(null);
+      setBannerVideoUrl(null);
       setSocials(null);
       setIsFollowing(false);
       try {
         const data = await loadArtistSongs(artistName);
         if (mounted) setSongs(data);
 
-        // Keep this in sync with the web artist page: covers/banners/<artist>...
         if (!supabase) throw new Error('Supabase Env fehlt.');
         const client = supabase;
-        const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        const { data: files, error: filesError } = await client.storage
-          .from('covers')
-          .list('banners', {
-            limit: 100,
-            search: sanitizedName,
-          });
-
-        if (!filesError && files && mounted) {
-          const bannerFiles = (files as StorageFile[])
-            .filter((file) => file.name.toLowerCase().startsWith(sanitizedName) && !file.name.includes('_video'));
-
-          if (bannerFiles.length > 0) {
-            bannerFiles.sort(
-              (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(),
-            );
-            const { data: publicUrlData } = client.storage
-              .from('covers')
-              .getPublicUrl(`banners/${bannerFiles[0].name}`);
-            setBannerUrl(publicUrlData.publicUrl);
-          }
+        const media = await loadArtistMedia(artistName);
+        if (mounted) {
+          setBannerUrl(media.bannerUrl ?? null);
+          setBannerVideoUrl(media.videoUrl ?? null);
         }
 
         const [{ data: socialsData }, followResult] = await Promise.all([
@@ -269,7 +253,26 @@ export function ArtistScreen({ route, navigation }: Props) {
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <>
-            {bannerUrl ? (
+            {bannerVideoUrl ? (
+              <View style={styles.heroBanner}>
+                {bannerUrl ? (
+                  <Image source={{ uri: bannerUrl }} style={styles.heroMedia} alt="" />
+                ) : null}
+                <ArtistVideoMedia uri={bannerVideoUrl} style={styles.heroMedia} />
+                <LinearGradient
+                  colors={['rgba(12,10,18,0.10)', 'rgba(12,10,18,0.58)', '#0c0a12']}
+                  style={StyleSheet.absoluteFill}
+                />
+                <View style={styles.heroContent}>
+                  <VerifiedBadge label={t('artist.verified')} />
+                  <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
+                  <Text style={styles.subtitle}>
+                    {t('artist.listeners', { value: monthlyListeners.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US') })}
+                  </Text>
+                  <Text style={styles.totalStreams}>{t('artist.totalStreams', { value: formatPlays(totalPlays) })}</Text>
+                </View>
+              </View>
+            ) : bannerUrl ? (
               <ImageBackground source={{ uri: bannerUrl }} style={styles.heroBanner}>
                 <LinearGradient
                   colors={['rgba(12,10,18,0.10)', 'rgba(12,10,18,0.58)', '#0c0a12']}
@@ -493,7 +496,15 @@ const styles = StyleSheet.create({
   heroBanner: {
     justifyContent: 'flex-end',
     minHeight: 310,
+    overflow: 'hidden',
     width: '100%',
+  },
+  heroMedia: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   heroContent: {
     alignItems: 'flex-start',

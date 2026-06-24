@@ -15,6 +15,17 @@ type FeedStatsJoin = { likes_count?: number | null } | { likes_count?: number | 
 type FeedRow = SongRow & {
   song_feed_stats?: FeedStatsJoin;
 };
+type StorageFile = {
+  created_at?: string | null;
+  metadata?: { mimetype?: string | null } | null;
+  name: string;
+  updated_at?: string | null;
+};
+
+export type ArtistMedia = {
+  bannerUrl?: string | null;
+  videoUrl?: string | null;
+};
 
 export interface HomeMusicData {
   totalSongs: number;
@@ -41,6 +52,75 @@ function requireClient() {
   }
 
   return supabase;
+}
+
+function getArtistMediaSlug(artistName: string) {
+  return artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+}
+
+function getStorageFileBaseName(fileName: string) {
+  return fileName.split('/').pop() ?? fileName;
+}
+
+function getStorageFileTimestamp(file: StorageFile) {
+  return new Date(file.updated_at || file.created_at || 0).getTime();
+}
+
+function isVideoStorageFile(file: StorageFile) {
+  const fileName = file.name.toLowerCase();
+  const mimeType = file.metadata?.mimetype?.toLowerCase() ?? '';
+  return mimeType.startsWith('video/') || /\.(mp4|mov|m4v|webm)$/.test(fileName);
+}
+
+function isImageStorageFile(file: StorageFile) {
+  const fileName = file.name.toLowerCase();
+  const mimeType = file.metadata?.mimetype?.toLowerCase() ?? '';
+  return mimeType.startsWith('image/') || /\.(avif|heic|jpe?g|png|webp)$/.test(fileName);
+}
+
+function findLatestArtistMediaFile(
+  files: StorageFile[],
+  artistName: string,
+  predicate: (file: StorageFile) => boolean,
+) {
+  const slug = getArtistMediaSlug(artistName);
+
+  return files
+    .filter((file) => getStorageFileBaseName(file.name).toLowerCase().startsWith(slug))
+    .filter(predicate)
+    .sort((a, b) => getStorageFileTimestamp(b) - getStorageFileTimestamp(a))[0] ?? null;
+}
+
+function getCoverPublicUrl(fileName: string) {
+  const client = requireClient();
+  const storagePath = fileName.startsWith('banners/') ? fileName : `banners/${fileName}`;
+  const { data } = client.storage.from('covers').getPublicUrl(storagePath);
+  return data.publicUrl;
+}
+
+function resolveArtistMediaFromFiles(files: StorageFile[], artistName: string): ArtistMedia {
+  const latestVideo = findLatestArtistMediaFile(files, artistName, isVideoStorageFile);
+  const latestBanner = findLatestArtistMediaFile(files, artistName, isImageStorageFile);
+
+  return {
+    bannerUrl: latestBanner ? getCoverPublicUrl(latestBanner.name) : null,
+    videoUrl: latestVideo ? getCoverPublicUrl(latestVideo.name) : null,
+  };
+}
+
+export async function loadArtistMedia(artistName: string): Promise<ArtistMedia> {
+  const client = requireClient();
+  const slug = getArtistMediaSlug(artistName);
+  const { data: files, error } = await client.storage
+    .from('covers')
+    .list('banners', {
+      limit: 100,
+      search: slug,
+    });
+
+  if (error || !files) return {};
+
+  return resolveArtistMediaFromFiles(files as StorageFile[], artistName);
 }
 
 function getProfileUsername(profiles: ProfileJoin): string | null {
@@ -905,19 +985,12 @@ export async function loadArtistsData(): Promise<ArtistStat[]> {
 
   const artistArray = Array.from(artistMap.values());
 
-  const { data: banners } = await client.storage.from('covers').list('banners', { limit: 100 });
+  const { data: banners } = await client.storage.from('covers').list('banners', { limit: 500 });
   if (banners) {
     artistArray.forEach(artist => {
-      const sanitizedName = artist.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const videoFiles = banners.filter(f => f.name.startsWith(sanitizedName + '_video'));
-      if (videoFiles.length > 0) {
-        videoFiles.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-        const videoFile = videoFiles[0];
-        const { data: urlData } = client.storage
-          .from('covers')
-          .getPublicUrl(`banners/${videoFile.name}`);
-        artist.videoUrl = urlData.publicUrl;
-      }
+      const artistMedia = resolveArtistMediaFromFiles(banners as StorageFile[], artist.name);
+      artist.coverUrl = artistMedia.bannerUrl || artist.coverUrl;
+      artist.videoUrl = artistMedia.videoUrl || artist.videoUrl;
     });
   }
 

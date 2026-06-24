@@ -1,9 +1,10 @@
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { memo, useCallback, useEffect, useState } from 'react';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, type ViewToken } from 'react-native';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
+import { ArtistVideoMedia } from '../components/ArtistVideoMedia';
 import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
 import { loadArtistsData, type ArtistStat } from '../lib/music-data';
 import type { RootStackParamList } from '../navigation/types';
@@ -14,9 +15,11 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Artists'>;
 type ArtistsNavigation = NativeStackNavigationProp<RootStackParamList, 'Artists'>;
 
 const ArtistCard = memo(function ArtistCard({
+  active,
   item,
   navigation,
 }: {
+  active: boolean;
   item: ArtistStat;
   navigation: ArtistsNavigation;
 }) {
@@ -30,6 +33,7 @@ const ArtistCard = memo(function ArtistCard({
     >
       <View style={styles.cardInner}>
         <CoverArt uri={item.coverUrl} size={220} radius={0} style={styles.cardMedia} />
+        <ArtistVideoMedia active={active} uri={item.videoUrl} style={styles.cardMedia} />
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.54)', 'rgba(0,0,0,0.94)']}
           style={StyleSheet.absoluteFill}
@@ -52,6 +56,14 @@ export function ArtistsScreen({ navigation }: Props) {
   const [artists, setArtists] = useState<ArtistStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [visibleArtistNames, setVisibleArtistNames] = useState<Set<string>>(() => new Set());
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 45,
+    minimumViewTime: 90,
+  }).current;
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken<ArtistStat>[] }) => {
+    setVisibleArtistNames(new Set(viewableItems.map(({ item }) => item.name)));
+  }).current;
 
   useEffect(() => {
     let mounted = true;
@@ -77,10 +89,11 @@ export function ArtistsScreen({ navigation }: Props) {
 
   const renderArtist = useCallback(({ item }: { item: ArtistStat }) => (
     <ArtistCard
+      active={visibleArtistNames.has(item.name)}
       item={item}
       navigation={navigation}
     />
-  ), [navigation]);
+  ), [navigation, visibleArtistNames]);
 
   return (
     <View style={styles.container}>
@@ -100,9 +113,12 @@ export function ArtistsScreen({ navigation }: Props) {
         keyExtractor={(item) => item.name}
         maxToRenderPerBatch={4}
         numColumns={2}
+        onViewableItemsChanged={onViewableItemsChanged}
+        removeClippedSubviews
         renderItem={renderArtist}
         showsVerticalScrollIndicator={false}
         updateCellsBatchingPeriod={50}
+        viewabilityConfig={viewabilityConfig}
         windowSize={5}
         ListHeaderComponent={
           <View style={styles.hero}>
