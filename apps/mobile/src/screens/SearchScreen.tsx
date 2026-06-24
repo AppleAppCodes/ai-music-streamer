@@ -1,4 +1,4 @@
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,8 +6,8 @@ import { theme } from '../theme';
 import { usePlayerControls } from '../lib/player-context';
 import { searchMusic } from '../lib/music-data';
 import type { Song } from '../lib/types';
-import { formatPlays } from '../lib/format';
 import { useI18n } from '../lib/i18n';
+import { SongListRow } from '../components/SongListRow';
 
 const GENRE_SUGGESTIONS: Array<{
   label: string;
@@ -44,39 +44,14 @@ const SearchResultRow = memo(function SearchResultRow({
   onPlay: (song: Song, index: number) => void;
   song: Song;
 }) {
-  const { t } = useI18n();
-
   return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      onPress={() => onPlay(song, index)}
-      style={styles.songRow}
-    >
-      {song.cover_url ? (
-        <Image source={{ uri: song.cover_url }} style={styles.cover} alt="" />
-      ) : (
-        <View style={[styles.cover, styles.coverFallback]}>
-          <Text style={styles.coverFallbackText}>Y</Text>
-        </View>
-      )}
-
-      <View style={styles.songInfo}>
-        <Text style={[styles.songTitle, active && styles.activeText]} numberOfLines={1}>
-          {song.title}
-        </Text>
-        <Text style={styles.songArtist} numberOfLines={1}>
-          {song.artist_name || song.creatorName || t('common.creator')}
-        </Text>
-      </View>
-
-      <Text style={styles.songMeta}>{formatPlays(song.plays)}</Text>
-
-      {active && isPlaying ? (
-        <View style={styles.playingIndicator}>
-          <Text style={styles.playingText}>▶</Text>
-        </View>
-      ) : null}
-    </TouchableOpacity>
+    <SongListRow
+      active={active}
+      index={index}
+      isPlaying={isPlaying}
+      onPlay={onPlay}
+      song={song}
+    />
   );
 });
 
@@ -357,65 +332,5 @@ const styles = StyleSheet.create({
   },
   resultSeparator: {
     height: 16,
-  },
-  songRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: theme.colors.surfaceMuted,
-    padding: 12,
-    borderRadius: 16,
-  },
-  cover: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: theme.colors.surface,
-  },
-  coverFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coverFallbackText: {
-    color: theme.colors.muted,
-    fontSize: 20,
-    fontWeight: '900',
-  },
-  songInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  songTitle: {
-    color: theme.colors.text,
-    fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  activeText: {
-    color: theme.colors.primary,
-  },
-  songArtist: {
-    color: theme.colors.muted,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  songMeta: {
-    color: theme.colors.subtle,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  playingIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: theme.colors.text,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-  },
-  playingText: {
-    color: theme.colors.background,
-    fontSize: 10,
-    fontWeight: '900',
   },
 });

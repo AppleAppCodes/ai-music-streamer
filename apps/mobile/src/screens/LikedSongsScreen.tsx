@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BackButton, CoverArt, StateCard } from '../components/YoriaxUI';
+import { BackButton, StateCard } from '../components/YoriaxUI';
 import { useAuth } from '../lib/auth-context';
 import { loadLibraryMusic, type LibraryMusicData } from '../lib/music-data';
 import { usePlayerControls } from '../lib/player-context';
@@ -12,12 +12,12 @@ import type { Song } from '../lib/types';
 import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
 import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
+import { SongListRow } from '../components/SongListRow';
 import { formatDuration } from '../lib/format';
 import { useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LikedSongs'>;
 const EMPTY_SONGS: Song[] = [];
-const CONTEXT_BUTTON_HIT_SLOP = { top: 10, right: 10, bottom: 10, left: 10 };
 
 function RowSeparator() {
   return <View style={styles.rowSeparator} />;
@@ -38,34 +38,15 @@ const LikedSongRow = memo(function LikedSongRow({
   onPlay: (song: Song, index: number) => void;
   song: Song;
 }) {
-  const { t } = useI18n();
-
   return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      onPress={() => onPlay(song, index)}
-      style={[styles.row, active && styles.rowActive]}
-    >
-      <CoverArt uri={song.cover_url} size={52} radius={12} />
-      <View style={styles.rowText}>
-        <Text style={[styles.rowTitle, active && styles.rowTitleActive]} numberOfLines={1}>{song.title}</Text>
-        <Text style={styles.rowMeta} numberOfLines={1}>
-          {song.artist_name || song.creatorName || t('common.creator')}
-        </Text>
-      </View>
-      {active && isPlaying ? <Ionicons name="volume-high" size={18} color={theme.colors.primaryLight} /> : null}
-      <TouchableOpacity
-        accessibilityRole="button"
-        hitSlop={CONTEXT_BUTTON_HIT_SLOP}
-        onPress={(event) => {
-          event.stopPropagation();
-          onOpenMenu(song);
-        }}
-        style={styles.contextButton}
-      >
-        <Ionicons name="ellipsis-horizontal" size={20} color={theme.colors.muted} />
-      </TouchableOpacity>
-    </TouchableOpacity>
+    <SongListRow
+      active={active}
+      index={index}
+      isPlaying={isPlaying}
+      onOpenMenu={onOpenMenu}
+      onPlay={onPlay}
+      song={song}
+    />
   );
 });
 
@@ -348,39 +329,5 @@ const styles = StyleSheet.create({
   },
   rowSeparator: {
     height: 8,
-  },
-  row: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: 'transparent',
-    borderRadius: theme.radii.md,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 12,
-    padding: 8,
-  },
-  rowActive: {
-    backgroundColor: theme.colors.primarySoft,
-    borderColor: 'rgba(168,85,247,0.42)',
-  },
-  rowText: {
-    flex: 1,
-  },
-  rowTitle: {
-    color: theme.colors.text,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  rowTitleActive: {
-    color: theme.colors.primaryLight,
-  },
-  rowMeta: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 3,
-  },
-  contextButton: {
-    padding: 8,
   },
 });

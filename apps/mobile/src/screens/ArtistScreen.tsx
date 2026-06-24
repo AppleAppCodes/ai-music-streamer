@@ -14,7 +14,7 @@ import { useAuth } from '../lib/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../lib/i18n';
 import { ArtistVideoMedia } from '../components/ArtistVideoMedia';
-import { PlayingVisualizer } from '../components/PlayingVisualizer';
+import { SongListRow } from '../components/SongListRow';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Artist'>;
 type ArtistSocials = {
@@ -41,26 +41,13 @@ const ArtistSongRow = memo(function ArtistSongRow({
   song: Song;
 }) {
   return (
-    <TouchableOpacity
-      style={styles.songRow}
-      onPress={() => onPlay(index)}
-    >
-      <Text style={styles.songIndex}>{index + 1}</Text>
-      {song.cover_url ? (
-        <Image source={{ uri: song.cover_url }} style={styles.cover} alt="" />
-      ) : (
-        <View style={[styles.cover, styles.coverFallback]}>
-          <Text style={styles.coverFallbackText}>Y</Text>
-        </View>
-      )}
-      <View style={styles.songInfo}>
-        <Text style={[styles.songTitle, active && styles.activeText]} numberOfLines={1}>
-          {song.title}
-        </Text>
-        <Text style={styles.songPlays}>{formatPlays(song.plays)}</Text>
-      </View>
-      <PlayingVisualizer active={active && isPlaying} style={styles.artistVisualizer} />
-    </TouchableOpacity>
+    <SongListRow
+      active={active}
+      index={index}
+      isPlaying={active && isPlaying}
+      onPlay={() => onPlay(index)}
+      song={song}
+    />
   );
 });
 
@@ -705,54 +692,5 @@ const styles = StyleSheet.create({
   },
   songSeparator: {
     height: 12,
-  },
-  songRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 20,
-  },
-  songIndex: {
-    color: theme.colors.muted,
-    fontSize: 14,
-    fontWeight: '700',
-    width: 24,
-    textAlign: 'center',
-  },
-  cover: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: theme.colors.surface,
-  },
-  coverFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coverFallbackText: {
-    color: theme.colors.muted,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  songInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  songTitle: {
-    color: theme.colors.text,
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  activeText: {
-    color: theme.colors.primary,
-  },
-  songPlays: {
-    color: theme.colors.subtle,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  artistVisualizer: {
-    marginLeft: 4,
   },
 });

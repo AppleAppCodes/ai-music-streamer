@@ -1,5 +1,7 @@
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useState, memo, useCallback } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../lib/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { loadLibraryMusic, type LibraryMusicData } from '../lib/music-data';
@@ -11,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useI18n } from '../lib/i18n';
+import { SongListRow } from '../components/SongListRow';
 
 const LIBRARY_CACHE_PREFIX = 'yoriax:library:v1:';
 
@@ -85,15 +88,22 @@ export function LibraryScreen() {
     >
       <Text style={styles.title}>{t('library.title')}</Text>
       <TouchableOpacity
-        style={styles.row}
+        activeOpacity={0.84}
+        style={styles.favoritesCard}
         onPress={() => navigation.navigate('LikedSongs')}
       >
-        <View style={styles.iconBox}>
-          <Text style={styles.heart}>♥</Text>
+        <LinearGradient
+          colors={['rgba(124,58,237,0.4)', 'rgba(70,31,132,0.24)', 'rgba(255,255,255,0.045)']}
+          locations={[0, 0.52, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.favoritesCover}>
+          <Ionicons name="heart" size={40} color={theme.colors.text} />
         </View>
-        <View style={styles.rowText}>
-          <Text style={styles.rowTitle}>{t('library.favorites')}</Text>
-          <Text style={styles.rowMeta}>
+        <View style={styles.favoritesText}>
+          <Text style={styles.favoritesEyebrow}>PLAYLIST</Text>
+          <Text style={styles.favoritesTitle}>{t('library.favorites')}</Text>
+          <Text style={styles.favoritesMeta}>
             {t('library.accountSongs', { count: data?.likedSongs.length ?? 0 })}
           </Text>
         </View>
@@ -171,31 +181,14 @@ const SongRow = memo(function SongRow({
   isPlaying: boolean; 
   onPlay: (song: Song, index: number, list: Song[]) => void; 
 }) {
-  const { t } = useI18n();
-
   return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      onPress={() => onPlay(song, index, list)}
-      style={[styles.itemRow, isActive && styles.itemRowActive]}
-    >
-      {song.cover_url ? (
-        <Image source={{ uri: song.cover_url }} style={styles.itemImage} alt="" />
-      ) : (
-        <View style={[styles.itemImage, styles.itemFallback]}>
-          <Text style={styles.itemFallbackText}>Y</Text>
-        </View>
-      )}
-      <View style={styles.itemText}>
-        <Text style={styles.itemTitle} numberOfLines={1}>
-          {song.title}
-        </Text>
-        <Text style={styles.itemMeta} numberOfLines={1}>
-          {song.artist_name || song.creatorName || t('common.creator')}
-        </Text>
-      </View>
-      <Text style={styles.rowPlayState}>{isActive && isPlaying ? 'II' : '▶'}</Text>
-    </TouchableOpacity>
+    <SongListRow
+      active={isActive}
+      index={index}
+      isPlaying={isPlaying}
+      onPlay={(nextSong, nextIndex) => onPlay(nextSong, nextIndex, list)}
+      song={song}
+    />
   );
 });
 
@@ -252,41 +245,56 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: '900',
   },
-  row: {
+  favoritesCard: {
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: 22,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 26,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 14,
-    padding: 14,
+    gap: 18,
+    minHeight: 132,
+    overflow: 'hidden',
+    padding: 18,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
   },
-  iconBox: {
+  favoritesCover: {
     alignItems: 'center',
     backgroundColor: theme.colors.primary,
-    borderRadius: 18,
-    height: 64,
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 24,
+    borderWidth: 1,
+    height: 92,
     justifyContent: 'center',
-    width: 64,
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.36,
+    shadowRadius: 18,
+    width: 92,
   },
-  heart: {
-    color: theme.colors.text,
-    fontSize: 30,
-    fontWeight: '900',
-  },
-  rowText: {
-    flex: 1,
-  },
-  rowTitle: {
-    color: theme.colors.text,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  rowMeta: {
+  favoritesEyebrow: {
     color: theme.colors.muted,
-    fontSize: 13,
-    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 2.4,
+    marginBottom: 4,
+  },
+  favoritesMeta: {
+    color: theme.colors.muted,
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  favoritesText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  favoritesTitle: {
+    color: theme.colors.text,
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.6,
   },
   emptyBox: {
     borderColor: theme.colors.border,
@@ -342,23 +350,19 @@ const styles = StyleSheet.create({
   },
   itemRow: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: theme.colors.border,
-    borderRadius: 18,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 16,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 12,
-    padding: 10,
-  },
-  itemRowActive: {
-    backgroundColor: 'rgba(124,58,237,0.18)',
-    borderColor: 'rgba(124,58,237,0.42)',
+    gap: 14,
+    padding: 12,
   },
   itemImage: {
     backgroundColor: theme.colors.surfaceMuted,
-    borderRadius: 12,
-    height: 56,
-    width: 56,
+    borderRadius: 10,
+    height: 52,
+    width: 52,
   },
   itemFallback: {
     alignItems: 'center',
@@ -379,19 +383,13 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: '900',
+    fontSize: 15,
+    fontWeight: '800',
   },
   itemMeta: {
     color: theme.colors.muted,
     fontSize: 13,
     fontWeight: '700',
     marginTop: 3,
-  },
-  rowPlayState: {
-    color: theme.colors.text,
-    fontSize: 16,
-    fontWeight: '900',
-    width: 28,
   },
 });

@@ -1,5 +1,5 @@
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useCallback, useEffect, memo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { theme } from '../theme';
@@ -9,8 +9,7 @@ import { DAILY_NEW_RELEASES_PLAYLIST_ID, loadPlaylistDetails } from '../lib/musi
 import type { Playlist, Song } from '../lib/types';
 import { usePlayerControls } from '../lib/player-context';
 import { Ionicons } from '@expo/vector-icons';
-import { formatPlays } from '../lib/format';
-import { PlayingVisualizer } from '../components/PlayingVisualizer';
+import { SongListRow } from '../components/SongListRow';
 import { YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
 
@@ -59,48 +58,6 @@ function DailyNewReleasesHeroBackground({ active }: { active: boolean }) {
     </View>
   );
 }
-
-const MemoizedSongRow = memo(function SongRow({
-  song,
-  index,
-  isActive,
-  isPlaying,
-  onPlay
-}: {
-  song: Song;
-  index: number;
-  isActive: boolean;
-  isPlaying: boolean;
-  onPlay: (song: Song, index: number) => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.songRow, isActive && styles.songRowActive]}
-      onPress={() => onPlay(song, index)}
-    >
-      {song.cover_url ? (
-        <Image source={{ uri: song.cover_url }} style={styles.songCover} alt="" />
-      ) : (
-        <View style={[styles.songCover, styles.songFallback]}>
-          <Text style={styles.songFallbackText}>Y</Text>
-        </View>
-      )}
-
-      <View style={styles.songInfo}>
-        <Text style={[styles.songTitle, isActive && styles.activeText]} numberOfLines={1}>
-          {song.title}
-        </Text>
-        <Text style={styles.songArtist} numberOfLines={1}>
-          {song.artist_name || song.creatorName || 'Creator'}
-        </Text>
-      </View>
-
-      <Text style={styles.songMeta}>{formatPlays(song.plays)}</Text>
-
-      <PlayingVisualizer active={isActive && isPlaying} style={styles.visualizerOffset} />
-    </TouchableOpacity>
-  );
-});
 
 export function PlaylistScreen({ route, navigation }: Props) {
   const { t } = useI18n();
@@ -159,12 +116,13 @@ export function PlaylistScreen({ route, navigation }: Props) {
     const isActive = activeSong?.id === item.id;
 
     return (
-      <MemoizedSongRow
-        song={item}
+      <SongListRow
+        active={isActive}
         index={index}
-        isActive={isActive}
         isPlaying={isActive && isPlaying}
         onPlay={handlePlaySong}
+        song={item}
+        style={styles.songRowFrame}
       />
     );
   }, [activeSong?.id, handlePlaySong, isPlaying]);
@@ -405,66 +363,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-  songRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: theme.colors.surfaceMuted,
-    padding: 12,
-    borderRadius: 16,
-    marginHorizontal: 20,
-  },
   songSeparator: {
     height: 12,
   },
-  songRowActive: {
-    backgroundColor: 'rgba(124,58,237,0.1)',
-    borderColor: 'rgba(124,58,237,0.3)',
-    borderWidth: 1,
-  },
-  songCover: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: theme.colors.surface,
-  },
-  songFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  songFallbackText: {
-    color: theme.colors.muted,
-    fontSize: 20,
-    fontWeight: '900',
-  },
-  songInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  songTitle: {
-    color: theme.colors.text,
-    fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  activeText: {
-    color: theme.colors.primary,
-  },
-  songArtist: {
-    color: theme.colors.muted,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  songMeta: {
-    color: theme.colors.subtle,
-    fontSize: 12,
-    fontWeight: '700',
+  songRowFrame: {
+    marginHorizontal: 20,
   },
   playlistTracksTopGap: {
     height: 18,
-  },
-  visualizerOffset: {
-    marginLeft: 8,
   },
   emptyBox: {
     alignItems: 'center',

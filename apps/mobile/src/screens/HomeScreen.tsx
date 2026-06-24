@@ -168,13 +168,13 @@ export function HomeScreen() {
             style={styles.quickTileShell}
           >
             <LinearGradient
-              colors={['rgba(14,14,16,0.98)', 'rgba(14,14,16,0.92)', `${tile.accent}10`]}
+              colors={['rgba(255,255,255,0.06)', 'rgba(16,16,18,0.96)', `${tile.accent}0F`]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={[styles.quickTile, { borderColor: `${tile.accent}8A` }]}
+              style={[styles.quickTile, { borderColor: `${tile.accent}66` }]}
             >
-              <View style={[styles.quickIcon, { backgroundColor: `${tile.accent}24` }]}>
-                <Ionicons name={tile.icon} size={24} color={tile.accent} />
+              <View style={[styles.quickIcon, { backgroundColor: `${tile.accent}30` }]}>
+                <Ionicons name={tile.icon} size={20} color={tile.accent} />
               </View>
               <Text style={styles.quickLabel} numberOfLines={1}>{tile.label}</Text>
             </LinearGradient>
@@ -309,26 +309,26 @@ const styles = StyleSheet.create({
   },
   quickTile: {
     alignItems: 'center',
-    borderRadius: 22,
-    borderWidth: 1.5,
+    borderRadius: 18,
+    borderWidth: 1,
     flexDirection: 'row',
-    gap: 12,
-    minHeight: 76,
-    paddingHorizontal: 12,
+    gap: 10,
+    minHeight: 66,
+    paddingHorizontal: 13,
     paddingVertical: 12,
     width: '100%',
   },
   quickIcon: {
     alignItems: 'center',
-    borderRadius: 16,
-    height: 48,
+    borderRadius: 14,
+    height: 38,
     justifyContent: 'center',
-    width: 48,
+    width: 38,
   },
   quickLabel: {
     color: theme.colors.text,
     flex: 1,
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '900',
   },
   sections: {
