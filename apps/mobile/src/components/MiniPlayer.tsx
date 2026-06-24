@@ -1,5 +1,4 @@
-import { ActivityIndicator, Animated as RNAnimated, Easing as RNEasing, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useRef } from 'react';
+import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDuration } from '../lib/format';
 import { usePlayer } from '../lib/player-context';
@@ -18,44 +17,8 @@ export const MINI_PLAYER_LAYOUT = {
 export const MINI_PLAYER_RADIUS = 34;
 
 export function MiniPlayer({ onExpand }: { onExpand: () => void }) {
-  const bounceScale = useRef(new RNAnimated.Value(0.992)).current;
-
-  useEffect(() => {
-    bounceScale.setValue(0.992);
-
-    RNAnimated.sequence([
-      RNAnimated.timing(bounceScale, {
-        duration: 110,
-        easing: RNEasing.out(RNEasing.quad),
-        toValue: 1.018,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(bounceScale, {
-        duration: 92,
-        easing: RNEasing.inOut(RNEasing.quad),
-        toValue: 0.997,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(bounceScale, {
-        duration: 118,
-        easing: RNEasing.out(RNEasing.quad),
-        toValue: 1,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [bounceScale]);
-
   return (
-    <RNAnimated.View
-      style={[
-        styles.shell,
-        {
-          transform: [
-            { scale: bounceScale },
-          ],
-        },
-      ]}
-    >
+    <View style={styles.shell}>
       <TouchableOpacity
         style={styles.shellButton}
         activeOpacity={0.94}
@@ -63,7 +26,7 @@ export function MiniPlayer({ onExpand }: { onExpand: () => void }) {
       >
         <MiniPlayerPreview />
       </TouchableOpacity>
-    </RNAnimated.View>
+    </View>
   );
 }
 

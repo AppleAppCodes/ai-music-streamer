@@ -21,7 +21,6 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -54,7 +53,6 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const morphProgress = useSharedValue(0);
-  const dockSettleProgress = useSharedValue(0);
   const saveButtonScale = useRef(new RNAnimated.Value(1)).current;
   const [saveToastAnimation] = useState(() => new RNAnimated.Value(0));
   const [saveToastVisible, setSaveToastVisible] = useState(false);
@@ -78,7 +76,6 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   useEffect(() => {
-    dockSettleProgress.value = 0;
     morphProgress.value = 0;
     morphProgress.value = withTiming(1, {
       duration: 420,
@@ -87,43 +84,27 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
 
     return () => {
       cancelAnimation(morphProgress);
-      cancelAnimation(dockSettleProgress);
     };
-  }, [dockSettleProgress, morphProgress]);
+  }, [morphProgress]);
 
   const resetDrag = useCallback(() => {
-    dockSettleProgress.value = 0;
     morphProgress.value = withSpring(1, {
       damping: 24,
       mass: 0.86,
       stiffness: 270,
     });
-  }, [dockSettleProgress, morphProgress]);
+  }, [morphProgress]);
 
   const dismissPlayer = useCallback((velocity = 0) => {
     const duration = Math.max(210, Math.min(330, 300 - Math.max(0, velocity) * 22));
 
-    dockSettleProgress.value = 0;
     morphProgress.value = withTiming(0, {
       duration,
       easing: ReanimatedEasing.bezier(0.22, 1, 0.36, 1),
     }, (finished) => {
-      if (finished) {
-        dockSettleProgress.value = withSequence(
-          withTiming(1, {
-            duration: 120,
-            easing: ReanimatedEasing.out(ReanimatedEasing.quad),
-          }),
-          withTiming(0, {
-            duration: 145,
-            easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
-          }, (settled) => {
-            if (settled) runOnJS(finishDismiss)();
-          }),
-        );
-      }
+      if (finished) runOnJS(finishDismiss)();
     });
-  }, [dockSettleProgress, finishDismiss, morphProgress]);
+  }, [finishDismiss, morphProgress]);
 
   const playerPanGesture = useMemo(
     () =>
@@ -133,7 +114,6 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
         .onUpdate((event) => {
           if (event.translationY <= 0) return;
 
-          dockSettleProgress.value = 0;
           morphProgress.value = Math.max(0, Math.min(1, 1 - event.translationY / morphDistance));
         })
         .onEnd((event) => {
@@ -145,25 +125,11 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
               duration,
               easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
             }, (finished) => {
-              if (finished) {
-                dockSettleProgress.value = withSequence(
-                  withTiming(1, {
-                    duration: 120,
-                    easing: ReanimatedEasing.out(ReanimatedEasing.quad),
-                  }),
-                  withTiming(0, {
-                    duration: 145,
-                    easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
-                  }, (settled) => {
-                    if (settled) runOnJS(finishDismiss)();
-                  }),
-                );
-              }
+              if (finished) runOnJS(finishDismiss)();
             });
             return;
           }
 
-          dockSettleProgress.value = 0;
           morphProgress.value = withSpring(1, {
             damping: 25,
             mass: 0.86,
@@ -180,7 +146,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
             });
           }
         }),
-    [dockSettleProgress, finishDismiss, morphDistance, morphProgress],
+    [finishDismiss, morphDistance, morphProgress],
   );
 
   const playerSurfaceStyle = useAnimatedStyle(() => {
@@ -235,19 +201,13 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   }), []);
 
   const miniSnapshotAnimatedStyle = useAnimatedStyle(() => {
-    const settle = dockSettleProgress.value;
     const morphScale = interpolate(morphProgress.value, [0, 0.2, 0.56], [1, 1, 0.965]);
-    const settleScaleX = interpolate(settle, [0, 0.42, 0.72, 1], [1, 1.026, 0.996, 1]);
-    const settleScaleY = interpolate(settle, [0, 0.42, 0.72, 1], [1, 0.986, 1.008, 1]);
 
     return {
       opacity: interpolate(morphProgress.value, [0, 0.3, 0.6], [1, 1, 0]),
       transform: [
         {
-          scaleX: morphScale * settleScaleX,
-        },
-        {
-          scaleY: morphScale * settleScaleY,
+          scale: morphScale,
         },
       ],
     };
@@ -255,20 +215,9 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
 
   const dockBubbleAnimatedStyle = useAnimatedStyle(() => {
     const progress = morphProgress.value;
-    const settle = dockSettleProgress.value;
-    const progressOpacity = interpolate(progress, [0, 0.1, 0.28, 0.56], [0, 0.24, 0.16, 0]);
-    const settleOpacity = interpolate(settle, [0, 0.42, 1], [0, 0.32, 0]);
 
     return {
-      opacity: Math.max(progressOpacity, settleOpacity),
-      transform: [
-        {
-          scaleX: interpolate(settle, [0, 0.42, 0.72, 1], [1, 1.036, 0.998, 1]),
-        },
-        {
-          scaleY: interpolate(settle, [0, 0.42, 0.72, 1], [1, 0.984, 1.01, 1]),
-        },
-      ],
+      opacity: interpolate(progress, [0, 0.1, 0.28, 0.56], [0, 0.24, 0.16, 0]),
     };
   }, []);
 
