@@ -4,6 +4,7 @@ import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import type { NavigationState, PartialState } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { MainTabParamList, RootStackParamList } from './types';
 import { theme } from '../theme';
@@ -53,6 +54,9 @@ function getActiveRouteName(state: AppNavigationState | undefined): string | und
 
 function MainTabs() {
   const { t } = useI18n();
+  const insets = useSafeAreaInsets();
+  const tabBarHorizontalInset = Math.max(18, insets.left + 18, insets.right + 18);
+  const tabBarBottomInset = Math.max(22, insets.bottom + 8);
 
   return (
     <Tab.Navigator
@@ -64,14 +68,14 @@ function MainTabs() {
           borderRadius: 26,
           borderTopWidth: 0,
           borderWidth: 1,
-          bottom: 12,
+          bottom: tabBarBottomInset,
           elevation: 0,
-          height: 70,
-          left: 14,
-          paddingBottom: 9,
-          paddingTop: 8,
+          height: 68,
+          left: tabBarHorizontalInset,
+          paddingBottom: 8,
+          paddingTop: 7,
           position: 'absolute',
-          right: 14,
+          right: tabBarHorizontalInset,
           shadowColor: theme.colors.primary,
           shadowOffset: { width: 0, height: 14 },
           shadowOpacity: route.name === 'ForYou' ? 0 : 0.16,
