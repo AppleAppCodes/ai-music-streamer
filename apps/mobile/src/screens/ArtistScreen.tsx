@@ -1,4 +1,4 @@
-import { ActivityIndicator, Alert, FlatList, Image, ImageBackground, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, ImageBackground, Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { theme } from '../theme';
 import { usePlayerControls } from '../lib/player-context';
@@ -15,12 +15,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../lib/i18n';
 import { ArtistVideoMedia } from '../components/ArtistVideoMedia';
 import { SongListRow } from '../components/SongListRow';
+import { CoverArt } from '../components/YoriaxUI';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Artist'>;
 type ArtistSocials = {
   instagram_url?: string | null;
   tiktok_url?: string | null;
   youtube_url?: string | null;
+};
+type ArtistRelease = {
+  coverUrl: string;
+  id: string;
+  subtitle: string;
+  title: string;
 };
 
 function ArtistSongSeparator() {
@@ -47,6 +54,7 @@ const ArtistSongRow = memo(function ArtistSongRow({
       isPlaying={active && isPlaying}
       onPlay={() => onPlay(index)}
       song={song}
+      style={styles.songRowFrame}
     />
   );
 });
@@ -63,6 +71,7 @@ export function ArtistScreen({ route, navigation }: Props) {
   const [followLoading, setFollowLoading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [socials, setSocials] = useState<ArtistSocials | null>(null);
+  const [showAllReleases, setShowAllReleases] = useState(false);
 
   const { user } = useAuth();
   const { activeSong, isPlaying, isShuffling, playSong, setQueue, toggle, toggleShuffle } = usePlayerControls();
@@ -126,6 +135,27 @@ export function ArtistScreen({ route, navigation }: Props) {
   const artistQueue = useMemo(
     () => songs.map((song) => ({ ...song, creatorName: song.creatorName || artistName })),
     [artistName, songs],
+  );
+  const topSongs = useMemo(() => artistQueue.slice(0, 10), [artistQueue]);
+  const releases = useMemo<ArtistRelease[]>(() => {
+    const seen = new Set<string>();
+
+    return artistQueue.reduce<ArtistRelease[]>((items, song) => {
+      const key = `${song.title.trim().toLocaleLowerCase()}-${song.cover_url}`;
+      if (seen.has(key)) return items;
+      seen.add(key);
+      items.push({
+        coverUrl: song.cover_url,
+        id: song.id,
+        subtitle: t('artist.single'),
+        title: song.title,
+      });
+      return items;
+    }, []);
+  }, [artistQueue, t]);
+  const visibleReleases = useMemo(
+    () => showAllReleases ? releases : releases.slice(0, 8),
+    [releases, showAllReleases],
   );
   const hasSongs = artistQueue.length > 0;
   const isArtistActive = artistQueue.some((song) => song.id === activeSong?.id);
@@ -231,7 +261,8 @@ export function ArtistScreen({ route, navigation }: Props) {
       </TouchableOpacity>
       <FlatList
         contentContainerStyle={styles.content}
-        data={loading || error ? [] : songs}
+        data={loading || error ? [] : topSongs}
+        extraData={`${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}:${topSongs.length}`}
         initialNumToRender={10}
         ItemSeparatorComponent={ArtistSongSeparator}
         keyExtractor={(item) => item.id}
@@ -350,13 +381,73 @@ export function ArtistScreen({ route, navigation }: Props) {
                 ) : null}
                 <View style={styles.sectionHeaderRow}>
                   <Text style={styles.sectionTitle}>{t('artist.popular')}</Text>
-                  <View style={styles.songCountPill}>
-                    <Text style={styles.songCountText}>{songs.length} {t('common.songs')}</Text>
-                  </View>
+                  {topSongs.length > 0 ? (
+                    <View style={styles.songCountPill}>
+                      <Text style={styles.songCountText}>
+                        {topSongs.length >= 10 ? t('artist.topTen') : `${topSongs.length} ${t('common.songs')}`}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
             )}
           </>
+        }
+        ListFooterComponent={
+          !loading && !error && releases.length > 0 ? (
+            <View style={styles.releaseSection}>
+              <View style={styles.releaseHeaderRow}>
+                <View>
+                  <Text style={styles.releaseEyebrow}>{t('artist.releasesEyebrow')}</Text>
+                  <Text style={styles.releaseTitle}>{t('artist.releases')}</Text>
+                </View>
+                {releases.length > 8 ? (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    activeOpacity={0.84}
+                    onPress={() => setShowAllReleases((value) => !value)}
+                    style={styles.showMoreButton}
+                  >
+                    <Text style={styles.showMoreText}>
+                      {showAllReleases ? t('artist.showLess') : t('artist.showMore')}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.releaseRail}
+              >
+                {visibleReleases.map((release) => (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    activeOpacity={0.88}
+                    key={release.id}
+                    onPress={() => {
+                      const releaseIndex = artistQueue.findIndex((song) => song.id === release.id);
+                      if (releaseIndex < 0) return;
+                      setQueue(artistQueue, releaseIndex);
+                      void playSong(artistQueue[releaseIndex]);
+                    }}
+                    style={styles.releaseCard}
+                  >
+                    <LinearGradient
+                      colors={['rgba(255,255,255,0.05)', 'rgba(124,58,237,0.08)', 'rgba(14,14,16,0.96)']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.releaseCoverFrame}
+                    >
+                      <CoverArt uri={release.coverUrl} size={108} radius={16} />
+                    </LinearGradient>
+                    <Text style={styles.releaseCardTitle} numberOfLines={1}>{release.title}</Text>
+                    <Text style={styles.releaseCardSubtitle} numberOfLines={1}>{release.subtitle}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          ) : null
         }
         maxToRenderPerBatch={10}
         renderItem={renderSong}
@@ -692,5 +783,80 @@ const styles = StyleSheet.create({
   },
   songSeparator: {
     height: 12,
+  },
+  songRowFrame: {
+    marginHorizontal: 20,
+  },
+  releaseSection: {
+    paddingBottom: 28,
+    paddingTop: 22,
+  },
+  releaseHeaderRow: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    paddingHorizontal: 20,
+  },
+  releaseEyebrow: {
+    color: theme.colors.primaryLight,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 2.4,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  releaseTitle: {
+    color: theme.colors.text,
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.3,
+  },
+  showMoreButton: {
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderColor: theme.colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  showMoreText: {
+    color: theme.colors.text,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  releaseRail: {
+    gap: 14,
+    paddingHorizontal: 20,
+    paddingRight: 32,
+  },
+  releaseCard: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 8,
+    width: 118,
+  },
+  releaseCoverFrame: {
+    alignItems: 'center',
+    borderColor: 'rgba(168,85,247,0.28)',
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 110,
+    justifyContent: 'center',
+    width: 110,
+  },
+  releaseCardTitle: {
+    color: theme.colors.text,
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 9,
+  },
+  releaseCardSubtitle: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 3,
   },
 });
