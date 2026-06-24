@@ -178,7 +178,7 @@ function RootNavigationContent() {
           options={{ presentation: 'fullScreenModal' }}
         />
       </Stack.Navigator>
-      {hasActiveSong && activeRoute !== 'ForYou' && !isPlayerExpanded ? (
+      {hasActiveSong && activeRoute !== 'ForYou' ? (
         <MiniPlayer onExpand={openPlayer} />
       ) : null}
       {hasActiveSong && isPlayerExpanded ? <FullscreenPlayer onClose={closePlayer} /> : null}

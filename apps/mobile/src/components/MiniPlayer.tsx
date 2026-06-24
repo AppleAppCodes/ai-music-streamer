@@ -18,61 +18,32 @@ export const MINI_PLAYER_LAYOUT = {
 export const MINI_PLAYER_RADIUS = 34;
 
 export function MiniPlayer({ onExpand }: { onExpand: () => void }) {
-  const bounceScale = useRef(new RNAnimated.Value(0.96)).current;
-  const bounceTranslateY = useRef(new RNAnimated.Value(10)).current;
+  const bounceScale = useRef(new RNAnimated.Value(0.992)).current;
 
   useEffect(() => {
-    bounceScale.setValue(0.96);
-    bounceTranslateY.setValue(10);
+    bounceScale.setValue(0.992);
 
     RNAnimated.sequence([
-      RNAnimated.parallel([
-        RNAnimated.spring(bounceScale, {
-          damping: 9,
-          mass: 0.72,
-          stiffness: 360,
-          toValue: 1.045,
-          useNativeDriver: true,
-        }),
-        RNAnimated.timing(bounceTranslateY, {
-          duration: 150,
-          easing: RNEasing.out(RNEasing.quad),
-          toValue: -4,
-          useNativeDriver: true,
-        }),
-      ]),
-      RNAnimated.parallel([
-        RNAnimated.spring(bounceScale, {
-          damping: 8,
-          mass: 0.6,
-          stiffness: 420,
-          toValue: 0.988,
-          useNativeDriver: true,
-        }),
-        RNAnimated.timing(bounceTranslateY, {
-          duration: 90,
-          easing: RNEasing.inOut(RNEasing.quad),
-          toValue: 1,
-          useNativeDriver: true,
-        }),
-      ]),
-      RNAnimated.parallel([
-        RNAnimated.spring(bounceScale, {
-          damping: 11,
-          mass: 0.68,
-          stiffness: 360,
-          toValue: 1,
-          useNativeDriver: true,
-        }),
-        RNAnimated.timing(bounceTranslateY, {
-          duration: 120,
-          easing: RNEasing.out(RNEasing.quad),
-          toValue: 0,
-          useNativeDriver: true,
-        }),
-      ]),
+      RNAnimated.timing(bounceScale, {
+        duration: 110,
+        easing: RNEasing.out(RNEasing.quad),
+        toValue: 1.018,
+        useNativeDriver: true,
+      }),
+      RNAnimated.timing(bounceScale, {
+        duration: 92,
+        easing: RNEasing.inOut(RNEasing.quad),
+        toValue: 0.997,
+        useNativeDriver: true,
+      }),
+      RNAnimated.timing(bounceScale, {
+        duration: 118,
+        easing: RNEasing.out(RNEasing.quad),
+        toValue: 1,
+        useNativeDriver: true,
+      }),
     ]).start();
-  }, [bounceScale, bounceTranslateY]);
+  }, [bounceScale]);
 
   return (
     <RNAnimated.View
@@ -80,7 +51,6 @@ export function MiniPlayer({ onExpand }: { onExpand: () => void }) {
         styles.shell,
         {
           transform: [
-            { translateY: bounceTranslateY },
             { scale: bounceScale },
           ],
         },

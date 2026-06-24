@@ -21,6 +21,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -53,6 +54,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const morphProgress = useSharedValue(0);
+  const dockSettleProgress = useSharedValue(0);
   const saveButtonScale = useRef(new RNAnimated.Value(1)).current;
   const [saveToastAnimation] = useState(() => new RNAnimated.Value(0));
   const [saveToastVisible, setSaveToastVisible] = useState(false);
@@ -69,12 +71,14 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   const miniPlayerWidth = Math.max(1, screenWidth - MINI_PLAYER_LAYOUT.horizontalInset * 2);
   const miniScaleX = miniPlayerWidth / Math.max(1, screenWidth);
   const miniScaleY = MINI_PLAYER_LAYOUT.height / Math.max(1, screenHeight);
+  const miniSurfaceRadius = MINI_PLAYER_RADIUS / Math.max(0.001, miniScaleY);
   const miniCenterOffsetY = miniPlayerTop + MINI_PLAYER_LAYOUT.height / 2 - screenHeight / 2;
   const finishDismiss = useCallback(() => {
     onClose();
   }, [onClose]);
 
   useEffect(() => {
+    dockSettleProgress.value = 0;
     morphProgress.value = 0;
     morphProgress.value = withTiming(1, {
       duration: 420,
@@ -83,27 +87,43 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
 
     return () => {
       cancelAnimation(morphProgress);
+      cancelAnimation(dockSettleProgress);
     };
-  }, [morphProgress]);
+  }, [dockSettleProgress, morphProgress]);
 
   const resetDrag = useCallback(() => {
+    dockSettleProgress.value = 0;
     morphProgress.value = withSpring(1, {
       damping: 24,
       mass: 0.86,
       stiffness: 270,
     });
-  }, [morphProgress]);
+  }, [dockSettleProgress, morphProgress]);
 
   const dismissPlayer = useCallback((velocity = 0) => {
     const duration = Math.max(210, Math.min(330, 300 - Math.max(0, velocity) * 22));
 
+    dockSettleProgress.value = 0;
     morphProgress.value = withTiming(0, {
       duration,
       easing: ReanimatedEasing.bezier(0.22, 1, 0.36, 1),
     }, (finished) => {
-      if (finished) runOnJS(finishDismiss)();
+      if (finished) {
+        dockSettleProgress.value = withSequence(
+          withTiming(1, {
+            duration: 120,
+            easing: ReanimatedEasing.out(ReanimatedEasing.quad),
+          }),
+          withTiming(0, {
+            duration: 145,
+            easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+          }, (settled) => {
+            if (settled) runOnJS(finishDismiss)();
+          }),
+        );
+      }
     });
-  }, [finishDismiss, morphProgress]);
+  }, [dockSettleProgress, finishDismiss, morphProgress]);
 
   const playerPanGesture = useMemo(
     () =>
@@ -113,6 +133,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
         .onUpdate((event) => {
           if (event.translationY <= 0) return;
 
+          dockSettleProgress.value = 0;
           morphProgress.value = Math.max(0, Math.min(1, 1 - event.translationY / morphDistance));
         })
         .onEnd((event) => {
@@ -124,11 +145,25 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
               duration,
               easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
             }, (finished) => {
-              if (finished) runOnJS(finishDismiss)();
+              if (finished) {
+                dockSettleProgress.value = withSequence(
+                  withTiming(1, {
+                    duration: 120,
+                    easing: ReanimatedEasing.out(ReanimatedEasing.quad),
+                  }),
+                  withTiming(0, {
+                    duration: 145,
+                    easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+                  }, (settled) => {
+                    if (settled) runOnJS(finishDismiss)();
+                  }),
+                );
+              }
             });
             return;
           }
 
+          dockSettleProgress.value = 0;
           morphProgress.value = withSpring(1, {
             damping: 25,
             mass: 0.86,
@@ -145,32 +180,30 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
             });
           }
         }),
-    [finishDismiss, morphDistance, morphProgress],
+    [dockSettleProgress, finishDismiss, morphDistance, morphProgress],
   );
 
   const playerSurfaceStyle = useAnimatedStyle(() => {
     const progress = morphProgress.value;
     const baseScaleX = interpolate(progress, [0, 1], [miniScaleX, 1]);
     const baseScaleY = interpolate(progress, [0, 1], [miniScaleY, 1]);
-    const dockPulseX = interpolate(progress, [0, 0.08, 0.18, 0.34, 1], [1, 1.055, 0.982, 1.01, 1]);
-    const dockPulseY = interpolate(progress, [0, 0.08, 0.18, 0.34, 1], [1, 1.18, 0.92, 1.015, 1]);
 
     return {
-      opacity: interpolate(progress, [0, 0.08, 0.22, 1], [0, 0.4, 0.82, 1]),
-      borderRadius: interpolate(progress, [0, 0.14, 0.48, 0.86, 1], [MINI_PLAYER_RADIUS, 42, 56, 30, 0]),
+      opacity: interpolate(progress, [0, 0.18, 0.46, 1], [0, 0, 0.5, 1]),
+      borderRadius: interpolate(progress, [0, 0.18, 0.58, 1], [miniSurfaceRadius, Math.min(miniSurfaceRadius, 440), 74, 0]),
       transform: [
         {
           translateY: interpolate(progress, [0, 1], [miniCenterOffsetY, 0]),
         },
         {
-          scaleX: baseScaleX * dockPulseX,
+          scaleX: baseScaleX,
         },
         {
-          scaleY: baseScaleY * dockPulseY,
+          scaleY: baseScaleY,
         },
       ],
     };
-  }, [miniCenterOffsetY, miniScaleX, miniScaleY]);
+  }, [miniCenterOffsetY, miniScaleX, miniScaleY, miniSurfaceRadius]);
 
   const artworkBackdropAnimatedStyle = useAnimatedStyle(() => ({
     opacity: interpolate(morphProgress.value, [0, 0.42, 0.78, 1], [0, 0.18, 0.72, 1]),
@@ -198,32 +231,46 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   }, [miniScaleX, miniScaleY]);
 
   const morphVeilAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(morphProgress.value, [0, 0.08, 0.34, 0.68, 1], [0, 0.24, 0.16, 0.04, 0]),
+    opacity: interpolate(morphProgress.value, [0, 0.16, 0.42, 1], [0, 0.07, 0.03, 0]),
   }), []);
 
-  const miniSnapshotAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(morphProgress.value, [0, 0.22, 0.52], [1, 1, 0]),
-    transform: [
-      {
-        scale: interpolate(morphProgress.value, [0, 0.08, 0.18, 0.32, 0.52], [1, 1.045, 0.986, 1.012, 0.96]),
-      },
-    ],
-  }), []);
+  const miniSnapshotAnimatedStyle = useAnimatedStyle(() => {
+    const settle = dockSettleProgress.value;
+    const morphScale = interpolate(morphProgress.value, [0, 0.2, 0.56], [1, 1, 0.965]);
+    const settleScaleX = interpolate(settle, [0, 0.42, 0.72, 1], [1, 1.026, 0.996, 1]);
+    const settleScaleY = interpolate(settle, [0, 0.42, 0.72, 1], [1, 0.986, 1.008, 1]);
 
-  const dockBubbleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(morphProgress.value, [0, 0.07, 0.22, 0.52], [0, 0.9, 0.48, 0]),
-    transform: [
-      {
-        translateY: interpolate(morphProgress.value, [0, 0.12, 0.52], [0, -7, 12]),
-      },
-      {
-        scaleX: interpolate(morphProgress.value, [0, 0.09, 0.2, 0.52], [0.98, 1.07, 0.97, 0.92]),
-      },
-      {
-        scaleY: interpolate(morphProgress.value, [0, 0.09, 0.2, 0.52], [0.98, 1.2, 0.91, 0.9]),
-      },
-    ],
-  }), []);
+    return {
+      opacity: interpolate(morphProgress.value, [0, 0.3, 0.6], [1, 1, 0]),
+      transform: [
+        {
+          scaleX: morphScale * settleScaleX,
+        },
+        {
+          scaleY: morphScale * settleScaleY,
+        },
+      ],
+    };
+  }, []);
+
+  const dockBubbleAnimatedStyle = useAnimatedStyle(() => {
+    const progress = morphProgress.value;
+    const settle = dockSettleProgress.value;
+    const progressOpacity = interpolate(progress, [0, 0.1, 0.28, 0.56], [0, 0.24, 0.16, 0]);
+    const settleOpacity = interpolate(settle, [0, 0.42, 1], [0, 0.32, 0]);
+
+    return {
+      opacity: Math.max(progressOpacity, settleOpacity),
+      transform: [
+        {
+          scaleX: interpolate(settle, [0, 0.42, 0.72, 1], [1, 1.036, 0.998, 1]),
+        },
+        {
+          scaleY: interpolate(settle, [0, 0.42, 0.72, 1], [1, 0.984, 1.01, 1]),
+        },
+      ],
+    };
+  }, []);
 
   const animateSaveButton = useCallback(() => {
     saveButtonScale.stopAnimation();
