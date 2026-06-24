@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SongListRow } from '../components/SongListRow';
 import { YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
+import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback } from '../lib/silent-video';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
@@ -22,12 +23,12 @@ function SongSeparator() {
 function DailyNewReleasesHeroBackground({ active }: { active: boolean }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const player = useVideoPlayer(require('../../assets/yoriax_intro.MOV'), (videoPlayer) => {
-    videoPlayer.loop = true;
-    videoPlayer.muted = true;
+    configureSilentLoopingVideoPlayer(videoPlayer);
   });
 
   useEffect(() => {
     if (active) {
+      prepareSilentVideoPlayback(player);
       player.play();
     } else {
       player.pause();

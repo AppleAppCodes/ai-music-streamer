@@ -15,6 +15,7 @@ import { theme } from './src/theme';
 import { YoriaxMark } from './src/components/YoriaxUI';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { I18nProvider, useI18n } from './src/lib/i18n';
+import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback } from './src/lib/silent-video';
 
 export default function App() {
   return (
@@ -43,15 +44,14 @@ function AppShell() {
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const videoPlayer = useVideoPlayer(require('./assets/yoriax_intro.MOV'), (player) => {
-    player.loop = true;
-    player.muted = true;
-    player.play();
+    configureSilentLoopingVideoPlayer(player);
   });
 
   useEffect(() => {
     if (signedIn || initializing) {
       videoPlayer.pause();
     } else {
+      prepareSilentVideoPlayback(videoPlayer);
       videoPlayer.play();
     }
   }, [videoPlayer, signedIn, initializing]);

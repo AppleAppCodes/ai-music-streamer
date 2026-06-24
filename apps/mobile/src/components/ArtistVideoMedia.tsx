@@ -1,6 +1,7 @@
 import { memo, useEffect } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback } from '../lib/silent-video';
 
 type ArtistVideoMediaProps = {
   active?: boolean;
@@ -14,8 +15,7 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
   uri,
 }: ArtistVideoMediaProps) {
   const player = useVideoPlayer(uri ? { uri, useCaching: true } : null, (videoPlayer) => {
-    videoPlayer.loop = true;
-    videoPlayer.muted = true;
+    configureSilentLoopingVideoPlayer(videoPlayer);
   });
 
   useEffect(() => {
@@ -28,6 +28,7 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
       return;
     }
 
+    prepareSilentVideoPlayback(player);
     player.play();
 
     return () => {
