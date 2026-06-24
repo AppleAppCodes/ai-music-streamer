@@ -1,5 +1,5 @@
-import { ActivityIndicator, Animated, Easing, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useEffect, useState, memo, useCallback, useRef } from 'react';
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, memo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { theme } from '../theme';
@@ -10,6 +10,7 @@ import type { Playlist, Song } from '../lib/types';
 import { usePlayerControls } from '../lib/player-context';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPlays } from '../lib/format';
+import { PlayingVisualizer } from '../components/PlayingVisualizer';
 import { YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
 
@@ -59,84 +60,6 @@ function DailyNewReleasesHeroBackground({ active }: { active: boolean }) {
   );
 }
 
-function PlayingVisualizer({ active }: { active: boolean }) {
-  const bars = useRef([
-    new Animated.Value(0.32),
-    new Animated.Value(0.58),
-    new Animated.Value(0.42),
-  ]).current;
-
-  useEffect(() => {
-    if (!active) {
-      bars.forEach((bar) => {
-        bar.stopAnimation();
-        bar.setValue(0.32);
-      });
-      return;
-    }
-
-    const loops = bars.map((bar, index) => (
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(index * 90),
-          Animated.timing(bar, {
-            duration: 210,
-            easing: Easing.inOut(Easing.quad),
-            toValue: 1,
-            useNativeDriver: true,
-          }),
-          Animated.timing(bar, {
-            duration: 230,
-            easing: Easing.inOut(Easing.quad),
-            toValue: index === 1 ? 0.38 : 0.54,
-            useNativeDriver: true,
-          }),
-          Animated.timing(bar, {
-            duration: 190,
-            easing: Easing.inOut(Easing.quad),
-            toValue: index === 2 ? 0.9 : 0.68,
-            useNativeDriver: true,
-          }),
-          Animated.timing(bar, {
-            duration: 220,
-            easing: Easing.inOut(Easing.quad),
-            toValue: 0.32,
-            useNativeDriver: true,
-          }),
-        ]),
-      )
-    ));
-
-    loops.forEach((loop) => loop.start());
-
-    return () => {
-      loops.forEach((loop) => loop.stop());
-    };
-  }, [active, bars]);
-
-  if (!active) return null;
-
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={styles.visualizer}
-    >
-      {bars.map((bar, index) => (
-        <Animated.View
-          key={index}
-          style={[
-            styles.visualizerBar,
-            {
-              transform: [{ scaleY: bar }],
-            },
-          ]}
-        />
-      ))}
-    </View>
-  );
-}
-
 const MemoizedSongRow = memo(function SongRow({
   song,
   index,
@@ -174,7 +97,7 @@ const MemoizedSongRow = memo(function SongRow({
 
       <Text style={styles.songMeta}>{formatPlays(song.plays)}</Text>
 
-      <PlayingVisualizer active={isActive && isPlaying} />
+      <PlayingVisualizer active={isActive && isPlaying} style={styles.visualizerOffset} />
     </TouchableOpacity>
   );
 });
@@ -305,38 +228,41 @@ export function PlaylistScreen({ route, navigation }: Props) {
           updateCellsBatchingPeriod={32}
           windowSize={7}
           ListHeaderComponent={
-            <View style={[styles.playlistHero, isDailyNewReleases && styles.dailyPlaylistHero]}>
-              {isDailyNewReleases && !isLeaving ? (
-                <DailyNewReleasesHeroBackground active={!loading && !error && !isLeaving} />
-              ) : null}
-              <View style={styles.playlistHeroContent}>
-                {isDailyNewReleases ? (
-                  <YoriaxPlaylistCover size={200} radius={20} style={styles.playlistCover} />
-                ) : playlist.cover_url ? (
-                  <Image source={{ uri: playlist.cover_url }} style={styles.playlistCover} alt="" />
-                ) : (
-                  <View style={[styles.playlistCover, styles.playlistFallback]}>
-                    <Text style={styles.playlistFallbackText}>♪</Text>
-                  </View>
-                )}
-                <Text style={styles.playlistTitle}>{playlist.title}</Text>
-                <Text style={styles.playlistMeta}>
-                  {playlist.is_public ? t('playlist.publicMeta') : t('playlist.privateMeta')} • {songs.length} {t('common.songs')}
-                </Text>
-                {playlistDescription ? (
-                  <Text style={styles.playlistDescription}>{playlistDescription}</Text>
+            <>
+              <View style={[styles.playlistHero, isDailyNewReleases && styles.dailyPlaylistHero]}>
+                {isDailyNewReleases && !isLeaving ? (
+                  <DailyNewReleasesHeroBackground active={!loading && !error && !isLeaving} />
                 ) : null}
+                <View style={styles.playlistHeroContent}>
+                  {isDailyNewReleases ? (
+                    <YoriaxPlaylistCover size={200} radius={20} style={styles.playlistCover} />
+                  ) : playlist.cover_url ? (
+                    <Image source={{ uri: playlist.cover_url }} style={styles.playlistCover} alt="" />
+                  ) : (
+                    <View style={[styles.playlistCover, styles.playlistFallback]}>
+                      <Text style={styles.playlistFallbackText}>♪</Text>
+                    </View>
+                  )}
+                  <Text style={styles.playlistTitle}>{playlist.title}</Text>
+                  <Text style={styles.playlistMeta}>
+                    {playlist.is_public ? t('playlist.publicMeta') : t('playlist.privateMeta')} • {songs.length} {t('common.songs')}
+                  </Text>
+                  {playlistDescription ? (
+                    <Text style={styles.playlistDescription}>{playlistDescription}</Text>
+                  ) : null}
 
-                {songs.length > 0 ? (
-                  <TouchableOpacity
-                    style={styles.playAllButton}
-                    onPress={() => handlePlaySong(songs[0], 0)}
-                  >
-                    <Text style={styles.playAllText}>{t('playlist.play')}</Text>
-                  </TouchableOpacity>
-                ) : null}
+                  {songs.length > 0 ? (
+                    <TouchableOpacity
+                      style={styles.playAllButton}
+                      onPress={() => handlePlaySong(songs[0], 0)}
+                    >
+                      <Text style={styles.playAllText}>{t('playlist.play')}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               </View>
-            </View>
+              {songs.length > 0 ? <View style={styles.playlistTracksTopGap} /> : null}
+            </>
           }
           ListEmptyComponent={
             <View style={styles.emptyBox}>
@@ -534,29 +460,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  visualizer: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(124,58,237,0.16)',
-    borderColor: 'rgba(168,85,247,0.42)',
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 3,
-    height: 24,
-    justifyContent: 'center',
-    marginLeft: 8,
-    paddingHorizontal: 6,
-    width: 28,
+  playlistTracksTopGap: {
+    height: 18,
   },
-  visualizerBar: {
-    backgroundColor: theme.colors.primaryLight,
-    borderRadius: 2,
-    height: 14,
-    shadowColor: theme.colors.primaryLight,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.34,
-    shadowRadius: 6,
-    width: 3,
+  visualizerOffset: {
+    marginLeft: 8,
   },
   emptyBox: {
     alignItems: 'center',

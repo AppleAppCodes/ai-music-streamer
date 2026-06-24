@@ -14,6 +14,7 @@ import { useAuth } from '../lib/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../lib/i18n';
 import { ArtistVideoMedia } from '../components/ArtistVideoMedia';
+import { PlayingVisualizer } from '../components/PlayingVisualizer';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Artist'>;
 type ArtistSocials = {
@@ -58,11 +59,7 @@ const ArtistSongRow = memo(function ArtistSongRow({
         </Text>
         <Text style={styles.songPlays}>{formatPlays(song.plays)}</Text>
       </View>
-      {active && isPlaying ? (
-        <View style={styles.playingIndicator}>
-          <Text style={styles.playingText}>▶</Text>
-        </View>
-      ) : null}
+      <PlayingVisualizer active={active && isPlaying} style={styles.artistVisualizer} />
     </TouchableOpacity>
   );
 });
@@ -349,13 +346,10 @@ export function ArtistScreen({ route, navigation }: Props) {
                     ) : (
                       <Ionicons name={isFollowing ? 'person' : 'person-add'} size={15} color={theme.colors.text} />
                     )}
-                    <Text style={styles.followButtonText}>
+                    <Text numberOfLines={1} style={styles.followButtonText}>
                       {isFollowing ? t('artist.followed') : t('artist.follow')}
                     </Text>
                   </TouchableOpacity>
-                  <View style={styles.songCountPill}>
-                    <Text style={styles.songCountText}>{songs.length} {t('common.songs')}</Text>
-                  </View>
                 </View>
                 {hasSocials ? (
                   <View style={styles.socialCard}>
@@ -367,7 +361,12 @@ export function ArtistScreen({ route, navigation }: Props) {
                     </View>
                   </View>
                 ) : null}
-                <Text style={styles.sectionTitle}>{t('artist.popular')}</Text>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.sectionTitle}>{t('artist.popular')}</Text>
+                  <View style={styles.songCountPill}>
+                    <Text style={styles.songCountText}>{songs.length} {t('common.songs')}</Text>
+                  </View>
+                </View>
               </View>
             )}
           </>
@@ -581,7 +580,6 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     alignItems: 'center',
-    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 12,
     marginBottom: 24,
@@ -621,6 +619,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.borderStrong,
     borderRadius: 999,
     borderWidth: 1,
+    flexShrink: 1,
     flexDirection: 'row',
     gap: 7,
     minHeight: 40,
@@ -633,6 +632,7 @@ const styles = StyleSheet.create({
   },
   followButtonText: {
     color: theme.colors.text,
+    flexShrink: 1,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.3,
@@ -641,13 +641,18 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.42,
   },
+  sectionHeaderRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
   songCountPill: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderColor: theme.colors.border,
     borderRadius: 999,
     borderWidth: 1,
-    marginLeft: 'auto',
     paddingHorizontal: 13,
     paddingVertical: 8,
   },
@@ -697,7 +702,6 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontSize: 20,
     fontWeight: '900',
-    marginBottom: 16,
   },
   songSeparator: {
     height: 12,
@@ -748,17 +752,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  playingIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: theme.colors.text,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playingText: {
-    color: theme.colors.background,
-    fontSize: 10,
-    fontWeight: '900',
+  artistVisualizer: {
+    marginLeft: 4,
   },
 });
