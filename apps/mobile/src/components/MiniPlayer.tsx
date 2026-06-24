@@ -1,4 +1,5 @@
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated as RNAnimated, Easing as RNEasing, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDuration } from '../lib/format';
 import { usePlayer } from '../lib/player-context';
@@ -14,15 +15,85 @@ export const MINI_PLAYER_LAYOUT = {
   horizontalInset: 14,
 } as const;
 
+export const MINI_PLAYER_RADIUS = 34;
+
 export function MiniPlayer({ onExpand }: { onExpand: () => void }) {
+  const bounceScale = useRef(new RNAnimated.Value(0.96)).current;
+  const bounceTranslateY = useRef(new RNAnimated.Value(10)).current;
+
+  useEffect(() => {
+    bounceScale.setValue(0.96);
+    bounceTranslateY.setValue(10);
+
+    RNAnimated.sequence([
+      RNAnimated.parallel([
+        RNAnimated.spring(bounceScale, {
+          damping: 9,
+          mass: 0.72,
+          stiffness: 360,
+          toValue: 1.045,
+          useNativeDriver: true,
+        }),
+        RNAnimated.timing(bounceTranslateY, {
+          duration: 150,
+          easing: RNEasing.out(RNEasing.quad),
+          toValue: -4,
+          useNativeDriver: true,
+        }),
+      ]),
+      RNAnimated.parallel([
+        RNAnimated.spring(bounceScale, {
+          damping: 8,
+          mass: 0.6,
+          stiffness: 420,
+          toValue: 0.988,
+          useNativeDriver: true,
+        }),
+        RNAnimated.timing(bounceTranslateY, {
+          duration: 90,
+          easing: RNEasing.inOut(RNEasing.quad),
+          toValue: 1,
+          useNativeDriver: true,
+        }),
+      ]),
+      RNAnimated.parallel([
+        RNAnimated.spring(bounceScale, {
+          damping: 11,
+          mass: 0.68,
+          stiffness: 360,
+          toValue: 1,
+          useNativeDriver: true,
+        }),
+        RNAnimated.timing(bounceTranslateY, {
+          duration: 120,
+          easing: RNEasing.out(RNEasing.quad),
+          toValue: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, [bounceScale, bounceTranslateY]);
+
   return (
-    <TouchableOpacity
-      style={styles.shell}
-      activeOpacity={0.94}
-      onPress={onExpand}
+    <RNAnimated.View
+      style={[
+        styles.shell,
+        {
+          transform: [
+            { translateY: bounceTranslateY },
+            { scale: bounceScale },
+          ],
+        },
+      ]}
     >
-      <MiniPlayerPreview />
-    </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.shellButton}
+        activeOpacity={0.94}
+        onPress={onExpand}
+      >
+        <MiniPlayerPreview />
+      </TouchableOpacity>
+    </RNAnimated.View>
   );
 }
 
@@ -89,7 +160,7 @@ const styles = StyleSheet.create({
   shell: {
     backgroundColor: 'transparent',
     borderColor: theme.colors.borderStrong,
-    borderRadius: theme.radii.lg,
+    borderRadius: MINI_PLAYER_RADIUS,
     borderWidth: 1,
     bottom: MINI_PLAYER_LAYOUT.bottom,
     height: MINI_PLAYER_LAYOUT.height,
@@ -101,6 +172,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.18,
     shadowRadius: 26,
+  },
+  shellButton: {
+    flex: 1,
   },
   preview: {
     flex: 1,

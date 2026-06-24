@@ -36,7 +36,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
 import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
-import { MINI_PLAYER_LAYOUT, MiniPlayerPreview } from '../components/MiniPlayer';
+import { MINI_PLAYER_LAYOUT, MINI_PLAYER_RADIUS, MiniPlayerPreview } from '../components/MiniPlayer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../lib/i18n';
 
@@ -152,11 +152,12 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
     const progress = morphProgress.value;
     const baseScaleX = interpolate(progress, [0, 1], [miniScaleX, 1]);
     const baseScaleY = interpolate(progress, [0, 1], [miniScaleY, 1]);
-    const dockPulseX = interpolate(progress, [0, 0.1, 0.2, 0.36, 1], [1, 1.045, 0.985, 1.012, 1]);
-    const dockPulseY = interpolate(progress, [0, 0.1, 0.2, 0.36, 1], [1, 1.16, 0.93, 1.018, 1]);
+    const dockPulseX = interpolate(progress, [0, 0.08, 0.18, 0.34, 1], [1, 1.055, 0.982, 1.01, 1]);
+    const dockPulseY = interpolate(progress, [0, 0.08, 0.18, 0.34, 1], [1, 1.18, 0.92, 1.015, 1]);
 
     return {
-      borderRadius: interpolate(progress, [0, 0.16, 0.48, 0.86, 1], [theme.radii.lg, 30, 42, 26, 0]),
+      opacity: interpolate(progress, [0, 0.08, 0.22, 1], [0, 0.4, 0.82, 1]),
+      borderRadius: interpolate(progress, [0, 0.14, 0.48, 0.86, 1], [MINI_PLAYER_RADIUS, 42, 56, 30, 0]),
       transform: [
         {
           translateY: interpolate(progress, [0, 1], [miniCenterOffsetY, 0]),
@@ -197,29 +198,29 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   }, [miniScaleX, miniScaleY]);
 
   const morphVeilAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(morphProgress.value, [0, 0.08, 0.32, 0.68, 1], [0, 0.92, 0.5, 0.08, 0]),
+    opacity: interpolate(morphProgress.value, [0, 0.08, 0.34, 0.68, 1], [0, 0.24, 0.16, 0.04, 0]),
   }), []);
 
   const miniSnapshotAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(morphProgress.value, [0, 0.18, 0.42], [1, 1, 0]),
+    opacity: interpolate(morphProgress.value, [0, 0.22, 0.52], [1, 1, 0]),
     transform: [
       {
-        scale: interpolate(morphProgress.value, [0, 0.42], [1, 0.985]),
+        scale: interpolate(morphProgress.value, [0, 0.08, 0.18, 0.32, 0.52], [1, 1.045, 0.986, 1.012, 0.96]),
       },
     ],
   }), []);
 
   const dockBubbleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(morphProgress.value, [0, 0.06, 0.22, 0.48], [0, 1, 0.72, 0]),
+    opacity: interpolate(morphProgress.value, [0, 0.07, 0.22, 0.52], [0, 0.9, 0.48, 0]),
     transform: [
       {
-        translateY: interpolate(morphProgress.value, [0, 0.14, 0.48], [0, -8, 14]),
+        translateY: interpolate(morphProgress.value, [0, 0.12, 0.52], [0, -7, 12]),
       },
       {
-        scaleX: interpolate(morphProgress.value, [0, 0.1, 0.22, 0.48], [0.98, 1.06, 0.965, 0.92]),
+        scaleX: interpolate(morphProgress.value, [0, 0.09, 0.2, 0.52], [0.98, 1.07, 0.97, 0.92]),
       },
       {
-        scaleY: interpolate(morphProgress.value, [0, 0.1, 0.22, 0.48], [0.98, 1.18, 0.92, 0.9]),
+        scaleY: interpolate(morphProgress.value, [0, 0.09, 0.2, 0.52], [0.98, 1.2, 0.91, 0.9]),
       },
     ],
   }), []);
@@ -638,7 +639,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
         style={[styles.morphVeil, morphVeilAnimatedStyle]}
       >
         <LinearGradient
-          colors={['rgba(22,10,36,0.96)', 'rgba(9,7,18,0.94)', 'rgba(5,5,6,0.98)']}
+          colors={['rgba(255,255,255,0.04)', 'rgba(255,255,255,0.02)', 'rgba(255,255,255,0)']}
           locations={[0, 0.58, 1]}
           style={StyleSheet.absoluteFill}
         />
@@ -659,7 +660,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
         style={[styles.dockBubble, dockBubbleAnimatedStyle]}
       >
         <LinearGradient
-          colors={['rgba(168,85,247,0.38)', 'rgba(45,212,191,0.18)', 'rgba(255,255,255,0.08)']}
+          colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -736,7 +737,7 @@ const styles = StyleSheet.create({
   },
   miniSnapshot: {
     borderColor: theme.colors.borderStrong,
-    borderRadius: theme.radii.lg,
+    borderRadius: MINI_PLAYER_RADIUS,
     borderWidth: 1,
     bottom: MINI_PLAYER_LAYOUT.bottom,
     height: MINI_PLAYER_LAYOUT.height,
@@ -751,8 +752,8 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   dockBubble: {
-    borderColor: 'rgba(168,85,247,0.34)',
-    borderRadius: theme.radii.lg,
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: MINI_PLAYER_RADIUS,
     borderWidth: 1,
     bottom: MINI_PLAYER_LAYOUT.bottom,
     height: MINI_PLAYER_LAYOUT.height,
@@ -760,10 +761,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'absolute',
     right: MINI_PLAYER_LAYOUT.horizontalInset,
-    shadowColor: theme.colors.primaryLight,
+    shadowColor: '#ffffff',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.42,
-    shadowRadius: 28,
+    shadowOpacity: 0.18,
+    shadowRadius: 30,
     zIndex: 3,
   },
   expandedContent: {
@@ -779,17 +780,17 @@ const styles = StyleSheet.create({
     zIndex: 4,
   },
   morphVeilGlow: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: 220,
     bottom: -170,
     height: 340,
-    opacity: 0.16,
+    opacity: 0.12,
     position: 'absolute',
     right: -130,
-    shadowColor: theme.colors.primaryLight,
+    shadowColor: '#ffffff',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.42,
-    shadowRadius: 82,
+    shadowOpacity: 0.16,
+    shadowRadius: 76,
     width: 340,
   },
   header: {
