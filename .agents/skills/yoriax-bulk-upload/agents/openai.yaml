@@ -1,0 +1,4 @@
+interface:
+  display_name: "YORIAX Bulk Upload"
+  short_description: "Upload YORIAX song folders safely"
+  default_prompt: "Use $yoriax-bulk-upload to upload a local folder of matched audio and cover files to YORIAX."
