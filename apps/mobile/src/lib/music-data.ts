@@ -213,6 +213,31 @@ async function loadSongs(limit = 80, orderBy: 'created_at' | 'plays' = 'created_
   return ((fallback.data || []) as SongRow[]).map(mapSong);
 }
 
+export async function loadSongById(songId: string): Promise<Song> {
+  const client = requireClient();
+  const withProfile = await client
+    .from('songs')
+    .select(SONG_SELECT_WITH_PROFILE)
+    .eq('id', songId)
+    .maybeSingle();
+
+  if (!withProfile.error && withProfile.data) {
+    return mapSong(withProfile.data as SongRow);
+  }
+
+  const fallback = await client
+    .from('songs')
+    .select(SONG_SELECT)
+    .eq('id', songId)
+    .maybeSingle();
+
+  if (fallback.error || !fallback.data) {
+    throw new Error(fallback.error?.message || 'Song nicht gefunden');
+  }
+
+  return mapSong(fallback.data as SongRow);
+}
+
 async function loadSongSignals(userId: string) {
   const client = requireClient();
   const [

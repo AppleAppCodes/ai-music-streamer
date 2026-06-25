@@ -13,6 +13,10 @@
       "buildNumber": "113",
       "usesAppleSignIn": true,
       "supportsTablet": false,
+      "associatedDomains": [
+        "applinks:www.yoriax.com",
+        "applinks:yoriax.com"
+      ],
       "infoPlist": {
         "CFBundleAllowMixedLocalizations": true,
         "ITSAppUsesNonExemptEncryption": false,

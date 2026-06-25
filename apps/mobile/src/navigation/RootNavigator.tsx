@@ -1,9 +1,10 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import type { NavigationState, PartialState } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import * as Linking from 'expo-linking';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { MainTabParamList, RootStackParamList } from './types';
@@ -23,9 +24,10 @@ import { ArtistsScreen } from '../screens/ArtistsScreen';
 import { PlaylistDiscoverScreen } from '../screens/PlaylistDiscoverScreen';
 import { MusicPreferencesScreen } from '../screens/MusicPreferencesScreen';
 import { MiniPlayer } from '../components/MiniPlayer';
-import { usePlayerShell } from '../lib/player-context';
+import { usePlayerControls, usePlayerShell } from '../lib/player-context';
 import { PlayerOverlayProvider, usePlayerOverlay } from '../lib/player-overlay-context';
 import { useI18n } from '../lib/i18n';
+import { loadSongById } from '../lib/music-data';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -43,6 +45,44 @@ const NavigationTheme = {
 };
 
 type AppNavigationState = NavigationState | PartialState<NavigationState>;
+const UNIVERSAL_LINK_HOSTS = new Set(['www.yoriax.com', 'yoriax.com']);
+
+function normalizeDeepLinkPath(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+
+    if (parsed.protocol === 'yoriax:') {
+      return [parsed.hostname, parsed.pathname]
+        .filter(Boolean)
+        .join('/')
+        .replace(/\/+/g, '/')
+        .replace(/^\/+|\/+$/g, '');
+    }
+
+    if ((parsed.protocol === 'https:' || parsed.protocol === 'http:') && UNIVERSAL_LINK_HOSTS.has(parsed.hostname)) {
+      return parsed.pathname.replace(/^\/+|\/+$/g, '');
+    }
+  } catch {
+    const parsed = Linking.parse(url);
+    return [parsed.hostname, parsed.path]
+      .filter(Boolean)
+      .join('/')
+      .replace(/\/+/g, '/')
+      .replace(/^\/+|\/+$/g, '') || null;
+  }
+
+  return null;
+}
+
+function decodePathPart(value: string | undefined) {
+  if (!value) return '';
+
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
 
 function getActiveRouteName(state: AppNavigationState | undefined): string | undefined {
   if (!state?.routes.length) return undefined;
@@ -125,8 +165,12 @@ export function RootNavigator() {
 
 function RootNavigationContent() {
   const { hasActiveSong } = usePlayerShell();
+  const { playSong, setQueue } = usePlayerControls();
   const { closePlayer, isPlayerExpanded, openPlayer } = usePlayerOverlay();
   const [activeRoute, setActiveRoute] = useState<string>('Home');
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  const pendingDeepLinkRef = useRef<string | null>(null);
+  const lastHandledDeepLinkRef = useRef<{ time: number; url: string } | null>(null);
 
   useEffect(() => {
     if (!hasActiveSong && isPlayerExpanded) {
@@ -134,9 +178,123 @@ function RootNavigationContent() {
     }
   }, [closePlayer, hasActiveSong, isPlayerExpanded]);
 
+  const handleDeepLink = useCallback(async (url: string) => {
+    const now = Date.now();
+    const lastHandled = lastHandledDeepLinkRef.current;
+
+    if (lastHandled?.url === url && now - lastHandled.time < 1600) {
+      return;
+    }
+
+    if (!navigationRef.isReady()) {
+      pendingDeepLinkRef.current = url;
+      return;
+    }
+
+    const path = normalizeDeepLinkPath(url);
+    if (!path) return;
+
+    const [section, ...rest] = path.split('/').filter(Boolean);
+    if (section === 'auth') return;
+
+    lastHandledDeepLinkRef.current = { time: now, url };
+
+    if (!section) {
+      navigationRef.navigate('MainTabs', { screen: 'Home' });
+      return;
+    }
+
+    if (section === 'song') {
+      const songId = decodePathPart(rest.join('/'));
+      if (!songId) return;
+
+      try {
+        const song = await loadSongById(songId);
+        setQueue([song]);
+        await playSong(song);
+        openPlayer();
+      } catch (error) {
+        console.error('[DeepLink] Failed to open song link', error);
+      }
+      return;
+    }
+
+    if (section === 'artist') {
+      const artistId = decodePathPart(rest.join('/'));
+      if (artistId) navigationRef.navigate('Artist', { artistId });
+      return;
+    }
+
+    if (section === 'playlist') {
+      const playlistId = decodePathPart(rest.join('/'));
+      if (playlistId) {
+        navigationRef.navigate('Playlist', { playlistId });
+      } else {
+        navigationRef.navigate('PlaylistDiscover');
+      }
+      return;
+    }
+
+    if (section === 'playlists' || (section === 'discover' && rest[0] === 'playlists')) {
+      navigationRef.navigate('PlaylistDiscover');
+      return;
+    }
+
+    if (section === 'artists') {
+      navigationRef.navigate('Artists');
+      return;
+    }
+
+    if (section === 'charts') {
+      navigationRef.navigate('Charts');
+      return;
+    }
+
+    if (section === 'collection' && rest[0] === 'tracks') {
+      navigationRef.navigate('LikedSongs');
+      return;
+    }
+
+    if (section === 'feed') {
+      navigationRef.navigate('MainTabs', { screen: 'ForYou' });
+      return;
+    }
+
+    navigationRef.navigate('MainTabs', { screen: 'Home' });
+  }, [navigationRef, openPlayer, playSong, setQueue]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    Linking.getInitialURL()
+      .then((url) => {
+        if (mounted && url) void handleDeepLink(url);
+      })
+      .catch((error: unknown) => {
+        console.error('[DeepLink] Failed to read initial URL', error);
+      });
+
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      void handleDeepLink(url);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, [handleDeepLink]);
+
   return (
     <NavigationContainer
+      ref={navigationRef}
       theme={NavigationTheme}
+      onReady={() => {
+        if (pendingDeepLinkRef.current) {
+          const pendingUrl = pendingDeepLinkRef.current;
+          pendingDeepLinkRef.current = null;
+          void handleDeepLink(pendingUrl);
+        }
+      }}
       onStateChange={(state) => setActiveRoute(getActiveRouteName(state) ?? 'Home')}
     >
       <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.background } }}>

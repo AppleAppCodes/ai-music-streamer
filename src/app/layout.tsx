@@ -8,6 +8,7 @@ import PlayerLayout from "@/components/layout/PlayerLayout";
 import CookieConsent from "@/components/ui/CookieConsent";
 import MobileNavigation from "@/components/layout/MobileNavigation";
 import GuestPreviewBanner from "@/components/layout/GuestPreviewBanner";
+import MobileAppInstallPrompt from "@/components/layout/MobileAppInstallPrompt";
 import { createClient } from "@/utils/supabase/server";
 import { Analytics } from "@vercel/analytics/react";
 import { isAdminUser } from "@/lib/admin";
@@ -67,6 +68,9 @@ export const metadata: Metadata = {
     shortcut: [{ url: "/favicon.ico?v=4", type: "image/x-icon" }],
     apple: [{ url: "/apple-touch-icon.png?v=4", sizes: "180x180", type: "image/png" }],
   },
+  other: {
+    "apple-itunes-app": "app-id=6780680190, app-argument=https://www.yoriax.com",
+  },
 };
 
 export default async function RootLayout({
@@ -119,6 +123,7 @@ export default async function RootLayout({
           ) : shouldRenderGuestBanner ? (
             <GuestPreviewBanner />
           ) : null}
+          <MobileAppInstallPrompt />
           <CookieConsent />
         </PlayerLayout>
         <Analytics />
