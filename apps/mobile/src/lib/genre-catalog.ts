@@ -19,7 +19,7 @@ export const MUSIC_GENRES: MusicGenre[] = [
   { id: 'deep-house', label: 'Deep House', aliases: ['deep house', 'deephouse'], color: '#0d9488', icon: 'water' },
   { id: 'techno', label: 'Techno', aliases: ['techno'], color: '#8b5cf6', icon: 'radio' },
   { id: 'hardstyle', label: 'Hardstyle', aliases: ['hardstyle'], color: '#dc2626', icon: 'speedometer' },
-  { id: 'drum-and-bass', label: 'Drum & Bass', aliases: ['drum & bass', 'drum and bass', 'dnb'], color: '#0891b2', icon: 'stats-chart' },
+  { id: 'drum-and-bass', label: 'Drum \'n\' Bass', aliases: ['drum & bass', 'drum and bass', 'drum \'n\' bass', 'drum n bass', 'dnb'], color: '#0891b2', icon: 'stats-chart' },
   { id: 'phonk', label: 'Phonk', aliases: ['phonk'], color: '#7c3aed', icon: 'car-sport' },
   { id: 'rock', label: 'Rock', aliases: ['rock'], color: '#ef4444', icon: 'musical-notes' },
   { id: 'indie', label: 'Indie', aliases: ['indie', 'indie pop', 'indie rock'], color: '#f59e0b', icon: 'color-palette' },

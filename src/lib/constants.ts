@@ -25,7 +25,8 @@ export const GENRES: GenreDef[] = [
   { name: 'Oriental', icon: Compass, color: 'bg-orange-600', glow: 'rgba(234, 88, 12, 0.58)' },
   { name: 'Schlager', icon: Smile, color: 'bg-yellow-400', glow: 'rgba(250, 204, 21, 0.58)' },
   { name: 'Hardstyle', icon: Activity, color: 'bg-red-700', glow: 'rgba(185, 28, 28, 0.58)' },
-  { name: 'House', icon: Zap, color: 'bg-indigo-500', glow: 'rgba(99, 102, 241, 0.58)' }
+  { name: 'House', icon: Zap, color: 'bg-indigo-500', glow: 'rgba(99, 102, 241, 0.58)' },
+  { name: 'Drum \'n\' Bass', icon: Activity, color: 'bg-cyan-600', glow: 'rgba(8, 145, 178, 0.58)' }
 ];
 
 export const MOODS = ['Happy', 'Sad', 'Energetic', 'Chill', 'Dark', 'Romantic'];
