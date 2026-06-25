@@ -123,6 +123,24 @@ export default function PlaylistPage() {
       
       // Handle dynamic "Daily New Releases" playlist
       if (playlistId === 'daily-new-releases' || playlistId === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111') {
+        let dbVideoUrl: string | null = null;
+        let dbVideoStoragePath: string | null = null;
+
+        try {
+          const { data: dbPlaylist } = await supabase
+            .from('playlists')
+            .select('video_url, video_storage_path')
+            .eq('id', 'da114eeb-ecea-5e55-9ee1-ea5e5da11111')
+            .maybeSingle();
+
+          if (dbPlaylist) {
+            dbVideoUrl = dbPlaylist.video_url || null;
+            dbVideoStoragePath = dbPlaylist.video_storage_path || null;
+          }
+        } catch (dbErr) {
+          console.warn('Failed to fetch DB video fields for Daily New Releases:', dbErr);
+        }
+
         setPlaylist({
           id: 'da114eeb-ecea-5e55-9ee1-ea5e5da11111',
           user_id: 'system',
@@ -131,6 +149,8 @@ export default function PlaylistPage() {
           cover_url: null, // Will render standard icon or we can provide an image
           is_public: true,
           is_official: true,
+          video_url: dbVideoUrl,
+          video_storage_path: dbVideoStoragePath,
           created_at: new Date().toISOString(),
           profiles: {
             username: 'YORIAX Team',
@@ -138,7 +158,12 @@ export default function PlaylistPage() {
           }
         });
         setIsOwner(false);
-        setIsAdmin(false);
+        
+        if (session?.user && isModUser(session.user)) {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
         
         // Fetch last 150 approved songs to find 20 unique artists
         const { data: latestSongs, error } = await supabase

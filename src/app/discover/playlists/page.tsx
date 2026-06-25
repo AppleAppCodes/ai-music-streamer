@@ -73,12 +73,14 @@ export default function DiscoverPlaylistsPage() {
   if (swrData !== prevSwrData) {
     setPrevSwrData(swrData);
     if (swrData) {
-      const fetchedPlaylists = swrData.map((playlist) => ({
-        ...playlist,
-        profiles: Array.isArray(playlist.profiles)
-          ? playlist.profiles[0] || { username: 'Unbekannt' }
-          : playlist.profiles || { username: 'Unbekannt' },
-      }));
+      const fetchedPlaylists = swrData
+        .filter((playlist) => playlist.id !== 'da114eeb-ecea-5e55-9ee1-ea5e5da11111')
+        .map((playlist) => ({
+          ...playlist,
+          profiles: Array.isArray(playlist.profiles)
+            ? playlist.profiles[0] || { username: 'Unbekannt' }
+            : playlist.profiles || { username: 'Unbekannt' },
+        }));
       
       // Inject dynamic 'Daily New Releases' playlist
       fetchedPlaylists.unshift({
