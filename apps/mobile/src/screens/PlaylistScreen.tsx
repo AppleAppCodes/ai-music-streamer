@@ -9,8 +9,9 @@ import { DAILY_NEW_RELEASES_PLAYLIST_ID, loadPlaylistDetails } from '../lib/musi
 import type { Playlist, Song } from '../lib/types';
 import { usePlayerControls } from '../lib/player-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SongListRow } from '../components/SongListRow';
-import { YoriaxPlaylistCover } from '../components/YoriaxUI';
+import { BackButton, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
 import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback } from '../lib/silent-video';
 
@@ -68,6 +69,7 @@ function PlaylistHeroBackground({ active, videoUrl }: { active: boolean; videoUr
 export function PlaylistScreen({ route, navigation }: Props) {
   const { t } = useI18n();
   const { playlistId } = route.params;
+  const insets = useSafeAreaInsets();
   
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
@@ -163,11 +165,8 @@ export function PlaylistScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color={theme.colors.primary} />
-          <Text style={styles.backText}>{t('playlist.back')}</Text>
-        </TouchableOpacity>
+      <View style={[styles.absoluteHeader, { top: Math.max(insets.top + 8, 18) }]}>
+        <BackButton onPress={handleBackPress} />
       </View>
 
       {loading ? (
@@ -194,7 +193,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
           windowSize={7}
           ListHeaderComponent={
             <>
-              <View style={[styles.playlistHero, hasVideo && styles.dailyPlaylistHero]}>
+              <View style={[styles.playlistHero, hasVideo && styles.dailyPlaylistHero, { paddingTop: Math.max(insets.top + 60, 86) }]}>
                 {hasVideo && !isLeaving ? (
                   <PlaylistHeroBackground active={!loading && !error && !isLeaving} videoUrl={playlist?.video_url} />
                 ) : null}
@@ -256,21 +255,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  header: {
-    paddingTop: 50,
-    paddingHorizontal: 10,
-    paddingBottom: 10,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  backText: {
-    color: theme.colors.primary,
-    fontSize: 16,
-    fontWeight: '700',
-    marginLeft: 4,
+  absoluteHeader: {
+    left: 20,
+    position: 'absolute',
+    zIndex: 10,
   },
   centerBox: {
     flex: 1,
@@ -299,7 +287,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingBottom: 30,
     paddingHorizontal: 20,
-    paddingTop: 10,
   },
   dailyPlaylistHero: {
     backgroundColor: theme.colors.background,
