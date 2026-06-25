@@ -28,6 +28,10 @@ function PlaylistHeroBackground({ active, videoUrl }: { active: boolean; videoUr
   });
 
   useEffect(() => {
+    player.replace(source);
+  }, [videoUrl, player, source]);
+
+  useEffect(() => {
     if (active) {
       prepareSilentVideoPlayback(player);
       player.play();

@@ -671,7 +671,7 @@ export default function PlaylistPage() {
   if (!playlist) return null;
 
   return (
-    <div className="yoriax-page flex-1 overflow-y-auto pb-32">
+    <div className="yoriax-page flex-1 overflow-y-auto pb-32 relative">
       <button
         type="button"
         onClick={() => router.back()}
@@ -680,6 +680,21 @@ export default function PlaylistPage() {
       >
         <ArrowLeft className="h-6 w-6" />
       </button>
+
+      {/* Playlist Banner Video Background */}
+      {playlist.video_url && (
+        <div className="absolute top-0 left-0 w-full h-[320px] md:h-[380px] overflow-hidden z-0 pointer-events-none">
+          <video
+            src={playlist.video_url}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover opacity-25 filter blur-[1px]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/40 to-transparent"></div>
+        </div>
+      )}
       
       {/* Hero Content */}
       <div className="group relative z-10 flex flex-col items-center gap-5 px-5 pb-8 pt-20 text-center md:flex-row md:items-end md:gap-6 md:px-10 md:pt-24 md:text-left">
