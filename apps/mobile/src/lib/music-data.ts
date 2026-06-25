@@ -32,6 +32,7 @@ export interface HomeMusicData {
   trendingSongs: Song[];
   recommendedSongs: Song[];
   latestSongs: Song[];
+  officialPlaylists: DiscoverPlaylist[];
 }
 
 export interface LibraryMusicData {
@@ -277,10 +278,11 @@ async function loadSongSignals(userId: string) {
 }
 
 export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
-  const [popularSongs, latestSongs, signals] = await Promise.all([
+  const [popularSongs, latestSongs, signals, discoverPlaylistsData] = await Promise.all([
     loadSongs(96, 'plays'),
     loadSongs(48, 'created_at'),
     loadSongSignals(userId),
+    loadDiscoverPlaylists(),
   ]);
   const songs = mergeSongs(popularSongs, latestSongs);
   const trendingSongs = getDailyTrendingSongs(songs, 6);
@@ -293,6 +295,7 @@ export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
     trendingSongs,
     recommendedSongs: (distinctRecommendations.length >= 6 ? distinctRecommendations : rankedRecommendations).slice(0, 6),
     latestSongs: latestSongs.slice(0, 6),
+    officialPlaylists: discoverPlaylistsData.officialPlaylists,
   };
 }
 

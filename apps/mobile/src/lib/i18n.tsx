@@ -74,6 +74,7 @@ const translations = {
       playlistsSubtitle: 'Community & kuratiert',
       refreshError: 'Home konnte nicht aktualisiert werden.',
       trending: 'Trending heute',
+      officialPlaylists: 'YORIAX Offizielle Playlists',
     },
     player: {
       addedToFavorites: 'Hinzugefügt zu: Lieblingssongs.',
@@ -379,6 +380,7 @@ const translations = {
       playlistsSubtitle: 'Community & curated',
       refreshError: 'Home could not be refreshed.',
       trending: 'Trending today',
+      officialPlaylists: 'YORIAX Official Playlists',
     },
     player: {
       addedToFavorites: 'Added to Liked Songs.',

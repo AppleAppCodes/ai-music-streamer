@@ -7,14 +7,14 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CoverArt, IconButton, StateCard } from '../components/YoriaxUI';
+import { CoverArt, IconButton, StateCard, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
-import { loadHomeMusic, type HomeMusicData } from '../lib/music-data';
+import { loadHomeMusic, type HomeMusicData, DAILY_NEW_RELEASES_PLAYLIST_ID } from '../lib/music-data';
 import { readPersistedCache, writePersistedCache } from '../lib/persisted-cache';
 import { usePlayerControls } from '../lib/player-context';
 import { useMusicPreferences } from '../lib/music-preferences-context';
-import type { Song } from '../lib/types';
+import type { DiscoverPlaylist, Song } from '../lib/types';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
 import { useI18n } from '../lib/i18n';
@@ -134,6 +134,10 @@ export function HomeScreen() {
     },
   ], [navigation, t]);
 
+  const handleOpenPlaylist = useCallback((playlistId: string) => {
+    navigation.navigate('Playlist', { playlistId });
+  }, [navigation]);
+
   return (
     <ScrollView
       style={styles.container}
@@ -187,6 +191,11 @@ export function HomeScreen() {
 
       {data ? (
         <View style={styles.sections}>
+          <PlaylistRail
+            title={t('home.officialPlaylists')}
+            playlists={data.officialPlaylists}
+            onPressPlaylist={handleOpenPlaylist}
+          />
           <SongRail title={t('home.trending')} songs={data.trendingSongs} />
           <SongRail title={t('home.forYouSelected')} songs={data.recommendedSongs} />
           <SongRail title={t('home.latest')} songs={data.latestSongs} />
@@ -273,6 +282,80 @@ const SongRail = memo(function SongRail({ title, songs }: { title: string; songs
             />
           );
         })}
+      </ScrollView>
+    </View>
+  );
+});
+
+const PlaylistRailItem = memo(function PlaylistRailItem({
+  playlist,
+  onPress,
+}: {
+  playlist: DiscoverPlaylist;
+  onPress: (id: string) => void;
+}) {
+  const { t } = useI18n();
+  const isDailyNewReleases = playlist.id === DAILY_NEW_RELEASES_PLAYLIST_ID || playlist.id === 'daily-new-releases';
+
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      activeOpacity={0.96}
+      onPress={() => onPress(playlist.id)}
+      style={styles.songCard}
+    >
+      {isDailyNewReleases ? (
+        <YoriaxPlaylistCover size={132} radius={18} />
+      ) : (
+        <CoverArt uri={playlist.cover_url} size={132} radius={18} />
+      )}
+      <Text style={styles.songTitle} numberOfLines={1}>
+        {playlist.title}
+      </Text>
+      <Text style={styles.songArtist} numberOfLines={1}>
+        {t('playlistDiscover.by', { creator: playlist.creatorName })}
+        {playlist.isOfficial && (
+          <>
+            {' '}
+            <Ionicons name="shield-checkmark" size={12} color="#5eead4" />
+          </>
+        )}
+      </Text>
+      {playlist.description ? (
+        <Text style={styles.songMeta} numberOfLines={1}>
+          {playlist.description}
+        </Text>
+      ) : (
+        <Text style={styles.songMeta}>
+          {t('playlistDiscover.publicPlaylist')}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+});
+
+const PlaylistRail = memo(function PlaylistRail({
+  title,
+  playlists,
+  onPressPlaylist,
+}: {
+  title: string;
+  playlists: DiscoverPlaylist[];
+  onPressPlaylist: (id: string) => void;
+}) {
+  if (!playlists || playlists.length === 0) return null;
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.songRail}>
+        {playlists.map((playlist) => (
+          <PlaylistRailItem
+            key={playlist.id}
+            playlist={playlist}
+            onPress={onPressPlaylist}
+          />
+        ))}
       </ScrollView>
     </View>
   );
