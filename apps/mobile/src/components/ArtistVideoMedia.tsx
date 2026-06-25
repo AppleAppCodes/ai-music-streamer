@@ -1,7 +1,7 @@
 import { memo, useEffect, useState } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, useShouldPlaySilentVideo } from '../lib/silent-video';
+import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, startSilentVideoLoop, useShouldPlaySilentVideo } from '../lib/silent-video';
 
 type ArtistVideoMediaProps = {
   active?: boolean;
@@ -30,9 +30,11 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
       setVideoState({ ready: status === 'readyToPlay', uri: uri ?? null });
     });
     const sourceSubscription = player.addListener('sourceLoad', () => {
+      prepareSilentVideoPlayback(player);
       setVideoState({ ready: true, uri: uri ?? null });
     });
     if (player.status === 'readyToPlay') {
+      prepareSilentVideoPlayback(player);
       setVideoState({ ready: true, uri: uri ?? null });
     }
 
@@ -52,11 +54,12 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
       return;
     }
 
-    prepareSilentVideoPlayback(player);
     if (isReady) {
-      player.play();
+      startSilentVideoLoop(player);
     }
+  }, [isReady, player, shouldPlay, uri]);
 
+  useEffect(() => {
     return () => {
       try {
         player.pause();
@@ -64,7 +67,7 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
         // Ignore native player lifecycle races while virtualized artist cards unmount.
       }
     };
-  }, [isReady, player, shouldPlay, uri]);
+  }, [player]);
 
   if (!uri) return null;
 

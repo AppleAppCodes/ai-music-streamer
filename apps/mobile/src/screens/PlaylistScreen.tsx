@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SongListRow } from '../components/SongListRow';
 import { BackButton, CoverArt, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, useShouldPlaySilentVideo } from '../lib/silent-video';
+import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, startSilentVideoLoop, useShouldPlaySilentVideo } from '../lib/silent-video';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
@@ -43,12 +43,17 @@ function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolea
   useEffect(() => {
     setVideoState({ ready: false, sourceKey });
     const subscription = player.addListener('statusChange', ({ status }) => {
+      if (status === 'readyToPlay') {
+        prepareSilentVideoPlayback(player);
+      }
       setVideoState({ ready: status === 'readyToPlay', sourceKey });
     });
     const sourceSubscription = player.addListener('sourceLoad', () => {
+      prepareSilentVideoPlayback(player);
       setVideoState({ ready: true, sourceKey });
     });
     if (player.status === 'readyToPlay') {
+      prepareSilentVideoPlayback(player);
       setVideoState({ ready: true, sourceKey });
     }
 
@@ -60,12 +65,16 @@ function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolea
 
   useEffect(() => {
     if (shouldPlay && isReady) {
-      prepareSilentVideoPlayback(player);
-      player.play();
-    } else {
-      player.pause();
+      startSilentVideoLoop(player);
+      return;
     }
 
+    if (!shouldPlay) {
+      player.pause();
+    }
+  }, [isReady, player, shouldPlay]);
+
+  useEffect(() => {
     return () => {
       try {
         player.pause();
@@ -73,7 +82,7 @@ function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolea
         // Ignore native player teardown races while leaving the screen.
       }
     };
-  }, [isReady, player, shouldPlay]);
+  }, [player]);
 
   return (
     <View pointerEvents="none" style={styles.dailyHeroBackground}>

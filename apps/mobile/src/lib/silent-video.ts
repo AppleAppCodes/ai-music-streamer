@@ -1,6 +1,13 @@
-import { useEffect, useState } from 'react';
-import { AppState } from 'react-native';
 import type { VideoPlayer } from 'expo-video';
+
+function disableSilentVideoAudioTrack(player: VideoPlayer) {
+  try {
+    player.audioTrack = null;
+  } catch {
+    // Some platforms/sources expose audioTrack as effectively read-only until the source is loaded.
+    // Muting + zero volume still keeps the decorative video silent, and we retry after source load.
+  }
+}
 
 export function configureSilentLoopingVideoPlayer(player: VideoPlayer) {
   player.loop = true;
@@ -11,32 +18,23 @@ export function configureSilentLoopingVideoPlayer(player: VideoPlayer) {
   player.showNowPlayingNotification = false;
   player.allowsExternalPlayback = false;
   player.staysActiveInBackground = false;
+  disableSilentVideoAudioTrack(player);
 }
 
 export function prepareSilentVideoPlayback(player: VideoPlayer) {
   player.muted = true;
   player.volume = 0;
   player.audioMixingMode = 'mixWithOthers';
+  disableSilentVideoAudioTrack(player);
 }
 
-export function useAppForeground() {
-  const [isForeground, setIsForeground] = useState(AppState.currentState === 'active');
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      setIsForeground(nextState === 'active');
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  return isForeground;
+export function startSilentVideoLoop(player: VideoPlayer) {
+  prepareSilentVideoPlayback(player);
+  if (!player.playing) {
+    player.play();
+  }
 }
 
 export function useShouldPlaySilentVideo(active = true) {
-  const isForeground = useAppForeground();
-
-  return active && isForeground;
+  return active;
 }
