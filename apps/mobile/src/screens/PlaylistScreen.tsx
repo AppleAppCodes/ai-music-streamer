@@ -1,4 +1,4 @@
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -21,7 +21,7 @@ function SongSeparator() {
   return <View style={styles.songSeparator} />;
 }
 
-function PlaylistHeroBackground({ active, videoUrl }: { active: boolean; videoUrl?: string | null }) {
+function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolean; videoUrl?: string | null; coverUrl?: string | null }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const source = useMemo(() => videoUrl ? { uri: videoUrl } : require('../../assets/yoriax_intro.MOV'), [videoUrl]);
   const sourceKey = videoUrl || 'local:yoriax_intro';
@@ -70,6 +70,19 @@ function PlaylistHeroBackground({ active, videoUrl }: { active: boolean; videoUr
 
   return (
     <View pointerEvents="none" style={styles.dailyHeroBackground}>
+      {coverUrl ? (
+        <Image
+          source={{ uri: coverUrl }}
+          style={StyleSheet.absoluteFill}
+          blurRadius={20}
+          resizeMode="cover"
+        />
+      ) : (
+        <LinearGradient
+          colors={['rgba(124,58,237,0.2)', 'rgba(20,12,36,0.9)', 'rgba(5,5,5,0.9)']}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
       <VideoView
         contentFit="cover"
         nativeControls={false}
@@ -214,7 +227,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
             <>
               <View style={[styles.playlistHero, hasVideo && styles.dailyPlaylistHero, { paddingTop: Math.max(insets.top + 60, 86) }]}>
                 {hasVideo && !isLeaving ? (
-                  <PlaylistHeroBackground active={!loading && !error && !isLeaving} videoUrl={playlist?.video_url} />
+                  <PlaylistHeroBackground active={!loading && !error && !isLeaving} videoUrl={playlist?.video_url} coverUrl={playlist?.cover_url} />
                 ) : null}
                 <View style={styles.playlistHeroContent}>
                   {isDailyNewReleases ? (

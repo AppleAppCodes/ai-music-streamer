@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from './src/lib/auth-context';
@@ -16,6 +16,7 @@ import { YoriaxMark } from './src/components/YoriaxUI';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { I18nProvider, useI18n } from './src/lib/i18n';
 import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback } from './src/lib/silent-video';
+import { loadHomeMusic } from './src/lib/music-data';
 
 export default function App() {
   return (
@@ -59,6 +60,34 @@ function AppShell() {
   useEffect(() => {
     if (!signedIn) reset();
   }, [reset, signedIn]);
+
+  // Preload home data and media
+  useEffect(() => {
+    if (user) {
+      const preload = async () => {
+        try {
+          const homeData = await loadHomeMusic(user.id);
+          
+          // Prefetch cover images of trending, recommended, and official playlists
+          const urlsToPrefetch = new Set<string>();
+          
+          homeData.trendingSongs.forEach(s => s.cover_url && urlsToPrefetch.add(s.cover_url));
+          homeData.recommendedSongs.forEach(s => s.cover_url && urlsToPrefetch.add(s.cover_url));
+          homeData.officialPlaylists.forEach(p => p.cover_url && urlsToPrefetch.add(p.cover_url));
+          
+          await Promise.all(
+            Array.from(urlsToPrefetch).map(url => Image.prefetch(url).catch(() => {}))
+          );
+          
+          console.log(`[Preload] Successfully preloaded ${urlsToPrefetch.size} cover images.`);
+        } catch (err) {
+          console.error('[Preload] Failed to preload media:', err);
+        }
+      };
+      
+      preload();
+    }
+  }, [user]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={signedIn ? ['left', 'right'] : ['top', 'left', 'right', 'bottom']}>

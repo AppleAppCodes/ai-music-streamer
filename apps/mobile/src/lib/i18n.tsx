@@ -15,7 +15,7 @@ const translations = {
       streams: 'Streams',
     },
     launch: {
-      preparing: 'Dein Sound wird vorbereitet.',
+      preparing: 'Klangraum wird geladen.',
     },
     tabs: {
       forYou: 'Für dich',
@@ -321,7 +321,7 @@ const translations = {
       streams: 'Streams',
     },
     launch: {
-      preparing: 'Preparing your sound.',
+      preparing: 'Loading your soundscape.',
     },
     tabs: {
       forYou: 'For You',
