@@ -50,7 +50,7 @@ function AppShell() {
   const appInitializing = initializing || (signedIn && (preferencesLoading || !startupMediaReady));
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const videoPlayer = useVideoPlayer(require('./assets/yoriax_intro.MOV'), (player) => {
+  const videoPlayer = useVideoPlayer(require('./assets/yoriax_intro.mp4'), (player) => {
     configureSilentLoopingVideoPlayer(player);
   });
 

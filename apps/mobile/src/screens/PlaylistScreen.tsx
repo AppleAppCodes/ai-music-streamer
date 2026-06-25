@@ -23,7 +23,7 @@ function SongSeparator() {
 
 function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolean; videoUrl?: string | null; coverUrl?: string | null }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const source = useMemo(() => videoUrl ? { uri: videoUrl, useCaching: true } : require('../../assets/yoriax_intro.MOV'), [videoUrl]);
+  const source = useMemo(() => videoUrl ? { uri: videoUrl, useCaching: true } : require('../../assets/yoriax_intro.mp4'), [videoUrl]);
   const fallbackSource = useMemo(() => {
     if (coverUrl && coverUrl !== 'local://yoriax-symbol') {
       return { uri: coverUrl };
