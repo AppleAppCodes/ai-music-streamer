@@ -37,6 +37,7 @@ export interface Playlist {
   video_url?: string | null;
   video_storage_path?: string | null;
   created_at?: string | null;
+  creatorName?: string | null;
 }
 
 export interface DiscoverPlaylist extends Playlist {

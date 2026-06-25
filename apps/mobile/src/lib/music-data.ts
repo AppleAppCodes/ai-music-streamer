@@ -601,9 +601,11 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
       description: null,
       cover_url: coverUrl || 'local://yoriax-symbol',
       is_public: true,
+      is_official: true,
       video_url: videoUrl,
       video_storage_path: videoStoragePath,
       created_at: new Date().toISOString(),
+      creatorName: 'YORIAX Team',
     };
 
     const { data: latestSongs, error } = await client
@@ -637,13 +639,16 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
 
   const { data: playlistRow, error: playlistError } = await client
     .from('playlists')
-    .select('id, user_id, title, description, cover_url, is_public, created_at, video_url, video_storage_path')
+    .select('id, user_id, title, description, cover_url, is_public, is_official, created_at, video_url, video_storage_path, profiles(username)')
     .eq('id', playlistId)
     .single();
 
   if (playlistError || !playlistRow) {
     throw new Error(playlistError?.message || 'Playlist nicht gefunden');
   }
+
+  const isOfficial = playlistRow.id === DAILY_NEW_RELEASES_PLAYLIST_ID || isOfficialPlaylist(playlistRow, getProfileUsername(playlistRow.profiles ?? null) || '');
+  const creatorName = isOfficial ? 'YORIAX Team' : (getProfileUsername(playlistRow.profiles ?? null) || 'Unbekannt');
 
   const playlist: Playlist = {
     id: playlistRow.id,
@@ -652,9 +657,11 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
     description: playlistRow.description,
     cover_url: playlistRow.cover_url,
     is_public: playlistRow.is_public,
+    is_official: isOfficial,
     video_url: playlistRow.video_url,
     video_storage_path: playlistRow.video_storage_path,
     created_at: playlistRow.created_at,
+    creatorName,
   };
 
   const { data: mappingData } = await client

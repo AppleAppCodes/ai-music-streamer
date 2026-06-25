@@ -1,5 +1,5 @@
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { theme } from '../theme';
@@ -22,14 +22,14 @@ function SongSeparator() {
 
 function PlaylistHeroBackground({ active, videoUrl }: { active: boolean; videoUrl?: string | null }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const source = videoUrl ? { uri: videoUrl } : require('../../assets/yoriax_intro.MOV');
+  const source = useMemo(() => videoUrl ? { uri: videoUrl } : require('../../assets/yoriax_intro.MOV'), [videoUrl]);
   const player = useVideoPlayer(source, (videoPlayer) => {
     configureSilentLoopingVideoPlayer(videoPlayer);
   });
 
   useEffect(() => {
     player.replace(source);
-  }, [videoUrl, player, source]);
+  }, [player, source]);
 
   useEffect(() => {
     if (active) {
@@ -209,6 +209,17 @@ export function PlaylistScreen({ route, navigation }: Props) {
                     </View>
                   )}
                   <Text style={styles.playlistTitle}>{playlist.title}</Text>
+                  {playlist.creatorName ? (
+                    <Text style={styles.playlistCreator}>
+                      {t('playlistDiscover.by', { creator: playlist.creatorName })}
+                      {playlist.is_official && (
+                        <>
+                          {' '}
+                          <Ionicons name="shield-checkmark" size={13} color="#5eead4" />
+                        </>
+                      )}
+                    </Text>
+                  ) : null}
                   <Text style={styles.playlistMeta}>
                     {playlist.is_public ? t('playlist.publicMeta') : t('playlist.privateMeta')} • {songs.length} {t('common.songs')}
                   </Text>
@@ -344,6 +355,13 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
     marginBottom: 8,
+  },
+  playlistCreator: {
+    color: theme.colors.muted,
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 10,
+    textAlign: 'center',
   },
   playlistMeta: {
     color: theme.colors.muted,

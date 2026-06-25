@@ -301,6 +301,12 @@ const PlaylistCard = memo(function PlaylistCard({
         </Text>
         <Text style={styles.cardCreator} numberOfLines={1}>
           {t('playlistDiscover.by', { creator: playlist.creatorName })}
+          {playlist.isOfficial && (
+            <>
+              {' '}
+              <Ionicons name="shield-checkmark" size={12} color="#5eead4" />
+            </>
+          )}
         </Text>
         {description ? (
           <Text style={styles.cardDescription} numberOfLines={2}>{description}</Text>
