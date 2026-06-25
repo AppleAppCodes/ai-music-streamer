@@ -23,27 +23,34 @@ function SongSeparator() {
 
 function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolean; videoUrl?: string | null; coverUrl?: string | null }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const source = useMemo(() => videoUrl ? { uri: videoUrl } : require('../../assets/yoriax_intro.MOV'), [videoUrl]);
+  const source = useMemo(() => videoUrl ? { uri: videoUrl, useCaching: true } : require('../../assets/yoriax_intro.MOV'), [videoUrl]);
+  const fallbackSource = useMemo(() => {
+    if (coverUrl && coverUrl !== 'local://yoriax-symbol') {
+      return { uri: coverUrl };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('../../assets/icon.png');
+  }, [coverUrl]);
   const sourceKey = videoUrl || 'local:yoriax_intro';
   const [videoState, setVideoState] = useState({ ready: false, sourceKey });
   const isReady = videoState.sourceKey === sourceKey && videoState.ready;
   const shouldPlay = useShouldPlaySilentVideo(active);
-  const playerSource = shouldPlay ? source : null;
-  const player = useVideoPlayer(playerSource, (videoPlayer) => {
+  const player = useVideoPlayer(source, (videoPlayer) => {
     configureSilentLoopingVideoPlayer(videoPlayer);
   });
 
   useEffect(() => {
-    player.replace(playerSource);
-  }, [player, playerSource]);
-
-  useEffect(() => {
+    setVideoState({ ready: false, sourceKey });
     const subscription = player.addListener('statusChange', ({ status }) => {
       setVideoState({ ready: status === 'readyToPlay', sourceKey });
     });
     const sourceSubscription = player.addListener('sourceLoad', () => {
       setVideoState({ ready: true, sourceKey });
     });
+    if (player.status === 'readyToPlay') {
+      setVideoState({ ready: true, sourceKey });
+    }
 
     return () => {
       subscription.remove();
@@ -70,24 +77,22 @@ function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolea
 
   return (
     <View pointerEvents="none" style={styles.dailyHeroBackground}>
-      {coverUrl ? (
-        <Image
-          source={{ uri: coverUrl }}
-          style={StyleSheet.absoluteFill}
-          blurRadius={20}
-          resizeMode="cover"
-        />
-      ) : (
-        <LinearGradient
-          colors={['rgba(124,58,237,0.2)', 'rgba(20,12,36,0.9)', 'rgba(5,5,5,0.9)']}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
+      <Image
+        blurRadius={18}
+        resizeMode="cover"
+        source={fallbackSource}
+        style={styles.dailyHeroFallbackImage}
+      />
+      <LinearGradient
+        colors={['rgba(5,5,6,0.22)', 'rgba(5,5,6,0.58)', 'rgba(5,5,6,0.9)']}
+        locations={[0, 0.48, 1]}
+        style={styles.dailyHeroFallbackTint}
+      />
       <VideoView
         contentFit="cover"
         nativeControls={false}
         player={player}
-        style={[styles.dailyHeroVideo, (!shouldPlay || !isReady) && styles.hiddenVideo]}
+        style={[styles.dailyHeroVideo, !isReady && styles.hiddenVideo]}
       />
       <LinearGradient
         colors={['rgba(5,5,6,0.32)', 'rgba(8,7,14,0.72)', theme.colors.background]}
@@ -339,6 +344,21 @@ const styles = StyleSheet.create({
   },
   hiddenVideo: {
     opacity: 0,
+  },
+  dailyHeroFallbackImage: {
+    bottom: -24,
+    left: -24,
+    opacity: 0.72,
+    position: 'absolute',
+    right: -24,
+    top: -24,
+  },
+  dailyHeroFallbackTint: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   dailyHeroOverlay: {
     bottom: 0,

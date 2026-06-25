@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef } from 'react';
-import { Animated, Easing, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from './src/lib/auth-context';
@@ -16,7 +16,7 @@ import { YoriaxMark } from './src/components/YoriaxUI';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { I18nProvider, useI18n } from './src/lib/i18n';
 import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback } from './src/lib/silent-video';
-import { loadHomeMusic } from './src/lib/music-data';
+import { preloadStartupMedia } from './src/lib/media-preload';
 
 export default function App() {
   return (
@@ -41,7 +41,13 @@ function AppShell() {
   const { loading: preferencesLoading, onboardingCompleted } = useMusicPreferences();
   const { reset } = usePlayerShell();
   const signedIn = Boolean(user);
-  const appInitializing = initializing || (signedIn && preferencesLoading);
+  const [startupMediaState, setStartupMediaState] = useState<{ ready: boolean; userId: string | null }>({
+    ready: false,
+    userId: null,
+  });
+  const [startupVideoUrls, setStartupVideoUrls] = useState<string[]>([]);
+  const startupMediaReady = !signedIn || (startupMediaState.ready && startupMediaState.userId === user?.id);
+  const appInitializing = initializing || (signedIn && (preferencesLoading || !startupMediaReady));
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const videoPlayer = useVideoPlayer(require('./assets/yoriax_intro.MOV'), (player) => {
@@ -61,38 +67,50 @@ function AppShell() {
     if (!signedIn) reset();
   }, [reset, signedIn]);
 
-  // Preload home data and media
   useEffect(() => {
-    if (user) {
-      const preload = async () => {
-        try {
-          const homeData = await loadHomeMusic(user.id);
-          
-          // Prefetch cover images of trending, recommended, and official playlists
-          const urlsToPrefetch = new Set<string>();
-          
-          homeData.trendingSongs.forEach(s => s.cover_url && urlsToPrefetch.add(s.cover_url));
-          homeData.recommendedSongs.forEach(s => s.cover_url && urlsToPrefetch.add(s.cover_url));
-          homeData.officialPlaylists.forEach(p => p.cover_url && urlsToPrefetch.add(p.cover_url));
-          
-          await Promise.all(
-            Array.from(urlsToPrefetch).map(url => Image.prefetch(url).catch(() => {}))
-          );
-          
-          console.log(`[Preload] Successfully preloaded ${urlsToPrefetch.size} cover images.`);
-        } catch (err) {
-          console.error('[Preload] Failed to preload media:', err);
-        }
-      };
-      
-      preload();
+    if (!signedIn || !user?.id) {
+      setStartupVideoUrls([]);
+      setStartupMediaState({ ready: true, userId: null });
+      return;
     }
-  }, [user]);
+
+    let mounted = true;
+    const userId = user.id;
+    const timeout = setTimeout(() => {
+      if (mounted) {
+        setStartupMediaState({ ready: true, userId });
+      }
+    }, 2400);
+
+    setStartupMediaState({ ready: false, userId });
+
+    preloadStartupMedia(userId, {
+      onVideoUrls: (videoUrls) => {
+        if (mounted) {
+          setStartupVideoUrls(videoUrls);
+        }
+      },
+    })
+      .catch((error) => {
+        console.warn('Startup media preload failed:', error);
+      })
+      .finally(() => {
+        clearTimeout(timeout);
+        if (mounted) {
+          setStartupMediaState({ ready: true, userId });
+        }
+      });
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+    };
+  }, [signedIn, user?.id]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={signedIn ? ['left', 'right'] : ['top', 'left', 'right', 'bottom']}>
       <StatusBar style="light" />
-      
+
       {!signedIn && !initializing && (
         <VideoView
           style={StyleSheet.absoluteFill}
@@ -101,8 +119,6 @@ function AppShell() {
           contentFit="cover"
         />
       )}
-
-
 
       <View style={{ flex: 1 }}>
         {appInitializing ? (
@@ -117,115 +133,133 @@ function AppShell() {
           </ScrollView>
         )}
       </View>
+      {signedIn && startupVideoUrls.length > 0 ? <StartupVideoPreheater videoUrls={startupVideoUrls} /> : null}
     </SafeAreaView>
+  );
+}
+
+function StartupVideoPreheater({ videoUrls }: { videoUrls: string[] }) {
+  return (
+    <View pointerEvents="none" style={styles.videoPreheater}>
+      {videoUrls.map((uri) => (
+        <PreheatedVideo key={uri} uri={uri} />
+      ))}
+    </View>
+  );
+}
+
+function PreheatedVideo({ uri }: { uri: string }) {
+  const player = useVideoPlayer({ uri, useCaching: true }, (videoPlayer) => {
+    configureSilentLoopingVideoPlayer(videoPlayer);
+  });
+
+  useEffect(() => {
+    prepareSilentVideoPlayback(player);
+
+    return () => {
+      try {
+        player.pause();
+      } catch {
+        // Ignore teardown races for hidden startup cache players.
+      }
+    };
+  }, [player]);
+
+  return (
+    <VideoView
+      contentFit="cover"
+      nativeControls={false}
+      player={player}
+      style={styles.preheatedVideo}
+    />
   );
 }
 
 function LaunchScreen() {
   const { t } = useI18n();
   const pulse = useRef(new Animated.Value(0)).current;
-  const float = useRef(new Animated.Value(0)).current;
-  const shimmer = useRef(new Animated.Value(0)).current;
-  const bars = useRef([
-    new Animated.Value(0.28),
-    new Animated.Value(0.58),
-    new Animated.Value(0.4),
-    new Animated.Value(0.82),
-  ]).current;
+  const drift = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
-          duration: 950,
+          duration: 1450,
           easing: Easing.inOut(Easing.quad),
           toValue: 1,
           useNativeDriver: true,
         }),
         Animated.timing(pulse, {
-          duration: 950,
+          duration: 1450,
           easing: Easing.inOut(Easing.quad),
           toValue: 0,
           useNativeDriver: true,
         }),
       ]),
     );
-    const floatLoop = Animated.loop(
+    const driftLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(float, {
-          duration: 1400,
+        Animated.timing(drift, {
+          duration: 2200,
           easing: Easing.inOut(Easing.quad),
           toValue: 1,
           useNativeDriver: true,
         }),
-        Animated.timing(float, {
-          duration: 1400,
+        Animated.timing(drift, {
+          duration: 2200,
           easing: Easing.inOut(Easing.quad),
           toValue: 0,
           useNativeDriver: true,
         }),
       ]),
     );
-    const shimmerLoop = Animated.loop(
-      Animated.timing(shimmer, {
-        duration: 1450,
-        easing: Easing.out(Easing.cubic),
-        toValue: 1,
-        useNativeDriver: true,
-      }),
-    );
-    const barLoops = bars.map((bar, index) => (
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(index * 95),
-          Animated.timing(bar, {
-            duration: 260,
-            easing: Easing.inOut(Easing.quad),
-            toValue: 1,
-            useNativeDriver: true,
-          }),
-          Animated.timing(bar, {
-            duration: 280,
-            easing: Easing.inOut(Easing.quad),
-            toValue: index % 2 === 0 ? 0.34 : 0.48,
-            useNativeDriver: true,
-          }),
-        ]),
-      )
-    ));
 
     pulseLoop.start();
-    floatLoop.start();
-    shimmerLoop.start();
-    barLoops.forEach((loop) => loop.start());
+    driftLoop.start();
 
     return () => {
       pulseLoop.stop();
-      floatLoop.stop();
-      shimmerLoop.stop();
-      barLoops.forEach((loop) => loop.stop());
+      driftLoop.stop();
     };
-  }, [bars, float, pulse, shimmer]);
+  }, [drift, pulse]);
 
   const glowScale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.92, 1.08],
+    outputRange: [0.96, 1.12],
   });
   const markScale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.96, 1.04],
+    outputRange: [0.98, 1.03],
   });
-  const markTranslateY = float.interpolate({
+  const markTranslateY = drift.interpolate({
     inputRange: [0, 1],
-    outputRange: [4, -6],
-  });
-  const shimmerTranslateX = shimmer.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-120, 120],
+    outputRange: [3, -5],
   });
 
   return (
     <View style={styles.launchScreen}>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.launchAmbientOrb,
+          styles.launchAmbientOrbTop,
+          {
+            opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.22, 0.42] }),
+            transform: [{ scale: glowScale }],
+          },
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.launchAmbientOrb,
+          styles.launchAmbientOrbBottom,
+          {
+            opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.16, 0.32] }),
+            transform: [{ scale: glowScale }],
+          },
+        ]}
+      />
       <Animated.View
         pointerEvents="none"
         style={[
@@ -257,31 +291,14 @@ function LaunchScreen() {
       <Text style={styles.launchTitle}>YORIAX</Text>
       <Text style={styles.launchSubtitle}>{t('launch.preparing')}</Text>
 
-      <View style={styles.launchVisualizer}>
-        {bars.map((bar, index) => (
-          <Animated.View
-            key={index}
-            style={[
-              styles.launchVisualizerBar,
-              { transform: [{ scaleY: bar }] },
-            ]}
-          />
-        ))}
-      </View>
-
-      <View style={styles.launchProgress}>
-        <Animated.View
-          style={[
-            styles.launchProgressShimmer,
-            { transform: [{ translateX: shimmerTranslateX }] },
-          ]}
-        />
+      <View style={styles.launchDots}>
+        <Animated.View style={[styles.launchDot, { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }) }]} />
+        <View style={[styles.launchDot, styles.launchDotMuted]} />
+        <Animated.View style={[styles.launchDot, { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.35] }) }]} />
       </View>
     </View>
   );
 }
-
-
 
 const styles = StyleSheet.create({
   root: {
@@ -299,6 +316,19 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 34,
   },
+  videoPreheater: {
+    height: 1,
+    left: -10,
+    opacity: 0,
+    overflow: 'hidden',
+    position: 'absolute',
+    top: -10,
+    width: 1,
+  },
+  preheatedVideo: {
+    height: 1,
+    width: 1,
+  },
   launchScreen: {
     alignItems: 'center',
     backgroundColor: theme.colors.background,
@@ -306,6 +336,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     padding: 32,
+  },
+  launchAmbientOrb: {
+    borderRadius: 240,
+    height: 360,
+    position: 'absolute',
+    width: 360,
+  },
+  launchAmbientOrbTop: {
+    backgroundColor: 'rgba(124,58,237,0.52)',
+    right: -160,
+    top: 80,
+  },
+  launchAmbientOrbBottom: {
+    backgroundColor: 'rgba(45,212,191,0.26)',
+    bottom: 70,
+    left: -190,
   },
   launchGlow: {
     overflow: 'hidden',
@@ -350,37 +396,24 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 8,
   },
-  launchVisualizer: {
+  launchDots: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 5,
-    height: 28,
+    gap: 8,
     justifyContent: 'center',
-    marginTop: 24,
+    marginTop: 22,
   },
-  launchVisualizerBar: {
-    backgroundColor: theme.colors.primaryLight,
-    borderRadius: 3,
-    height: 24,
-    shadowColor: theme.colors.primaryLight,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    width: 5,
-  },
-  launchProgress: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 999,
-    height: 4,
-    marginTop: 18,
-    overflow: 'hidden',
-    width: 120,
-  },
-  launchProgressShimmer: {
+  launchDot: {
     backgroundColor: theme.colors.accent,
     borderRadius: 999,
-    height: 4,
-    opacity: 0.9,
-    width: 54,
+    height: 5,
+    shadowColor: theme.colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.36,
+    shadowRadius: 8,
+    width: 5,
+  },
+  launchDotMuted: {
+    backgroundColor: 'rgba(255,255,255,0.34)',
   },
 });

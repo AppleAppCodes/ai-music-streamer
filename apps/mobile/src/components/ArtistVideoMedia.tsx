@@ -17,9 +17,13 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
   const [videoState, setVideoState] = useState({ ready: false, uri: uri ?? null });
   const isReady = videoState.uri === (uri ?? null) && videoState.ready;
   const shouldPlay = useShouldPlaySilentVideo(active);
-  const player = useVideoPlayer(uri && shouldPlay ? { uri, useCaching: true } : null, (videoPlayer) => {
+  const player = useVideoPlayer(uri ? { uri, useCaching: true } : null, (videoPlayer) => {
     configureSilentLoopingVideoPlayer(videoPlayer);
   });
+
+  useEffect(() => {
+    setVideoState({ ready: false, uri: uri ?? null });
+  }, [uri]);
 
   useEffect(() => {
     const subscription = player.addListener('statusChange', ({ status }) => {
@@ -28,6 +32,9 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
     const sourceSubscription = player.addListener('sourceLoad', () => {
       setVideoState({ ready: true, uri: uri ?? null });
     });
+    if (player.status === 'readyToPlay') {
+      setVideoState({ ready: true, uri: uri ?? null });
+    }
 
     return () => {
       subscription.remove();
@@ -67,7 +74,7 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
       nativeControls={false}
       player={player}
       pointerEvents="none"
-      style={[styles.video, style, (!shouldPlay || !isReady) && styles.hidden]}
+      style={[styles.video, style, (!active || !isReady) && styles.hidden]}
     />
   );
 });

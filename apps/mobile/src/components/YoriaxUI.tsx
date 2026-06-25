@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -86,6 +86,14 @@ export function CoverArt({
   const isLocalSymbol = uri === 'local://yoriax-symbol';
   const [imageState, setImageState] = useState({ ready: isLocalSymbol, uri: uri ?? null });
   const imageReady = imageState.uri === (uri ?? null) ? imageState.ready : isLocalSymbol;
+
+  useEffect(() => {
+    if (!uri || uri === 'local://yoriax-symbol' || !/^https?:\/\//i.test(uri)) return;
+    Image.prefetch(uri).catch(() => {
+      // The visible image still handles fallback state. Prefetch failures should
+      // not block rendering.
+    });
+  }, [uri]);
 
   if (uri) {
     const source = uri === 'local://yoriax-symbol'
