@@ -59,6 +59,7 @@ interface PlayerControlsContextValue {
 
 interface PlayerShellContextValue {
   hasActiveSong: boolean;
+  isPlaying: boolean;
   reset: () => void;
 }
 
@@ -647,9 +648,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const shellValue = useMemo<PlayerShellContextValue>(
     () => ({
       hasActiveSong,
+      isPlaying: status.playing,
       reset,
     }),
-    [hasActiveSong, reset],
+    [hasActiveSong, reset, status.playing],
   );
 
   return (

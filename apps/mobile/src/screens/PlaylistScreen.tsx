@@ -1,4 +1,4 @@
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -11,9 +11,9 @@ import { usePlayerControls } from '../lib/player-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SongListRow } from '../components/SongListRow';
-import { BackButton, YoriaxPlaylistCover } from '../components/YoriaxUI';
+import { BackButton, CoverArt, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, useAppForeground } from '../lib/silent-video';
+import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, useShouldPlaySilentVideo } from '../lib/silent-video';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
@@ -24,18 +24,35 @@ function SongSeparator() {
 function PlaylistHeroBackground({ active, videoUrl }: { active: boolean; videoUrl?: string | null }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const source = useMemo(() => videoUrl ? { uri: videoUrl } : require('../../assets/yoriax_intro.MOV'), [videoUrl]);
-  const isAppForeground = useAppForeground();
-  const shouldPlay = active && isAppForeground;
-  const player = useVideoPlayer(source, (videoPlayer) => {
+  const sourceKey = videoUrl || 'local:yoriax_intro';
+  const [videoState, setVideoState] = useState({ ready: false, sourceKey });
+  const isReady = videoState.sourceKey === sourceKey && videoState.ready;
+  const shouldPlay = useShouldPlaySilentVideo(active);
+  const playerSource = shouldPlay ? source : null;
+  const player = useVideoPlayer(playerSource, (videoPlayer) => {
     configureSilentLoopingVideoPlayer(videoPlayer);
   });
 
   useEffect(() => {
-    player.replace(source);
-  }, [player, source]);
+    player.replace(playerSource);
+  }, [player, playerSource]);
 
   useEffect(() => {
-    if (shouldPlay) {
+    const subscription = player.addListener('statusChange', ({ status }) => {
+      setVideoState({ ready: status === 'readyToPlay', sourceKey });
+    });
+    const sourceSubscription = player.addListener('sourceLoad', () => {
+      setVideoState({ ready: true, sourceKey });
+    });
+
+    return () => {
+      subscription.remove();
+      sourceSubscription.remove();
+    };
+  }, [player, sourceKey]);
+
+  useEffect(() => {
+    if (shouldPlay && isReady) {
       prepareSilentVideoPlayback(player);
       player.play();
     } else {
@@ -49,7 +66,7 @@ function PlaylistHeroBackground({ active, videoUrl }: { active: boolean; videoUr
         // Ignore native player teardown races while leaving the screen.
       }
     };
-  }, [player, shouldPlay]);
+  }, [isReady, player, shouldPlay]);
 
   return (
     <View pointerEvents="none" style={styles.dailyHeroBackground}>
@@ -57,7 +74,7 @@ function PlaylistHeroBackground({ active, videoUrl }: { active: boolean; videoUr
         contentFit="cover"
         nativeControls={false}
         player={player}
-        style={styles.dailyHeroVideo}
+        style={[styles.dailyHeroVideo, (!shouldPlay || !isReady) && styles.hiddenVideo]}
       />
       <LinearGradient
         colors={['rgba(5,5,6,0.32)', 'rgba(8,7,14,0.72)', theme.colors.background]}
@@ -203,7 +220,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
                   {isDailyNewReleases ? (
                     <YoriaxPlaylistCover size={200} radius={20} style={styles.playlistCover} />
                   ) : playlist.cover_url ? (
-                    <Image source={{ uri: playlist.cover_url }} style={styles.playlistCover} alt="" />
+                    <CoverArt uri={playlist.cover_url} size={200} radius={20} style={styles.playlistCover} />
                   ) : (
                     <View style={[styles.playlistCover, styles.playlistFallback]}>
                       <Text style={styles.playlistFallbackText}>♪</Text>
@@ -306,6 +323,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
+  },
+  hiddenVideo: {
+    opacity: 0,
   },
   dailyHeroOverlay: {
     bottom: 0,

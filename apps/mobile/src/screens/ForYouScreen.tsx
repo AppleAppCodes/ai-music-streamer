@@ -39,6 +39,7 @@ import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useI18n } from '../lib/i18n';
+import { CoverArt } from '../components/YoriaxUI';
 
 const DEFAULT_HOOK_DURATION_SECONDS = 20;
 
@@ -150,7 +151,7 @@ function FeedVisual({
   const mediaStyle = [styles.coverImage, { width: size, height: size }];
 
   if (item.cover_url) {
-    return <Image source={{ uri: item.cover_url }} style={mediaStyle} resizeMode="cover" alt="" />;
+    return <CoverArt uri={item.cover_url} size={size} radius={25} style={mediaStyle} />;
   }
 
   return (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import type { VideoPlayer } from 'expo-video';
+import { usePlayerShell } from './player-context';
 
 export function configureSilentLoopingVideoPlayer(player: VideoPlayer) {
   player.loop = true;
@@ -9,6 +10,7 @@ export function configureSilentLoopingVideoPlayer(player: VideoPlayer) {
   player.audioMixingMode = 'mixWithOthers';
   player.showNowPlayingNotification = false;
   player.allowsExternalPlayback = false;
+  player.staysActiveInBackground = false;
 }
 
 export function prepareSilentVideoPlayback(player: VideoPlayer) {
@@ -31,4 +33,11 @@ export function useAppForeground() {
   }, []);
 
   return isForeground;
+}
+
+export function useShouldPlaySilentVideo(active = true) {
+  const isForeground = useAppForeground();
+  const { hasActiveSong, isPlaying } = usePlayerShell();
+
+  return active && isForeground && !(hasActiveSong && isPlaying);
 }

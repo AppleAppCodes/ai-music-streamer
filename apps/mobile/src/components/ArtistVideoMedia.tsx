@@ -1,7 +1,7 @@
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, useAppForeground } from '../lib/silent-video';
+import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, useShouldPlaySilentVideo } from '../lib/silent-video';
 
 type ArtistVideoMediaProps = {
   active?: boolean;
@@ -14,11 +14,26 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
   style,
   uri,
 }: ArtistVideoMediaProps) {
-  const isAppForeground = useAppForeground();
-  const shouldPlay = active && isAppForeground;
-  const player = useVideoPlayer(uri ? { uri, useCaching: true } : null, (videoPlayer) => {
+  const [videoState, setVideoState] = useState({ ready: false, uri: uri ?? null });
+  const isReady = videoState.uri === (uri ?? null) && videoState.ready;
+  const shouldPlay = useShouldPlaySilentVideo(active);
+  const player = useVideoPlayer(uri && shouldPlay ? { uri, useCaching: true } : null, (videoPlayer) => {
     configureSilentLoopingVideoPlayer(videoPlayer);
   });
+
+  useEffect(() => {
+    const subscription = player.addListener('statusChange', ({ status }) => {
+      setVideoState({ ready: status === 'readyToPlay', uri: uri ?? null });
+    });
+    const sourceSubscription = player.addListener('sourceLoad', () => {
+      setVideoState({ ready: true, uri: uri ?? null });
+    });
+
+    return () => {
+      subscription.remove();
+      sourceSubscription.remove();
+    };
+  }, [player, uri]);
 
   useEffect(() => {
     if (!uri || !shouldPlay) {
@@ -31,7 +46,9 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
     }
 
     prepareSilentVideoPlayback(player);
-    player.play();
+    if (isReady) {
+      player.play();
+    }
 
     return () => {
       try {
@@ -40,7 +57,7 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
         // Ignore native player lifecycle races while virtualized artist cards unmount.
       }
     };
-  }, [player, shouldPlay, uri]);
+  }, [isReady, player, shouldPlay, uri]);
 
   if (!uri) return null;
 
@@ -50,7 +67,7 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
       nativeControls={false}
       player={player}
       pointerEvents="none"
-      style={[styles.video, style]}
+      style={[styles.video, style, (!shouldPlay || !isReady) && styles.hidden]}
     />
   );
 });
@@ -62,5 +79,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
+  },
+  hidden: {
+    opacity: 0,
   },
 });

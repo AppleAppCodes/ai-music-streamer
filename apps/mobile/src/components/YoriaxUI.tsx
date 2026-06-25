@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -80,14 +81,39 @@ export function CoverArt({
   uri?: string | null;
   size: number;
   radius?: number;
-  style?: StyleProp<ImageStyle>;
+  style?: StyleProp<ImageStyle | ViewStyle>;
 }) {
+  const isLocalSymbol = uri === 'local://yoriax-symbol';
+  const [imageState, setImageState] = useState({ ready: isLocalSymbol, uri: uri ?? null });
+  const imageReady = imageState.uri === (uri ?? null) ? imageState.ready : isLocalSymbol;
+
   if (uri) {
     const source = uri === 'local://yoriax-symbol'
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       ? require('../../assets/yoriax-symbol.png')
       : { uri };
-    return <Image source={source} style={[{ width: size, height: size, borderRadius: radius }, styles.cover, style]} resizeMode="cover" alt="" />;
+
+    return (
+      <View style={[{ width: size, height: size, borderRadius: radius }, styles.cover, style]}>
+        <LinearGradient
+          colors={['rgba(124,58,237,0.28)', 'rgba(20,12,36,0.98)', 'rgba(5,5,5,0.94)']}
+          style={StyleSheet.absoluteFill}
+        />
+        {!imageReady ? (
+          <View style={styles.coverLoadingFallback}>
+            <YoriaxMark size={Math.max(18, size * 0.32)} />
+          </View>
+        ) : null}
+        <Image
+          source={source}
+          style={[StyleSheet.absoluteFill, !imageReady && styles.coverImageHidden]}
+          resizeMode="cover"
+          alt=""
+          onError={() => setImageState({ ready: false, uri })}
+          onLoad={() => setImageState({ ready: true, uri })}
+        />
+      </View>
+    );
   }
 
   return (
@@ -198,10 +224,23 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceMuted,
     borderColor: theme.colors.border,
     borderWidth: 1,
+    overflow: 'hidden',
   },
   coverFallback: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  coverLoadingFallback: {
+    alignItems: 'center',
+    bottom: 0,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  coverImageHidden: {
+    opacity: 0,
   },
   orb: {
     borderRadius: 220,
