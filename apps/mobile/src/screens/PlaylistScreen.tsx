@@ -20,9 +20,10 @@ function SongSeparator() {
   return <View style={styles.songSeparator} />;
 }
 
-function DailyNewReleasesHeroBackground({ active }: { active: boolean }) {
+function PlaylistHeroBackground({ active, videoUrl }: { active: boolean; videoUrl?: string | null }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const player = useVideoPlayer(require('../../assets/yoriax_intro.MOV'), (videoPlayer) => {
+  const source = videoUrl ? { uri: videoUrl } : require('../../assets/yoriax_intro.MOV');
+  const player = useVideoPlayer(source, (videoPlayer) => {
     configureSilentLoopingVideoPlayer(videoPlayer);
   });
 
@@ -129,6 +130,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
   }, [activeSong?.id, handlePlaySong, isPlaying]);
 
   const isDailyNewReleases = playlist?.id === DAILY_NEW_RELEASES_PLAYLIST_ID;
+  const hasVideo = !!playlist?.video_url || isDailyNewReleases;
   const playlistDescription = isDailyNewReleases
     ? t('playlist.dailyNewReleasesCopy')
     : playlist?.description;
@@ -188,9 +190,9 @@ export function PlaylistScreen({ route, navigation }: Props) {
           windowSize={7}
           ListHeaderComponent={
             <>
-              <View style={[styles.playlistHero, isDailyNewReleases && styles.dailyPlaylistHero]}>
-                {isDailyNewReleases && !isLeaving ? (
-                  <DailyNewReleasesHeroBackground active={!loading && !error && !isLeaving} />
+              <View style={[styles.playlistHero, hasVideo && styles.dailyPlaylistHero]}>
+                {hasVideo && !isLeaving ? (
+                  <PlaylistHeroBackground active={!loading && !error && !isLeaving} videoUrl={playlist?.video_url} />
                 ) : null}
                 <View style={styles.playlistHeroContent}>
                   {isDailyNewReleases ? (

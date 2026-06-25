@@ -576,6 +576,22 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
   const client = requireClient();
 
   if (playlistId === DAILY_NEW_RELEASES_PLAYLIST_ID || playlistId === 'daily-new-releases') {
+    let videoUrl: string | null = null;
+    let videoStoragePath: string | null = null;
+    try {
+      const { data: dbPlaylist } = await client
+        .from('playlists')
+        .select('video_url, video_storage_path')
+        .eq('id', DAILY_NEW_RELEASES_PLAYLIST_ID)
+        .maybeSingle();
+      if (dbPlaylist) {
+        videoUrl = dbPlaylist.video_url;
+        videoStoragePath = dbPlaylist.video_storage_path;
+      }
+    } catch (err) {
+      console.error('Failed to load DB daily playlist video:', err);
+    }
+
     const playlist: Playlist = {
       id: DAILY_NEW_RELEASES_PLAYLIST_ID,
       user_id: 'system',
@@ -583,6 +599,8 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
       description: null,
       cover_url: 'local://yoriax-symbol',
       is_public: true,
+      video_url: videoUrl,
+      video_storage_path: videoStoragePath,
       created_at: new Date().toISOString(),
     };
 
@@ -617,7 +635,7 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
 
   const { data: playlistRow, error: playlistError } = await client
     .from('playlists')
-    .select('id, user_id, title, description, cover_url, is_public, created_at')
+    .select('id, user_id, title, description, cover_url, is_public, created_at, video_url, video_storage_path')
     .eq('id', playlistId)
     .single();
 
@@ -632,6 +650,8 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
     description: playlistRow.description,
     cover_url: playlistRow.cover_url,
     is_public: playlistRow.is_public,
+    video_url: playlistRow.video_url,
+    video_storage_path: playlistRow.video_storage_path,
     created_at: playlistRow.created_at,
   };
 

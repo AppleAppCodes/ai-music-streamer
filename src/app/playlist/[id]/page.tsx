@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X, Search, Plus, CheckCircle2, ShieldCheck, Flag, Sparkles } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X, Search, Plus, CheckCircle2, ShieldCheck, Flag, Sparkles, Video } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
@@ -39,6 +39,8 @@ interface PlaylistData {
   cover_url: string | null;
   is_public: boolean;
   is_official: boolean;
+  video_url?: string | null;
+  video_storage_path?: string | null;
   created_at: string;
   profiles?: {
     username: string;
@@ -80,6 +82,12 @@ export default function PlaylistPage() {
   const [editDescription, setEditDescription] = useState('');
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Video state
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [isDeletingVideo, setIsDeletingVideo] = useState(false);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -162,7 +170,7 @@ export default function PlaylistPage() {
       // 1. Fetch Playlist details
       const { data: playlistData, error: playlistError } = await supabase
         .from('playlists')
-        .select('id, user_id, title, description, cover_url, is_public, is_official, created_at, profiles(username, avatar_url)')
+        .select('id, user_id, title, description, cover_url, is_public, is_official, created_at, video_url, video_storage_path, profiles(username, avatar_url)')
         .eq('id', playlistId)
         .single();
         
@@ -462,6 +470,120 @@ export default function PlaylistPage() {
     }
   }, [isOwner, playlist, playlistId, supabase]);
 
+  const handleVideoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !isAdmin || !playlist) return;
+
+    // Validate size (max 100MB)
+    const MAX_SIZE = 100 * 1024 * 1024; // 100MB
+    if (file.size > MAX_SIZE) {
+      alert("Die Datei ist zu groß. Maximale Größe ist 100MB.");
+      return;
+    }
+
+    // Validate type
+    const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/mov', 'video/x-matroska'];
+    if (!allowedTypes.includes(file.type) && !file.name.endsWith('.mov') && !file.name.endsWith('.MOV')) {
+      alert("Ungültiges Videoformat. Bitte verwende MP4, WebM oder QuickTime (.mov).");
+      return;
+    }
+
+    setIsUploadingVideo(true);
+
+    try {
+      const ext = file.name.split('.').pop() || 'mp4';
+      const path = `playlist-videos/${playlistId}-${Date.now()}.${ext}`;
+
+      // 1. Upload to Supabase storage 'covers' bucket
+      const { error: uploadError } = await supabase.storage
+        .from('covers')
+        .upload(path, file);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Get Public URL
+      const { data } = supabase.storage
+        .from('covers')
+        .getPublicUrl(path);
+
+      // 3. Delete old video if exists
+      if (playlist.video_storage_path) {
+        try {
+          await supabase.storage.from('covers').remove([playlist.video_storage_path]);
+        } catch (delErr) {
+          console.warn('Failed to delete old video:', delErr);
+        }
+      }
+
+      // 4. Update playlists table
+      const { error: updateError } = await supabase
+        .from('playlists')
+        .update({ 
+          video_url: data.publicUrl,
+          video_storage_path: path
+        })
+        .eq('id', playlist.id);
+
+      if (updateError) throw updateError;
+
+      setPlaylist({ 
+        ...playlist, 
+        video_url: data.publicUrl, 
+        video_storage_path: path 
+      });
+      
+      alert("Video erfolgreich hochgeladen!");
+    } catch (err: unknown) {
+      console.error('Error uploading video:', err);
+      alert('Fehler beim Hochladen des Videos: ' + getErrorMessage(err));
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  }, [isAdmin, playlist, playlistId, supabase]);
+
+  const handleVideoDelete = useCallback(async () => {
+    if (!playlist || !isAdmin) return;
+    if (!confirm("Möchtest du das Playlist-Video wirklich löschen?")) return;
+
+    setIsDeletingVideo(true);
+
+    try {
+      // 1. Delete from storage if storage path exists
+      if (playlist.video_storage_path) {
+        const { error: storageError } = await supabase.storage
+          .from('covers')
+          .remove([playlist.video_storage_path]);
+        if (storageError) {
+          console.warn("Storage deletion error (continuing):", storageError);
+        }
+      }
+
+      // 2. Update playlists table in database
+      const { error: updateError } = await supabase
+        .from('playlists')
+        .update({ 
+          video_url: null,
+          video_storage_path: null
+        })
+        .eq('id', playlist.id);
+
+      if (updateError) throw updateError;
+
+      setPlaylist({ 
+        ...playlist, 
+        video_url: null, 
+        video_storage_path: null 
+      });
+
+      alert("Video erfolgreich gelöscht.");
+    } catch (err: unknown) {
+      console.error('Error deleting video:', err);
+      alert('Fehler beim Löschen des Videos: ' + getErrorMessage(err));
+    } finally {
+      setIsDeletingVideo(false);
+    }
+  }, [isAdmin, playlist, supabase]);
+
   const handleSongSearchQueryChange = useCallback((value: string) => {
     setSongSearchQuery(value);
 
@@ -706,6 +828,15 @@ export default function PlaylistPage() {
                         ) : (
                           <><Globe className="w-4 h-4 text-teal-300/70" /> {t('playlist.markOfficial')}</>
                         )}
+                      </button>
+                    )}
+                    {isAdmin && playlist.is_official && (
+                      <button 
+                        className="w-full text-left px-4 py-3 text-sm text-teal-300 hover:bg-white/10 flex items-center gap-3 transition-colors"
+                        onClick={() => { setIsMenuOpen(false); setIsVideoModalOpen(true); }}
+                      >
+                        <Video className="w-4 h-4 text-teal-300/70" />
+                        Playlist-Video verwalten
                       </button>
                     )}
                     <div className="h-px w-full bg-white/10 my-1"></div>
@@ -1016,6 +1147,94 @@ export default function PlaylistPage() {
               <p className="text-[11px] font-bold text-white/90">
                 {t('playlist.consentText')}
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video Management Modal */}
+      {isVideoModalOpen && (
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center backdrop-blur-sm p-4" onClick={() => setIsVideoModalOpen(false)}>
+          <div className="yoriax-card w-full max-w-[520px] overflow-hidden rounded-[1.75rem]" onClick={e => e.stopPropagation()}>
+            <div className="p-6 flex flex-col h-full">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white">Playlist-Video verwalten</h2>
+                <button 
+                  onClick={() => setIsVideoModalOpen(false)}
+                  className="text-white/50 hover:text-white transition-colors p-1"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex flex-col items-center justify-center gap-6 mb-6">
+                {playlist.video_url ? (
+                  <div className="w-full flex flex-col items-center gap-4">
+                    <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-white/10 bg-black shadow-lg">
+                      <video 
+                        src={playlist.video_url} 
+                        className="w-full h-full object-cover"
+                        autoPlay
+                        loop
+                        muted
+                        controls
+                      />
+                    </div>
+                    
+                    <div className="flex gap-3 w-full">
+                      <button
+                        onClick={() => videoFileInputRef.current?.click()}
+                        disabled={isUploadingVideo || isDeletingVideo}
+                        className="flex-1 py-3 px-4 bg-white/10 hover:bg-white/20 text-white font-bold rounded-full text-sm transition-colors disabled:opacity-50"
+                      >
+                        {isUploadingVideo ? "Wird hochgeladen..." : "Video ersetzen"}
+                      </button>
+                      <button
+                        onClick={handleVideoDelete}
+                        disabled={isUploadingVideo || isDeletingVideo}
+                        className="py-3 px-6 bg-red-500/20 hover:bg-red-500/30 text-red-300 font-bold rounded-full text-sm transition-colors disabled:opacity-50"
+                      >
+                        {isDeletingVideo ? "Wird gelöscht..." : "Video löschen"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full flex flex-col items-center justify-center py-12 px-6 border-2 border-dashed border-white/25 rounded-2xl hover:border-white/40 transition-colors cursor-pointer"
+                       onClick={() => videoFileInputRef.current?.click()}>
+                    <Video className="w-12 h-12 text-white/30 mb-4 animate-pulse" />
+                    <button
+                      disabled={isUploadingVideo}
+                      className="px-6 py-2.5 bg-white text-black font-bold rounded-full text-sm hover:scale-105 transition-transform mb-2 disabled:opacity-50"
+                    >
+                      {isUploadingVideo ? "Wird hochgeladen..." : "Video hochladen"}
+                    </button>
+                    <p className="text-white/40 text-xs text-center">
+                      Unterstützte Formate: MP4, WebM, QuickTime (.mov).<br />
+                      Maximale Dateigröße: 100MB.
+                    </p>
+                  </div>
+                )}
+                
+                <input 
+                  type="file" 
+                  accept="video/mp4,video/webm,video/quicktime,video/mov,.mov,.MOV" 
+                  ref={videoFileInputRef} 
+                  className="hidden" 
+                  onChange={handleVideoUpload} 
+                />
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-end">
+                <button 
+                  onClick={() => setIsVideoModalOpen(false)}
+                  className="bg-white/10 hover:bg-white/20 text-white font-bold px-8 py-3 rounded-full text-sm transition-colors"
+                >
+                  Schließen
+                </button>
+              </div>
             </div>
           </div>
         </div>

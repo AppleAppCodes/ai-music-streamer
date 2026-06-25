@@ -34,6 +34,8 @@ export interface Playlist {
   cover_url?: string | null;
   is_public?: boolean | null;
   is_official?: boolean | null;
+  video_url?: string | null;
+  video_storage_path?: string | null;
   created_at?: string | null;
 }
 
