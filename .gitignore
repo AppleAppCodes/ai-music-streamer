@@ -51,6 +51,4 @@ next-env.d.ts
 # mobile builds
 *.ipa
 apps/mobile/*.ipa
-*.apk
-apps/mobile/*.apk
 

@@ -1,7 +1,7 @@
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useVideoPlayer, VideoView, createVideoPlayer } from 'expo-video';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { theme } from '../theme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SongListRow } from '../components/SongListRow';
 import { BackButton, CoverArt, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, useShouldPlaySilentVideo, getOrCreatePrewarmedPlayer } from '../lib/silent-video';
+import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, useShouldPlaySilentVideo } from '../lib/silent-video';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
@@ -28,36 +28,16 @@ function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolea
   const [videoState, setVideoState] = useState({ ready: false, sourceKey });
   const isReady = videoState.sourceKey === sourceKey && videoState.ready;
   const shouldPlay = useShouldPlaySilentVideo(active);
-
-  const player = useMemo(() => {
-    if (videoUrl) {
-      return getOrCreatePrewarmedPlayer(videoUrl);
-    }
-    const localPlayer = createVideoPlayer(source);
-    configureSilentLoopingVideoPlayer(localPlayer);
-    return localPlayer;
-  }, [videoUrl, source]);
-
-  // Clean up local player on unmount
-  useEffect(() => {
-    return () => {
-      if (!videoUrl && player && typeof (player as any).release === 'function') {
-        try {
-          (player as any).release();
-        } catch (e) {
-          // Ignore
-        }
-      }
-    };
-  }, [player, videoUrl]);
+  const playerSource = shouldPlay ? source : null;
+  const player = useVideoPlayer(playerSource, (videoPlayer) => {
+    configureSilentLoopingVideoPlayer(videoPlayer);
+  });
 
   useEffect(() => {
-    if (player.status === 'readyToPlay') {
-      setVideoState({ ready: true, sourceKey });
-    } else {
-      setVideoState({ ready: false, sourceKey });
-    }
+    player.replace(playerSource);
+  }, [player, playerSource]);
 
+  useEffect(() => {
     const subscription = player.addListener('statusChange', ({ status }) => {
       setVideoState({ ready: status === 'readyToPlay', sourceKey });
     });
