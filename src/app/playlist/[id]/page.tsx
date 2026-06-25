@@ -766,7 +766,7 @@ export default function PlaylistPage() {
           )}
           
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm font-medium text-white/70 md:justify-start">
-            {playlist.profiles?.username === 'YORIAX Team' ? (
+            {playlist.is_official ? (
               <Image src="/brand/yoriax-symbol.png" alt="YORIAX" width={24} height={24} className="h-6 w-6 object-contain" />
             ) : playlist.profiles?.avatar_url ? (
               <Image src={playlist.profiles.avatar_url} alt={playlist.profiles.username} width={24} height={24} className="rounded-full object-cover" />
@@ -776,8 +776,8 @@ export default function PlaylistPage() {
               </div>
             )}
             <span className="text-white hover:underline cursor-pointer flex items-center gap-1">
-              {playlist.profiles?.username === 'Unbekannt' || !playlist.profiles?.username ? t('guestHome.unknownArtist') : playlist.profiles.username}
-              {playlist.profiles?.username === 'YORIAX Team' && (
+              {playlist.is_official ? 'YORIAX Team' : (playlist.profiles?.username === 'Unbekannt' || !playlist.profiles?.username ? t('guestHome.unknownArtist') : playlist.profiles.username)}
+              {playlist.is_official && (
                 <ShieldCheck className="h-4 w-4 text-teal-300" />
               )}
             </span>

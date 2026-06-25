@@ -247,7 +247,7 @@ function PlaylistSection({
 
 function PlaylistCard({ official, playlist }: { official: boolean; playlist: Playlist }) {
   const { t } = useTranslation();
-  const rawCreator = playlist.profiles?.username;
+  const rawCreator = playlist.is_official ? 'YORIAX Team' : playlist.profiles?.username;
   const creatorName = rawCreator === 'Unbekannt' || !rawCreator ? t('guestHome.unknownArtist') : rawCreator;
 
   return (
