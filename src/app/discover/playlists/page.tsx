@@ -73,6 +73,7 @@ export default function DiscoverPlaylistsPage() {
   if (swrData !== prevSwrData) {
     setPrevSwrData(swrData);
     if (swrData) {
+      const dbDailyNewReleases = swrData.find((playlist) => playlist.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111');
       const fetchedPlaylists = swrData
         .filter((playlist) => playlist.id !== 'da114eeb-ecea-5e55-9ee1-ea5e5da11111')
         .map((playlist) => ({
@@ -87,7 +88,7 @@ export default function DiscoverPlaylistsPage() {
         id: 'daily-new-releases',
         title: t('playlists.dailyNewReleases.title'),
         description: t('playlists.dailyNewReleases.description'),
-        cover_url: null,
+        cover_url: dbDailyNewReleases?.cover_url || null,
         created_at: new Date().toISOString(),
         is_official: true,
         profiles: { username: 'YORIAX Team' }
@@ -259,17 +260,21 @@ function PlaylistCard({ official, playlist }: { official: boolean; playlist: Pla
       }`}
     >
       <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-surface-hover shadow-lg">
-        {playlist.id === 'daily-new-releases' ? (
-          <div className="bg-gradient-primary flex h-full w-full items-center justify-center">
-            <Sparkles className="h-16 w-16 text-white" />
-          </div>
-        ) : playlist.cover_url ? (
+        {playlist.cover_url ? (
           <Image
             src={playlist.cover_url}
             alt={playlist.title}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 200px"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (playlist.id === 'daily-new-releases' || playlist.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111') ? (
+          <Image
+            src="/brand/yoriax-symbol.png"
+            alt={playlist.title}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 200px"
+            className="object-cover p-4 transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <Music className="h-16 w-16 text-white/20" />

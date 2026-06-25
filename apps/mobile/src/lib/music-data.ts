@@ -163,7 +163,7 @@ function mapDiscoverPlaylist(row: PlaylistRow): DiscoverPlaylist {
     user_id: row.user_id ?? null,
     title: row.title,
     description: isDailyNewReleases ? null : (row.description ?? null),
-    cover_url: isDailyNewReleases ? 'local://yoriax-symbol' : (row.cover_url ?? null),
+    cover_url: isDailyNewReleases && !row.cover_url ? 'local://yoriax-symbol' : (row.cover_url ?? null),
     is_public: row.is_public ?? null,
     created_at: row.created_at ?? null,
     creatorName,
@@ -576,20 +576,22 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
   const client = requireClient();
 
   if (playlistId === DAILY_NEW_RELEASES_PLAYLIST_ID || playlistId === 'daily-new-releases') {
+    let coverUrl: string | null = null;
     let videoUrl: string | null = null;
     let videoStoragePath: string | null = null;
     try {
       const { data: dbPlaylist } = await client
         .from('playlists')
-        .select('video_url, video_storage_path')
+        .select('cover_url, video_url, video_storage_path')
         .eq('id', DAILY_NEW_RELEASES_PLAYLIST_ID)
         .maybeSingle();
       if (dbPlaylist) {
+        coverUrl = dbPlaylist.cover_url;
         videoUrl = dbPlaylist.video_url;
         videoStoragePath = dbPlaylist.video_storage_path;
       }
     } catch (err) {
-      console.error('Failed to load DB daily playlist video:', err);
+      console.error('Failed to load DB daily playlist data:', err);
     }
 
     const playlist: Playlist = {
@@ -597,7 +599,7 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
       user_id: 'system',
       title: 'Daily New Releases',
       description: null,
-      cover_url: 'local://yoriax-symbol',
+      cover_url: coverUrl || 'local://yoriax-symbol',
       is_public: true,
       video_url: videoUrl,
       video_storage_path: videoStoragePath,

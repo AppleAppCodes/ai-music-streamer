@@ -123,22 +123,24 @@ export default function PlaylistPage() {
       
       // Handle dynamic "Daily New Releases" playlist
       if (playlistId === 'daily-new-releases' || playlistId === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111') {
+        let dbCoverUrl: string | null = null;
         let dbVideoUrl: string | null = null;
         let dbVideoStoragePath: string | null = null;
 
         try {
           const { data: dbPlaylist } = await supabase
             .from('playlists')
-            .select('video_url, video_storage_path')
+            .select('cover_url, video_url, video_storage_path')
             .eq('id', 'da114eeb-ecea-5e55-9ee1-ea5e5da11111')
             .maybeSingle();
 
           if (dbPlaylist) {
+            dbCoverUrl = dbPlaylist.cover_url || null;
             dbVideoUrl = dbPlaylist.video_url || null;
             dbVideoStoragePath = dbPlaylist.video_storage_path || null;
           }
         } catch (dbErr) {
-          console.warn('Failed to fetch DB video fields for Daily New Releases:', dbErr);
+          console.warn('Failed to fetch DB cover/video fields for Daily New Releases:', dbErr);
         }
 
         setPlaylist({
@@ -146,7 +148,7 @@ export default function PlaylistPage() {
           user_id: 'system',
           title: t('playlists.dailyNewReleases.title'),
           description: t('playlists.dailyNewReleases.description'),
-          cover_url: null, // Will render standard icon or we can provide an image
+          cover_url: dbCoverUrl,
           is_public: true,
           is_official: true,
           video_url: dbVideoUrl,
@@ -460,7 +462,7 @@ export default function PlaylistPage() {
 
   const handleCoverUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     let file = e.target.files?.[0];
-    if (!file || !isOwner || !playlist) return;
+    if (!file || !playlist || (!isOwner && !(isAdmin && playlist.is_official))) return;
 
     setIsUploadingCover(true);
     
@@ -685,13 +687,9 @@ export default function PlaylistPage() {
         {/* Cover Art */}
         <div 
           className="group/cover relative flex h-44 w-44 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-[1.75rem] border border-primary-light/20 bg-surface-hover shadow-2xl sm:h-48 sm:w-48 md:h-56 md:w-56"
-          onClick={() => isOwner && fileInputRef.current?.click()}
+          onClick={() => (isOwner || (isAdmin && playlist.is_official)) && fileInputRef.current?.click()}
         >
-          {playlist.id === 'daily-new-releases' ? (
-            <div className="bg-gradient-primary flex h-full w-full items-center justify-center">
-              <Sparkles className="w-20 h-20 text-white" />
-            </div>
-          ) : playlist.cover_url ? (
+          {playlist.cover_url ? (
             <Image
               src={playlist.cover_url}
               alt={playlist.title}
@@ -700,11 +698,20 @@ export default function PlaylistPage() {
               className="object-cover"
               priority
             />
+          ) : (playlist.id === 'daily-new-releases' || playlist.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111') ? (
+            <Image
+              src="/brand/yoriax-symbol.png"
+              alt={playlist.title}
+              fill
+              sizes="(max-width: 768px) 176px, (max-width: 1024px) 192px, 224px"
+              className="object-cover p-6 bg-gradient-to-br from-purple-900/40 to-black"
+              priority
+            />
           ) : (
             <Music className="w-20 h-20 text-white/20" />
           )}
           
-          {isOwner && (
+          {(isOwner || (isAdmin && playlist.is_official)) && (
             <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover/cover:opacity-100 transition-opacity">
               {isUploadingCover ? (
                 <Loader2 className="w-8 h-8 animate-spin text-white" />
