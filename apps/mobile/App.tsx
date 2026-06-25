@@ -15,7 +15,7 @@ import { theme } from './src/theme';
 import { YoriaxMark } from './src/components/YoriaxUI';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { I18nProvider, useI18n } from './src/lib/i18n';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback } from './src/lib/silent-video';
+import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, warmUpVideoPlayer } from './src/lib/silent-video';
 import { loadHomeMusic } from './src/lib/music-data';
 
 export default function App() {
@@ -79,7 +79,14 @@ function AppShell() {
             Array.from(urlsToPrefetch).map(url => Image.prefetch(url).catch(() => {}))
           );
           
-          console.log(`[Preload] Successfully preloaded ${urlsToPrefetch.size} cover images.`);
+          // Pre-warm official playlist videos
+          homeData.officialPlaylists.forEach(p => {
+            if (p.video_url) {
+              warmUpVideoPlayer(p.video_url);
+            }
+          });
+          
+          console.log(`[Preload] Successfully preloaded ${urlsToPrefetch.size} cover images and pre-warmed playlist videos.`);
         } catch (err) {
           console.error('[Preload] Failed to preload media:', err);
         }
