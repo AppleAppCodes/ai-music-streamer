@@ -244,6 +244,60 @@ server.tool('rename_song', 'Rename a song from the platform by its ID.', {
         return { content: [{ type: 'text', text: `❌ Rename failed: ${err.message}` }] };
     }
 });
+// ── Tool: update_song_plays ──────────────────────────────────────────────────
+server.tool('update_song_plays', 'Update the play count (plays) of a specific song. Provide either song_id (UUID) or title (exact match).', {
+    song_id: z.string().optional().describe('The UUID of the song'),
+    title: z.string().optional().describe('The exact title of the song'),
+    plays: z.number().int().describe('The new play count (integer)'),
+}, async ({ song_id, title, plays }) => {
+    try {
+        let targetId = song_id;
+        let songTitle = '';
+        let artistName = '';
+        if (!targetId && !title) {
+            return { content: [{ type: 'text', text: '❌ Error: You must provide either song_id or title.' }] };
+        }
+        if (targetId) {
+            const { data: song, error: fetchErr } = await supabase
+                .from('songs')
+                .select('title, artist_name')
+                .eq('id', targetId)
+                .single();
+            if (fetchErr)
+                throw fetchErr;
+            songTitle = song.title;
+            artistName = song.artist_name || 'Unknown';
+        }
+        else if (title) {
+            const { data: songs, error: fetchErr } = await supabase
+                .from('songs')
+                .select('id, title, artist_name')
+                .ilike('title', title);
+            if (fetchErr)
+                throw fetchErr;
+            if (!songs || songs.length === 0) {
+                return { content: [{ type: 'text', text: `❌ Song with title "${title}" not found.` }] };
+            }
+            targetId = songs[0].id;
+            songTitle = songs[0].title;
+            artistName = songs[0].artist_name || 'Unknown';
+        }
+        const { error } = await supabase
+            .from('songs')
+            .update({ plays })
+            .eq('id', targetId);
+        if (error)
+            throw error;
+        await logAction('update_song_plays', { song_id: targetId, plays }, `Updated plays for song "${songTitle}" by ${artistName} to ${plays}`);
+        return {
+            content: [{ type: 'text', text: `✅ Song "${songTitle}" by ${artistName} plays updated to ${plays}.` }]
+        };
+    }
+    catch (err) {
+        await logAction('update_song_plays', { song_id, title, plays }, `Update plays failed: ${err.message}`);
+        return { content: [{ type: 'text', text: `❌ Update plays failed: ${err.message}` }] };
+    }
+});
 // ── Tool: list_artists ──────────────────────────────────────────────────────
 server.tool('list_artists', 'List all artists on the platform with their song count and total plays.', {}, async () => {
     try {
