@@ -588,9 +588,9 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
                   hitSlop={12}
                 >
                   <Ionicons
-                    name={isCurrentSongLiked ? 'heart' : 'add'}
-                    size={isCurrentSongLiked ? 15 : 17}
-                    color={isAdPlaying ? theme.colors.muted : isCurrentSongLiked ? theme.colors.text : theme.colors.primaryLight}
+                    name={isCurrentSongLiked ? 'checkmark' : 'add'}
+                    size={isCurrentSongLiked ? 16 : 17}
+                    color={isAdPlaying ? theme.colors.muted : isCurrentSongLiked ? theme.colors.primaryLight : 'rgba(255,255,255,0.6)'}
                   />
                 </TouchableOpacity>
               </RNAnimated.View>
@@ -895,22 +895,21 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(10,7,16,0.72)',
-    borderColor: theme.colors.primaryLight,
+    backgroundColor: 'transparent',
+    borderColor: 'rgba(255,255,255,0.4)',
     borderRadius: 999,
     borderWidth: 1.5,
     height: 30,
     justifyContent: 'center',
-    shadowColor: theme.colors.primaryLight,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
     width: 30,
   },
   saveButtonActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-    shadowOpacity: 0.42,
+    backgroundColor: 'transparent',
+    borderColor: theme.colors.primaryLight,
+    shadowColor: theme.colors.primaryLight,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
   progressContainer: {
     width: '100%',
