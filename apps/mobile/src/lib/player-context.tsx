@@ -1,4 +1,5 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayerStatus } from 'expo-audio';
 import type { AudioLockScreenOptions, AudioPlayer } from 'expo-audio';
 import { activateExclusivePlaybackSession, addTrackRemoteCommandListeners, setTrackRemoteCommandsEnabled } from 'yoriax-remote-commands';
@@ -148,6 +149,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isShuffling, setIsShuffling] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'none' | 'all' | 'one'>('none');
   const finishEventConsumedRef = useRef(false);
+  const intendsToPlayRef = useRef(false);
   const playNextRef = useRef<() => void>(() => {});
   const playPreviousRef = useRef<() => void>(() => {});
   const playRequestIdRef = useRef(0);
@@ -288,6 +290,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (!isCurrentRequest()) return;
         loadedSongIdRef.current = adSong.id;
         player.play();
+        intendsToPlayRef.current = true;
         setLockScreenMetadata(player, adSong);
         return;
       }
@@ -331,6 +334,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
 
       player.play();
+      intendsToPlayRef.current = true;
       if (fadeInMs > 0) {
         rampPlayerVolume(1, fadeInMs);
       } else {
@@ -361,6 +365,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       if (pauseFadeIdRef.current !== pauseFadeId) return;
 
       player.pause();
+      intendsToPlayRef.current = false;
       setPlayerVolume(1);
       pauseFadeTimeoutRef.current = null;
     }, PAUSE_FADE_OUT_MS);
@@ -375,6 +380,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
     setPlayerVolume(1);
     player.pause();
+    intendsToPlayRef.current = false;
     player.clearLockScreenControls();
     setActiveSong(null);
     loadedSongIdRef.current = null;
@@ -404,6 +410,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setPlayerVolume(1);
       void activateYoriaxPlaybackSession(); // Ensure session is active when resuming from pause
       player.play();
+      intendsToPlayRef.current = true;
     }
   }, [activeSong, pause, player, setPlayerVolume, status.playing]);
 
@@ -438,6 +445,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       playQueueSong(queue[0], 0);
     } else {
       player.pause();
+      intendsToPlayRef.current = false;
     }
   }, [queue, isShuffling, queueIndex, repeatMode, player, playQueueSong]);
 
@@ -487,6 +495,41 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     activeSongRef.current = activeSong;
   }, [activeSong]);
+
+  const isPlayingRef = useRef(status.playing);
+  useEffect(() => {
+    isPlayingRef.current = status.playing;
+  }, [status.playing]);
+
+  useEffect(() => {
+    let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const refreshNowPlayingSession = () => {
+      const song = activeSongRef.current;
+      if (!song || (!isPlayingRef.current && !intendsToPlayRef.current)) return;
+
+      void activateYoriaxPlaybackSession()
+        .then(() => {
+          setLockScreenMetadata(player, song);
+        })
+        .catch((sessionError) => {
+          console.warn('Could not refresh background audio session.', sessionError);
+        });
+    };
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'inactive' && nextState !== 'background') return;
+
+      refreshNowPlayingSession();
+      if (refreshTimeout) clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(refreshNowPlayingSession, 180);
+    });
+
+    return () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout);
+      subscription.remove();
+    };
+  }, [player]);
 
   const isAdPlayingRef = useRef(isAdPlaying);
   useEffect(() => {

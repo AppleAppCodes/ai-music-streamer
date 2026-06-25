@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SongListRow } from '../components/SongListRow';
 import { BackButton, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback } from '../lib/silent-video';
+import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, useAppForeground } from '../lib/silent-video';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
@@ -24,6 +24,8 @@ function SongSeparator() {
 function PlaylistHeroBackground({ active, videoUrl }: { active: boolean; videoUrl?: string | null }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const source = useMemo(() => videoUrl ? { uri: videoUrl } : require('../../assets/yoriax_intro.MOV'), [videoUrl]);
+  const isAppForeground = useAppForeground();
+  const shouldPlay = active && isAppForeground;
   const player = useVideoPlayer(source, (videoPlayer) => {
     configureSilentLoopingVideoPlayer(videoPlayer);
   });
@@ -33,7 +35,7 @@ function PlaylistHeroBackground({ active, videoUrl }: { active: boolean; videoUr
   }, [player, source]);
 
   useEffect(() => {
-    if (active) {
+    if (shouldPlay) {
       prepareSilentVideoPlayback(player);
       player.play();
     } else {
@@ -47,7 +49,7 @@ function PlaylistHeroBackground({ active, videoUrl }: { active: boolean; videoUr
         // Ignore native player teardown races while leaving the screen.
       }
     };
-  }, [active, player]);
+  }, [player, shouldPlay]);
 
   return (
     <View pointerEvents="none" style={styles.dailyHeroBackground}>

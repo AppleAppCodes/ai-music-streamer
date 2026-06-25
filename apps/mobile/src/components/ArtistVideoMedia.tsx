@@ -1,7 +1,7 @@
 import { memo, useEffect } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback } from '../lib/silent-video';
+import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, useAppForeground } from '../lib/silent-video';
 
 type ArtistVideoMediaProps = {
   active?: boolean;
@@ -14,12 +14,14 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
   style,
   uri,
 }: ArtistVideoMediaProps) {
+  const isAppForeground = useAppForeground();
+  const shouldPlay = active && isAppForeground;
   const player = useVideoPlayer(uri ? { uri, useCaching: true } : null, (videoPlayer) => {
     configureSilentLoopingVideoPlayer(videoPlayer);
   });
 
   useEffect(() => {
-    if (!uri || !active) {
+    if (!uri || !shouldPlay) {
       try {
         player.pause();
       } catch {
@@ -38,7 +40,7 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
         // Ignore native player lifecycle races while virtualized artist cards unmount.
       }
     };
-  }, [active, player, uri]);
+  }, [player, shouldPlay, uri]);
 
   if (!uri) return null;
 
