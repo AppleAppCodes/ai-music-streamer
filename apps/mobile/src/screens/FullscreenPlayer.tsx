@@ -3,7 +3,6 @@ import {
   Alert,
   Animated as RNAnimated,
   Easing as RNEasing,
-  Image,
   Platform,
   Share,
   StyleSheet,
@@ -12,6 +11,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Animated, {
   Easing as ReanimatedEasing,
@@ -524,11 +524,15 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
       />
       {activeSong.cover_url && (
         <Animated.View style={[StyleSheet.absoluteFill, artworkBackdropAnimatedStyle]}>
-          <Image 
-            source={{ uri: activeSong.cover_url }} 
-            style={StyleSheet.absoluteFill} 
+          <ExpoImage
+            source={activeSong.cover_url}
+            style={StyleSheet.absoluteFill}
             blurRadius={24}
-            alt="" 
+            cachePolicy="memory-disk"
+            contentFit="cover"
+            priority="low"
+            recyclingKey={activeSong.id}
+            transition={220}
           />
           <LinearGradient
             colors={['rgba(12,10,18,0.2)', 'rgba(12,10,18,0.56)', 'rgba(12,10,18,0.92)']}
@@ -549,7 +553,15 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
 
         <View style={styles.content}>
         {activeSong.cover_url ? (
-          <Image source={{ uri: activeSong.cover_url }} style={styles.cover} alt="" />
+          <ExpoImage
+            source={activeSong.cover_url}
+            style={styles.cover}
+            cachePolicy="memory-disk"
+            contentFit="cover"
+            priority="high"
+            recyclingKey={activeSong.id}
+            transition={220}
+          />
         ) : (
           <View style={[styles.cover, styles.coverFallback]}>
             <Text style={styles.coverFallbackText}>Y</Text>
