@@ -1,17 +1,15 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { MouseEvent } from 'react';
-import type { CSSProperties } from 'react';
 import SongCard from '@/components/ui/SongCard';
-import { ChevronLeft, ChevronRight, Heart, ListMusic, Music, Pause, Play, Sparkles, TrendingUp } from 'lucide-react';
+import { ChevronRight, Heart, ListMusic, Music, Pause, Play, Sparkles, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { usePlayer } from '@/lib/player-context';
 import Image from 'next/image';
 
-import { GENRES } from '@/lib/constants';
 import { Song } from '@/lib/types';
 import { getDailyTrendingSongs, getPersonalizedSongs } from '@/lib/homeRecommendations';
 import type { OfficialPlaylistSummary } from '@/lib/public-music-data';
@@ -111,137 +109,11 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
   const [activeQuickAccessSongIds, setActiveQuickAccessSongIds] = useState<string[]>([]);
   const [greetingKey, setGreetingKey] = useState<GreetingKey>('evening');
 
-  const genresScrollRef = useRef<HTMLDivElement>(null);
-  const [targetSpeed, setTargetSpeed] = useState(0.3);
-  const speedRef = useRef(0.3);
-  const positionRef = useRef(0);
-  const isHoveredRef = useRef(false);
-
-  // Drag state
-  const isDraggingRef = useRef(false);
-  const dragStartXRef = useRef(0);
-  const dragStartPosRef = useRef(0);
-  const lastDragXRef = useRef(0);
-  const dragTimeRef = useRef(0);
-
-  const handleDragStart = useCallback((clientX: number) => {
-    isDraggingRef.current = true;
-    isHoveredRef.current = true;
-    dragStartXRef.current = clientX;
-    dragStartPosRef.current = positionRef.current;
-    lastDragXRef.current = clientX;
-    dragTimeRef.current = performance.now();
-  }, []);
-
-  const handleDragMove = useCallback((clientX: number) => {
-    if (!isDraggingRef.current) return;
-    const delta = dragStartXRef.current - clientX;
-    let newPos = dragStartPosRef.current + delta;
-
-    const timeNow = performance.now();
-    const dt = timeNow - dragTimeRef.current;
-    if (dt > 0) {
-      const dx = lastDragXRef.current - clientX;
-      speedRef.current = (dx / dt) * 16;
-    }
-    lastDragXRef.current = clientX;
-    dragTimeRef.current = timeNow;
-
-    if (genresScrollRef.current) {
-      const maxScroll = genresScrollRef.current.scrollWidth / 3;
-      if (newPos >= maxScroll) newPos -= maxScroll;
-      else if (newPos <= 0) newPos += maxScroll;
-    }
-
-    positionRef.current = newPos;
-    if (genresScrollRef.current) {
-      genresScrollRef.current.style.transform = `translate3d(-${positionRef.current}px, 0, 0)`;
-    }
-  }, []);
-
-  const handleDragEnd = useCallback(() => {
-    isDraggingRef.current = false;
-    isHoveredRef.current = false;
-  }, []);
-
   const [dailyTrendingSongs, setDailyTrendingSongs] = useState<Song[]>(initialHomeData?.trendingSongs ?? []);
   const [recommendedSongs, setRecommendedSongs] = useState<Song[]>(initialHomeData?.recommendedSongs ?? []);
   const [artistCovers, setArtistCovers] = useState<string[]>(initialHomeData?.artistCovers ?? []);
   const [spotlightSong, setSpotlightSong] = useState<Song | null>(initialHomeData?.spotlightSong ?? null);
   const [isLoading, setIsLoading] = useState(!initialHomeData);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(min-width: 640px)');
-    let animationId: number | null = null;
-    let lastTime = performance.now();
-
-    const animate = (time: number) => {
-      const dt = time - lastTime;
-      lastTime = time;
-
-      // Target speed depends on hover state
-      const target = isHoveredRef.current ? 0 : targetSpeed;
-
-      // Interpolate current speed (0.05 is the smoothing factor)
-      speedRef.current += (target - speedRef.current) * 0.05;
-
-      if (genresScrollRef.current && Math.abs(speedRef.current) > 0.01) {
-        // Apply speed to position
-        positionRef.current += speedRef.current * (dt / 16);
-
-        const scrollWidth = genresScrollRef.current.scrollWidth;
-        const maxScroll = scrollWidth / 3;
-
-        // Loop seamlessly
-        if (positionRef.current >= maxScroll) {
-          positionRef.current -= maxScroll;
-        } else if (positionRef.current <= 0) {
-          positionRef.current += maxScroll;
-        }
-
-        genresScrollRef.current.style.transform = `translate3d(-${positionRef.current}px, 0, 0)`;
-      }
-
-      animationId = requestAnimationFrame(animate);
-    };
-
-    const stopAnimation = () => {
-      if (animationId !== null) {
-        cancelAnimationFrame(animationId);
-        animationId = null;
-      }
-      if (genresScrollRef.current) {
-        genresScrollRef.current.style.transform = '';
-      }
-    };
-
-    const startAnimation = () => {
-      if (animationId !== null) return;
-      lastTime = performance.now();
-      animationId = requestAnimationFrame(animate);
-    };
-
-    const updateAnimation = () => {
-      if (mediaQuery.matches) {
-        startAnimation();
-      } else {
-        stopAnimation();
-      }
-    };
-
-    mediaQuery.addEventListener('change', updateAnimation);
-    updateAnimation();
-    return () => {
-      mediaQuery.removeEventListener('change', updateAnimation);
-      stopAnimation();
-    };
-  }, [targetSpeed]);
-
-  const scrollGenres = useCallback((direction: 'left' | 'right') => {
-    // Boost speed temporarily for a smooth "push"
-    speedRef.current = direction === 'right' ? 10 : -10;
-    setTargetSpeed(direction === 'right' ? 0.3 : -0.3);
-  }, []);
 
   useEffect(() => {
     if (initialHomeData) return;
@@ -564,82 +436,6 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
               </div>
             );
           })}
-        </div>
-      </section>
-
-      {/* Popular Genres Section */}
-      <section className="px-4 sm:px-8 relative z-10">
-        <div className="mb-4 flex items-end justify-between gap-4">
-          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">{t('home.popularGenres')}</h2>
-          <div className="flex items-center gap-2 sm:mr-8">
-            <Link
-              href="/genres"
-              className="group inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-white/70 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
-            >
-              {t('home.seeAll')}
-              <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-            <div className="hidden gap-2 sm:flex">
-              <button
-                onClick={() => scrollGenres('left')}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => scrollGenres('right')}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-        <div
-          data-testid="genre-scroller"
-          className="relative -mx-4 group/slider snap-x snap-mandatory overflow-x-auto overscroll-x-contain px-4 py-7 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:snap-none sm:overflow-hidden sm:px-8 sm:py-16"
-          style={{
-            maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
-            WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)'
-          }}
-        >
-          <div
-            ref={genresScrollRef}
-            data-testid="genre-track"
-            onMouseEnter={() => isHoveredRef.current = true}
-            onMouseLeave={() => {
-              isHoveredRef.current = false;
-              handleDragEnd();
-            }}
-            onMouseDown={(e) => handleDragStart(e.clientX)}
-            onMouseMove={(e) => handleDragMove(e.clientX)}
-            onMouseUp={handleDragEnd}
-            className="flex w-max cursor-grab active:cursor-grabbing"
-          >
-            {[...GENRES, ...GENRES, ...GENRES].map((genre, i) => {
-              const Icon = genre.icon;
-              return (
-                <Link
-                  key={`${genre.name}-${i}`}
-                  href={`/genre/${encodeURIComponent(genre.name)}`}
-                  className={`mx-1.5 group relative isolate w-[132px] shrink-0 h-20 snap-start rounded-xl p-3 ${i >= GENRES.length ? 'hidden sm:flex' : 'flex'} flex-col justify-between cursor-pointer shadow-lg transition-all duration-300 hover:-translate-y-1 hover:scale-[1.04] hover:shadow-[0_0_20px_var(--genre-glow)] hover:animate-pulseGlow ${genre.color}`}
-                  style={{ '--genre-glow': genre.glow } as CSSProperties}
-                >
-                <div
-                  className="pointer-events-none absolute -inset-2 -z-10 rounded-[1.75rem] opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-100"
-                  style={{
-                    background: `radial-gradient(circle at 50% 58%, ${genre.glow} 0%, ${genre.glow} 25%, transparent 60%)`,
-                  }}
-                />
-                <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-white/18 via-transparent to-black/15 opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
-                <div className="w-full flex justify-end opacity-65 transition-opacity duration-300 group-hover:opacity-95">
-                  <Icon className="w-6 h-6 text-white" strokeWidth={1.7} />
-                </div>
-                <span className="relative font-bold text-white text-sm tracking-tight">{genre.name}</span>
-              </Link>
-            );
-          })}
-          </div>
         </div>
       </section>
 
