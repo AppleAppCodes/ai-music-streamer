@@ -1,4 +1,5 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayerStatus } from 'expo-audio';
 import type { AudioLockScreenOptions, AudioPlayer } from 'expo-audio';
 import { activateExclusivePlaybackSession, addTrackRemoteCommandListeners, setTrackRemoteCommandsEnabled } from 'yoriax-remote-commands';
@@ -19,6 +20,7 @@ interface PlayOptions {
 const PLAYBACK_READY_TIMEOUT_MS = 2500;
 const PLAYBACK_READY_POLL_MS = 50;
 const PAUSE_FADE_OUT_MS = 90;
+const NOW_PLAYING_REASSERT_DELAYS_MS = [160, 600] as const;
 
 interface PlayerContextValue {
   activeSong: Song | null;
@@ -154,8 +156,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const playRequestIdRef = useRef(0);
   const pauseFadeIdRef = useRef(0);
   const pauseFadeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nowPlayingRefreshIdRef = useRef(0);
+  const nowPlayingRefreshTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const volumeRampRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const loadedSongIdRef = useRef<string | null>(null);
+  const activeSongRef = useRef<Song | null>(null);
 
   // Ad & User State
   const { user } = useAuth();
@@ -195,6 +200,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         clearTimeout(pauseFadeTimeoutRef.current);
         pauseFadeTimeoutRef.current = null;
       }
+      nowPlayingRefreshTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+      nowPlayingRefreshTimeoutsRef.current = [];
       player.clearLockScreenControls();
       player.remove();
     };
@@ -234,6 +241,36 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     }, 16);
   }, [player]);
+
+  const clearNowPlayingRefreshes = useCallback(() => {
+    nowPlayingRefreshIdRef.current += 1;
+    nowPlayingRefreshTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+    nowPlayingRefreshTimeoutsRef.current = [];
+  }, []);
+
+  const reassertNowPlaying = useCallback((song: Song) => {
+    activateExclusivePlaybackSession();
+    setLockScreenMetadata(player, song);
+  }, [player]);
+
+  const scheduleNowPlayingRefresh = useCallback((song: Song, requestId = playRequestIdRef.current) => {
+    clearNowPlayingRefreshes();
+    const refreshId = nowPlayingRefreshIdRef.current;
+
+    const run = () => {
+      if (nowPlayingRefreshIdRef.current !== refreshId) return;
+      if (playRequestIdRef.current !== requestId) return;
+      if (!intendsToPlayRef.current) return;
+
+      const currentSong = activeSongRef.current;
+      if (!currentSong || currentSong.id !== song.id) return;
+
+      reassertNowPlaying(song);
+    };
+
+    run();
+    nowPlayingRefreshTimeoutsRef.current = NOW_PLAYING_REASSERT_DELAYS_MS.map((delay) => setTimeout(run, delay));
+  }, [clearNowPlayingRefreshes, reassertNowPlaying]);
 
   const playSong = useCallback(async (song: Song, options: PlayOptions = {}) => {
     if (!song.audio_url) {
@@ -284,13 +321,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
         setPlayerVolume(1);
         player.replace({ name: adSong.title, uri: adSong.audio_url });
+        activeSongRef.current = adSong;
         setActiveSong(adSong);
         await waitForPlayerReady(player, isCurrentRequest);
         if (!isCurrentRequest()) return;
         loadedSongIdRef.current = adSong.id;
         player.play();
         intendsToPlayRef.current = true;
-        setLockScreenMetadata(player, adSong);
+        scheduleNowPlayingRefresh(adSong, playRequestId);
         return;
       }
 
@@ -310,6 +348,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           name: song.title,
           uri: song.audio_url,
         });
+        activeSongRef.current = song;
         setActiveSong(song);
         // Do not update lock screen controls until the new source is ready and playing.
         // Doing it early triggers native route adjustments that interrupt active audio.
@@ -339,7 +378,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       } else {
         setPlayerVolume(1);
       }
-      setLockScreenMetadata(player, song);
+      scheduleNowPlayingRefresh(song, playRequestId);
     } catch (playError) {
       setError(playError instanceof Error ? playError.message : t('player.playbackFailed'));
     } finally {
@@ -347,7 +386,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setIsPreparingPlayback(false);
       }
     }
-  }, [player, isPro, songsPlayed, availableAds, adFrequency, rampPlayerVolume, setPlayerVolume, t]);
+  }, [player, isPro, songsPlayed, availableAds, adFrequency, rampPlayerVolume, scheduleNowPlayingRefresh, setPlayerVolume, t]);
 
   const pause = useCallback(() => {
     pauseFadeIdRef.current += 1;
@@ -377,10 +416,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       clearTimeout(pauseFadeTimeoutRef.current);
       pauseFadeTimeoutRef.current = null;
     }
+    clearNowPlayingRefreshes();
     setPlayerVolume(1);
     player.pause();
     intendsToPlayRef.current = false;
     player.clearLockScreenControls();
+    activeSongRef.current = null;
     setActiveSong(null);
     loadedSongIdRef.current = null;
     setError(null);
@@ -393,7 +434,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setIsAdPlaying(false);
     setPendingSongToPlayAfterAd(null);
     finishEventConsumedRef.current = false;
-  }, [player, setPlayerVolume]);
+  }, [clearNowPlayingRefreshes, player, setPlayerVolume]);
 
   const toggle = useCallback(() => {
     if (!activeSong) return;
@@ -410,8 +451,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       void activateYoriaxPlaybackSession(); // Ensure session is active when resuming from pause
       player.play();
       intendsToPlayRef.current = true;
+      scheduleNowPlayingRefresh(activeSong);
     }
-  }, [activeSong, pause, player, setPlayerVolume, status.playing]);
+  }, [activeSong, pause, player, scheduleNowPlayingRefresh, setPlayerVolume, status.playing]);
 
   const setQueue = useCallback((songs: Song[], startIndex = 0) => {
     setQueueState(songs);
@@ -490,7 +532,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     await player.seekTo(seconds, 0, 0);
   }, [activeSong, player]);
 
-  const activeSongRef = useRef(activeSong);
   useEffect(() => {
     activeSongRef.current = activeSong;
   }, [activeSong]);
@@ -498,8 +539,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const song = activeSongRef.current;
     if (!song || (!status.playing && !intendsToPlayRef.current)) return;
-    setLockScreenMetadata(player, song);
-  }, [player, status.playing]);
+    scheduleNowPlayingRefresh(song);
+  }, [scheduleNowPlayingRefresh, status.playing]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') return;
+
+      const song = activeSongRef.current;
+      if (!song || (!status.playing && !intendsToPlayRef.current)) return;
+
+      scheduleNowPlayingRefresh(song);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [scheduleNowPlayingRefresh, status.playing]);
 
   const isAdPlayingRef = useRef(isAdPlaying);
   useEffect(() => {
