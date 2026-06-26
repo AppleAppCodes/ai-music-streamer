@@ -43,6 +43,7 @@ interface SongData {
   audio_url?: string;
   cover_url?: string;
   is_spotlight?: boolean;
+  spotlight_copy?: string | null;
 }
 
 function openTrustedExternalUrl(value?: string | null) {
@@ -138,7 +139,7 @@ export default function AdminPage() {
         // Load Songs & Streams
         const { data: songsData } = await supabase
           .from('songs')
-          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight')
+          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight, spotlight_copy')
           .order('created_at', { ascending: false });
 
         if (songsData) {
@@ -208,6 +209,29 @@ export default function AdminPage() {
       setSongs(prev => prev.map(s => s.id === id ? { ...s, title: newTitle.trim() } : s));
     } else {
       alert('Fehler beim Ändern des Songtitels: ' + error.message);
+    }
+  };
+
+  const handleEditSpotlightCopy = async (id: string, title: string, currentCopy: string | null) => {
+    const next = window.prompt(
+      `Spotlight-Text für "${title}" (leer lassen für Default-Text):`,
+      currentCopy ?? '',
+    );
+    if (next === null) return;
+    const trimmed = next.trim();
+    const value = trimmed.length > 0 ? trimmed : null;
+
+    const previousSongs = songs;
+    setSongs(prev => prev.map(song => song.id === id ? { ...song, spotlight_copy: value } : song));
+
+    const { error } = await supabase
+      .from('songs')
+      .update({ spotlight_copy: value })
+      .eq('id', id);
+
+    if (error) {
+      setSongs(previousSongs);
+      alert('Fehler beim Speichern des Spotlight-Texts: ' + error.message);
     }
   };
 
@@ -724,6 +748,15 @@ export default function AdminPage() {
                         >
                           <Sparkles className="w-4 h-4" />
                         </button>
+                        {song.is_spotlight ? (
+                          <button
+                            onClick={() => handleEditSpotlightCopy(song.id, song.title, song.spotlight_copy ?? null)}
+                            className="p-2 text-fuchsia-300/80 hover:text-fuchsia-200 hover:bg-fuchsia-400/10 rounded-lg transition-all"
+                            title={song.spotlight_copy ? 'Spotlight-Text bearbeiten' : 'Spotlight-Text setzen'}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        ) : null}
                         <button
                           onClick={() => handleEditSongTitle(song.id, song.title)}
                           className="p-2 text-white/40 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"

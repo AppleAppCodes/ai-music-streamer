@@ -250,13 +250,13 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
       const [{ data: allSongs }, { data: spotlightData }, { data: { session } }] = await Promise.all([
         supabase
           .from('songs')
-          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, profiles!songs_creator_id_fkey(username)')
+          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, spotlight_copy, profiles!songs_creator_id_fkey(username)')
           .order('plays', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(200),
         supabase
           .from('songs')
-          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, profiles!songs_creator_id_fkey(username)')
+          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, spotlight_copy, profiles!songs_creator_id_fkey(username)')
           .eq('is_spotlight', true)
           .eq('is_approved', true)
           .order('created_at', { ascending: false })
@@ -752,7 +752,9 @@ function SpotlightSection({ song }: { song: Song }) {
             <p className="mt-1 truncate text-sm font-bold text-white/65">
               {song.artist_name || song.creatorName || t('guestHome.unknownArtist')}
             </p>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-white/55 line-clamp-3">{t('home.spotlightCopy')}</p>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-white/55 line-clamp-3">
+              {(song as unknown as { spotlight_copy?: string | null }).spotlight_copy?.trim() || t('home.spotlightCopy')}
+            </p>
             <div className="mt-5 flex items-center justify-center gap-3 sm:justify-start">
               <button
                 type="button"
