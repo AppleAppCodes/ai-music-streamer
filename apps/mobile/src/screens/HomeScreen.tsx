@@ -294,7 +294,7 @@ const SpotlightSection = memo(function SpotlightSection({ song }: { song?: Song 
           <Text style={styles.spotlightArtist} numberOfLines={1}>
             {song.artist_name || song.creatorName || t('common.creator')}
           </Text>
-          <Text style={styles.spotlightCopy} numberOfLines={3}>{t('home.spotlightBubbleButtCopy')}</Text>
+          <Text style={styles.spotlightCopy} numberOfLines={3}>{song.spotlight_copy?.trim() || t('home.spotlightBubbleButtCopy')}</Text>
           <View style={[styles.spotlightAction, isActive && styles.spotlightActionActive]}>
             {isLoading ? (
               <ActivityIndicator color={theme.colors.text} size="small" />

@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import type { DiscoverPlaylist, FeedClip, FeedPreviewSong, Playlist, Song } from './types';
 
 const SONG_SELECT =
-  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at, is_spotlight';
+  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at, is_spotlight, spotlight_copy';
 const SONG_SELECT_WITH_PROFILE = `${SONG_SELECT}, profiles!songs_creator_id_fkey(username)`;
 export const DAILY_NEW_RELEASES_PLAYLIST_ID = 'da114eeb-ecea-5e55-9ee1-ea5e5da11111';
 
@@ -147,6 +147,7 @@ function mapSong(row: SongRow): Song {
     plays: row.plays ?? 0,
     created_at: row.created_at ?? null,
     is_spotlight: row.is_spotlight ?? false,
+    spotlight_copy: row.spotlight_copy ?? null,
   };
 }
 
