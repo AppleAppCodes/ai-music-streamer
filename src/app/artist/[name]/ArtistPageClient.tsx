@@ -13,7 +13,7 @@ import ReportDialog from '@/components/ui/ReportDialog';
 import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { isModUser } from '@/lib/admin';
+import { isCreatorUser, isModUser } from '@/lib/admin';
 import Image from 'next/image';
 
 function formatDuration(seconds: number | null | undefined): string {
@@ -29,7 +29,7 @@ const ALLOWED_ARTIST_VIDEO_TYPES = new Set(['video/mp4', 'video/webm', 'video/qu
 const ALLOWED_ARTIST_VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'webm']);
 
 // Only fetch the columns we actually use – reduces payload significantly
-const SONG_SELECT_COLUMNS = 'id,title,cover_url,artist_name,audio_url,plays,duration,created_at,album_id,genre' as const;
+const SONG_SELECT_COLUMNS = 'id,title,cover_url,artist_name,audio_url,plays,duration,created_at,album_id,genre,creator_id' as const;
 const ALBUM_SELECT_COLUMNS = 'id,title,cover_url,created_at,type' as const;
 
 const InstagramIcon = ({ className }: { className?: string }) => (
@@ -154,6 +154,11 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
   const [editSocials, setEditSocials] = useState({instagram_url: '', tiktok_url: '', youtube_url: ''});
   const [isSavingSocials, setIsSavingSocials] = useState(false);
   const isAdmin = isModUser(user);
+  // Creators can manage banner / video / socials for any artist whose
+  // catalogue contains at least one song they uploaded themselves.
+  // Admins and mods stay allowed regardless of authorship.
+  const ownsAnyArtistSong = isCreatorUser(user) && Boolean(user?.id) && songs.some((song) => song.creator_id === user?.id);
+  const canEditArtist = isAdmin || ownsAnyArtistSong;
 
   useEffect(() => {
     async function loadArtistData() {
@@ -372,7 +377,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
   };
 
   const handleSaveSocials = async () => {
-    if (!isAdmin) return;
+    if (!canEditArtist) return;
     const normalizedSocials = normalizeArtistSocials(editSocials);
     if (hasInvalidSocialUrl(editSocials, normalizedSocials)) {
       alert('Bitte nur gültige http/https Social-Links speichern.');
@@ -407,17 +412,17 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
   };
 
   const savePositionToDb = useCallback(async (field: 'banner_position' | 'video_position', value: string) => {
-    if (!isAdmin) return;
+    if (!canEditArtist) return;
     const { error } = await supabase
       .from('artist_profiles')
       .upsert({ artist_name: artistName, [field]: value }, { onConflict: 'artist_name' });
     if (error) {
       console.error(`Failed to save ${field}`, error);
     }
-  }, [artistName, isAdmin, supabase]);
+  }, [artistName, canEditArtist, supabase]);
 
   const beginPositioning = useCallback((target: 'banner' | 'video', event: React.PointerEvent<HTMLDivElement>) => {
-    if (!isAdmin || positioningTarget !== target) return;
+    if (!canEditArtist || positioningTarget !== target) return;
     const container = event.currentTarget;
     container.setPointerCapture(event.pointerId);
     const rect = container.getBoundingClientRect();
@@ -443,7 +448,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
     container.addEventListener('pointermove', onMove);
     container.addEventListener('pointerup', onUp);
     container.addEventListener('pointercancel', onUp);
-  }, [isAdmin, positioningTarget, savePositionToDb]);
+  }, [canEditArtist, positioningTarget, savePositionToDb]);
 
   const resetPosition = useCallback((target: 'banner' | 'video') => {
     const defaultValue = '50% 50%';
@@ -453,7 +458,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
   }, [savePositionToDb]);
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isAdmin) return;
+    if (!canEditArtist) return;
     let file = e.target.files?.[0];
     if (!file) return;
 
@@ -486,7 +491,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
   };
 
   const handleArtistVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isAdmin) return;
+    if (!canEditArtist) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -598,7 +603,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
         
         <div className="flex flex-col justify-end items-center md:items-start flex-shrink-0 max-w-3xl text-center md:text-left">
           {/* Admin Editable Overlay for Background */}
-          {isAdmin && (
+          {canEditArtist && (
             <div className={`absolute top-10 right-10 md:right-auto md:left-10 transition-opacity z-20 flex flex-wrap gap-2 ${positioningTarget === 'banner' ? 'opacity-100 pointer-events-auto' : 'opacity-0 group-hover:opacity-100'}`}>
               <input
                 type="file"
@@ -662,7 +667,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
         <div className="flex-1 flex flex-col md:flex-row w-full justify-center items-center gap-4 md:gap-6 mt-4 md:mt-0">
           
           {/* Artist Profile Video (Canvas) */}
-          {(artistVideoUrl || isAdmin) && (
+          {(artistVideoUrl || canEditArtist) && (
             <div className="relative w-full max-w-[320px] md:max-w-[480px] lg:max-w-[540px] aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex-shrink-0 group/video bg-black/20 backdrop-blur-sm">
               {artistVideoUrl ? (
               <>
@@ -694,7 +699,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
             )}
             
             {/* Admin Upload Video Overlay */}
-            {isAdmin && (
+            {canEditArtist && (
               <div className={`absolute inset-0 transition-opacity flex flex-col items-center justify-center gap-2 z-30 pointer-events-none ${positioningTarget === 'video' ? 'opacity-100' : 'opacity-0 group-hover/video:opacity-100 bg-black/60'}`}>
                 <input
                   type="file"
@@ -875,8 +880,8 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
                   </a>
                 )}
                 
-                {isAdmin && (
-                  <button 
+                {canEditArtist && (
+                  <button
                     onClick={() => setIsEditingSocials(true)}
                     className="flex items-center justify-center p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all text-white/50 hover:text-white shadow-lg border border-white/5 border-dashed"
                     title={(!socials?.instagram_url && !socials?.tiktok_url && !socials?.youtube_url) ? 'Socials hinzufügen' : 'Socials bearbeiten'}
