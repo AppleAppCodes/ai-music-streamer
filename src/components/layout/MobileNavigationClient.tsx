@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Library, Search, Sparkles, Upload } from 'lucide-react';
+import { Home, Library, Mic2, Search, Sparkles, Upload } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { isCreatorUser } from '@/lib/admin';
 import { useState } from 'react';
@@ -22,7 +22,12 @@ export default function MobileNavigationClient({ user }: { user: SupabaseUser | 
   
   const navItems = [
     ...BASE_NAV_ITEMS,
-    ...(isCreator ? [{ href: '/upload', label: 'Upload', icon: Upload }] : [])
+    ...(isCreator
+      ? [
+          { href: '/upload', label: 'Upload', icon: Upload },
+          { href: '/artists/mine', label: 'Künstler', icon: Mic2 },
+        ]
+      : []),
   ];
 
   if (!user) return null;
