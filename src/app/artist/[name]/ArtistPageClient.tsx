@@ -573,7 +573,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
             src={bannerUrl}
             alt="Banner"
             draggable={false}
-            className={`w-full h-full object-cover ${positioningTarget === 'banner' ? 'opacity-100' : 'opacity-60'}`}
+            className={`w-full h-full object-cover ${positioningTarget === 'banner' ? 'opacity-100' : 'opacity-80'}`}
             style={{
               objectPosition: bannerPosition ?? '50% 50%',
               maskImage: positioningTarget === 'banner' ? undefined : 'linear-gradient(to bottom, black 0%, transparent 100%)',
@@ -581,8 +581,8 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
             }}
           />
         ) : (
-          <div 
-            className="w-full h-full bg-cover bg-center opacity-30" 
+          <div
+            className="w-full h-full bg-cover bg-center opacity-45"
             style={{ 
               backgroundImage: 'url(https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1600&q=80)',
               maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',

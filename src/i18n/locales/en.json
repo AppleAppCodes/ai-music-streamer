@@ -50,7 +50,14 @@
     "trending": "Selected for you",
     "newReleases": "Trending",
     "seeAll": "Show all",
-    "emptySongs": "No songs available yet."
+    "emptySongs": "No songs available yet.",
+    "officialPlaylists": "Official YORIAX Playlists",
+    "officialPlaylistsCopy": "Hand-picked mixes from the YORIAX team.",
+    "spotlight": "SPOTLIGHT",
+    "spotlightEyebrow": "Single highlight",
+    "spotlightCopy": "Lewnamoon drops a cheeky, glossy club spark: direct, catchy, and built to stick from the first bounce.",
+    "spotlightPlay": "Play",
+    "spotlightPause": "Pause"
   },
   "song": {
     "single": "Single",

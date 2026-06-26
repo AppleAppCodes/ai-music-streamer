@@ -13,10 +13,20 @@ type ProfileJoin = { username?: string | null } | { username?: string | null }[]
 type SongRow = Song & { profiles?: ProfileJoin; viral_sort_order?: number | null };
 type DailyPlay = { song_id: string; plays: number };
 
+export type OfficialPlaylistSummary = {
+  id: string;
+  title: string;
+  description: string | null;
+  cover_url: string | null;
+  creatorName: string;
+};
+
 type HomeInitialData = {
   artistCovers: string[];
   trendingSongs: Song[];
   recommendedSongs: Song[];
+  officialPlaylists: OfficialPlaylistSummary[];
+  spotlightSong: Song | null;
 };
 
 export type PublicChartsData = {
@@ -151,11 +161,50 @@ async function loadSongSignals(client: SupabaseClient, userId: string) {
   };
 }
 
+async function loadOfficialPlaylists(client: SupabaseClient): Promise<OfficialPlaylistSummary[]> {
+  const { data, error } = await client
+    .from('playlists')
+    .select('id, title, description, cover_url, is_official, profiles!playlists_user_id_fkey(username)')
+    .eq('is_public', true)
+    .eq('is_official', true)
+    .order('created_at', { ascending: false })
+    .limit(12);
+
+  if (error || !data) return [];
+
+  return data.map((row) => {
+    const profiles = (row as { profiles?: ProfileJoin }).profiles ?? null;
+    return {
+      id: row.id as string,
+      title: (row.title as string) ?? '',
+      description: (row.description as string) ?? null,
+      cover_url: (row.cover_url as string) ?? null,
+      creatorName: getProfileUsername(profiles) ?? 'YORIAX Team',
+    };
+  });
+}
+
+async function loadSpotlightSong(client: SupabaseClient): Promise<Song | null> {
+  const { data, error } = await client
+    .from('songs')
+    .select(SONG_SELECT_WITH_PROFILE)
+    .ilike('title', '%Bubble Butt%')
+    .ilike('artist_name', '%Lewnamoon%')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapSong(data as SongRow);
+}
+
 export async function loadHomeInitialData(client: SupabaseClient, userId: string): Promise<HomeInitialData> {
-  const [popularSongs, recentSongs, signals] = await Promise.all([
+  const [popularSongs, recentSongs, signals, officialPlaylists, spotlightSong] = await Promise.all([
     loadSongsByPopularity(client, 96),
     loadSongsByDate(client, 48),
     loadSongSignals(client, userId),
+    loadOfficialPlaylists(client),
+    loadSpotlightSong(client),
   ]);
 
   const songs = mergeSongs(popularSongs, recentSongs);
@@ -169,6 +218,8 @@ export async function loadHomeInitialData(client: SupabaseClient, userId: string
     artistCovers,
     trendingSongs,
     recommendedSongs: (distinctRecommendations.length >= 8 ? distinctRecommendations : rankedRecommendations).slice(0, 8),
+    officialPlaylists,
+    spotlightSong,
   };
 }
 
