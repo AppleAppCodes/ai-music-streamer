@@ -20,7 +20,6 @@ export function useAppForeground() {
 
 export function useShouldPlaySilentVideo(active = true) {
   const isForeground = useAppForeground();
-  const { hasActiveSong, isPlaying } = usePlayerShell();
 
-  return active && isForeground && !(hasActiveSong && isPlaying);
+  return active && isForeground;
 }
