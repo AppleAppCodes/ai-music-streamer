@@ -6,6 +6,7 @@ import {
   type HomeMusicData,
 } from './music-data';
 import type { Playlist, Song } from './types';
+import { prefetchMotionImages } from './motion-image';
 
 const preloadedImages = new Set<string>();
 
@@ -61,7 +62,6 @@ export async function prefetchImageUris(uris: Iterable<string>, limit = 72) {
 
 export async function preloadStartupMedia(
   userId: string,
-  options?: { onVideoUrls?: (videoUrls: string[]) => void },
 ) {
   const home = await loadHomeMusic(userId);
   const imageUris = collectHomeCoverUris(home);
@@ -86,6 +86,8 @@ export async function preloadStartupMedia(
     }
   }
 
-  options?.onVideoUrls?.(Array.from(videoUrls).slice(0, 4));
-  await prefetchImageUris(imageUris);
+  await Promise.allSettled([
+    prefetchImageUris(imageUris),
+    prefetchMotionImages(videoUrls, 4),
+  ]);
 }

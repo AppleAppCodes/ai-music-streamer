@@ -1,11 +1,11 @@
-import { memo, useEffect, useState } from 'react';
-import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import { useVideoPlayer, VideoView } from 'expo-video';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, startSilentVideoLoop, useShouldPlaySilentVideo } from '../lib/silent-video';
+import { memo, useMemo, useState } from 'react';
+import { StyleSheet, type ImageStyle, type StyleProp } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
+import { getMotionImageSource } from '../lib/motion-image';
 
 type ArtistVideoMediaProps = {
   active?: boolean;
-  style?: StyleProp<ViewStyle>;
+  style?: StyleProp<ImageStyle>;
   uri?: string | null;
 };
 
@@ -14,70 +14,24 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
   style,
   uri,
 }: ArtistVideoMediaProps) {
-  const [videoState, setVideoState] = useState({ ready: false, uri: uri ?? null });
-  const isReady = videoState.uri === (uri ?? null) && videoState.ready;
-  const shouldPlay = useShouldPlaySilentVideo(active);
-  const player = useVideoPlayer(uri ? { uri, useCaching: true } : null, (videoPlayer) => {
-    configureSilentLoopingVideoPlayer(videoPlayer);
-  });
+  const motionSource = useMemo(() => getMotionImageSource(uri), [uri]);
+  const motionKey = typeof motionSource === 'number' ? `asset:${motionSource}` : motionSource?.uri ?? null;
+  const [failedUri, setFailedUri] = useState<string | null>(null);
 
-  useEffect(() => {
-    setVideoState({ ready: false, uri: uri ?? null });
-  }, [uri]);
-
-  useEffect(() => {
-    const subscription = player.addListener('statusChange', ({ status }) => {
-      setVideoState({ ready: status === 'readyToPlay', uri: uri ?? null });
-    });
-    const sourceSubscription = player.addListener('sourceLoad', () => {
-      prepareSilentVideoPlayback(player);
-      setVideoState({ ready: true, uri: uri ?? null });
-    });
-    if (player.status === 'readyToPlay') {
-      prepareSilentVideoPlayback(player);
-      setVideoState({ ready: true, uri: uri ?? null });
-    }
-
-    return () => {
-      subscription.remove();
-      sourceSubscription.remove();
-    };
-  }, [player, uri]);
-
-  useEffect(() => {
-    if (!uri || !shouldPlay) {
-      try {
-        player.pause();
-      } catch {
-        // Ignore native player lifecycle races while virtualized artist cards unmount.
-      }
-      return;
-    }
-
-    if (isReady) {
-      startSilentVideoLoop(player);
-    }
-  }, [isReady, player, shouldPlay, uri]);
-
-  useEffect(() => {
-    return () => {
-      try {
-        player.pause();
-      } catch {
-        // Ignore native player lifecycle races while virtualized artist cards unmount.
-      }
-    };
-  }, [player]);
-
-  if (!uri) return null;
+  if (!motionSource || !motionKey || failedUri === motionKey || !active) return null;
 
   return (
-    <VideoView
+    <ExpoImage
+      autoplay
+      cachePolicy="memory-disk"
       contentFit="cover"
-      nativeControls={false}
-      player={player}
+      onError={() => setFailedUri(motionKey)}
       pointerEvents="none"
-      style={[styles.video, style, (!active || !isReady) && styles.hidden]}
+      priority="high"
+      recyclingKey={motionKey}
+      source={motionSource}
+      style={[styles.video, style]}
+      transition={140}
     />
   );
 });
@@ -89,8 +43,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-  },
-  hidden: {
-    opacity: 0,
   },
 });

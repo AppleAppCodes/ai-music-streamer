@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Image as ExpoImage } from 'expo-image';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -13,9 +14,7 @@ import { MusicPreferencesOnboarding } from './src/screens/MusicPreferencesScreen
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { theme } from './src/theme';
 import { YoriaxMark } from './src/components/YoriaxUI';
-import { useVideoPlayer, VideoView } from 'expo-video';
 import { I18nProvider, useI18n } from './src/lib/i18n';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, startSilentVideoLoop, useShouldPlaySilentVideo } from './src/lib/silent-video';
 import { preloadStartupMedia } from './src/lib/media-preload';
 
 export default function App() {
@@ -45,30 +44,8 @@ function AppShell() {
     ready: false,
     userId: null,
   });
-  const [startupVideoUrls, setStartupVideoUrls] = useState<string[]>([]);
   const startupMediaReady = !signedIn || (startupMediaState.ready && startupMediaState.userId === user?.id);
   const appInitializing = initializing || (signedIn && (preferencesLoading || !startupMediaReady));
-
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const videoPlayer = useVideoPlayer(require('./assets/yoriax_intro.mp4'), (player) => {
-    configureSilentLoopingVideoPlayer(player);
-  });
-
-  const shouldPlayAuthVideo = useShouldPlaySilentVideo(!signedIn && !initializing);
-
-  useEffect(() => {
-    if (!shouldPlayAuthVideo) {
-      try {
-        videoPlayer.pause();
-      } catch {
-        // Ignore auth background video lifecycle races.
-      }
-      return;
-    }
-
-    prepareSilentVideoPlayback(videoPlayer);
-    startSilentVideoLoop(videoPlayer);
-  }, [shouldPlayAuthVideo, videoPlayer]);
 
   useEffect(() => {
     if (!signedIn) reset();
@@ -76,7 +53,6 @@ function AppShell() {
 
   useEffect(() => {
     if (!signedIn || !user?.id) {
-      setStartupVideoUrls([]);
       setStartupMediaState({ ready: true, userId: null });
       return;
     }
@@ -91,13 +67,7 @@ function AppShell() {
 
     setStartupMediaState({ ready: false, userId });
 
-    preloadStartupMedia(userId, {
-      onVideoUrls: (videoUrls) => {
-        if (mounted) {
-          setStartupVideoUrls(videoUrls);
-        }
-      },
-    })
+    preloadStartupMedia(userId)
       .catch((error) => {
         console.warn('Startup media preload failed:', error);
       })
@@ -119,11 +89,14 @@ function AppShell() {
       <StatusBar style="light" />
 
       {!signedIn && !initializing && (
-        <VideoView
-          style={StyleSheet.absoluteFill}
-          player={videoPlayer}
-          nativeControls={false}
+        <ExpoImage
+          autoplay
+          cachePolicy="memory-disk"
           contentFit="cover"
+          priority="high"
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          source={require('./assets/yoriax_intro.webp')}
+          style={StyleSheet.absoluteFill}
         />
       )}
 
@@ -140,90 +113,7 @@ function AppShell() {
           </ScrollView>
         )}
       </View>
-      {signedIn && startupVideoUrls.length > 0 ? <StartupVideoPreheater videoUrls={startupVideoUrls} /> : null}
     </SafeAreaView>
-  );
-}
-
-function StartupVideoPreheater({ videoUrls }: { videoUrls: string[] }) {
-  const uniqueUrls = useMemo(() => Array.from(new Set(videoUrls)).filter(Boolean), [videoUrls]);
-  const [pendingUrls, setPendingUrls] = useState(uniqueUrls);
-
-  useEffect(() => {
-    setPendingUrls(uniqueUrls);
-  }, [uniqueUrls]);
-
-  const markDone = useCallback((uri: string) => {
-    setPendingUrls((current) => current.filter((item) => item !== uri));
-  }, []);
-
-  if (pendingUrls.length === 0) return null;
-
-  return (
-    <View pointerEvents="none" style={styles.videoPreheater}>
-      {pendingUrls.map((uri) => (
-        <PreheatedVideo key={uri} onDone={markDone} uri={uri} />
-      ))}
-    </View>
-  );
-}
-
-function PreheatedVideo({ onDone, uri }: { onDone: (uri: string) => void; uri: string }) {
-  const player = useVideoPlayer({ uri, useCaching: true }, (videoPlayer) => {
-    configureSilentLoopingVideoPlayer(videoPlayer);
-  });
-  const doneRef = useRef(false);
-  const finish = useCallback(() => {
-    if (doneRef.current) return;
-    doneRef.current = true;
-    try {
-      player.pause();
-    } catch {
-      // Ignore native preheater races.
-    }
-    onDone(uri);
-  }, [onDone, player, uri]);
-
-  useEffect(() => {
-    prepareSilentVideoPlayback(player);
-    startSilentVideoLoop(player);
-
-    const fallbackTimer = setTimeout(finish, 1600);
-    const statusSubscription = player.addListener('statusChange', ({ status }) => {
-      if (status === 'readyToPlay') {
-        prepareSilentVideoPlayback(player);
-        finish();
-      }
-    });
-    const sourceSubscription = player.addListener('sourceLoad', () => {
-      prepareSilentVideoPlayback(player);
-      finish();
-    });
-
-    if (player.status === 'readyToPlay') {
-      finish();
-    }
-
-    return () => {
-      clearTimeout(fallbackTimer);
-      statusSubscription.remove();
-      sourceSubscription.remove();
-      try {
-        player.pause();
-      } catch {
-        // Ignore teardown races for hidden startup cache players.
-      }
-    };
-  }, [finish, player]);
-
-  return (
-    <VideoView
-      contentFit="cover"
-      nativeControls={false}
-      onFirstFrameRender={finish}
-      player={player}
-      style={styles.preheatedVideo}
-    />
   );
 }
 
@@ -367,19 +257,6 @@ const styles = StyleSheet.create({
   authContent: {
     flexGrow: 1,
     paddingBottom: 34,
-  },
-  videoPreheater: {
-    height: 1,
-    left: -10,
-    opacity: 0,
-    overflow: 'hidden',
-    position: 'absolute',
-    top: -10,
-    width: 1,
-  },
-  preheatedVideo: {
-    height: 1,
-    width: 1,
   },
   launchScreen: {
     alignItems: 'center',

@@ -38,7 +38,6 @@
     "plugins": [
       "expo-apple-authentication",
       "expo-audio",
-      "expo-video",
       [
         "expo-image-picker",
         {
@@ -62,7 +61,8 @@
             ]
           }
         }
-      ]
+      ],
+      "expo-image"
     ],
     "extra": {
       "yoriaxReleaseStage": "production",

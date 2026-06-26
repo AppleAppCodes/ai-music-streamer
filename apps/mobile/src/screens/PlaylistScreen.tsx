@@ -1,7 +1,7 @@
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { Image as ExpoImage } from 'expo-image';
 import { theme } from '../theme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SongListRow } from '../components/SongListRow';
 import { BackButton, CoverArt, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, startSilentVideoLoop, useShouldPlaySilentVideo } from '../lib/silent-video';
+import { getMotionImageSource } from '../lib/motion-image';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
@@ -22,8 +22,13 @@ function SongSeparator() {
 }
 
 function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolean; videoUrl?: string | null; coverUrl?: string | null }) {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const source = useMemo(() => videoUrl ? { uri: videoUrl, useCaching: true } : require('../../assets/yoriax_intro.mp4'), [videoUrl]);
+  const motionSource = useMemo(() => {
+    const source = getMotionImageSource(videoUrl);
+    if (source) return source;
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('../../assets/yoriax_intro.webp');
+  }, [videoUrl]);
   const fallbackSource = useMemo(() => {
     if (coverUrl && coverUrl !== 'local://yoriax-symbol') {
       return { uri: coverUrl };
@@ -32,61 +37,11 @@ function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolea
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('../../assets/icon.png');
   }, [coverUrl]);
-  const sourceKey = videoUrl || 'local:yoriax_intro';
-  const [videoState, setVideoState] = useState({ ready: false, sourceKey });
-  const isReady = videoState.sourceKey === sourceKey && videoState.ready;
-  const shouldPlay = useShouldPlaySilentVideo(active);
-  const player = useVideoPlayer(source, (videoPlayer) => {
-    configureSilentLoopingVideoPlayer(videoPlayer);
-  });
+  const [motionFailed, setMotionFailed] = useState(false);
 
   useEffect(() => {
-    setVideoState({ ready: false, sourceKey });
-    const subscription = player.addListener('statusChange', ({ status }) => {
-      if (status === 'readyToPlay') {
-        prepareSilentVideoPlayback(player);
-      }
-      setVideoState({ ready: status === 'readyToPlay', sourceKey });
-    });
-    const sourceSubscription = player.addListener('sourceLoad', () => {
-      prepareSilentVideoPlayback(player);
-      setVideoState({ ready: true, sourceKey });
-    });
-    if (player.status === 'readyToPlay') {
-      prepareSilentVideoPlayback(player);
-      setVideoState({ ready: true, sourceKey });
-    }
-
-    return () => {
-      subscription.remove();
-      sourceSubscription.remove();
-    };
-  }, [player, sourceKey]);
-
-  useEffect(() => {
-    if (shouldPlay && isReady) {
-      startSilentVideoLoop(player);
-      return;
-    }
-
-    if (!shouldPlay) {
-      try {
-        player.pause();
-      } catch {
-        // Ignore native player lifecycle races while the app backgrounds.
-      }
-    }
-  }, [isReady, player, shouldPlay]);
-
-  useEffect(() => {
-    return () => {
-      try {
-        player.pause();
-      } catch {
-        // Ignore native player teardown races while leaving the screen.
-      }
-    };
-  }, [player]);
+    setMotionFailed(false);
+  }, [videoUrl]);
 
   return (
     <View pointerEvents="none" style={styles.dailyHeroBackground}>
@@ -101,12 +56,19 @@ function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolea
         locations={[0, 0.48, 1]}
         style={styles.dailyHeroFallbackTint}
       />
-      <VideoView
-        contentFit="cover"
-        nativeControls={false}
-        player={player}
-        style={[styles.dailyHeroVideo, !isReady && styles.hiddenVideo]}
-      />
+      {active && !motionFailed ? (
+        <ExpoImage
+          autoplay
+          cachePolicy="memory-disk"
+          contentFit="cover"
+          onError={() => setMotionFailed(true)}
+          priority="high"
+          recyclingKey={videoUrl || 'local:yoriax_intro'}
+          source={motionSource}
+          style={styles.dailyHeroVideo}
+          transition={180}
+        />
+      ) : null}
       <LinearGradient
         colors={['rgba(5,5,6,0.32)', 'rgba(8,7,14,0.72)', theme.colors.background]}
         locations={[0, 0.52, 1]}
