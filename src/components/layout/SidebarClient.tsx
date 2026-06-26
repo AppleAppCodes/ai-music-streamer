@@ -131,10 +131,16 @@ export default function SidebarClient({
 
       <div className="relative mt-auto px-3">
         {isCreator && (
-          <Link href="/upload" className="mb-2 flex items-center gap-3 rounded-2xl border border-violet-300/20 bg-violet-500/14 px-3 py-3 text-sm font-black text-white transition-colors hover:bg-violet-500/22">
-            <PlusCircle className="w-5 h-5" />
-            {t('nav.upload')}
-          </Link>
+          <>
+            <Link href="/upload" className="mb-2 flex items-center gap-3 rounded-2xl border border-violet-300/20 bg-violet-500/14 px-3 py-3 text-sm font-black text-white transition-colors hover:bg-violet-500/22">
+              <PlusCircle className="w-5 h-5" />
+              {t('nav.upload')}
+            </Link>
+            <Link href="/artists/mine" className={navLinkClass('/artists/mine') + ' mb-2'}>
+              <Mic2 className={iconClass('/artists/mine')} />
+              {t('nav.myArtists')}
+            </Link>
+          </>
         )}
         <CreatePlaylistButton />
         <CookieSettingsButton className="mt-4 px-3 text-left text-[11px] font-bold uppercase tracking-[0.14em] text-white/30 transition-colors hover:text-white/60">
