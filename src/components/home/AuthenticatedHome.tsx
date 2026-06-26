@@ -554,16 +554,6 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
         </div>
       </section>
 
-      {/* Spotlight Section */}
-      {initialHomeData?.spotlightSong ? (
-        <SpotlightSection song={initialHomeData.spotlightSong} />
-      ) : null}
-
-      {/* Official Playlists Section */}
-      {initialHomeData?.officialPlaylists?.length ? (
-        <OfficialPlaylistsSection playlists={initialHomeData.officialPlaylists} />
-      ) : null}
-
       {/* Popular Genres Section */}
       <section className="px-4 sm:px-8 relative z-10">
         <div className="mb-4 flex items-end justify-between gap-4">
@@ -639,6 +629,16 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
           </div>
         </div>
       </section>
+
+      {/* Spotlight Section */}
+      {initialHomeData?.spotlightSong ? (
+        <SpotlightSection song={initialHomeData.spotlightSong} />
+      ) : null}
+
+      {/* Official Playlists Section */}
+      {initialHomeData?.officialPlaylists?.length ? (
+        <OfficialPlaylistsSection playlists={initialHomeData.officialPlaylists} />
+      ) : null}
 
       {/* Trending Section */}
       <section className="px-4 sm:px-8 relative z-10 min-h-[200px]">

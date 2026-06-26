@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserCheck, Sparkles } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
+import BrandLogo from '@/components/BrandLogo';
 import { isAdminUser, isCreatorUser } from '@/lib/admin';
 import CookieSettingsButton from '@/components/ui/CookieSettingsButton';
 
@@ -46,22 +46,43 @@ export default function SidebarClient({
       <div className="pointer-events-none absolute -right-28 bottom-20 h-52 w-52 rounded-full bg-teal-400/8 blur-[80px]" />
 
       <div className="relative mb-8 px-6">
-        <Link href="/" className="group flex items-center gap-3" aria-label="YORIAX Home">
-          <Image
-            src="/brand/yoriax-logo-symbol.png"
-            alt="YORIAX"
-            width={40}
-            height={40}
-            priority
-            className="h-9 w-9 rounded-xl object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-          <span
-            className="text-[15px] font-bold tracking-[0.24em] text-white"
-            style={{ fontFamily: 'var(--font-syncopate)' }}
-          >
-            YORIAX
-          </span>
-        </Link>
+        {isAdmin ? (
+          <div className="flex items-center gap-3">
+            <BrandLogo
+              user={user}
+              width={36}
+              height={36}
+              priority
+              className="h-9 w-9"
+              imageClassName="h-full w-full rounded-xl object-cover transition-transform duration-300"
+            />
+            <Link
+              href="/"
+              className="text-[15px] font-bold tracking-[0.24em] text-white transition-opacity hover:opacity-80"
+              style={{ fontFamily: 'var(--font-syncopate)' }}
+              aria-label="YORIAX Home"
+            >
+              YORIAX
+            </Link>
+          </div>
+        ) : (
+          <Link href="/" className="group flex items-center gap-3" aria-label="YORIAX Home">
+            <BrandLogo
+              user={user}
+              width={36}
+              height={36}
+              priority
+              className="h-9 w-9"
+              imageClassName="h-full w-full rounded-xl object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            <span
+              className="text-[15px] font-bold tracking-[0.24em] text-white"
+              style={{ fontFamily: 'var(--font-syncopate)' }}
+            >
+              YORIAX
+            </span>
+          </Link>
+        )}
       </div>
 
       <div className="relative mb-6 px-3">

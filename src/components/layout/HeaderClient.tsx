@@ -7,6 +7,8 @@ import { LogIn, Search, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ProfileDropdown from '@/components/ui/ProfileDropdown';
 import NotificationsDropdown from '@/components/ui/NotificationsDropdown';
+import BrandLogo from '@/components/BrandLogo';
+import { isAdminUser } from '@/lib/admin';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { notifyPlayerForceSignOut } from '@/lib/player-events';
 import { useEffect, useRef, useState } from 'react';
@@ -118,13 +120,13 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
       <div className="hidden w-1/3 items-center md:flex">
         {!user ? (
           <Link href="/" className="group flex items-center gap-3" aria-label="Yoriax Home">
-            <Image
-              src="/brand/yoriax-logo-symbol.png"
-              alt="YORIAX"
-              width={40}
-              height={40}
+            <BrandLogo
+              user={user}
+              width={36}
+              height={36}
               priority
-              className="h-9 w-9 rounded-xl object-cover shadow-[0_0_20px_rgba(217,70,239,0.38)] transition-transform duration-300 group-hover:scale-105"
+              className="h-9 w-9"
+              imageClassName="h-full w-full rounded-xl object-cover shadow-[0_0_20px_rgba(217,70,239,0.38)] transition-transform duration-300 group-hover:scale-105"
             />
             <span
               className="text-sm font-bold tracking-[0.24em] text-white"
@@ -135,16 +137,29 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
           </Link>
         ) : null}
       </div>
-      <Link href="/" className="group flex h-9 w-9 shrink-0 items-center justify-center md:hidden" aria-label="Yoriax Home">
-        <Image
-          src="/brand/yoriax-logo-symbol.png"
-          alt="YORIAX"
-          width={36}
-          height={36}
-          priority
-          className="h-8 w-8 rounded-lg object-cover shadow-[0_0_18px_rgba(217,70,239,0.38)] transition-transform duration-300 group-hover:scale-105"
-        />
-      </Link>
+      {isAdminUser(user) ? (
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center md:hidden">
+          <BrandLogo
+            user={user}
+            width={32}
+            height={32}
+            priority
+            className="h-8 w-8"
+            imageClassName="h-full w-full rounded-lg object-cover shadow-[0_0_18px_rgba(217,70,239,0.38)] transition-transform duration-300"
+          />
+        </div>
+      ) : (
+        <Link href="/" className="group flex h-9 w-9 shrink-0 items-center justify-center md:hidden" aria-label="Yoriax Home">
+          <BrandLogo
+            user={user}
+            width={32}
+            height={32}
+            priority
+            className="h-8 w-8"
+            imageClassName="h-full w-full rounded-lg object-cover shadow-[0_0_18px_rgba(217,70,239,0.38)] transition-transform duration-300 group-hover:scale-105"
+          />
+        </Link>
+      )}
 
       {/* Center - Search Bar */}
       <div className={`relative min-w-0 flex-1 items-center justify-center ${hideMobileSearch ? 'hidden md:flex' : 'flex'}`}>
