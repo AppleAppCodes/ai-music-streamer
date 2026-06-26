@@ -138,6 +138,9 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
   
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [artistVideoUrl, setArtistVideoUrl] = useState<string | null>(null);
+  const [bannerPosition, setBannerPosition] = useState<string | null>(null);
+  const [videoPosition, setVideoPosition] = useState<string | null>(null);
+  const [positioningTarget, setPositioningTarget] = useState<'banner' | 'video' | null>(null);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [isUploadingArtistVideo, setIsUploadingArtistVideo] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -246,7 +249,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
           ? supabase.from('follows').select('id').eq('user_id', session.user.id).eq('artist_name', artistName).maybeSingle()
           : Promise.resolve({ data: null }),
         // 4. Fetch artist socials (only the columns we need)
-        supabase.from('artist_profiles').select('instagram_url,tiktok_url,youtube_url').eq('artist_name', artistName).maybeSingle(),
+        supabase.from('artist_profiles').select('instagram_url,tiktok_url,youtube_url,banner_position,video_position').eq('artist_name', artistName).maybeSingle(),
       ]);
 
       // Process banner files
@@ -282,6 +285,11 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
           tiktok_url: normalizedSocials.tiktok_url || '',
           youtube_url: normalizedSocials.youtube_url || ''
         });
+        const profileRecord = socialsData as Record<string, unknown>;
+        const rawBannerPosition = profileRecord.banner_position;
+        const rawVideoPosition = profileRecord.video_position;
+        setBannerPosition(typeof rawBannerPosition === 'string' ? rawBannerPosition : null);
+        setVideoPosition(typeof rawVideoPosition === 'string' ? rawVideoPosition : null);
       }
       
       setLoading(false);
@@ -398,6 +406,52 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
     }
   };
 
+  const savePositionToDb = useCallback(async (field: 'banner_position' | 'video_position', value: string) => {
+    if (!isAdmin) return;
+    const { error } = await supabase
+      .from('artist_profiles')
+      .upsert({ artist_name: artistName, [field]: value }, { onConflict: 'artist_name' });
+    if (error) {
+      console.error(`Failed to save ${field}`, error);
+    }
+  }, [artistName, isAdmin, supabase]);
+
+  const beginPositioning = useCallback((target: 'banner' | 'video', event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isAdmin || positioningTarget !== target) return;
+    const container = event.currentTarget;
+    container.setPointerCapture(event.pointerId);
+    const rect = container.getBoundingClientRect();
+    const updateFromEvent = (clientX: number, clientY: number) => {
+      const x = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+      const y = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100));
+      const next = `${x.toFixed(1)}% ${y.toFixed(1)}%`;
+      if (target === 'banner') setBannerPosition(next);
+      else setVideoPosition(next);
+    };
+    updateFromEvent(event.clientX, event.clientY);
+    const onMove = (ev: PointerEvent) => updateFromEvent(ev.clientX, ev.clientY);
+    const onUp = (ev: PointerEvent) => {
+      container.removeEventListener('pointermove', onMove);
+      container.removeEventListener('pointerup', onUp);
+      container.removeEventListener('pointercancel', onUp);
+      try { container.releasePointerCapture(ev.pointerId); } catch { /* already released */ }
+      const finalX = Math.min(100, Math.max(0, ((ev.clientX - rect.left) / rect.width) * 100));
+      const finalY = Math.min(100, Math.max(0, ((ev.clientY - rect.top) / rect.height) * 100));
+      const finalValue = `${finalX.toFixed(1)}% ${finalY.toFixed(1)}%`;
+      void savePositionToDb(target === 'banner' ? 'banner_position' : 'video_position', finalValue);
+    };
+    container.addEventListener('pointermove', onMove);
+    container.addEventListener('pointerup', onUp);
+    container.addEventListener('pointercancel', onUp);
+  }, [isAdmin, positioningTarget, savePositionToDb]);
+
+  const resetPosition = useCallback((target: 'banner' | 'video') => {
+    const defaultValue = '50% 50%';
+    if (target === 'banner') setBannerPosition(defaultValue);
+    else setVideoPosition(defaultValue);
+    void savePositionToDb(target === 'banner' ? 'banner_position' : 'video_position', defaultValue);
+  }, [savePositionToDb]);
+
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!isAdmin) return;
     let file = e.target.files?.[0];
@@ -509,16 +563,21 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
   return (
     <div className="yoriax-page flex-1 overflow-y-auto pb-32">
       {/* Background Banner */}
-      <div className="absolute top-0 left-0 right-0 h-[600px] overflow-hidden pointer-events-none z-0">
+      <div
+        className={`absolute top-0 left-0 right-0 h-[600px] overflow-hidden z-0 ${positioningTarget === 'banner' ? 'cursor-move touch-none' : 'pointer-events-none'}`}
+        onPointerDown={positioningTarget === 'banner' ? (e) => beginPositioning('banner', e) : undefined}
+      >
         {bannerUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img 
-            src={bannerUrl} 
-            alt="Banner" 
-            className="w-full h-full object-cover opacity-60"
-            style={{ 
-              maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
+          <img
+            src={bannerUrl}
+            alt="Banner"
+            draggable={false}
+            className={`w-full h-full object-cover ${positioningTarget === 'banner' ? 'opacity-100' : 'opacity-60'}`}
+            style={{
+              objectPosition: bannerPosition ?? '50% 50%',
+              maskImage: positioningTarget === 'banner' ? undefined : 'linear-gradient(to bottom, black 0%, transparent 100%)',
+              WebkitMaskImage: positioningTarget === 'banner' ? undefined : 'linear-gradient(to bottom, black 0%, transparent 100%)'
             }}
           />
         ) : (
@@ -540,18 +599,18 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
         <div className="flex flex-col justify-end items-center md:items-start flex-shrink-0 max-w-3xl text-center md:text-left">
           {/* Admin Editable Overlay for Background */}
           {isAdmin && (
-            <div className="absolute top-10 right-10 md:right-auto md:left-10 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-              <input 
-                type="file" 
-                accept="image/*" 
-                ref={fileInputRef} 
-                className="hidden" 
+            <div className={`absolute top-10 right-10 md:right-auto md:left-10 transition-opacity z-20 flex flex-wrap gap-2 ${positioningTarget === 'banner' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                className="hidden"
                 onChange={handleBannerUpload}
               />
-              <button 
+              <button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingBanner}
-                className="flex items-center gap-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium"
+                disabled={isUploadingBanner || positioningTarget !== null}
+                className="flex items-center gap-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium disabled:opacity-50"
               >
                 {isUploadingBanner ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -560,6 +619,28 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
                 )}
                 Hintergrundbild bearbeiten
               </button>
+              {bannerUrl ? (
+                <button
+                  onClick={() => setPositioningTarget((prev) => (prev === 'banner' ? null : 'banner'))}
+                  disabled={isUploadingBanner}
+                  className={`flex items-center gap-2 backdrop-blur-md text-white px-4 py-2 rounded-full border transition-all text-sm font-medium ${positioningTarget === 'banner' ? 'bg-primary/80 hover:bg-primary border-primary-light' : 'bg-black/50 hover:bg-black/80 border-white/20'}`}
+                >
+                  {positioningTarget === 'banner' ? 'Position fertig' : 'Banner positionieren'}
+                </button>
+              ) : null}
+              {positioningTarget === 'banner' ? (
+                <button
+                  onClick={() => resetPosition('banner')}
+                  className="flex items-center gap-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium"
+                >
+                  Zentrieren
+                </button>
+              ) : null}
+              {positioningTarget === 'banner' ? (
+                <span className="text-xs text-white/80 self-center bg-black/50 px-3 py-1 rounded-full">
+                  Banner mit der Maus an die richtige Stelle ziehen
+                </span>
+              ) : null}
             </div>
           )}
 
@@ -585,7 +666,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
             <div className="relative w-full max-w-[320px] md:max-w-[480px] lg:max-w-[540px] aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex-shrink-0 group/video bg-black/20 backdrop-blur-sm">
               {artistVideoUrl ? (
               <>
-                <video 
+                <video
                   src={`${artistVideoUrl}#t=0.001`}
                   autoPlay
                   loop
@@ -595,8 +676,16 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
                   onContextMenu={(e) => e.preventDefault()}
                   onDragStart={(e) => e.preventDefault()}
                   className="w-full h-full object-cover pointer-events-none select-none scale-[1.16] origin-center"
+                  style={{ objectPosition: videoPosition ?? '50% 50%' }}
                 />
-                <div className="absolute inset-0 z-10" onContextMenu={(e) => e.preventDefault()} />
+                {positioningTarget === 'video' ? (
+                  <div
+                    className="absolute inset-0 z-20 cursor-move touch-none"
+                    onPointerDown={(e) => beginPositioning('video', e)}
+                  />
+                ) : (
+                  <div className="absolute inset-0 z-10" onContextMenu={(e) => e.preventDefault()} />
+                )}
               </>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-white/30 text-xs p-4 text-center border-dashed border-2 border-white/10 rounded-2xl">
@@ -606,22 +695,46 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
             
             {/* Admin Upload Video Overlay */}
             {isAdmin && (
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/video:opacity-100 transition-opacity flex flex-col items-center justify-center z-30">
-                <input 
-                  type="file" 
-                  accept="video/*" 
-                  ref={videoInputRef} 
-                  className="hidden" 
+              <div className={`absolute inset-0 transition-opacity flex flex-col items-center justify-center gap-2 z-30 pointer-events-none ${positioningTarget === 'video' ? 'opacity-100' : 'opacity-0 group-hover/video:opacity-100 bg-black/60'}`}>
+                <input
+                  type="file"
+                  accept="video/*"
+                  ref={videoInputRef}
+                  className="hidden"
                   onChange={handleArtistVideoUpload}
                 />
-                <button 
-                  onClick={(e) => { e.preventDefault(); videoInputRef.current?.click(); }}
-                  disabled={isUploadingArtistVideo}
-                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full border border-white/30 backdrop-blur-md transition-all text-sm font-medium"
-                >
-                  {isUploadingArtistVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit2 className="w-4 h-4" />}
-                  Video ändern
-                </button>
+                <div className="flex flex-col items-center gap-2 pointer-events-auto">
+                  <button
+                    onClick={(e) => { e.preventDefault(); videoInputRef.current?.click(); }}
+                    disabled={isUploadingArtistVideo || positioningTarget !== null}
+                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full border border-white/30 backdrop-blur-md transition-all text-sm font-medium disabled:opacity-50"
+                  >
+                    {isUploadingArtistVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit2 className="w-4 h-4" />}
+                    Video ändern
+                  </button>
+                  {artistVideoUrl ? (
+                    <button
+                      onClick={(e) => { e.preventDefault(); setPositioningTarget((prev) => (prev === 'video' ? null : 'video')); }}
+                      disabled={isUploadingArtistVideo}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-md transition-all text-sm font-medium ${positioningTarget === 'video' ? 'bg-primary/80 hover:bg-primary border-primary-light text-white' : 'bg-white/10 hover:bg-white/20 text-white border-white/30'}`}
+                    >
+                      {positioningTarget === 'video' ? 'Position fertig' : 'Video positionieren'}
+                    </button>
+                  ) : null}
+                  {positioningTarget === 'video' ? (
+                    <button
+                      onClick={(e) => { e.preventDefault(); resetPosition('video'); }}
+                      className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full border border-white/30 backdrop-blur-md transition-all text-sm font-medium"
+                    >
+                      Zentrieren
+                    </button>
+                  ) : null}
+                  {positioningTarget === 'video' ? (
+                    <span className="text-[11px] text-white/80 bg-black/50 px-2 py-1 rounded-full text-center">
+                      Video an die richtige Stelle ziehen
+                    </span>
+                  ) : null}
+                </div>
               </div>
             )}
             </div>
