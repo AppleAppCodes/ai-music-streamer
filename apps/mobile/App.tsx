@@ -13,9 +13,8 @@ import { MusicPreferencesOnboarding } from './src/screens/MusicPreferencesScreen
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { theme } from './src/theme';
 import { YoriaxMark } from './src/components/YoriaxUI';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { DecorativeVideoView } from 'yoriax-decorative-video';
 import { I18nProvider, useI18n } from './src/lib/i18n';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback } from './src/lib/silent-video';
 import { loadHomeMusic } from './src/lib/music-data';
 
 export default function App() {
@@ -42,20 +41,6 @@ function AppShell() {
   const { reset } = usePlayerShell();
   const signedIn = Boolean(user);
   const appInitializing = initializing || (signedIn && preferencesLoading);
-
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const videoPlayer = useVideoPlayer(require('./assets/yoriax_intro.MOV'), (player) => {
-    configureSilentLoopingVideoPlayer(player);
-  });
-
-  useEffect(() => {
-    if (signedIn || initializing) {
-      videoPlayer.pause();
-    } else {
-      prepareSilentVideoPlayback(videoPlayer);
-      videoPlayer.play();
-    }
-  }, [videoPlayer, signedIn, initializing]);
 
   useEffect(() => {
     if (!signedIn) reset();
@@ -94,10 +79,10 @@ function AppShell() {
       <StatusBar style="light" />
       
       {!signedIn && !initializing && (
-        <VideoView
+        <DecorativeVideoView
           style={StyleSheet.absoluteFill}
-          player={videoPlayer}
-          nativeControls={false}
+          source={require('./assets/yoriax_intro.MOV')}
+          active={true}
           contentFit="cover"
         />
       )}

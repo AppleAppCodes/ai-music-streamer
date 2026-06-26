@@ -1,7 +1,7 @@
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { DecorativeVideoView } from 'yoriax-decorative-video';
 import { theme } from '../theme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SongListRow } from '../components/SongListRow';
 import { BackButton, CoverArt, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, useShouldPlaySilentVideo } from '../lib/silent-video';
+import { useShouldPlaySilentVideo } from '../lib/silent-video';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
@@ -23,50 +23,8 @@ function SongSeparator() {
 
 function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolean; videoUrl?: string | null; coverUrl?: string | null }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const source = useMemo(() => videoUrl ? { uri: videoUrl } : require('../../assets/yoriax_intro.MOV'), [videoUrl]);
-  const sourceKey = videoUrl || 'local:yoriax_intro';
-  const [videoState, setVideoState] = useState({ ready: false, sourceKey });
-  const isReady = videoState.sourceKey === sourceKey && videoState.ready;
+  const source = videoUrl ? videoUrl : require('../../assets/yoriax_intro.MOV');
   const shouldPlay = useShouldPlaySilentVideo(active);
-  const playerSource = shouldPlay ? source : null;
-  const player = useVideoPlayer(playerSource, (videoPlayer) => {
-    configureSilentLoopingVideoPlayer(videoPlayer);
-  });
-
-  useEffect(() => {
-    player.replace(playerSource);
-  }, [player, playerSource]);
-
-  useEffect(() => {
-    const subscription = player.addListener('statusChange', ({ status }) => {
-      setVideoState({ ready: status === 'readyToPlay', sourceKey });
-    });
-    const sourceSubscription = player.addListener('sourceLoad', () => {
-      setVideoState({ ready: true, sourceKey });
-    });
-
-    return () => {
-      subscription.remove();
-      sourceSubscription.remove();
-    };
-  }, [player, sourceKey]);
-
-  useEffect(() => {
-    if (shouldPlay && isReady) {
-      prepareSilentVideoPlayback(player);
-      player.play();
-    } else {
-      player.pause();
-    }
-
-    return () => {
-      try {
-        player.pause();
-      } catch {
-        // Ignore native player teardown races while leaving the screen.
-      }
-    };
-  }, [isReady, player, shouldPlay]);
 
   return (
     <View pointerEvents="none" style={styles.dailyHeroBackground}>
@@ -83,11 +41,11 @@ function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolea
           style={StyleSheet.absoluteFill}
         />
       )}
-      <VideoView
+      <DecorativeVideoView
+        source={source}
+        active={shouldPlay}
         contentFit="cover"
-        nativeControls={false}
-        player={player}
-        style={[styles.dailyHeroVideo, (!shouldPlay || !isReady) && styles.hiddenVideo]}
+        style={styles.dailyHeroVideo}
       />
       <LinearGradient
         colors={['rgba(5,5,6,0.32)', 'rgba(8,7,14,0.72)', theme.colors.background]}
