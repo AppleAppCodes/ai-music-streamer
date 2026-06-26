@@ -1,5 +1,4 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayerStatus } from 'expo-audio';
 import type { AudioLockScreenOptions, AudioPlayer } from 'expo-audio';
 import { activateExclusivePlaybackSession, addTrackRemoteCommandListeners, setTrackRemoteCommandsEnabled } from 'yoriax-remote-commands';
@@ -115,15 +114,33 @@ async function waitForPlayerReady(player: AudioPlayer, isCurrentRequest: () => b
   return false;
 }
 
+function getLockScreenMetadata(song: Song) {
+  return {
+    artist: song.artist_name || song.creatorName || 'Yoriax',
+    artworkUrl: song.cover_url || undefined,
+    title: song.title,
+  };
+}
+
 function setLockScreenMetadata(player: AudioPlayer, song: Song) {
   try {
-    player.setActiveForLockScreen(true, {
-      artist: song.artist_name || song.creatorName || 'Yoriax',
-      artworkUrl: song.cover_url || undefined,
-      title: song.title,
-    }, LOCK_SCREEN_OPTIONS);
+    player.setActiveForLockScreen(true, getLockScreenMetadata(song), LOCK_SCREEN_OPTIONS);
   } catch (metadataError) {
     console.warn('Could not update lock screen metadata.', metadataError);
+  }
+}
+
+function updateLockScreenMetadata(player: AudioPlayer, song: Song) {
+  try {
+    const updateMetadata = Reflect.get(player, 'updateLockScreenMetadata');
+    if (typeof updateMetadata === 'function') {
+      updateMetadata.call(player, getLockScreenMetadata(song));
+      return;
+    }
+
+    setLockScreenMetadata(player, song);
+  } catch (metadataError) {
+    console.warn('Could not refresh lock screen metadata.', metadataError);
   }
 }
 
@@ -249,8 +266,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reassertNowPlaying = useCallback((song: Song) => {
-    activateExclusivePlaybackSession();
-    setLockScreenMetadata(player, song);
+    updateLockScreenMetadata(player, song);
   }, [player]);
 
   const scheduleNowPlayingRefresh = useCallback((song: Song, requestId = playRequestIdRef.current) => {
@@ -268,7 +284,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       reassertNowPlaying(song);
     };
 
-    run();
     nowPlayingRefreshTimeoutsRef.current = NOW_PLAYING_REASSERT_DELAYS_MS.map((delay) => setTimeout(run, delay));
   }, [clearNowPlayingRefreshes, reassertNowPlaying]);
 
@@ -291,8 +306,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setIsPreparingPlayback(true);
 
     try {
-      await activateYoriaxPlaybackSession();
-
       const isSameSong = loadedSongIdRef.current === song.id;
       const fadeInMs = Math.max(0, options.fadeInMs ?? 0);
 
@@ -326,8 +339,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         await waitForPlayerReady(player, isCurrentRequest);
         if (!isCurrentRequest()) return;
         loadedSongIdRef.current = adSong.id;
+        await activateYoriaxPlaybackSession();
+        if (!isCurrentRequest()) return;
         player.play();
         intendsToPlayRef.current = true;
+        setLockScreenMetadata(player, adSong);
         scheduleNowPlayingRefresh(adSong, playRequestId);
         return;
       }
@@ -371,6 +387,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         await player.seekTo(startAt, 0, 0);
       }
 
+      await activateYoriaxPlaybackSession();
+      if (!isCurrentRequest()) return;
       player.play();
       intendsToPlayRef.current = true;
       if (fadeInMs > 0) {
@@ -378,6 +396,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       } else {
         setPlayerVolume(1);
       }
+      setLockScreenMetadata(player, song);
       scheduleNowPlayingRefresh(song, playRequestId);
     } catch (playError) {
       setError(playError instanceof Error ? playError.message : t('player.playbackFailed'));
@@ -451,6 +470,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       void activateYoriaxPlaybackSession(); // Ensure session is active when resuming from pause
       player.play();
       intendsToPlayRef.current = true;
+      setLockScreenMetadata(player, activeSong);
       scheduleNowPlayingRefresh(activeSong);
     }
   }, [activeSong, pause, player, scheduleNowPlayingRefresh, setPlayerVolume, status.playing]);
@@ -540,21 +560,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const song = activeSongRef.current;
     if (!song || (!status.playing && !intendsToPlayRef.current)) return;
     scheduleNowPlayingRefresh(song);
-  }, [scheduleNowPlayingRefresh, status.playing]);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') return;
-
-      const song = activeSongRef.current;
-      if (!song || (!status.playing && !intendsToPlayRef.current)) return;
-
-      scheduleNowPlayingRefresh(song);
-    });
-
-    return () => {
-      subscription.remove();
-    };
   }, [scheduleNowPlayingRefresh, status.playing]);
 
   const isAdPlayingRef = useRef(isAdPlaying);
