@@ -12,7 +12,13 @@ function isPublicPath(pathname: string) {
     || pathname.startsWith('/impressum')
     || pathname.startsWith('/datenschutz')
     || pathname.startsWith('/agb')
-    || pathname.startsWith('/auth');
+    || pathname.startsWith('/auth')
+    // Shareable public profile / detail pages — crawlers (WhatsApp,
+    // Twitter, iMessage) need to render their OG/Twitter meta tags
+    // without first being redirected to /login.
+    || pathname.startsWith('/artist/')
+    || pathname.startsWith('/song/')
+    || pathname.startsWith('/playlist/');
 }
 
 function isPrelaunchAllowedPath(pathname: string) {
