@@ -3,7 +3,7 @@ import { getDailyTrendingSongs, getPersonalizedSongs, type PlaybackSignal, type 
 import type { Song } from '@/lib/types';
 
 const SONG_SELECT =
-  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at, is_spotlight';
+  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at, is_spotlight, spotlight_copy';
 
 const SONG_SELECT_WITH_PROFILE = `${SONG_SELECT}, profiles!songs_creator_id_fkey(username)`;
 const PUBLIC_CHART_SONG_SELECT =
