@@ -11,6 +11,7 @@ export interface Song {
   plays: number;
   created_at?: string | null;
   is_spotlight?: boolean | null;
+  spotlight_copy?: string | null;
 }
 
 export interface FeedClip {
