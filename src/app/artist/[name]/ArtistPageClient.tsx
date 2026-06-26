@@ -592,14 +592,14 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
         )}
       </div>
       <div className="pointer-events-none absolute left-0 right-0 top-0 z-0 h-[600px] bg-gradient-to-b from-black/10 via-background/70 to-background" />
-      
+
       {/* Hero Content */}
-      <div className="relative pt-20 px-6 md:px-10 pb-4 md:pb-8 flex flex-col md:flex-row w-full items-center md:items-end gap-4 md:gap-10 min-h-[250px] md:min-h-[380px] z-10 group">
+      <div className={`relative pt-20 px-6 md:px-10 pb-4 md:pb-8 flex flex-col md:flex-row w-full items-center md:items-end gap-4 md:gap-10 min-h-[250px] md:min-h-[380px] z-10 group ${positioningTarget === 'banner' ? 'pointer-events-none' : ''}`}>
         
         <div className="flex flex-col justify-end items-center md:items-start flex-shrink-0 max-w-3xl text-center md:text-left">
           {/* Admin Editable Overlay for Background */}
           {isAdmin && (
-            <div className={`absolute top-10 right-10 md:right-auto md:left-10 transition-opacity z-20 flex flex-wrap gap-2 ${positioningTarget === 'banner' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+            <div className={`absolute top-10 right-10 md:right-auto md:left-10 transition-opacity z-20 flex flex-wrap gap-2 ${positioningTarget === 'banner' ? 'opacity-100 pointer-events-auto' : 'opacity-0 group-hover:opacity-100'}`}>
               <input
                 type="file"
                 accept="image/*"
