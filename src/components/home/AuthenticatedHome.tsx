@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import type { MouseEvent } from 'react';
 import type { CSSProperties } from 'react';
 import SongCard from '@/components/ui/SongCard';
-import { ChevronLeft, ChevronRight, Heart, ListMusic, Pause, Play, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, ListMusic, Music, Pause, Play, Sparkles, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ import Image from 'next/image';
 import { GENRES } from '@/lib/constants';
 import { Song } from '@/lib/types';
 import { getDailyTrendingSongs, getPersonalizedSongs } from '@/lib/homeRecommendations';
+import type { OfficialPlaylistSummary } from '@/lib/public-music-data';
 
 type SongWithProfile = Song & {
   profiles?: {
@@ -25,6 +26,8 @@ type InitialHomeData = {
   artistCovers: string[];
   trendingSongs: Song[];
   recommendedSongs: Song[];
+  officialPlaylists: OfficialPlaylistSummary[];
+  spotlightSong: Song | null;
 };
 
 const HOME_SONG_GRID_CLASSES = 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-[repeat(auto-fill,minmax(160px,200px))]';
@@ -551,6 +554,16 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
         </div>
       </section>
 
+      {/* Spotlight Section */}
+      {initialHomeData?.spotlightSong ? (
+        <SpotlightSection song={initialHomeData.spotlightSong} />
+      ) : null}
+
+      {/* Official Playlists Section */}
+      {initialHomeData?.officialPlaylists?.length ? (
+        <OfficialPlaylistsSection playlists={initialHomeData.officialPlaylists} />
+      ) : null}
+
       {/* Popular Genres Section */}
       <section className="px-4 sm:px-8 relative z-10">
         <div className="mb-4 flex items-end justify-between gap-4">
@@ -673,5 +686,124 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
         )}
       </section>
     </div>
+  );
+}
+
+function SpotlightSection({ song }: { song: Song }) {
+  const { t } = useTranslation();
+  const { playSong, setQueue, currentSong, isPlaying, togglePlayPause } = usePlayer();
+  const isActive = currentSong?.id === song.id;
+  const isThisPlaying = isActive && isPlaying;
+
+  const handlePlay = useCallback(() => {
+    if (isActive) {
+      togglePlayPause();
+      return;
+    }
+    setQueue([song], 0);
+    playSong(song);
+  }, [isActive, togglePlayPause, setQueue, playSong, song]);
+
+  return (
+    <section className="px-4 sm:px-8 relative z-10">
+      <SectionHeader title={t('home.spotlight')} />
+      <div className="relative overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/25 via-primary/10 to-accent/15 p-5 shadow-[0_24px_64px_rgba(124,58,237,0.18)] sm:p-7">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/30 blur-[100px]" />
+        <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-accent/20 blur-[120px]" />
+        <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-7">
+          <Link
+            href={`/song/${song.id}`}
+            className="relative flex h-32 w-32 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-black/40 shadow-2xl transition-transform hover:scale-[1.02] sm:h-40 sm:w-40"
+          >
+            {song.cover_url ? (
+              <Image
+                src={song.cover_url}
+                alt={song.title}
+                fill
+                sizes="(max-width: 640px) 128px, 160px"
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-white/5">
+                <Sparkles className="h-10 w-10 text-white/40" />
+              </div>
+            )}
+          </Link>
+          <div className="flex min-w-0 flex-1 flex-col text-center sm:text-left">
+            <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-primary-light/90">
+              <Sparkles className="h-3.5 w-3.5" />
+              {t('home.spotlightEyebrow')}
+            </span>
+            <h3 className="mt-2 truncate text-2xl font-black text-white sm:text-3xl">{song.title}</h3>
+            <p className="mt-1 truncate text-sm font-bold text-white/65">
+              {song.artist_name || song.creatorName || t('guestHome.unknownArtist')}
+            </p>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-white/55 line-clamp-3">{t('home.spotlightCopy')}</p>
+            <div className="mt-5 flex items-center justify-center gap-3 sm:justify-start">
+              <button
+                type="button"
+                onClick={handlePlay}
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-black text-white shadow-[0_12px_30px_rgba(124,58,237,0.45)] transition-transform hover:scale-105"
+                aria-label={isThisPlaying ? t('home.spotlightPause') : t('home.spotlightPlay')}
+              >
+                {isThisPlaying ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
+                {isThisPlaying ? t('home.spotlightPause') : t('home.spotlightPlay')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OfficialPlaylistsSection({ playlists }: { playlists: OfficialPlaylistSummary[] }) {
+  const { t } = useTranslation();
+
+  return (
+    <section className="px-4 sm:px-8 relative z-10">
+      <SectionHeader title={t('home.officialPlaylists')} actionLabel={t('home.seeAll')} href="/discover/playlists" />
+      <div
+        className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:px-8 sm:gap-4"
+        style={{
+          maskImage: 'linear-gradient(to right, transparent, black 2%, black 98%, transparent)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent, black 2%, black 98%, transparent)',
+        }}
+      >
+        {playlists.map((playlist) => (
+          <Link
+            key={playlist.id}
+            href={`/playlist/${playlist.id}`}
+            className="group relative flex w-[148px] shrink-0 flex-col gap-2 rounded-2xl border border-teal-300/15 bg-gradient-to-br from-teal-300/[0.08] via-white/[0.03] to-primary/[0.08] p-3 transition-all duration-300 hover:-translate-y-1 hover:border-teal-200/40 sm:w-[168px]"
+          >
+            <div className="relative aspect-square overflow-hidden rounded-xl bg-white/5 shadow-lg">
+              {playlist.cover_url ? (
+                <Image
+                  src={playlist.cover_url}
+                  alt={playlist.title}
+                  fill
+                  sizes="(max-width: 640px) 148px, 168px"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <Music className="h-12 w-12 text-white/20" />
+                </div>
+              )}
+              <div className="absolute left-2 top-2 rounded-full border border-teal-200/20 bg-black/55 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-teal-100 backdrop-blur-md">
+                Official
+              </div>
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-white">{playlist.title}</p>
+              <p className="mt-0.5 truncate text-xs font-semibold text-white/45">
+                {playlist.creatorName}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
