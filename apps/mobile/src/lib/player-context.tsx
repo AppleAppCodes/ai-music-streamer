@@ -1,5 +1,4 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayerStatus } from 'expo-audio';
 import type { AudioLockScreenOptions, AudioPlayer } from 'expo-audio';
 import { activateExclusivePlaybackSession, addTrackRemoteCommandListeners, setTrackRemoteCommandsEnabled } from 'yoriax-remote-commands';
@@ -127,7 +126,6 @@ function setLockScreenMetadata(player: AudioPlayer, song: Song) {
 }
 
 async function activateYoriaxPlaybackSession() {
-  activateExclusivePlaybackSession();
   await setAudioModeAsync(EXCLUSIVE_AUDIO_MODE);
   await setIsAudioActiveAsync(true);
   activateExclusivePlaybackSession();
@@ -497,40 +495,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     activeSongRef.current = activeSong;
   }, [activeSong]);
 
-  const isPlayingRef = useRef(status.playing);
   useEffect(() => {
-    isPlayingRef.current = status.playing;
-  }, [status.playing]);
-
-  useEffect(() => {
-    let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
-
-    const refreshNowPlayingSession = () => {
-      const song = activeSongRef.current;
-      if (!song || (!isPlayingRef.current && !intendsToPlayRef.current)) return;
-
-      void activateYoriaxPlaybackSession()
-        .then(() => {
-          setLockScreenMetadata(player, song);
-        })
-        .catch((sessionError) => {
-          console.warn('Could not refresh background audio session.', sessionError);
-        });
-    };
-
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState !== 'inactive' && nextState !== 'background') return;
-
-      refreshNowPlayingSession();
-      if (refreshTimeout) clearTimeout(refreshTimeout);
-      refreshTimeout = setTimeout(refreshNowPlayingSession, 180);
-    });
-
-    return () => {
-      if (refreshTimeout) clearTimeout(refreshTimeout);
-      subscription.remove();
-    };
-  }, [player]);
+    const song = activeSongRef.current;
+    if (!song || (!status.playing && !intendsToPlayRef.current)) return;
+    setLockScreenMetadata(player, song);
+  }, [player, status.playing]);
 
   const isAdPlayingRef = useRef(isAdPlaying);
   useEffect(() => {

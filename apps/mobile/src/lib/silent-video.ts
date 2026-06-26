@@ -1,4 +1,6 @@
 import type { VideoPlayer } from 'expo-video';
+import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 
 function disableSilentVideoAudioTrack(player: VideoPlayer) {
   try {
@@ -30,11 +32,27 @@ export function prepareSilentVideoPlayback(player: VideoPlayer) {
 
 export function startSilentVideoLoop(player: VideoPlayer) {
   prepareSilentVideoPlayback(player);
-  if (!player.playing) {
-    player.play();
+  try {
+    if (!player.playing) {
+      player.play();
+    }
+  } catch {
+    // Decorative video playback must never be allowed to disturb audio playback.
   }
 }
 
 export function useShouldPlaySilentVideo(active = true) {
-  return active;
+  const [appIsVisible, setAppIsVisible] = useState(() => AppState.currentState !== 'background');
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      setAppIsVisible(state !== 'background');
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  return active && appIsVisible;
 }

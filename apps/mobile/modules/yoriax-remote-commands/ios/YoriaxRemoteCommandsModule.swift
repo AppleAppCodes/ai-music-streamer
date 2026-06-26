@@ -35,7 +35,9 @@ public class YoriaxRemoteCommandsModule: Module {
   private func activatePlaybackSession() {
     do {
       let session = AVAudioSession.sharedInstance()
-      try session.setCategory(.playback, mode: .default, options: [])
+      if session.category != .playback || session.mode != .default || !session.categoryOptions.isEmpty {
+        try session.setCategory(.playback, mode: .default, options: [])
+      }
       try session.setActive(true)
       UIApplication.shared.beginReceivingRemoteControlEvents()
     } catch {

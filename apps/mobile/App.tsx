@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -15,7 +15,7 @@ import { theme } from './src/theme';
 import { YoriaxMark } from './src/components/YoriaxUI';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { I18nProvider, useI18n } from './src/lib/i18n';
-import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback } from './src/lib/silent-video';
+import { configureSilentLoopingVideoPlayer, prepareSilentVideoPlayback, startSilentVideoLoop, useShouldPlaySilentVideo } from './src/lib/silent-video';
 import { preloadStartupMedia } from './src/lib/media-preload';
 
 export default function App() {
@@ -54,14 +54,21 @@ function AppShell() {
     configureSilentLoopingVideoPlayer(player);
   });
 
+  const shouldPlayAuthVideo = useShouldPlaySilentVideo(!signedIn && !initializing);
+
   useEffect(() => {
-    if (signedIn || initializing) {
-      videoPlayer.pause();
-    } else {
-      prepareSilentVideoPlayback(videoPlayer);
-      videoPlayer.play();
+    if (!shouldPlayAuthVideo) {
+      try {
+        videoPlayer.pause();
+      } catch {
+        // Ignore auth background video lifecycle races.
+      }
+      return;
     }
-  }, [videoPlayer, signedIn, initializing]);
+
+    prepareSilentVideoPlayback(videoPlayer);
+    startSilentVideoLoop(videoPlayer);
+  }, [shouldPlayAuthVideo, videoPlayer]);
 
   useEffect(() => {
     if (!signedIn) reset();
@@ -139,36 +146,81 @@ function AppShell() {
 }
 
 function StartupVideoPreheater({ videoUrls }: { videoUrls: string[] }) {
+  const uniqueUrls = useMemo(() => Array.from(new Set(videoUrls)).filter(Boolean), [videoUrls]);
+  const [pendingUrls, setPendingUrls] = useState(uniqueUrls);
+
+  useEffect(() => {
+    setPendingUrls(uniqueUrls);
+  }, [uniqueUrls]);
+
+  const markDone = useCallback((uri: string) => {
+    setPendingUrls((current) => current.filter((item) => item !== uri));
+  }, []);
+
+  if (pendingUrls.length === 0) return null;
+
   return (
     <View pointerEvents="none" style={styles.videoPreheater}>
-      {videoUrls.map((uri) => (
-        <PreheatedVideo key={uri} uri={uri} />
+      {pendingUrls.map((uri) => (
+        <PreheatedVideo key={uri} onDone={markDone} uri={uri} />
       ))}
     </View>
   );
 }
 
-function PreheatedVideo({ uri }: { uri: string }) {
+function PreheatedVideo({ onDone, uri }: { onDone: (uri: string) => void; uri: string }) {
   const player = useVideoPlayer({ uri, useCaching: true }, (videoPlayer) => {
     configureSilentLoopingVideoPlayer(videoPlayer);
   });
+  const doneRef = useRef(false);
+  const finish = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    try {
+      player.pause();
+    } catch {
+      // Ignore native preheater races.
+    }
+    onDone(uri);
+  }, [onDone, player, uri]);
 
   useEffect(() => {
     prepareSilentVideoPlayback(player);
+    startSilentVideoLoop(player);
+
+    const fallbackTimer = setTimeout(finish, 1600);
+    const statusSubscription = player.addListener('statusChange', ({ status }) => {
+      if (status === 'readyToPlay') {
+        prepareSilentVideoPlayback(player);
+        finish();
+      }
+    });
+    const sourceSubscription = player.addListener('sourceLoad', () => {
+      prepareSilentVideoPlayback(player);
+      finish();
+    });
+
+    if (player.status === 'readyToPlay') {
+      finish();
+    }
 
     return () => {
+      clearTimeout(fallbackTimer);
+      statusSubscription.remove();
+      sourceSubscription.remove();
       try {
         player.pause();
       } catch {
         // Ignore teardown races for hidden startup cache players.
       }
     };
-  }, [player]);
+  }, [finish, player]);
 
   return (
     <VideoView
       contentFit="cover"
       nativeControls={false}
+      onFirstFrameRender={finish}
       player={player}
       style={styles.preheatedVideo}
     />

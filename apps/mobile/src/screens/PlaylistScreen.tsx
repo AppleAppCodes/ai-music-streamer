@@ -70,7 +70,11 @@ function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolea
     }
 
     if (!shouldPlay) {
-      player.pause();
+      try {
+        player.pause();
+      } catch {
+        // Ignore native player lifecycle races while the app backgrounds.
+      }
     }
   }, [isReady, player, shouldPlay]);
 
