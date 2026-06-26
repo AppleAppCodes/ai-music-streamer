@@ -47,6 +47,7 @@ interface PlayerContextValue {
 
 interface PlayerControlsContextValue {
   activeSong: Song | null;
+  isBuffering: boolean;
   isShuffling: boolean;
   isPlaying: boolean;
   pause: () => void;
@@ -662,6 +663,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const controlsValue = useMemo<PlayerControlsContextValue>(
     () => ({
       activeSong,
+      isBuffering: isPreparingPlayback || status.isBuffering,
       isShuffling,
       isPlaying: status.playing,
       pause,
@@ -671,7 +673,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       toggle,
       toggleShuffle,
     }),
-    [activeSong, isShuffling, pause, playSong, reset, setQueue, status.playing, toggle, toggleShuffle],
+    [activeSong, isPreparingPlayback, isShuffling, pause, playSong, reset, setQueue, status.isBuffering, status.playing, toggle, toggleShuffle],
   );
 
   const hasActiveSong = activeSong !== null;

@@ -14,8 +14,13 @@ import { SongListRow } from '../components/SongListRow';
 import { BackButton, CoverArt, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
 import { useShouldPlaySilentVideo } from '../lib/silent-video';
+import { readPersistedCache, writePersistedCache } from '../lib/persisted-cache';
+import { prefetchPlaylistMedia } from '../lib/media-preload';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
+type PlaylistDetails = { playlist: Playlist; songs: Song[] };
+
+const PLAYLIST_CACHE_PREFIX = 'yoriax:playlist:v1:';
 
 function SongSeparator() {
   return <View style={styles.songSeparator} />;
@@ -69,7 +74,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
   const [isLeaving, setIsLeaving] = useState(false);
   const backTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { activeSong, isPlaying, playSong, setQueue } = usePlayerControls();
+  const { activeSong, isBuffering, isPlaying, pause, playSong, setQueue, toggle } = usePlayerControls();
 
   const handlePlaySong = useCallback((song: Song, index: number) => {
     setQueue(songs, index);
@@ -80,16 +85,34 @@ export function PlaylistScreen({ route, navigation }: Props) {
     let mounted = true;
 
     async function load() {
+      const cacheKey = `${PLAYLIST_CACHE_PREFIX}${playlistId}`;
+      let hasCachedData = false;
       setLoading(true);
       setError(null);
+
+      const cachedData = await readPersistedCache<PlaylistDetails>(cacheKey);
+      if (mounted && cachedData) {
+        hasCachedData = true;
+        setPlaylist(cachedData.playlist);
+        setSongs(cachedData.songs);
+        setLoading(false);
+        void prefetchPlaylistMedia(cachedData.playlist, cachedData.songs);
+      } else if (mounted) {
+        setPlaylist(null);
+        setSongs([]);
+      }
+
       try {
         const data = await loadPlaylistDetails(playlistId);
         if (mounted) {
           setPlaylist(data.playlist);
           setSongs(data.songs);
+          setError(null);
+          void writePersistedCache(cacheKey, data);
+          void prefetchPlaylistMedia(data.playlist, data.songs);
         }
       } catch (err) {
-        if (mounted) {
+        if (mounted && !hasCachedData) {
           setError(err instanceof Error ? err.message : t('playlist.loadError'));
         }
       } finally {
@@ -126,6 +149,10 @@ export function PlaylistScreen({ route, navigation }: Props) {
     );
   }, [activeSong?.id, handlePlaySong, isPlaying]);
 
+  const activeSongIndex = songs.findIndex((song) => song.id === activeSong?.id);
+  const isPlaylistActive = activeSongIndex >= 0;
+  const isPlaylistPlaying = isPlaylistActive && isPlaying;
+  const isPlaylistPreparing = isPlaylistActive && isBuffering;
   const isDailyNewReleases = playlist?.id === DAILY_NEW_RELEASES_PLAYLIST_ID;
   const hasVideo = !!playlist?.video_url || isDailyNewReleases;
   const playlistDescription = isDailyNewReleases
@@ -154,6 +181,24 @@ export function PlaylistScreen({ route, navigation }: Props) {
     navigateBack();
   }, [isDailyNewReleases, isLeaving, navigation]);
 
+  const handlePlayAllPress = useCallback(() => {
+    if (songs.length === 0) return;
+
+    if (isPlaylistPlaying) {
+      pause();
+      return;
+    }
+
+    if (isPlaylistActive) {
+      setQueue(songs, activeSongIndex);
+      toggle();
+      return;
+    }
+
+    setQueue(songs, 0);
+    void playSong(songs[0]);
+  }, [activeSongIndex, isPlaylistActive, isPlaylistPlaying, pause, playSong, setQueue, songs, toggle]);
+
   return (
     <View style={styles.container}>
       <View style={[styles.absoluteHeader, { top: Math.max(insets.top + 8, 18) }]}>
@@ -173,7 +218,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
         <FlatList
           contentContainerStyle={styles.content}
           data={songs}
-          extraData={`${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}`}
+          extraData={`${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}:${isBuffering ? '1' : '0'}`}
           initialNumToRender={10}
           ItemSeparatorComponent={SongSeparator}
           keyExtractor={(item, index) => `${item.id}-${index}`}
@@ -219,10 +264,21 @@ export function PlaylistScreen({ route, navigation }: Props) {
 
                   {songs.length > 0 ? (
                     <TouchableOpacity
-                      style={styles.playAllButton}
-                      onPress={() => handlePlaySong(songs[0], 0)}
+                      activeOpacity={0.86}
+                      style={[styles.playAllButton, isPlaylistPlaying && styles.playAllButtonActive]}
+                      onPress={handlePlayAllPress}
                     >
-                      <Text style={styles.playAllText}>{t('playlist.play')}</Text>
+                      {isPlaylistPreparing ? (
+                        <ActivityIndicator color={theme.colors.text} size="small" />
+                      ) : (
+                        <Ionicons
+                          name={isPlaylistPlaying ? 'pause' : 'play'}
+                          size={20}
+                          color={theme.colors.text}
+                          style={!isPlaylistPlaying ? styles.playAllIcon : undefined}
+                        />
+                      )}
+                      <Text style={styles.playAllText}>{isPlaylistPlaying ? t('playlist.pause') : t('playlist.play')}</Text>
                     </TouchableOpacity>
                   ) : null}
                 </View>
@@ -373,11 +429,24 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   playAllButton: {
+    alignItems: 'center',
     backgroundColor: theme.colors.primary,
+    flexDirection: 'row',
+    gap: 9,
+    justifyContent: 'center',
+    minWidth: 164,
     paddingVertical: 14,
     paddingHorizontal: 40,
     borderRadius: 30,
     marginTop: 10,
+  },
+  playAllButtonActive: {
+    backgroundColor: 'rgba(124,58,237,0.82)',
+    borderColor: 'rgba(196,181,253,0.42)',
+    borderWidth: 1,
+  },
+  playAllIcon: {
+    marginLeft: 2,
   },
   playAllText: {
     color: '#fff',

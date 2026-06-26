@@ -1,4 +1,4 @@
-import { Image } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import {
   DAILY_NEW_RELEASES_PLAYLIST_ID,
   loadHomeMusic,
@@ -34,6 +34,9 @@ function collectHomeCoverUris(home: HomeMusicData) {
   addSongCovers(uris, home.trendingSongs);
   addSongCovers(uris, home.recommendedSongs);
   addSongCovers(uris, home.latestSongs);
+  if (home.spotlightSong) {
+    addSongCovers(uris, [home.spotlightSong]);
+  }
 
   for (const playlist of home.officialPlaylists) {
     addPlaylistCover(uris, playlist);
@@ -53,11 +56,46 @@ export async function prefetchImageUris(uris: Iterable<string>, limit = 72) {
     const batch = nextUris.slice(index, index + 8);
     await Promise.allSettled(
       batch.map(async (uri) => {
-        await Image.prefetch(uri);
-        preloadedImages.add(uri);
+        const didPrefetch = await ExpoImage.prefetch(uri, { cachePolicy: 'memory-disk' });
+        if (didPrefetch !== false) {
+          preloadedImages.add(uri);
+        }
       }),
     );
   }
+}
+
+export function prefetchHomeMusicMedia(home: HomeMusicData) {
+  const imageUris = collectHomeCoverUris(home);
+  const videoUrls = new Set<string>();
+
+  for (const playlist of home.officialPlaylists) {
+    if (isRemoteUri(playlist.video_url)) {
+      videoUrls.add(playlist.video_url);
+    }
+  }
+
+  return Promise.allSettled([
+    prefetchImageUris(imageUris, 96),
+    prefetchMotionImages(videoUrls, 6),
+  ]);
+}
+
+export function prefetchPlaylistMedia(playlist: Playlist, songs: Song[]) {
+  const imageUris = new Set<string>();
+  const videoUrls = new Set<string>();
+
+  addPlaylistCover(imageUris, playlist);
+  addSongCovers(imageUris, songs.slice(0, 32));
+
+  if (isRemoteUri(playlist.video_url)) {
+    videoUrls.add(playlist.video_url);
+  }
+
+  return Promise.allSettled([
+    prefetchImageUris(imageUris, 48),
+    prefetchMotionImages(videoUrls, 2),
+  ]);
 }
 
 export async function preloadStartupMedia(

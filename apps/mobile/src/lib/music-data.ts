@@ -33,6 +33,7 @@ export interface HomeMusicData {
   recommendedSongs: Song[];
   latestSongs: Song[];
   officialPlaylists: DiscoverPlaylist[];
+  spotlightSong: Song | null;
 }
 
 export interface LibraryMusicData {
@@ -214,6 +215,45 @@ async function loadSongs(limit = 80, orderBy: 'created_at' | 'plays' = 'created_
   return ((fallback.data || []) as SongRow[]).map(mapSong);
 }
 
+async function loadSpotlightSong(): Promise<Song | null> {
+  const client = requireClient();
+  const withProfile = await client
+    .from('songs')
+    .select(SONG_SELECT_WITH_PROFILE)
+    .ilike('title', '%Bubble Butt%')
+    .ilike('artist_name', '%Lewnamoon%')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!withProfile.error && withProfile.data) {
+    return mapSong(withProfile.data as SongRow);
+  }
+
+  const fallback = await client
+    .from('songs')
+    .select(SONG_SELECT)
+    .ilike('title', '%Bubble Butt%')
+    .ilike('artist_name', '%Lewnamoon%')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!fallback.error && fallback.data) {
+    return mapSong(fallback.data as SongRow);
+  }
+
+  const titleOnly = await client
+    .from('songs')
+    .select(SONG_SELECT_WITH_PROFILE)
+    .ilike('title', '%Bubble Butt%')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return !titleOnly.error && titleOnly.data ? mapSong(titleOnly.data as SongRow) : null;
+}
+
 export async function loadSongById(songId: string): Promise<Song> {
   const client = requireClient();
   const withProfile = await client
@@ -278,11 +318,12 @@ async function loadSongSignals(userId: string) {
 }
 
 export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
-  const [popularSongs, latestSongs, signals, discoverPlaylistsData] = await Promise.all([
+  const [popularSongs, latestSongs, signals, discoverPlaylistsData, spotlightSong] = await Promise.all([
     loadSongs(96, 'plays'),
     loadSongs(48, 'created_at'),
     loadSongSignals(userId),
     loadDiscoverPlaylists(),
+    loadSpotlightSong(),
   ]);
   const songs = mergeSongs(popularSongs, latestSongs);
   const trendingSongs = getDailyTrendingSongs(songs, 6);
@@ -296,6 +337,7 @@ export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
     recommendedSongs: (distinctRecommendations.length >= 6 ? distinctRecommendations : rankedRecommendations).slice(0, 6),
     latestSongs: latestSongs.slice(0, 6),
     officialPlaylists: discoverPlaylistsData.officialPlaylists,
+    spotlightSong,
   };
 }
 

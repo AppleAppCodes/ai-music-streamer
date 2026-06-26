@@ -3,7 +3,6 @@ import {
   Animated,
   Easing,
   FlatList,
-  Image,
   InteractionManager,
   Modal,
   ScrollView,
@@ -40,6 +39,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useI18n } from '../lib/i18n';
 import { CoverArt } from '../components/YoriaxUI';
+import { prefetchImageUris } from '../lib/media-preload';
 
 const DEFAULT_HOOK_DURATION_SECONDS = 20;
 
@@ -1177,9 +1177,7 @@ export function ForYouScreen() {
       if (!coverUrl || prefetchedCoverUrls.current.has(coverUrl)) return;
 
       prefetchedCoverUrls.current.add(coverUrl);
-      void Image.prefetch(coverUrl).then((loaded) => {
-        if (!loaded) prefetchedCoverUrls.current.delete(coverUrl);
-      }).catch(() => {
+      void prefetchImageUris([coverUrl], 1).catch(() => {
         prefetchedCoverUrls.current.delete(coverUrl);
       });
     });

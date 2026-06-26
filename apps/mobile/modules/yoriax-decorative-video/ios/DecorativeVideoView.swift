@@ -1,5 +1,77 @@
 import ExpoModulesCore
 import AVFoundation
+import CryptoKit
+import Foundation
+
+private final class DecorativeVideoRemoteCache {
+  static let shared = DecorativeVideoRemoteCache()
+
+  private let fileManager = FileManager.default
+  private let queue = DispatchQueue(label: "com.yoriax.decorative-video-cache")
+  private var inFlightSources = Set<String>()
+
+  private lazy var cacheDirectory: URL = {
+    let caches = fileManager.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+    return caches.appendingPathComponent("YoriaxDecorativeVideoCache", isDirectory: true)
+  }()
+
+  func cachedPlaybackURL(for source: String, remoteURL: URL) -> URL? {
+    let fileURL = cacheFileURL(for: source, remoteURL: remoteURL)
+    return fileManager.fileExists(atPath: fileURL.path) ? fileURL : nil
+  }
+
+  func warmRemoteVideo(source: String, remoteURL: URL) {
+    queue.async { [weak self] in
+      guard let self else { return }
+
+      let fileURL = self.cacheFileURL(for: source, remoteURL: remoteURL)
+      if self.fileManager.fileExists(atPath: fileURL.path) || self.inFlightSources.contains(source) {
+        return
+      }
+
+      self.inFlightSources.insert(source)
+      do {
+        try self.fileManager.createDirectory(at: self.cacheDirectory, withIntermediateDirectories: true)
+      } catch {
+        self.inFlightSources.remove(source)
+        return
+      }
+
+      URLSession.shared.downloadTask(with: remoteURL) { [weak self] temporaryURL, _, error in
+        self?.queue.async {
+          guard let self else { return }
+          defer { self.inFlightSources.remove(source) }
+          guard error == nil, let temporaryURL else { return }
+
+          do {
+            if self.fileManager.fileExists(atPath: fileURL.path) {
+              try self.fileManager.removeItem(at: fileURL)
+            }
+            try self.fileManager.moveItem(at: temporaryURL, to: fileURL)
+          } catch {
+            try? self.fileManager.removeItem(at: temporaryURL)
+          }
+        }
+      }.resume()
+    }
+  }
+
+  private func cacheFileURL(for source: String, remoteURL: URL) -> URL {
+    let digest = SHA256.hash(data: Data(source.utf8))
+      .map { String(format: "%02x", $0) }
+      .joined()
+    let pathExtension = normalizedExtension(remoteURL.pathExtension)
+    return cacheDirectory.appendingPathComponent("\(digest).\(pathExtension)")
+  }
+
+  private func normalizedExtension(_ pathExtension: String) -> String {
+    let normalized = pathExtension
+      .lowercased()
+      .filter { $0.isLetter || $0.isNumber }
+
+    return normalized.isEmpty ? "mov" : String(normalized)
+  }
+}
 
 /// A purely decorative video view that renders looping muted video using AVPlayerLayer.
 /// This view NEVER touches AVAudioSession, ensuring zero interference with the music player.
@@ -68,11 +140,15 @@ class DecorativeVideoView: ExpoView {
     guard let source, !source.isEmpty else { return }
 
     let url: URL?
-    if source.hasPrefix("http://") || source.hasPrefix("https://") {
-      url = URL(string: source)
+    if let remoteURL = Self.remoteURL(from: source) {
+      if let cachedURL = DecorativeVideoRemoteCache.shared.cachedPlaybackURL(for: source, remoteURL: remoteURL) {
+        url = cachedURL
+      } else {
+        url = remoteURL
+        DecorativeVideoRemoteCache.shared.warmRemoteVideo(source: source, remoteURL: remoteURL)
+      }
     } else {
-      // Support local file paths (e.g. from require() resolved asset URIs)
-      url = URL(fileURLWithPath: source)
+      url = Self.localURL(from: source)
     }
 
     guard let videoURL = url else {
@@ -138,6 +214,20 @@ class DecorativeVideoView: ExpoView {
     default: // "cover"
       layer.videoGravity = .resizeAspectFill
     }
+  }
+
+  private static func remoteURL(from source: String) -> URL? {
+    guard let url = URL(string: source) else { return nil }
+    let scheme = url.scheme?.lowercased()
+    return scheme == "http" || scheme == "https" ? url : nil
+  }
+
+  private static func localURL(from source: String) -> URL? {
+    if let url = URL(string: source), url.isFileURL {
+      return url
+    }
+
+    return URL(fileURLWithPath: source)
   }
 
   // MARK: - App Lifecycle

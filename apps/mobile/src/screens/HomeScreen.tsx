@@ -1,4 +1,4 @@
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useMemo, useState, memo, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,7 @@ import { loadHomeMusic, type HomeMusicData, DAILY_NEW_RELEASES_PLAYLIST_ID } fro
 import { readPersistedCache, writePersistedCache } from '../lib/persisted-cache';
 import { usePlayerControls } from '../lib/player-context';
 import { useMusicPreferences } from '../lib/music-preferences-context';
+import { prefetchHomeMusicMedia } from '../lib/media-preload';
 import type { DiscoverPlaylist, Song } from '../lib/types';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
@@ -32,7 +33,7 @@ type QuickTile = {
   subtitle: string;
 };
 
-const HOME_CACHE_PREFIX = 'yoriax:home:v1:';
+const HOME_CACHE_PREFIX = 'yoriax:home:v2:';
 
 export function HomeScreen() {
   const { t } = useI18n();
@@ -61,6 +62,7 @@ export function HomeScreen() {
         hasCachedData = true;
         setData(cachedData);
         setLoading(false);
+        void prefetchHomeMusicMedia(cachedData);
       }
 
       try {
@@ -70,6 +72,7 @@ export function HomeScreen() {
         setError(null);
         setLoading(false);
         void writePersistedCache(cacheKey, nextData);
+        void prefetchHomeMusicMedia(nextData);
       } catch (loadError) {
         if (mounted && !hasCachedData) {
           setError(loadError instanceof Error ? loadError.message : t('home.error'));
@@ -96,6 +99,7 @@ export function HomeScreen() {
       const nextData = await loadHomeMusic(user.id);
       setData(nextData);
       void writePersistedCache(cacheKey, nextData);
+      void prefetchHomeMusicMedia(nextData);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t('home.refreshError'));
     } finally {
@@ -196,6 +200,7 @@ export function HomeScreen() {
             playlists={data.officialPlaylists}
             onPressPlaylist={handleOpenPlaylist}
           />
+          <SpotlightSection song={data.spotlightSong} />
           <SongRail title={t('home.trending')} songs={data.trendingSongs} />
           <SongRail title={t('home.forYouSelected')} songs={data.recommendedSongs} />
           <SongRail title={t('home.latest')} songs={data.latestSongs} />
@@ -249,6 +254,60 @@ const SongRailItem = memo(function SongRailItem({
       </Text>
       <Text style={styles.songMeta}>{formatPlays(song.plays)} {t('common.streams')}</Text>
     </TouchableOpacity>
+  );
+});
+
+const SpotlightSection = memo(function SpotlightSection({ song }: { song?: Song | null }) {
+  const { t } = useI18n();
+  const { activeSong, isBuffering, isPlaying, playSong, setQueue, toggle } = usePlayerControls();
+
+  const isActive = activeSong?.id === song?.id;
+  const isLoading = Boolean(isActive && isBuffering);
+
+  const handlePress = useCallback(() => {
+    if (!song) return;
+
+    if (isActive) {
+      toggle();
+      return;
+    }
+
+    setQueue([song], 0);
+    void playSong(song);
+  }, [isActive, playSong, setQueue, song, toggle]);
+
+  if (!song) return null;
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{t('home.spotlight')}</Text>
+      <TouchableOpacity
+        accessibilityRole="button"
+        activeOpacity={0.92}
+        onPress={handlePress}
+        style={[styles.spotlightCard, isActive && styles.spotlightCardActive]}
+      >
+        <CoverArt uri={song.cover_url} size={118} radius={18} />
+        <View style={styles.spotlightText}>
+          <Text style={styles.spotlightEyebrow} numberOfLines={1}>{t('home.spotlightSingle')}</Text>
+          <Text style={styles.spotlightTitle} numberOfLines={1}>{song.title}</Text>
+          <Text style={styles.spotlightArtist} numberOfLines={1}>
+            {song.artist_name || song.creatorName || t('common.creator')}
+          </Text>
+          <Text style={styles.spotlightCopy} numberOfLines={3}>{t('home.spotlightBubbleButtCopy')}</Text>
+          <View style={[styles.spotlightAction, isActive && styles.spotlightActionActive]}>
+            {isLoading ? (
+              <ActivityIndicator color={theme.colors.text} size="small" />
+            ) : (
+              <Ionicons name={isActive && isPlaying ? 'pause' : 'play'} size={15} color={theme.colors.text} />
+            )}
+            <Text style={styles.spotlightActionText}>
+              {isActive && isPlaying ? t('playlist.pause') : t('playlist.play')}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </View>
   );
 });
 
@@ -443,6 +502,78 @@ const styles = StyleSheet.create({
     shadowColor: theme.colors.primary,
     shadowOpacity: 0.18,
     shadowRadius: 14,
+  },
+  spotlightAction: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    height: 32,
+    justifyContent: 'center',
+    marginTop: 10,
+    minWidth: 104,
+    paddingHorizontal: 12,
+  },
+  spotlightActionActive: {
+    backgroundColor: 'rgba(124,58,237,0.72)',
+    borderColor: 'rgba(196,181,253,0.46)',
+  },
+  spotlightActionText: {
+    color: theme.colors.text,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  spotlightArtist: {
+    color: '#a78bfa',
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  spotlightCard: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.055)',
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 22,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 14,
+    minHeight: 146,
+    overflow: 'hidden',
+    padding: 12,
+  },
+  spotlightCardActive: {
+    borderColor: 'rgba(168,85,247,0.54)',
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+  },
+  spotlightCopy: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
+    marginTop: 7,
+  },
+  spotlightEyebrow: {
+    color: '#5eead4',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  spotlightText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  spotlightTitle: {
+    color: theme.colors.text,
+    fontSize: 21,
+    fontWeight: '900',
+    marginTop: 4,
   },
   playBadge: {
     alignItems: 'center',
