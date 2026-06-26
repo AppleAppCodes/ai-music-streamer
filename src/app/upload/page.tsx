@@ -173,6 +173,30 @@ export default function UploadPage() {
     setError(null);
 
     try {
+      // Creators may only release under an artist name that is either new or
+      // already owned by themselves — admins are unrestricted.
+      if (!isAdminUser(user)) {
+        const trimmedArtistName = artistName.trim();
+        if (trimmedArtistName) {
+          const { data: existingSongs, error: artistOwnershipError } = await supabase
+            .from('songs')
+            .select('creator_id')
+            .ilike('artist_name', trimmedArtistName)
+            .neq('creator_id', user.id)
+            .limit(1);
+
+          if (artistOwnershipError) {
+            throw new Error('Konnte den Künstlernamen nicht prüfen: ' + artistOwnershipError.message);
+          }
+
+          if ((existingSongs ?? []).length > 0) {
+            throw new Error(
+              `Der Künstlername "${trimmedArtistName}" gehört bereits einem anderen Creator. Bitte wähle einen neuen Künstlernamen oder lade unter einem Künstlernamen hoch, den du selbst angelegt hast.`,
+            );
+          }
+        }
+      }
+
       const coverValidationError = validateUploadFile(coverFile, {
         allowedExtensions: ALLOWED_COVER_IMAGE_EXTENSIONS,
         allowedMimeTypes: ALLOWED_COVER_IMAGE_TYPES,
