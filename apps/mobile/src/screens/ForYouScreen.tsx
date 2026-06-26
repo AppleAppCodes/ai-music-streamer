@@ -2,7 +2,6 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
-  FlatList,
   Image,
   InteractionManager,
   Modal,
@@ -35,6 +34,7 @@ import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAudioPlayer, type AudioPlayer } from 'expo-audio';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -653,7 +653,7 @@ export function ForYouScreen() {
   const [followedArtistsMap, setFollowedArtistsMap] = useState<Record<string, boolean>>({});
   const [disabledGenres, setDisabledGenres] = useState<Set<string>>(new Set());
   const [genreFilterVisible, setGenreFilterVisible] = useState(false);
-  const listRef = useRef<FlatList<FeedPreviewSong>>(null);
+  const listRef = useRef<FlashListRef<FeedPreviewSong>>(null);
 
   const availableGenres = useMemo(() => Array.from(new Set(
     allSongs
@@ -1544,28 +1544,24 @@ export function ForYouScreen() {
       {renderTopTabs()}
       {renderExploreFilter()}
 
-      <FlatList
-        ref={listRef}
-        data={songs}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        extraData={feedRenderState}
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
-        snapToInterval={itemHeight}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        disableIntervalMomentum
-        onMomentumScrollBegin={handleMomentumScrollBegin}
-        onMomentumScrollEnd={handleMomentumScrollEnd}
-        onScrollEndDrag={handleScrollEndDrag}
-        initialNumToRender={2}
-        windowSize={3}
-        maxToRenderPerBatch={1}
-        updateCellsBatchingPeriod={50}
-        removeClippedSubviews
-        getItemLayout={getItemLayout}
-      />
+      <View style={{ flex: 1, minHeight: 2 }}>
+        <FlashList
+          ref={listRef}
+          data={songs}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          extraData={feedRenderState}
+          pagingEnabled
+          showsVerticalScrollIndicator={false}
+          snapToInterval={itemHeight}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          disableIntervalMomentum
+          onMomentumScrollBegin={handleMomentumScrollBegin}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          onScrollEndDrag={handleScrollEndDrag}
+        />
+      </View>
     </View>
   );
 }

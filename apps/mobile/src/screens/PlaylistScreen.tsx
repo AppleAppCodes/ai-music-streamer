@@ -1,4 +1,6 @@
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { Image } from 'expo-image';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DecorativeVideoView } from 'yoriax-decorative-video';
@@ -169,19 +171,16 @@ export function PlaylistScreen({ route, navigation }: Props) {
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : playlist ? (
-        <FlatList
-          contentContainerStyle={styles.content}
-          data={songs}
-          extraData={`${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}`}
-          initialNumToRender={10}
-          ItemSeparatorComponent={SongSeparator}
-          keyExtractor={(item, index) => `${item.id}-${index}`}
-          maxToRenderPerBatch={10}
-          renderItem={renderSong}
-          showsVerticalScrollIndicator={false}
-          updateCellsBatchingPeriod={32}
-          windowSize={7}
-          ListHeaderComponent={
+        <View style={{ flex: 1, minHeight: 2 }}>
+          <FlashList
+            contentContainerStyle={styles.content}
+            data={songs}
+            extraData={`${activeSong?.id ?? ''}:${isPlaying ? '1' : '0'}`}
+            ItemSeparatorComponent={SongSeparator}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
+            renderItem={renderSong}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={
             <>
               <View style={[styles.playlistHero, hasVideo && styles.dailyPlaylistHero, { paddingTop: Math.max(insets.top + 60, 86) }]}>
                 {hasVideo && !isLeaving ? (
@@ -235,6 +234,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
             </View>
           }
         />
+        </View>
       ) : null}
     </View>
   );

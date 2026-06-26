@@ -1,7 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from './src/lib/auth-context';

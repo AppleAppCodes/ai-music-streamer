@@ -1,4 +1,5 @@
-import { Alert, ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../lib/auth-context';

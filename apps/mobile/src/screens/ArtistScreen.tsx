@@ -1,4 +1,5 @@
-import { ActivityIndicator, Alert, FlatList, Image, ImageBackground, Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ImageBackground } from 'expo-image';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { theme } from '../theme';
 import { usePlayerControls } from '../lib/player-context';

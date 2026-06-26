@@ -7,6 +7,7 @@ import type { Song } from './types';
 import { useAuth } from './auth-context';
 import { supabase } from './supabase';
 import { useI18n } from './i18n';
+import { audioCacheManager } from './audio-cache';
 
 interface StorageListItem {
   name: string;
@@ -302,6 +303,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           setSongsPlayed(prev => prev + 1);
         }
       }
+      
+      const audioSourceUri = await audioCacheManager.getAudioSource(song.audio_url, song.id);
 
       if (!isSameSong) {
         if (fadeInMs <= 0) {
@@ -310,7 +313,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
         player.replace({
           name: song.title,
-          uri: song.audio_url,
+          uri: audioSourceUri,
         });
         setActiveSong(song);
         // Do not update lock screen controls until the new source is ready and playing.
@@ -342,6 +345,26 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setPlayerVolume(1);
       }
       setLockScreenMetadata(player, song);
+      
+      // Background prefetching for the next track
+      setTimeout(() => {
+        setQueueState(currentQueue => {
+          if (currentQueue.length > 0) {
+             const currentIndex = currentQueue.findIndex(s => s.id === song.id);
+             let nextIndex = currentIndex + 1;
+             
+             // In shuffle mode, we might not know exactly which track is next, 
+             // but if repeat is on or we just want to cache *something*, we can prefetch index 0
+             if (nextIndex >= currentQueue.length) nextIndex = 0;
+             
+             const nextSong = currentQueue[nextIndex];
+             if (nextSong && nextSong.audio_url) {
+               void audioCacheManager.prefetch(nextSong.audio_url, nextSong.id);
+             }
+          }
+          return currentQueue;
+        });
+      }, 500);
     } catch (playError) {
       setError(playError instanceof Error ? playError.message : t('player.playbackFailed'));
     } finally {

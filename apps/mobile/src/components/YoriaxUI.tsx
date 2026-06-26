@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, type ImageContentFit } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
@@ -7,17 +8,17 @@ import yoriaxSymbol from '../../assets/yoriax-symbol.png';
 import yoriaxAppIcon from '../../assets/icon.png';
 
 export function YoriaxMark({ size = 34 }: { size?: number }) {
-  return <Image source={yoriaxSymbol} style={{ height: size, width: size }} resizeMode="contain" alt="YORIAX" />;
+  return <Image source={yoriaxSymbol} style={{ height: size, width: size }} contentFit="contain" alt="YORIAX" />;
 }
 
 export function YoriaxLogo() {
-  return <Image source={yoriaxSymbol} style={styles.logoImage} resizeMode="contain" alt="YORIAX" />;
+  return <Image source={yoriaxSymbol} style={styles.logoImage} contentFit="contain" alt="YORIAX" />;
 }
 
 export function YoriaxLoginLogo() {
   return (
     <View style={styles.loginLogo}>
-      <Image source={yoriaxSymbol} style={styles.loginLogoSymbol} resizeMode="contain" alt="YORIAX" />
+      <Image source={yoriaxSymbol} style={styles.loginLogoSymbol} contentFit="contain" alt="YORIAX" />
     </View>
   );
 }
@@ -77,18 +78,18 @@ export function CoverArt({
   size,
   radius = 14,
   style,
+  contentFit = 'cover',
 }: {
   uri?: string | null;
   size: number;
   radius?: number;
   style?: StyleProp<ImageStyle | ViewStyle>;
+  contentFit?: ImageContentFit;
 }) {
   const isLocalSymbol = uri === 'local://yoriax-symbol';
-  const [imageState, setImageState] = useState({ ready: isLocalSymbol, uri: uri ?? null });
-  const imageReady = imageState.uri === (uri ?? null) ? imageState.ready : isLocalSymbol;
 
   if (uri) {
-    const source = uri === 'local://yoriax-symbol'
+    const source = isLocalSymbol
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       ? require('../../assets/yoriax-symbol.png')
       : { uri };
@@ -99,18 +100,14 @@ export function CoverArt({
           colors={['rgba(124,58,237,0.28)', 'rgba(20,12,36,0.98)', 'rgba(5,5,5,0.94)']}
           style={StyleSheet.absoluteFill}
         />
-        {!imageReady ? (
-          <View style={styles.coverLoadingFallback}>
-            <YoriaxMark size={Math.max(18, size * 0.32)} />
-          </View>
-        ) : null}
         <Image
           source={source}
-          style={[StyleSheet.absoluteFill, !imageReady && styles.coverImageHidden]}
-          resizeMode="cover"
+          style={StyleSheet.absoluteFill}
+          contentFit={contentFit}
+          transition={250}
+          cachePolicy="memory-disk"
+          recyclingKey={uri}
           alt=""
-          onError={() => setImageState({ ready: false, uri })}
-          onLoad={() => setImageState({ ready: true, uri })}
         />
       </View>
     );
@@ -136,7 +133,7 @@ export function YoriaxPlaylistCover({
     <Image
       source={yoriaxAppIcon}
       style={[{ borderRadius: radius, height: size, width: size }, styles.cover, style]}
-      resizeMode="cover"
+      contentFit="cover"
       alt="YORIAX"
     />
   );
