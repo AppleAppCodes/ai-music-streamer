@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { User, ExternalLink } from 'lucide-react';
+import { User, ExternalLink, Music2 } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { isAdminUser } from '@/lib/admin';
+import { isAdminUser, isCreatorUser } from '@/lib/admin';
 import { notifyPlayerForceSignOut } from '@/lib/player-events';
 import Image from 'next/image';
 
@@ -17,6 +17,7 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isAdmin = isAdminUser(user);
+  const isCreator = isCreatorUser(user) && !isAdmin;
 
   // Extract avatar and username from user metadata, fallback to empty
   const avatarUrl = user?.user_metadata?.avatar_url || '';
@@ -34,17 +35,28 @@ export default function ProfileDropdown({ user, signOutAction }: ProfileDropdown
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-8 h-8 rounded-full overflow-hidden border border-purple-500/30 hover:border-purple-500 transition-all focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+        className="relative w-8 h-8 rounded-full overflow-visible focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+        aria-label={`${username}${isCreator ? ' (Creator)' : isAdmin ? ' (Admin)' : ''}`}
       >
-        {avatarUrl ? (
-          <Image src={avatarUrl} alt={username} width={32} height={32} className="h-full w-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-purple-900/40 flex items-center justify-center text-purple-300">
-            <User className="w-4 h-4" />
-          </div>
-        )}
+        <span className="block w-8 h-8 rounded-full overflow-hidden border border-purple-500/30 hover:border-purple-500 transition-all">
+          {avatarUrl ? (
+            <Image src={avatarUrl} alt={username} width={32} height={32} className="h-full w-full object-cover" />
+          ) : (
+            <span className="block w-full h-full bg-purple-900/40 flex items-center justify-center text-purple-300">
+              <User className="w-4 h-4" />
+            </span>
+          )}
+        </span>
+        {isCreator ? (
+          <span
+            className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border border-black bg-gradient-to-br from-emerald-400 to-teal-500 text-black shadow-[0_4px_10px_rgba(45,212,191,0.55)]"
+            title="Creator"
+          >
+            <Music2 className="h-2.5 w-2.5" strokeWidth={3} />
+          </span>
+        ) : null}
       </button>
 
       {isOpen && (
