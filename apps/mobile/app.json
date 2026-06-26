@@ -10,7 +10,7 @@
     "backgroundColor": "#050505",
     "ios": {
       "bundleIdentifier": "com.yoriax.app",
-      "buildNumber": "138",
+      "buildNumber": "149",
       "usesAppleSignIn": true,
       "supportsTablet": false,
       "associatedDomains": [
