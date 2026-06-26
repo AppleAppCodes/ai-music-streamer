@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft, Radio, UploadCloud, Loader2, Edit2, FileAudio, Terminal, Play, Heart, Activity, UserPlus } from 'lucide-react';
+import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft, Radio, UploadCloud, Loader2, Edit2, FileAudio, Terminal, Play, Heart, Activity, UserPlus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { isAdminUser, isModUser } from '@/lib/admin';
@@ -42,6 +42,7 @@ interface SongData {
   is_approved?: boolean;
   audio_url?: string;
   cover_url?: string;
+  is_spotlight?: boolean;
 }
 
 function openTrustedExternalUrl(value?: string | null) {
@@ -137,7 +138,7 @@ export default function AdminPage() {
         // Load Songs & Streams
         const { data: songsData } = await supabase
           .from('songs')
-          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url')
+          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight')
           .order('created_at', { ascending: false });
 
         if (songsData) {
@@ -207,6 +208,34 @@ export default function AdminPage() {
       setSongs(prev => prev.map(s => s.id === id ? { ...s, title: newTitle.trim() } : s));
     } else {
       alert('Fehler beim Ändern des Songtitels: ' + error.message);
+    }
+  };
+
+  const handleSetSpotlightSong = async (id: string, title: string) => {
+    if (!window.confirm(`Möchtest du "${title}" als Home-Spotlight setzen? Das ersetzt das aktuelle Spotlight.`)) return;
+
+    const previousSongs = songs;
+    setSongs(prev => prev.map(song => ({ ...song, is_spotlight: song.id === id })));
+
+    const { error: clearError } = await supabase
+      .from('songs')
+      .update({ is_spotlight: false })
+      .eq('is_spotlight', true);
+
+    if (clearError) {
+      setSongs(previousSongs);
+      alert('Fehler beim Zurücksetzen des Spotlights: ' + clearError.message);
+      return;
+    }
+
+    const { error: setError } = await supabase
+      .from('songs')
+      .update({ is_spotlight: true })
+      .eq('id', id);
+
+    if (setError) {
+      setSongs(previousSongs);
+      alert('Fehler beim Setzen des Spotlights: ' + setError.message);
     }
   };
 
@@ -684,6 +713,17 @@ export default function AdminPage() {
                             disabled={isReplacingAudio === song.id}
                           />
                         </label>
+                        <button
+                          onClick={() => handleSetSpotlightSong(song.id, song.title)}
+                          className={`p-2 rounded-lg transition-all ${
+                            song.is_spotlight
+                              ? 'text-fuchsia-300 bg-fuchsia-400/15'
+                              : 'text-white/40 hover:text-fuchsia-300 hover:bg-fuchsia-400/10 opacity-0 group-hover:opacity-100'
+                          }`}
+                          title={song.is_spotlight ? 'Aktuelles Home-Spotlight' : 'Als Home-Spotlight setzen'}
+                        >
+                          <Sparkles className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleEditSongTitle(song.id, song.title)}
                           className="p-2 text-white/40 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"

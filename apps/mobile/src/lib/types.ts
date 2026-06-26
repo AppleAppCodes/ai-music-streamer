@@ -10,6 +10,7 @@ export interface Song {
   duration?: number | null;
   plays: number;
   created_at?: string | null;
+  is_spotlight?: boolean | null;
 }
 
 export interface FeedClip {

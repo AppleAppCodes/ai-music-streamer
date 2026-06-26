@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import type { DiscoverPlaylist, FeedClip, FeedPreviewSong, Playlist, Song } from './types';
 
 const SONG_SELECT =
-  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at';
+  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at, is_spotlight';
 const SONG_SELECT_WITH_PROFILE = `${SONG_SELECT}, profiles!songs_creator_id_fkey(username)`;
 export const DAILY_NEW_RELEASES_PLAYLIST_ID = 'da114eeb-ecea-5e55-9ee1-ea5e5da11111';
 
@@ -146,6 +146,7 @@ function mapSong(row: SongRow): Song {
     duration: row.duration ?? null,
     plays: row.plays ?? 0,
     created_at: row.created_at ?? null,
+    is_spotlight: row.is_spotlight ?? false,
   };
 }
 
@@ -213,45 +214,6 @@ async function loadSongs(limit = 80, orderBy: 'created_at' | 'plays' = 'created_
   }
 
   return ((fallback.data || []) as SongRow[]).map(mapSong);
-}
-
-async function loadSpotlightSong(): Promise<Song | null> {
-  const client = requireClient();
-  const withProfile = await client
-    .from('songs')
-    .select(SONG_SELECT_WITH_PROFILE)
-    .ilike('title', '%Bubble Butt%')
-    .ilike('artist_name', '%Lewnamoon%')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!withProfile.error && withProfile.data) {
-    return mapSong(withProfile.data as SongRow);
-  }
-
-  const fallback = await client
-    .from('songs')
-    .select(SONG_SELECT)
-    .ilike('title', '%Bubble Butt%')
-    .ilike('artist_name', '%Lewnamoon%')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!fallback.error && fallback.data) {
-    return mapSong(fallback.data as SongRow);
-  }
-
-  const titleOnly = await client
-    .from('songs')
-    .select(SONG_SELECT_WITH_PROFILE)
-    .ilike('title', '%Bubble Butt%')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return !titleOnly.error && titleOnly.data ? mapSong(titleOnly.data as SongRow) : null;
 }
 
 export async function loadSongById(songId: string): Promise<Song> {
@@ -339,6 +301,37 @@ export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
     officialPlaylists: discoverPlaylistsData.officialPlaylists,
     spotlightSong,
   };
+}
+
+async function loadSpotlightSong(): Promise<Song | null> {
+  const client = requireClient();
+  const withProfile = await client
+    .from('songs')
+    .select(SONG_SELECT_WITH_PROFILE)
+    .eq('is_spotlight', true)
+    .eq('is_approved', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!withProfile.error && withProfile.data) {
+    return mapSong(withProfile.data as SongRow);
+  }
+
+  const fallback = await client
+    .from('songs')
+    .select(SONG_SELECT)
+    .eq('is_spotlight', true)
+    .eq('is_approved', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (fallback.error || !fallback.data) {
+    return null;
+  }
+
+  return mapSong(fallback.data as SongRow);
 }
 
 export async function loadLibraryMusic(userId: string): Promise<LibraryMusicData> {

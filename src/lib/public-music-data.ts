@@ -3,7 +3,7 @@ import { getDailyTrendingSongs, getPersonalizedSongs, type PlaybackSignal, type 
 import type { Song } from '@/lib/types';
 
 const SONG_SELECT =
-  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at';
+  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at, is_spotlight';
 
 const SONG_SELECT_WITH_PROFILE = `${SONG_SELECT}, profiles!songs_creator_id_fkey(username)`;
 const PUBLIC_CHART_SONG_SELECT =
@@ -86,7 +86,7 @@ async function loadSongsByPopularity(client: SupabaseClient, limit: number) {
     .limit(limit);
 
   if (error) throw new Error(error.message);
-  return ((data || []) as SongRow[]).map(mapSong);
+  return ((data || []) as unknown as SongRow[]).map(mapSong);
 }
 
 async function loadSongsByDate(client: SupabaseClient, limit: number) {
@@ -97,7 +97,21 @@ async function loadSongsByDate(client: SupabaseClient, limit: number) {
     .limit(limit);
 
   if (error) throw new Error(error.message);
-  return ((data || []) as SongRow[]).map(mapSong);
+  return ((data || []) as unknown as SongRow[]).map(mapSong);
+}
+
+async function loadSpotlightSong(client: SupabaseClient) {
+  const { data, error } = await client
+    .from('songs')
+    .select(SONG_SELECT_WITH_PROFILE)
+    .eq('is_spotlight', true)
+    .eq('is_approved', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapSong(data as unknown as SongRow);
 }
 
 async function loadPublicChartSongsByPopularity(client: SupabaseClient, limit: number) {
@@ -182,20 +196,6 @@ async function loadOfficialPlaylists(client: SupabaseClient): Promise<OfficialPl
       creatorName: getProfileUsername(profiles) ?? 'YORIAX Team',
     };
   });
-}
-
-async function loadSpotlightSong(client: SupabaseClient): Promise<Song | null> {
-  const { data, error } = await client
-    .from('songs')
-    .select(SONG_SELECT_WITH_PROFILE)
-    .ilike('title', '%Bubble Butt%')
-    .ilike('artist_name', '%Lewnamoon%')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error || !data) return null;
-  return mapSong(data as SongRow);
 }
 
 export async function loadHomeInitialData(client: SupabaseClient, userId: string): Promise<HomeInitialData> {

@@ -167,6 +167,7 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
   const [dailyTrendingSongs, setDailyTrendingSongs] = useState<Song[]>(initialHomeData?.trendingSongs ?? []);
   const [recommendedSongs, setRecommendedSongs] = useState<Song[]>(initialHomeData?.recommendedSongs ?? []);
   const [artistCovers, setArtistCovers] = useState<string[]>(initialHomeData?.artistCovers ?? []);
+  const [spotlightSong, setSpotlightSong] = useState<Song | null>(initialHomeData?.spotlightSong ?? null);
   const [isLoading, setIsLoading] = useState(!initialHomeData);
 
   useEffect(() => {
@@ -246,13 +247,21 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
     if (initialHomeData) return;
 
     async function loadMusic() {
-      const [{ data: allSongs }, { data: { session } }] = await Promise.all([
+      const [{ data: allSongs }, { data: spotlightData }, { data: { session } }] = await Promise.all([
         supabase
           .from('songs')
-          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, profiles!songs_creator_id_fkey(username)')
+          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, profiles!songs_creator_id_fkey(username)')
           .order('plays', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(200),
+        supabase
+          .from('songs')
+          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, profiles!songs_creator_id_fkey(username)')
+          .eq('is_spotlight', true)
+          .eq('is_approved', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
         supabase.auth.getSession(),
       ]);
 
@@ -260,6 +269,10 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
         ...song,
         creatorName: song.profiles?.username || song.artist_name || 'Unknown'
       }));
+      setSpotlightSong(spotlightData ? {
+        ...spotlightData,
+        creatorName: (spotlightData as unknown as SongWithProfile).profiles?.username || spotlightData.artist_name || 'Unknown'
+      } as unknown as Song : null);
       
       const covers = Array.from(new Set(songs.map(s => s.cover_url).filter(Boolean))).slice(0, 4) as string[];
       setArtistCovers(covers);
@@ -631,8 +644,8 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
       </section>
 
       {/* Spotlight Section */}
-      {initialHomeData?.spotlightSong ? (
-        <SpotlightSection song={initialHomeData.spotlightSong} />
+      {spotlightSong ? (
+        <SpotlightSection song={spotlightSong} />
       ) : null}
 
       {/* Official Playlists Section */}
