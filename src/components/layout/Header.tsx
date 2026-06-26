@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import HeaderClient from './HeaderClient';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-export default function Header({ user }: { user: SupabaseUser | null }) {
+export default function Header({ user, customLogoUrl }: { user: SupabaseUser | null; customLogoUrl?: string }) {
   async function signOutAction() {
     'use server';
     const sb = await createClient();
@@ -14,6 +14,6 @@ export default function Header({ user }: { user: SupabaseUser | null }) {
   }
 
   return (
-    <HeaderClient user={user} signOutAction={signOutAction} />
+    <HeaderClient user={user} signOutAction={signOutAction} customLogoUrl={customLogoUrl} />
   );
 }

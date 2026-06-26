@@ -3,9 +3,6 @@ import {
   Alert,
   Animated as RNAnimated,
   Easing as RNEasing,
-  Image,
-  Platform,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -39,6 +36,7 @@ import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
 import { MINI_PLAYER_LAYOUT, MINI_PLAYER_RADIUS, MiniPlayerPreview } from '../components/MiniPlayer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../lib/i18n';
+import { Image } from 'expo-image';
 
 export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
@@ -528,6 +526,8 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
             source={{ uri: activeSong.cover_url }} 
             style={StyleSheet.absoluteFill} 
             blurRadius={24}
+            cachePolicy="memory-disk"
+            transition={300}
             alt="" 
           />
           <LinearGradient
@@ -549,7 +549,7 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
 
         <View style={styles.content}>
         {activeSong.cover_url ? (
-          <Image source={{ uri: activeSong.cover_url }} style={styles.cover} alt="" />
+          <Image source={{ uri: activeSong.cover_url }} style={styles.cover} cachePolicy="memory-disk" transition={200} alt="" />
         ) : (
           <View style={[styles.cover, styles.coverFallback]}>
             <Text style={styles.coverFallbackText}>Y</Text>

@@ -1,4 +1,5 @@
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDuration } from '../lib/format';
 import { usePlayer } from '../lib/player-context';
@@ -42,7 +43,7 @@ export function MiniPlayerPreview({ interactive = true }: { interactive?: boolea
     <View style={styles.preview}>
       {activeSong.cover_url && (
         <View style={StyleSheet.absoluteFill}>
-          <Image source={{ uri: activeSong.cover_url }} style={StyleSheet.absoluteFill} blurRadius={10} alt="" />
+          <Image source={{ uri: activeSong.cover_url }} style={StyleSheet.absoluteFill} blurRadius={10} cachePolicy="memory-disk" transition={200} alt="" />
           <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
           <LinearGradient
             colors={['rgba(12,10,18,0.5)', 'rgba(12,10,18,0.9)']}

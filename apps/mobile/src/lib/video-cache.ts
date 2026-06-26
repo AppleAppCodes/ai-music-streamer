@@ -1,9 +1,9 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 
-const CACHE_FOLDER = `${FileSystem.cacheDirectory}yoriax-audio-cache/`;
+const CACHE_FOLDER = `${FileSystem.cacheDirectory}yoriax-video-cache/`;
 
-class AudioCacheManager {
+class VideoCacheManager {
   private activeDownloads = new Map<string, FileSystem.DownloadResumable>();
   private initialized = false;
 
@@ -16,19 +16,19 @@ class AudioCacheManager {
       }
       this.initialized = true;
     } catch (e) {
-      console.warn('Failed to initialize AudioCacheManager:', e);
+      console.warn('Failed to initialize VideoCacheManager:', e);
     }
   }
 
   private getFilePath(url: string, id: string) {
-    const ext = url.split('.').pop()?.split('?')[0] || 'mp3';
+    const ext = url.split('.').pop()?.split('?')[0] || 'mp4';
     return `${CACHE_FOLDER}${id}.${ext}`;
   }
 
   private async cleanupCache() {
     try {
       const files = await FileSystem.readDirectoryAsync(CACHE_FOLDER);
-      if (files.length <= 15) return; // Keep max 15 songs
+      if (files.length <= 10) return; // Keep max 10 videos cached
 
       const fileStats = await Promise.all(
         files.map(async (file) => {
@@ -39,33 +39,37 @@ class AudioCacheManager {
 
       fileStats.sort((a, b) => b.time - a.time); // newest first
 
-      const filesToDelete = fileStats.slice(15);
+      const filesToDelete = fileStats.slice(10);
       for (const file of filesToDelete) {
         await FileSystem.deleteAsync(`${CACHE_FOLDER}${file.name}`, { idempotent: true });
       }
     } catch (e) {
-      console.warn('Failed to cleanup audio cache:', e);
+      console.warn('Failed to cleanup video cache:', e);
     }
   }
 
   /**
-   * Prefetches an audio file into the local cache.
+   * Prefetches a video file into the local cache.
    */
   async prefetch(url: string, id: string) {
     if (!url || !id || Platform.OS === 'web') return null;
+    
+    // Ignore local required files
+    if (typeof url === 'number' || (typeof url === 'string' && !url.startsWith('http'))) {
+      return url;
+    }
+
     await this.init();
 
     const fileUri = this.getFilePath(url, id);
     try {
       const fileInfo = await FileSystem.getInfoAsync(fileUri);
       if (fileInfo.exists) {
-        // Already cached
         return fileUri;
       }
 
-      // Check if already downloading
       if (this.activeDownloads.has(id)) {
-        return null; // Let the existing download finish
+        return null;
       }
 
       const downloadResumable = FileSystem.createDownloadResumable(url, fileUri);
@@ -74,13 +78,12 @@ class AudioCacheManager {
       const result = await downloadResumable.downloadAsync();
       this.activeDownloads.delete(id);
 
-      // Clean up old cached files
       void this.cleanupCache();
 
       return result?.uri || null;
     } catch (e) {
       this.activeDownloads.delete(id);
-      console.warn(`Failed to prefetch audio ${id}:`, e);
+      console.warn(`Failed to prefetch video ${id}:`, e);
       return null;
     }
   }
@@ -88,8 +91,13 @@ class AudioCacheManager {
   /**
    * Returns the local file URI if cached, otherwise returns the original URL.
    */
-  async getAudioSource(url: string, id: string): Promise<string> {
+  async getVideoSource(url: string, id: string): Promise<string> {
     if (!url || !id || Platform.OS === 'web') return url;
+    
+    if (typeof url === 'number' || (typeof url === 'string' && !url.startsWith('http'))) {
+      return url;
+    }
+    
     await this.init();
 
     const fileUri = this.getFilePath(url, id);
@@ -101,21 +109,21 @@ class AudioCacheManager {
     } catch (e) {
       // Ignore
     }
+    
+    // If not cached, trigger a background prefetch so next time it's fast
+    void this.prefetch(url, id);
     return url;
   }
 
-  /**
-   * Cleans up the cache directory.
-   */
   async clearCache() {
     try {
       await FileSystem.deleteAsync(CACHE_FOLDER, { idempotent: true });
       this.initialized = false;
       await this.init();
     } catch (e) {
-      console.warn('Failed to clear audio cache:', e);
+      console.warn('Failed to clear video cache:', e);
     }
   }
 }
 
-export const audioCacheManager = new AudioCacheManager();
+export const videoCacheManager = new VideoCacheManager();

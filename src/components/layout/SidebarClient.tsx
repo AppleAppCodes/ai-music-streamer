@@ -2,27 +2,72 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserCheck, Sparkles } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserCheck, Sparkles, Edit2, Loader2 } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
+import { useRef, useState } from 'react';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
 import { isAdminUser, isCreatorUser } from '@/lib/admin';
 import CookieSettingsButton from '@/components/ui/CookieSettingsButton';
+import { createClient } from '@/utils/supabase/client';
 
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export default function SidebarClient({
   user,
   appVersionLabel,
+  customLogoUrl,
 }: {
   user: SupabaseUser | null;
   appVersionLabel?: string;
+  customLogoUrl?: string;
 }) {
   const { t } = useTranslation();
   const pathname = usePathname();
+  const router = useRouter();
   
   const isCreator = isCreatorUser(user);
   const isAdmin = isAdminUser(user);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const supabase = createClient();
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !isAdmin) return;
+
+    try {
+      setIsUploadingLogo(true);
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `logo_${Date.now()}.${fileExt}`;
+      const filePath = `brand/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('covers')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('covers')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('app_settings')
+        .upsert({ id: 'global', custom_logo_url: publicUrl });
+
+      if (updateError) throw updateError;
+
+      router.refresh(); // Refresh layout to fetch new logo
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      alert('Failed to upload logo.');
+    } finally {
+      setIsUploadingLogo(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   if (!user) return null;
 
@@ -47,14 +92,40 @@ export default function SidebarClient({
 
       <div className="relative mb-8 px-6">
         <Link href="/" className="group flex items-center gap-3" aria-label="YORIAX Home">
-          <Image
-            src="/brand/yoriax-logo-symbol.png"
-            alt="YORIAX"
-            width={40}
-            height={40}
-            priority
-            className="h-9 w-9 rounded-xl object-cover transition-transform duration-300 group-hover:scale-105"
-          />
+          <div className="relative group/logo">
+            <Image
+              src={customLogoUrl || "/brand/yoriax-logo-symbol.png"}
+              alt="YORIAX"
+              width={40}
+              height={40}
+              priority
+              className="h-9 w-9 rounded-xl object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            {isAdmin && (
+              <div 
+                className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-xl opacity-0 transition-opacity group-hover/logo:opacity-100 cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  fileInputRef.current?.click();
+                }}
+              >
+                {isUploadingLogo ? (
+                  <Loader2 className="h-4 w-4 text-white animate-spin" />
+                ) : (
+                  <Edit2 className="h-4 w-4 text-white" />
+                )}
+              </div>
+            )}
+            {isAdmin && (
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleLogoUpload}
+              />
+            )}
+          </div>
           <span
             className="text-[15px] font-bold tracking-[0.24em] text-white"
             style={{ fontFamily: 'var(--font-syncopate)' }}

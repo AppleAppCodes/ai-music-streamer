@@ -18,9 +18,10 @@ import { Loader2, Play, Mic2, Music } from 'lucide-react';
 interface HeaderClientProps {
   user: SupabaseUser | null;
   signOutAction: () => Promise<void>;
+  customLogoUrl?: string;
 }
 
-export default function HeaderClient({ user, signOutAction }: HeaderClientProps) {
+export default function HeaderClient({ user, signOutAction, customLogoUrl }: HeaderClientProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
@@ -119,7 +120,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
         {!user ? (
           <Link href="/" className="group flex items-center gap-3" aria-label="Yoriax Home">
             <Image
-              src="/brand/yoriax-logo-symbol.png"
+              src={customLogoUrl || "/brand/yoriax-logo-symbol.png"}
               alt="YORIAX"
               width={40}
               height={40}
@@ -137,7 +138,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
       </div>
       <Link href="/" className="group flex h-9 w-9 shrink-0 items-center justify-center md:hidden" aria-label="Yoriax Home">
         <Image
-          src="/brand/yoriax-logo-symbol.png"
+          src={customLogoUrl || "/brand/yoriax-logo-symbol.png"}
           alt="YORIAX"
           width={36}
           height={36}

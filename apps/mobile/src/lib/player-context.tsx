@@ -8,6 +8,7 @@ import { useAuth } from './auth-context';
 import { supabase } from './supabase';
 import { useI18n } from './i18n';
 import { audioCacheManager } from './audio-cache';
+import { Image } from 'expo-image';
 
 interface StorageListItem {
   name: string;
@@ -346,20 +347,40 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
       setLockScreenMetadata(player, song);
       
-      // Background prefetching for the next track
+      // Aggressive background prefetching for the next tracks and their covers
       setTimeout(() => {
         setQueueState(currentQueue => {
           if (currentQueue.length > 0) {
              const currentIndex = currentQueue.findIndex(s => s.id === song.id);
-             let nextIndex = currentIndex + 1;
              
-             // In shuffle mode, we might not know exactly which track is next, 
-             // but if repeat is on or we just want to cache *something*, we can prefetch index 0
-             if (nextIndex >= currentQueue.length) nextIndex = 0;
+             const urlsToPrefetch: string[] = [];
              
-             const nextSong = currentQueue[nextIndex];
-             if (nextSong && nextSong.audio_url) {
-               void audioCacheManager.prefetch(nextSong.audio_url, nextSong.id);
+             // Prefetch previous song cover just in case user goes back
+             if (currentIndex > 0 && currentQueue[currentIndex - 1].cover_url) {
+               urlsToPrefetch.push(currentQueue[currentIndex - 1].cover_url!);
+             }
+             
+             // Prefetch next 3 songs
+             for (let i = 1; i <= 3; i++) {
+               let nextIndex = currentIndex + i;
+               if (nextIndex >= currentQueue.length) {
+                 if (i === 1) nextIndex = 0; // wrap around for the immediate next song if at end
+                 else break;
+               }
+               
+               const nextSong = currentQueue[nextIndex];
+               if (nextSong) {
+                 if (nextSong.audio_url) {
+                   void audioCacheManager.prefetch(nextSong.audio_url, nextSong.id);
+                 }
+                 if (nextSong.cover_url) {
+                   urlsToPrefetch.push(nextSong.cover_url);
+                 }
+               }
+             }
+             
+             if (urlsToPrefetch.length > 0) {
+               Image.prefetch(urlsToPrefetch);
              }
           }
           return currentQueue;
@@ -442,6 +463,26 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setQueueState(songs);
     if (songs.length > 0 && startIndex >= 0 && startIndex < songs.length) {
       setQueueIndex(startIndex);
+      
+      // Proactively prefetch the first 3 songs of the new queue
+      setTimeout(() => {
+        const urlsToPrefetch: string[] = [];
+        for (let i = 0; i < 3; i++) {
+          const songIndex = startIndex + i;
+          if (songIndex < songs.length) {
+            const song = songs[songIndex];
+            if (song.audio_url) {
+              void audioCacheManager.prefetch(song.audio_url, song.id);
+            }
+            if (song.cover_url) {
+              urlsToPrefetch.push(song.cover_url);
+            }
+          }
+        }
+        if (urlsToPrefetch.length > 0) {
+          Image.prefetch(urlsToPrefetch);
+        }
+      }, 100);
     }
   }, []);
 

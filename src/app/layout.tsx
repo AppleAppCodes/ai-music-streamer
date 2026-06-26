@@ -89,6 +89,18 @@ export default async function RootLayout({
   const appVersionLabel = getAppVersionLabel();
   const locale = getLocaleFromAcceptLanguage(headerStore.get('accept-language'));
 
+  let customLogoUrl: string | undefined;
+  if (shouldRenderAppShell) {
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('custom_logo_url')
+      .eq('id', 'global')
+      .single();
+    if (settings?.custom_logo_url) {
+      customLogoUrl = settings.custom_logo_url;
+    }
+  }
+
   return (
     <html
       lang={locale}
@@ -102,9 +114,9 @@ export default async function RootLayout({
             </main>
           ) : (
             <div className="relative z-0 flex min-h-dvh w-full md:h-full md:min-h-0">
-              {user ? <Sidebar user={user} appVersionLabel={appVersionLabel} /> : null}
+              {user ? <Sidebar user={user} appVersionLabel={appVersionLabel} customLogoUrl={customLogoUrl} /> : null}
               <div className="flex-1 flex flex-col relative min-w-0">
-                <Header user={user} />
+                <Header user={user} customLogoUrl={customLogoUrl} />
                 <main className={`yoriax-app-main no-drag md:flex-1 md:overflow-y-auto md:no-scrollbar ${
                   user
                     ? 'pb-[calc(10.25rem+env(safe-area-inset-bottom))] md:pb-32'

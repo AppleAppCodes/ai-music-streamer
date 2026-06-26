@@ -16,6 +16,7 @@ import { SongListRow } from '../components/SongListRow';
 import { BackButton, CoverArt, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
 import { useShouldPlaySilentVideo } from '../lib/silent-video';
+import { videoCacheManager } from '../lib/video-cache';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
@@ -23,10 +24,33 @@ function SongSeparator() {
   return <View style={styles.songSeparator} />;
 }
 
-function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolean; videoUrl?: string | null; coverUrl?: string | null }) {
+function PlaylistHeroBackground({ active, videoUrl, coverUrl, playlistId }: { active: boolean; videoUrl?: string | null; coverUrl?: string | null; playlistId?: string }) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const source = videoUrl ? videoUrl : require('../../assets/yoriax_intro.MOV');
+  const defaultSource = require('../../assets/yoriax_intro.MOV');
   const shouldPlay = useShouldPlaySilentVideo(active);
+  const [localSource, setLocalSource] = useState<string | number | null>(videoUrl ? null : defaultSource);
+
+  useEffect(() => {
+    if (!videoUrl) {
+      setLocalSource(defaultSource);
+      return;
+    }
+    
+    let isMounted = true;
+    const loadSource = async () => {
+      const id = playlistId || videoUrl.replace(/[^a-z0-9]/gi, '_').slice(-20);
+      const cached = await videoCacheManager.getVideoSource(videoUrl, id);
+      if (isMounted) {
+        setLocalSource(cached);
+      }
+    };
+    
+    void loadSource();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [videoUrl, playlistId, defaultSource]);
 
   return (
     <View pointerEvents="none" style={styles.dailyHeroBackground}>
@@ -35,7 +59,9 @@ function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolea
           source={{ uri: coverUrl }}
           style={StyleSheet.absoluteFill}
           blurRadius={20}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={200}
         />
       ) : (
         <LinearGradient
@@ -43,12 +69,14 @@ function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolea
           style={StyleSheet.absoluteFill}
         />
       )}
-      <DecorativeVideoView
-        source={source}
-        active={shouldPlay}
-        contentFit="cover"
-        style={styles.dailyHeroVideo}
-      />
+      {localSource && (
+        <DecorativeVideoView
+          source={localSource}
+          active={shouldPlay}
+          contentFit="cover"
+          style={styles.dailyHeroVideo}
+        />
+      )}
       <LinearGradient
         colors={['rgba(5,5,6,0.32)', 'rgba(8,7,14,0.72)', theme.colors.background]}
         locations={[0, 0.52, 1]}
@@ -184,7 +212,7 @@ export function PlaylistScreen({ route, navigation }: Props) {
             <>
               <View style={[styles.playlistHero, hasVideo && styles.dailyPlaylistHero, { paddingTop: Math.max(insets.top + 60, 86) }]}>
                 {hasVideo && !isLeaving ? (
-                  <PlaylistHeroBackground active={!loading && !error && !isLeaving} videoUrl={playlist?.video_url} coverUrl={playlist?.cover_url} />
+                  <PlaylistHeroBackground active={!loading && !error && !isLeaving} videoUrl={playlist?.video_url} coverUrl={playlist?.cover_url} playlistId={playlist?.id} />
                 ) : null}
                 <View style={styles.playlistHeroContent}>
                   {isDailyNewReleases ? (
