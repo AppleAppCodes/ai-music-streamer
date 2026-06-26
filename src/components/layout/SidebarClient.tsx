@@ -108,6 +108,10 @@ export default function SidebarClient({
             <ListMusic className={iconClass('/discover/playlists')} />
             {t('nav.discoverPlaylists')}
           </Link>
+          <Link href="/genres" className={navLinkClass('/genres')}>
+            <Sparkles className={iconClass('/genres')} />
+            {t('nav.genres')}
+          </Link>
         </nav>
       </div>
 
