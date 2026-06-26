@@ -1,7 +1,7 @@
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image as ExpoImage } from 'expo-image';
+import { DecorativeVideoView } from 'yoriax-decorative-video';
 import { theme } from '../theme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SongListRow } from '../components/SongListRow';
 import { BackButton, CoverArt, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { useI18n } from '../lib/i18n';
-import { getMotionImageSource } from '../lib/motion-image';
+import { useShouldPlaySilentVideo } from '../lib/silent-video';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Playlist'>;
 
@@ -22,26 +22,11 @@ function SongSeparator() {
 }
 
 function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolean; videoUrl?: string | null; coverUrl?: string | null }) {
-  const motionSource = useMemo(() => {
-    const source = getMotionImageSource(videoUrl);
-    if (source) return source;
-
+  const shouldPlay = useShouldPlaySilentVideo(active);
+  const fallbackSource = coverUrl && coverUrl !== 'local://yoriax-symbol'
+    ? { uri: coverUrl }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('../../assets/yoriax_intro.webp');
-  }, [videoUrl]);
-  const fallbackSource = useMemo(() => {
-    if (coverUrl && coverUrl !== 'local://yoriax-symbol') {
-      return { uri: coverUrl };
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('../../assets/icon.png');
-  }, [coverUrl]);
-  const [motionFailed, setMotionFailed] = useState(false);
-
-  useEffect(() => {
-    setMotionFailed(false);
-  }, [videoUrl]);
+    : require('../../assets/icon.png');
 
   return (
     <View pointerEvents="none" style={styles.dailyHeroBackground}>
@@ -56,19 +41,13 @@ function PlaylistHeroBackground({ active, videoUrl, coverUrl }: { active: boolea
         locations={[0, 0.48, 1]}
         style={styles.dailyHeroFallbackTint}
       />
-      {active && !motionFailed ? (
-        <ExpoImage
-          autoplay
-          cachePolicy="memory-disk"
-          contentFit="cover"
-          onError={() => setMotionFailed(true)}
-          priority="high"
-          recyclingKey={videoUrl || 'local:yoriax_intro'}
-          source={motionSource}
-          style={styles.dailyHeroVideo}
-          transition={180}
-        />
-      ) : null}
+      <DecorativeVideoView
+        active={shouldPlay}
+        contentFit="cover"
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        source={videoUrl ?? require('../../assets/yoriax_intro.MOV')}
+        style={styles.dailyHeroVideo}
+      />
       <LinearGradient
         colors={['rgba(5,5,6,0.32)', 'rgba(8,7,14,0.72)', theme.colors.background]}
         locations={[0, 0.52, 1]}

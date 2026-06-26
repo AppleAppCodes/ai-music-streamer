@@ -1,6 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image as ExpoImage } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +13,7 @@ import { MusicPreferencesOnboarding } from './src/screens/MusicPreferencesScreen
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { theme } from './src/theme';
 import { YoriaxMark } from './src/components/YoriaxUI';
+import { DecorativeVideoView } from 'yoriax-decorative-video';
 import { I18nProvider, useI18n } from './src/lib/i18n';
 import { preloadStartupMedia } from './src/lib/media-preload';
 
@@ -89,13 +89,11 @@ function AppShell() {
       <StatusBar style="light" />
 
       {!signedIn && !initializing && (
-        <ExpoImage
-          autoplay
-          cachePolicy="memory-disk"
+        <DecorativeVideoView
           contentFit="cover"
-          priority="high"
           // eslint-disable-next-line @typescript-eslint/no-require-imports
-          source={require('./assets/yoriax_intro.webp')}
+          source={require('./assets/yoriax_intro.MOV')}
+          active
           style={StyleSheet.absoluteFill}
         />
       )}

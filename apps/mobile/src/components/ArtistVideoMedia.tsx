@@ -1,11 +1,11 @@
-import { memo, useMemo, useState } from 'react';
-import { StyleSheet, type ImageStyle, type StyleProp } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
-import { getMotionImageSource } from '../lib/motion-image';
+import { memo } from 'react';
+import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { DecorativeVideoView } from 'yoriax-decorative-video';
+import { useShouldPlaySilentVideo } from '../lib/silent-video';
 
 type ArtistVideoMediaProps = {
   active?: boolean;
-  style?: StyleProp<ImageStyle>;
+  style?: StyleProp<ViewStyle>;
   uri?: string | null;
 };
 
@@ -14,24 +14,16 @@ export const ArtistVideoMedia = memo(function ArtistVideoMedia({
   style,
   uri,
 }: ArtistVideoMediaProps) {
-  const motionSource = useMemo(() => getMotionImageSource(uri), [uri]);
-  const motionKey = typeof motionSource === 'number' ? `asset:${motionSource}` : motionSource?.uri ?? null;
-  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const shouldPlay = useShouldPlaySilentVideo(active);
 
-  if (!motionSource || !motionKey || failedUri === motionKey || !active) return null;
+  if (!uri) return null;
 
   return (
-    <ExpoImage
-      autoplay
-      cachePolicy="memory-disk"
+    <DecorativeVideoView
+      active={shouldPlay}
       contentFit="cover"
-      onError={() => setFailedUri(motionKey)}
-      pointerEvents="none"
-      priority="high"
-      recyclingKey={motionKey}
-      source={motionSource}
+      source={uri}
       style={[styles.video, style]}
-      transition={140}
     />
   );
 });
