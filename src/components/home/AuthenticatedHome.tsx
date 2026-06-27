@@ -605,10 +605,27 @@ function SpotlightSlider({
         ) : null}
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/25 via-primary/10 to-accent/15 shadow-[0_24px_64px_rgba(124,58,237,0.18)] min-h-[260px] sm:min-h-[240px] flex">
-        {current.kind === 'song' ? <SpotlightSongCard song={current.song} /> : null}
-        {current.kind === 'artist' ? <SpotlightArtistCard artist={current.artist} /> : null}
-        {current.kind === 'playlist' ? <SpotlightPlaylistCard playlist={current.playlist} /> : null}
+      <div className="relative overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/25 via-primary/10 to-accent/15 shadow-[0_24px_64px_rgba(124,58,237,0.18)] h-[280px] sm:h-[260px]">
+        <div
+          className="flex h-full transition-transform duration-500 ease-out"
+          style={{
+            width: `${slides.length * 100}%`,
+            transform: `translateX(-${(boundedActive / slides.length) * 100}%)`,
+          }}
+        >
+          {slides.map((slide, index) => (
+            <div
+              key={slide.kind + index}
+              className="h-full flex-shrink-0"
+              style={{ width: `${100 / slides.length}%` }}
+              aria-hidden={index !== boundedActive}
+            >
+              {slide.kind === 'song' ? <SpotlightSongCard song={slide.song} /> : null}
+              {slide.kind === 'artist' ? <SpotlightArtistCard artist={slide.artist} /> : null}
+              {slide.kind === 'playlist' ? <SpotlightPlaylistCard playlist={slide.playlist} /> : null}
+            </div>
+          ))}
+        </div>
       </div>
 
       {slides.length > 1 ? (
