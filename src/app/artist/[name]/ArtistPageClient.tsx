@@ -14,6 +14,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { compressImage } from '@/lib/imageCompression';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { isCreatorUser, isModUser } from '@/lib/admin';
+import { useTranslation } from 'react-i18next';
 import Image from 'next/image';
 
 function formatDuration(seconds: number | null | undefined): string {
@@ -128,6 +129,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
   const { playSong, currentSong, isPlaying, togglePlayPause, setQueue, isShuffling, toggleShuffle } = usePlayer();
   const supabase = useMemo(() => createClient(), []);
   
+  const { t } = useTranslation();
   const [songs, setSongs] = useState<Song[]>([]);
   const [showAllSongs, setShowAllSongs] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -628,7 +630,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
                 ) : (
                   <Edit2 className="w-4 h-4" />
                 )}
-                Hintergrundbild bearbeiten
+                {t('artistPage.editBanner')}
               </button>
               {bannerUrl ? (
                 <button
@@ -636,7 +638,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
                   disabled={isUploadingBanner}
                   className={`flex items-center gap-2 backdrop-blur-md text-white px-4 py-2 rounded-full border transition-all text-sm font-medium ${positioningTarget === 'banner' ? 'bg-primary/80 hover:bg-primary border-primary-light' : 'bg-black/50 hover:bg-black/80 border-white/20'}`}
                 >
-                  {positioningTarget === 'banner' ? 'Position fertig' : 'Banner positionieren'}
+                  {positioningTarget === 'banner' ? t('artistPage.positionDone') : t('artistPage.positionBanner')}
                 </button>
               ) : null}
               {positioningTarget === 'banner' ? (
@@ -644,12 +646,12 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
                   onClick={() => resetPosition('banner')}
                   className="flex items-center gap-2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 transition-all text-sm font-medium"
                 >
-                  Zentrieren
+                  {t('artistPage.recenter')}
                 </button>
               ) : null}
               {positioningTarget === 'banner' ? (
                 <span className="text-xs text-white/80 self-center bg-black/50 px-3 py-1 rounded-full">
-                  Banner mit der Maus an die richtige Stelle ziehen
+                  {t('artistPage.dragBannerHint')}
                 </span>
               ) : null}
             </div>
@@ -659,12 +661,12 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
             {hasApprovedSong ? (
               <>
                 <BadgeCheck className="w-5 h-5 fill-primary/20 text-primary-light" />
-                <span className="text-white/90">Verifizierter Künstler</span>
+                <span className="text-white/90">{t('artistPage.verified')}</span>
               </>
             ) : (
               <>
                 <Clock className="w-5 h-5 text-amber-300" />
-                <span className="text-amber-200/90">Wartet auf Freigabe</span>
+                <span className="text-amber-200/90">{t('artistPage.pending')}</span>
               </>
             )}
           </div>
@@ -674,7 +676,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
           </h1>
           
           <div className="text-base text-white/70 font-medium">
-            {totalPlays.toLocaleString('de-DE')} Gesamtaufrufe
+            {totalPlays.toLocaleString('de-DE')} {t('artistPage.totalPlays')}
           </div>
         </div>
 
@@ -709,7 +711,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
               </>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-white/30 text-xs p-4 text-center border-dashed border-2 border-white/10 rounded-2xl">
-                Kein Video vorhanden
+                {t('artistPage.noVideo')}
               </div>
             )}
             
@@ -730,7 +732,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
                     className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full border border-white/30 backdrop-blur-md transition-all text-sm font-medium disabled:opacity-50"
                   >
                     {isUploadingArtistVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit2 className="w-4 h-4" />}
-                    Video ändern
+                    {t('artistPage.editVideo')}
                   </button>
                   {artistVideoUrl ? (
                     <button
@@ -738,7 +740,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
                       disabled={isUploadingArtistVideo}
                       className={`flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-md transition-all text-sm font-medium ${positioningTarget === 'video' ? 'bg-primary/80 hover:bg-primary border-primary-light text-white' : 'bg-white/10 hover:bg-white/20 text-white border-white/30'}`}
                     >
-                      {positioningTarget === 'video' ? 'Position fertig' : 'Video positionieren'}
+                      {positioningTarget === 'video' ? t('artistPage.positionDone') : t('artistPage.positionVideo')}
                     </button>
                   ) : null}
                   {positioningTarget === 'video' ? (
@@ -746,12 +748,12 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
                       onClick={(e) => { e.preventDefault(); resetPosition('video'); }}
                       className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full border border-white/30 backdrop-blur-md transition-all text-sm font-medium"
                     >
-                      Zentrieren
+                      {t('artistPage.recenter')}
                     </button>
                   ) : null}
                   {positioningTarget === 'video' ? (
                     <span className="text-[11px] text-white/80 bg-black/50 px-2 py-1 rounded-full text-center">
-                      Video an die richtige Stelle ziehen
+                      {t('artistPage.dragVideoHint')}
                     </span>
                   ) : null}
                 </div>
@@ -899,7 +901,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
                   <button
                     onClick={() => setIsEditingSocials(true)}
                     className="flex items-center justify-center p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all text-white/50 hover:text-white shadow-lg border border-white/5 border-dashed"
-                    title={(!socials?.instagram_url && !socials?.tiktok_url && !socials?.youtube_url) ? 'Socials hinzufügen' : 'Socials bearbeiten'}
+                    title={(!socials?.instagram_url && !socials?.tiktok_url && !socials?.youtube_url) ? t('artistPage.addSocials') : t('artistPage.editSocials')}
                   >
                     {(!socials?.instagram_url && !socials?.tiktok_url && !socials?.youtube_url) ? (
                       <span className="text-xs font-bold px-2">+ Socials</span>
