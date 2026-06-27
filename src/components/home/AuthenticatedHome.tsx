@@ -554,39 +554,17 @@ function SpotlightSlider({
   }, [song, artist, playlist]);
 
   const [active, setActive] = useState(0);
-  const [progress, setProgress] = useState(0);
   const [paused, setPaused] = useState(false);
 
   // Bound `active` at render time so we never index out of range when the
   // slide set shrinks between renders.
   const boundedActive = slides.length > 0 ? active % slides.length : 0;
 
-  useEffect(() => {
-    if (slides.length <= 1 || paused) return undefined;
-    let rafId = 0;
-    let startTime = 0;
-    const tick = (now: number) => {
-      if (startTime === 0) startTime = now;
-      const elapsed = now - startTime;
-      const ratio = Math.min(1, elapsed / SPOTLIGHT_SLIDE_DURATION_MS);
-      setProgress(ratio);
-      if (ratio >= 1) {
-        startTime = 0;
-        setProgress(0);
-        setActive((prev) => (prev + 1) % slides.length);
-      }
-      rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [boundedActive, paused, slides.length]);
-
   if (slides.length === 0) return null;
   const current = slides[boundedActive];
 
   const goTo = (index: number) => {
     setActive(((index % slides.length) + slides.length) % slides.length);
-    setProgress(0);
   };
   const goPrev = () => goTo(boundedActive - 1);
   const goNext = () => goTo(boundedActive + 1);
@@ -654,19 +632,31 @@ function SpotlightSlider({
         <div className="mt-3 flex items-center justify-center gap-1.5">
           {slides.map((slide, index) => {
             const isActive = index === boundedActive;
-            const fillPercent = isActive ? Math.round(progress * 100) : index < boundedActive ? 100 : 0;
+            const isPast = index < boundedActive;
             return (
               <button
                 key={slide.kind + index}
                 type="button"
                 onClick={() => goTo(index)}
-                className="relative h-[3px] w-10 overflow-hidden rounded-full bg-white/12 transition-colors hover:bg-white/20"
+                className="relative h-[3px] w-10 overflow-hidden rounded-full bg-white/15 transition-colors hover:bg-white/25"
                 aria-label={t(slide.kind === 'song' ? 'home.spotlight' : slide.kind === 'artist' ? 'home.spotlightArtistEyebrow' : 'home.spotlightPlaylistEyebrow')}
               >
-                <span
-                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary-light to-accent transition-[width] duration-100"
-                  style={{ width: `${fillPercent}%` }}
-                />
+                {isActive ? (
+                  <span
+                    key={`fill-${boundedActive}`}
+                    onAnimationEnd={() => setActive((prev) => (prev + 1) % slides.length)}
+                    className="absolute inset-y-0 left-0 rounded-full bg-primary-light"
+                    style={{
+                      animation: `spotlightFill ${SPOTLIGHT_SLIDE_DURATION_MS}ms linear forwards`,
+                      animationPlayState: paused ? 'paused' : 'running',
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="absolute inset-y-0 left-0 rounded-full bg-primary-light"
+                    style={{ width: isPast ? '100%' : '0%' }}
+                  />
+                )}
               </button>
             );
           })}
