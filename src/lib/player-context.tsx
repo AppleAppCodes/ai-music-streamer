@@ -109,6 +109,7 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
   const loadedSongIdRef = useRef<string | null>(null);
   const syncChannelRef = useRef<RealtimeChannel | null>(null);
   const prefetchLinksRef = useRef<Map<string, HTMLLinkElement>>(new Map());
+  const progressAnimationRef = useRef<number | null>(null);
 
   const preloadSong = useCallback((song: Song) => {
     const href = song.audio_url;
@@ -380,18 +381,46 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleTimeUpdate = () => {
+    const syncPlaybackProgress = () => {
       setCurrentTime(audio.currentTime);
       if (audio.duration) {
         setProgress((audio.currentTime / audio.duration) * 100);
       }
     };
 
+    const stopProgressAnimation = () => {
+      if (progressAnimationRef.current !== null) {
+        window.cancelAnimationFrame(progressAnimationRef.current);
+        progressAnimationRef.current = null;
+      }
+    };
+
+    const startProgressAnimation = () => {
+      stopProgressAnimation();
+
+      const tick = () => {
+        syncPlaybackProgress();
+        if (!audio.paused && !audio.ended) {
+          progressAnimationRef.current = window.requestAnimationFrame(tick);
+        } else {
+          progressAnimationRef.current = null;
+        }
+      };
+
+      progressAnimationRef.current = window.requestAnimationFrame(tick);
+    };
+
+    const handleTimeUpdate = () => {
+      syncPlaybackProgress();
+    };
+
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
+      syncPlaybackProgress();
     };
 
     const handleEnded = () => {
+      stopProgressAnimation();
       setIsPlaying(false);
       setProgress(0);
       setCurrentTime(0);
@@ -408,14 +437,19 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('play', startProgressAnimation);
+    audio.addEventListener('pause', stopProgressAnimation);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('error', handlePlayError);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('play', startProgressAnimation);
+      audio.removeEventListener('pause', stopProgressAnimation);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handlePlayError);
+      stopProgressAnimation();
       audio.pause();
       audio.src = '';
       loadedSongIdRef.current = null;

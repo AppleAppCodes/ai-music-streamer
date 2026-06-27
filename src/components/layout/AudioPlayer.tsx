@@ -13,6 +13,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { isAdminUser } from '@/lib/admin';
 import { uploadSongCover } from '@/lib/song-cover-upload';
 import { hasPreferenceStorageConsent } from '@/lib/cookie-consent';
+import PlayerSlider from '@/components/ui/PlayerSlider';
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return '0:00';
@@ -371,22 +372,15 @@ export default function AudioPlayer() {
         </div>
 
         {currentSong ? (
-        <input
-          type="range"
-          min="0"
-          max="100"
-          step="any"
-          value={progressPercent}
-          aria-label="Song position"
-          className="player-slider absolute inset-x-0 top-0 z-20 h-1 w-full md:hidden"
-          style={{
-            background: `linear-gradient(to right, #ffffff 0%, #ffffff ${progressPercent}%, rgba(255,255,255,0.18) ${progressPercent}%, rgba(255,255,255,0.18) 100%)`,
-          }}
-          onChange={(e) => {
-            if (isAdPlaying) return;
-            seekTo(Number(e.currentTarget.value));
-          }}
-        />
+        <div className="absolute inset-x-0 top-0 z-20 md:hidden">
+          <PlayerSlider
+            value={progressPercent}
+            ariaLabel="Song position"
+            thickness="4px"
+            disabled={isAdPlaying}
+            onValueChange={seekTo}
+          />
+        </div>
       ) : null}
 
       {/* Song Info */}
@@ -474,21 +468,12 @@ export default function AudioPlayer() {
         {/* Progress Bar */}
         <div className="flex items-center gap-2 w-full">
           <span className="text-xs text-muted font-medium w-10 text-right">{formatTime(currentTime)}</span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="any"
+          <PlayerSlider
             value={progressPercent}
-            aria-label="Song position"
-            className="player-slider min-w-0 flex-1"
-            style={{
-              background: `linear-gradient(to right, #ffffff 0%, #ffffff ${progressPercent}%, rgba(255,255,255,0.18) ${progressPercent}%, rgba(255,255,255,0.18) 100%)`,
-            }}
-            onChange={(e) => {
-              if (isAdPlaying) return;
-              seekTo(Number(e.currentTarget.value));
-            }}
+            ariaLabel="Song position"
+            className="min-w-0 flex-1"
+            disabled={isAdPlaying}
+            onValueChange={seekTo}
           />
           <span className="text-xs text-muted font-medium w-10">{formatTime(duration)}</span>
         </div>
@@ -535,18 +520,11 @@ export default function AudioPlayer() {
         </button>
         <div className="hidden w-28 min-w-0 max-w-[22vw] items-center gap-2 md:flex" onClick={(e) => e.stopPropagation()}>
           <Volume2 className="w-4 h-4 text-muted" />
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="any"
+          <PlayerSlider
             value={volumePercent}
-            aria-label="Volume"
-            className="player-slider min-w-0 flex-1"
-            style={{
-              background: `linear-gradient(to right, #ffffff 0%, #ffffff ${volumePercent}%, rgba(255,255,255,0.18) ${volumePercent}%, rgba(255,255,255,0.18) 100%)`,
-            }}
-            onChange={(e) => setVolume(Number(e.currentTarget.value) / 100)}
+            ariaLabel="Volume"
+            className="min-w-0 flex-1"
+            onValueChange={(nextVolume) => setVolume(nextVolume / 100)}
           />
         </div>
 

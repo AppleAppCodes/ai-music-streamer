@@ -8,6 +8,7 @@ import PlayerSaveButton from '@/components/ui/PlayerSaveButton';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import Image from 'next/image';
+import PlayerSlider from '@/components/ui/PlayerSlider';
 
 interface MobilePlayerFullscreenProps {
   isOpen: boolean;
@@ -157,21 +158,12 @@ export default function MobilePlayerFullscreen({ isOpen, onClose }: MobilePlayer
 
             {/* Progress Bar */}
             <div className="flex flex-col gap-2 mb-6">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="any"
+              <PlayerSlider
                 value={progressPercent}
-                aria-label="Song position"
-                className="player-slider w-full h-1.5"
-                style={{
-                  background: `linear-gradient(to right, #ffffff 0%, #ffffff ${progressPercent}%, rgba(255,255,255,0.2) ${progressPercent}%, rgba(255,255,255,0.2) 100%)`,
-                }}
-                onChange={(e) => {
-                  if (isAdPlaying) return;
-                  seekTo(Number(e.currentTarget.value));
-                }}
+                ariaLabel="Song position"
+                thickness="6px"
+                disabled={isAdPlaying}
+                onValueChange={seekTo}
               />
               <div className="flex justify-between text-xs text-white/50 font-mono">
                 <span>{formatTime(currentTime)}</span>
