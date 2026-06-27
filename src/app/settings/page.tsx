@@ -14,7 +14,7 @@ import Image from 'next/image';
 const LANGUAGE_STORAGE_KEY = 'ai-stream-language';
 
 export default function SettingsPage() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
@@ -342,17 +342,15 @@ export default function SettingsPage() {
                   )}
                 </div>
                 <p className="text-white/60 text-sm">
-                  {subscription === 'Free' 
-                    ? 'Du nutzt aktuell die kostenlose Version mit eingeschränkten Funktionen.' 
-                    : 'Du hast vollen Zugriff auf alle Premium-Features!'}
+                  {subscription === 'Free' ? t('subscription.freeCopy') : t('subscription.premiumCopy')}
                 </p>
               </div>
-              
-              <button 
+
+              <button
                 className="whitespace-nowrap px-6 py-3 rounded-full font-bold text-sm border border-white/20 hover:bg-white/10 transition-all"
                 onClick={() => alert('Zahlungsanbindung (Stripe) kommt bald!')}
               >
-                {subscription === 'Free' ? 'Auf Premium upgraden' : 'Abo verwalten'}
+                {subscription === 'Free' ? t('subscription.ctaUpgrade') : t('subscription.ctaManage')}
               </button>
             </div>
           </section>

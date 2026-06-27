@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { ChevronRight, LibraryBig } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { GENRES } from '@/lib/constants';
 import { createClient } from '@/utils/supabase/client';
 
@@ -16,6 +17,7 @@ function normalize(value: string | null | undefined): string {
 }
 
 export default function GenresPage() {
+  const { t } = useTranslation();
   const [rows, setRows] = useState<GenreRow[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
@@ -53,12 +55,10 @@ export default function GenresPage() {
           <div>
             <div className="mb-3 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.24em] text-violet-300/80">
               <LibraryBig className="h-4 w-4" />
-              Entdecken
+              {t('nav.discover')}
             </div>
-            <h1 className="text-4xl font-black tracking-tight text-white sm:text-6xl">Alle Genres</h1>
-            <p className="mt-3 max-w-xl text-sm text-white/50 sm:text-base">
-              Finde Songs passend zu deinem Sound und entdecke neue Richtungen.
-            </p>
+            <h1 className="text-4xl font-black tracking-tight text-white sm:text-6xl">{t('genresPage.title')}</h1>
+            <p className="mt-3 max-w-xl text-sm text-white/50 sm:text-base">{t('genresPage.subtitle')}</p>
           </div>
         </div>
 
@@ -93,7 +93,7 @@ export default function GenresPage() {
                   <div className="relative">
                     <h2 className="text-lg font-black tracking-tight text-white sm:text-xl">{genre.name}</h2>
                     <p className="mt-1 text-xs font-bold text-white/60">
-                      {songCount} {songCount === 1 ? 'Song' : 'Songs'}
+                      {songCount} {t(songCount === 1 ? 'common.song' : 'common.songs')}
                     </p>
                   </div>
                 </Link>

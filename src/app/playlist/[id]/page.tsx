@@ -377,7 +377,7 @@ export default function PlaylistPage() {
       return;
     }
     
-    const newTitle = editTitle.trim() || 'Unbenannte Playlist';
+    const newTitle = editTitle.trim() || t('playlistEditor.untitled');
     try {
       const { error } = await supabase
         .from('playlists')
@@ -397,7 +397,7 @@ export default function PlaylistPage() {
 
   const handleSaveDetails = useCallback(async () => {
     if (!playlist || !isOwner) return;
-    const newTitle = editTitle.trim() || 'Unbenannte Playlist';
+    const newTitle = editTitle.trim() || t('playlistEditor.untitled');
     try {
       const { error } = await supabase
         .from('playlists')
@@ -570,7 +570,7 @@ export default function PlaylistPage() {
 
   const handleVideoDelete = useCallback(async () => {
     if (!playlist || !isAdmin) return;
-    if (!confirm("Möchtest du das Playlist-Video wirklich löschen?")) return;
+    if (!confirm(t('playlistEditor.confirmDeleteVideo'))) return;
 
     setIsDeletingVideo(true);
 
@@ -1243,7 +1243,7 @@ export default function PlaylistPage() {
                         disabled={isUploadingVideo || isDeletingVideo}
                         className="py-3 px-6 bg-red-500/20 hover:bg-red-500/30 text-red-300 font-bold rounded-full text-sm transition-colors disabled:opacity-50"
                       >
-                        {isDeletingVideo ? "Wird gelöscht..." : "Video löschen"}
+                        {isDeletingVideo ? t('playlistEditor.deletingVideo') : t('playlistEditor.deleteVideo')}
                       </button>
                     </div>
                   </div>

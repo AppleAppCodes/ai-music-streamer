@@ -1,4 +1,38 @@
 {
+  "common": {
+    "song": "Song",
+    "songs": "Songs",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading…",
+    "loadError": "Could not load."
+  },
+  "collection": {
+    "sortDate": "Recently added",
+    "sortTitle": "Title",
+    "sortArtist": "Artist"
+  },
+  "genresPage": {
+    "title": "All genres",
+    "subtitle": "Find songs that match your sound and discover new directions."
+  },
+  "playlistEditor": {
+    "untitled": "Untitled playlist",
+    "confirmDeleteVideo": "Are you sure you want to delete the playlist video?",
+    "deleteVideo": "Delete video",
+    "deletingVideo": "Deleting…"
+  },
+  "subscription": {
+    "tierFree": "Free",
+    "tierPremium": "Premium",
+    "freeCopy": "Upgrade to Premium to unlock all features.",
+    "premiumCopy": "You have full access to all Premium features!",
+    "ctaUpgrade": "Upgrade to Premium",
+    "ctaManage": "Manage subscription"
+  },
   "nav": {
     "discover": "Discover",
     "search": "Search",
