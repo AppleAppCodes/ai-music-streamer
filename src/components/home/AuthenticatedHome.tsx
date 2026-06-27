@@ -638,14 +638,14 @@ function SpotlightSlider({
                 key={slide.kind + index}
                 type="button"
                 onClick={() => goTo(index)}
-                className="relative h-[3px] w-10 overflow-hidden rounded-full bg-white/15 transition-colors hover:bg-white/25"
+                className="relative h-[3px] w-10 overflow-hidden rounded-full bg-[#251033]/90 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] transition-colors hover:bg-[#321545]"
                 aria-label={t(slide.kind === 'song' ? 'home.spotlight' : slide.kind === 'artist' ? 'home.spotlightArtistEyebrow' : 'home.spotlightPlaylistEyebrow')}
               >
                 {isActive ? (
                   <span
                     key={`fill-${boundedActive}`}
                     onAnimationEnd={() => setActive((prev) => (prev + 1) % slides.length)}
-                    className="absolute inset-y-0 left-0 rounded-full bg-primary-light"
+                    className="absolute inset-y-0 left-0 w-full origin-left rounded-full bg-gradient-to-r from-[#4c1d95] via-[#5b21b6] to-[#6d28d9] shadow-[0_0_12px_rgba(91,33,182,0.55)]"
                     style={{
                       animation: `spotlightFill ${SPOTLIGHT_SLIDE_DURATION_MS}ms linear forwards`,
                       animationPlayState: paused ? 'paused' : 'running',
@@ -653,8 +653,8 @@ function SpotlightSlider({
                   />
                 ) : (
                   <span
-                    className="absolute inset-y-0 left-0 rounded-full bg-primary-light"
-                    style={{ width: isPast ? '100%' : '0%' }}
+                    className="absolute inset-y-0 left-0 w-full origin-left rounded-full bg-gradient-to-r from-[#4c1d95] via-[#5b21b6] to-[#6d28d9] shadow-[0_0_12px_rgba(91,33,182,0.45)]"
+                    style={{ transform: `scaleX(${isPast ? 1 : 0})` }}
                   />
                 )}
               </button>
