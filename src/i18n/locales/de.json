@@ -1,4 +1,38 @@
 {
+  "common": {
+    "song": "Song",
+    "songs": "Songs",
+    "save": "Speichern",
+    "saving": "Speichern…",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "loading": "Lädt…",
+    "loadError": "Konnte nicht geladen werden."
+  },
+  "collection": {
+    "sortDate": "Kürzlich hinzugefügt",
+    "sortTitle": "Titel",
+    "sortArtist": "Künstler*in"
+  },
+  "genresPage": {
+    "title": "Alle Genres",
+    "subtitle": "Finde Songs passend zu deinem Sound und entdecke neue Richtungen."
+  },
+  "playlistEditor": {
+    "untitled": "Unbenannte Playlist",
+    "confirmDeleteVideo": "Möchtest du das Playlist-Video wirklich löschen?",
+    "deleteVideo": "Video löschen",
+    "deletingVideo": "Wird gelöscht…"
+  },
+  "subscription": {
+    "tierFree": "Free",
+    "tierPremium": "Premium",
+    "freeCopy": "Upgrade auf Premium, um alle Features freizuschalten.",
+    "premiumCopy": "Du hast vollen Zugriff auf alle Premium-Features!",
+    "ctaUpgrade": "Auf Premium upgraden",
+    "ctaManage": "Abo verwalten"
+  },
   "nav": {
     "discover": "Entdecken",
     "search": "Suchen",

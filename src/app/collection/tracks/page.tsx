@@ -164,7 +164,7 @@ export default function LikedSongsPage() {
             </div>
             <span className="font-bold text-white">{user?.email?.split('@')[0]}</span>
             <span className="w-1 h-1 rounded-full bg-white/30" />
-            <span>{songs.length} {songs.length === 1 ? 'Song' : 'Songs'}</span>
+            <span>{songs.length} {t(songs.length === 1 ? 'common.song' : 'common.songs')}</span>
           </div>
         </div>
       </div>
@@ -196,7 +196,7 @@ export default function LikedSongsPage() {
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="flex items-center gap-1 text-right text-xs font-medium text-white/70 transition-colors hover:text-white sm:gap-2 sm:text-sm"
             >
-              {sortBy === 'date' ? 'Kürzlich hinzugefügt' : sortBy === 'title' ? 'Titel' : 'Künstler*in'}
+              {sortBy === 'date' ? t('collection.sortDate') : sortBy === 'title' ? t('collection.sortTitle') : t('collection.sortArtist')}
               {viewMode === 'list' ? <List className="ml-1 h-4 w-4 sm:ml-2" /> : <Menu className="ml-1 h-4 w-4 sm:ml-2" />}
             </button>
             

@@ -399,7 +399,7 @@ export default function SongPageClient({ songId }: { songId: string }) {
                   disabled={saving}
                   className="flex items-center gap-2 text-sm font-bold text-black bg-white hover:bg-white/90 px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  {saving ? 'Speichern...' : <><Save className="w-4 h-4" /> Speichern</>}
+                  {saving ? t('common.saving') : <><Save className="w-4 h-4" /> {t('common.save')}</>}
                 </button>
               </div>
             </div>

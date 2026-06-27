@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
 import { ArrowLeft, Music2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import SongCard from '@/components/ui/SongCard';
 import { GENRES } from '@/lib/constants';
 import { Song } from '@/lib/types';
@@ -14,6 +15,7 @@ function normalize(value: string | null | undefined): string {
 }
 
 export default function GenrePageClient({ genreName }: { genreName: string }) {
+  const { t } = useTranslation();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
@@ -63,7 +65,7 @@ export default function GenrePageClient({ genreName }: { genreName: string }) {
             <p className="mb-2 text-[11px] font-black uppercase tracking-[0.24em] text-white/45">Genre</p>
             <h1 className="text-4xl font-black tracking-tight text-white sm:text-6xl">{genre?.name || genreName}</h1>
             <p className="mt-2 text-sm font-medium text-white/55">
-              {songs.length} {songs.length === 1 ? 'Song' : 'Songs'}
+              {songs.length} {t(songs.length === 1 ? 'common.song' : 'common.songs')}
             </p>
           </div>
         </div>
