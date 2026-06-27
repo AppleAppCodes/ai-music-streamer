@@ -8,7 +8,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { isAdminUser, isModUser } from '@/lib/admin';
 
-type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot';
+type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot' | 'spotlight';
 
 interface McpLog {
   id: string;
@@ -90,6 +90,9 @@ export default function AdminPage() {
   const [adFiles, setAdFiles] = useState<AdFile[]>([]);
   const [isReplacingAudio, setIsReplacingAudio] = useState<string | null>(null);
   const [mcpLogs, setMcpLogs] = useState<McpLog[]>([]);
+  const [spotlightArtists, setSpotlightArtists] = useState<Array<{ artist_name: string; is_spotlight: boolean }>>([]);
+  const [spotlightPlaylists, setSpotlightPlaylists] = useState<Array<{ id: string; title: string; is_spotlight: boolean }>>([]);
+  const [spotlightSaving, setSpotlightSaving] = useState<'artist' | 'playlist' | null>(null);
 
   // Analytics
   const [totalStreams, setTotalStreams] = useState(0);
@@ -173,6 +176,20 @@ export default function AdminPage() {
           .order('created_at', { ascending: false })
           .limit(100);
         if (mcpData) setMcpLogs(mcpData);
+
+        // Load lists for the Spotlight tab
+        const { data: artistRows } = await supabase
+          .from('artist_profiles')
+          .select('artist_name, is_spotlight')
+          .order('artist_name', { ascending: true });
+        if (artistRows) setSpotlightArtists(artistRows as Array<{ artist_name: string; is_spotlight: boolean }>);
+
+        const { data: playlistRows } = await supabase
+          .from('playlists')
+          .select('id, title, is_spotlight, is_public')
+          .eq('is_public', true)
+          .order('title', { ascending: true });
+        if (playlistRows) setSpotlightPlaylists((playlistRows as Array<{ id: string; title: string; is_spotlight: boolean }>));
       }
 
       // Load Reports
@@ -233,6 +250,52 @@ export default function AdminPage() {
       setSongs(previousSongs);
       alert('Fehler beim Speichern des Spotlight-Texts: ' + error.message);
     }
+  };
+
+  const handleSetSpotlightArtist = async (artistName: string) => {
+    setSpotlightSaving('artist');
+    const previous = spotlightArtists;
+    setSpotlightArtists((prev) => prev.map((a) => ({ ...a, is_spotlight: a.artist_name === artistName })));
+    const { error: clearError } = await supabase.from('artist_profiles').update({ is_spotlight: false }).eq('is_spotlight', true);
+    if (clearError) {
+      setSpotlightArtists(previous);
+      setSpotlightSaving(null);
+      alert('Fehler beim Zurücksetzen des Artist-Spotlights: ' + clearError.message);
+      return;
+    }
+    if (artistName) {
+      const { error: setError } = await supabase.from('artist_profiles').update({ is_spotlight: true }).eq('artist_name', artistName);
+      if (setError) {
+        setSpotlightArtists(previous);
+        setSpotlightSaving(null);
+        alert('Fehler beim Setzen des Artist-Spotlights: ' + setError.message);
+        return;
+      }
+    }
+    setSpotlightSaving(null);
+  };
+
+  const handleSetSpotlightPlaylist = async (playlistId: string) => {
+    setSpotlightSaving('playlist');
+    const previous = spotlightPlaylists;
+    setSpotlightPlaylists((prev) => prev.map((p) => ({ ...p, is_spotlight: p.id === playlistId })));
+    const { error: clearError } = await supabase.from('playlists').update({ is_spotlight: false }).eq('is_spotlight', true);
+    if (clearError) {
+      setSpotlightPlaylists(previous);
+      setSpotlightSaving(null);
+      alert('Fehler beim Zurücksetzen des Playlist-Spotlights: ' + clearError.message);
+      return;
+    }
+    if (playlistId) {
+      const { error: setError } = await supabase.from('playlists').update({ is_spotlight: true }).eq('id', playlistId);
+      if (setError) {
+        setSpotlightPlaylists(previous);
+        setSpotlightSaving(null);
+        alert('Fehler beim Setzen des Playlist-Spotlights: ' + setError.message);
+        return;
+      }
+    }
+    setSpotlightSaving(null);
   };
 
   const handleSetSpotlightSong = async (id: string, title: string) => {
@@ -578,6 +641,17 @@ export default function AdminPage() {
                 >
                   <Terminal className="w-4 h-4" />
                   Bot Control
+                </button>
+                <button
+                  onClick={() => setActiveTab('spotlight')}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    activeTab === 'spotlight'
+                      ? 'bg-fuchsia-500 text-white shadow-lg'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Spotlight
                 </button>
               </>
             )}
@@ -1019,6 +1093,55 @@ export default function AdminPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'spotlight' && (
+            <div className="p-8">
+              <div className="max-w-3xl mx-auto space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-2">Home Spotlight Slider</h2>
+                  <p className="text-white/60 text-sm">
+                    Wähle, welcher Song, Künstler und welche Playlist im rotierenden Spotlight-Slider auf der Home erscheinen. Song-Spotlight setzt du wie gewohnt im Songs-Tab über das Funkel-Icon.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-6">
+                  <label className="block text-xs font-black uppercase tracking-[0.22em] text-fuchsia-300/80 mb-2">Artist Spotlight</label>
+                  <p className="text-sm text-white/55 mb-3">Der hervorgehobene Künstler in der zweiten Slide.</p>
+                  <select
+                    value={spotlightArtists.find((a) => a.is_spotlight)?.artist_name ?? ''}
+                    onChange={(e) => handleSetSpotlightArtist(e.target.value)}
+                    disabled={spotlightSaving === 'artist'}
+                    className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:outline-none focus:border-fuchsia-400/55 disabled:opacity-60"
+                  >
+                    <option value="">— Kein Artist-Spotlight —</option>
+                    {spotlightArtists.map((a) => (
+                      <option key={a.artist_name} value={a.artist_name}>{a.artist_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-6">
+                  <label className="block text-xs font-black uppercase tracking-[0.22em] text-teal-300/80 mb-2">Playlist Spotlight</label>
+                  <p className="text-sm text-white/55 mb-3">Die hervorgehobene Playlist (z.B. {'„Playlist der Woche"'}) in der dritten Slide.</p>
+                  <select
+                    value={spotlightPlaylists.find((p) => p.is_spotlight)?.id ?? ''}
+                    onChange={(e) => handleSetSpotlightPlaylist(e.target.value)}
+                    disabled={spotlightSaving === 'playlist'}
+                    className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:outline-none focus:border-teal-300/55 disabled:opacity-60"
+                  >
+                    <option value="">— Kein Playlist-Spotlight —</option>
+                    {spotlightPlaylists.map((p) => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <p className="text-xs text-white/40">
+                  Sobald ein Slot leer ist, wird die entsprechende Slide einfach weggelassen — der Slider zeigt dann nur die übrigen Slides.
+                </p>
               </div>
             </div>
           )}

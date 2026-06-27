@@ -605,14 +605,14 @@ function SpotlightSlider({
         ) : null}
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/25 via-primary/10 to-accent/15 shadow-[0_24px_64px_rgba(124,58,237,0.18)]">
+      <div className="relative overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/25 via-primary/10 to-accent/15 shadow-[0_24px_64px_rgba(124,58,237,0.18)] min-h-[260px] sm:min-h-[240px] flex">
         {current.kind === 'song' ? <SpotlightSongCard song={current.song} /> : null}
         {current.kind === 'artist' ? <SpotlightArtistCard artist={current.artist} /> : null}
         {current.kind === 'playlist' ? <SpotlightPlaylistCard playlist={current.playlist} /> : null}
       </div>
 
       {slides.length > 1 ? (
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-3 flex items-center justify-center gap-1.5">
           {slides.map((slide, index) => {
             const isActive = index === boundedActive;
             const fillPercent = isActive ? Math.round(progress * 100) : index < boundedActive ? 100 : 0;
@@ -621,7 +621,7 @@ function SpotlightSlider({
                 key={slide.kind + index}
                 type="button"
                 onClick={() => goTo(index)}
-                className="group relative h-1.5 flex-1 overflow-hidden rounded-full bg-white/10"
+                className="relative h-[3px] w-10 overflow-hidden rounded-full bg-white/12 transition-colors hover:bg-white/20"
                 aria-label={t(slide.kind === 'song' ? 'home.spotlight' : slide.kind === 'artist' ? 'home.spotlightArtistEyebrow' : 'home.spotlightPlaylistEyebrow')}
               >
                 <span
@@ -653,7 +653,7 @@ function SpotlightSongCard({ song }: { song: Song }) {
   }, [isActive, togglePlayPause, setQueue, playSong, song]);
 
   return (
-    <div className="relative p-5 sm:p-7">
+    <div className="relative p-5 sm:p-7 w-full">
       <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/30 blur-[100px]" />
       <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-accent/20 blur-[120px]" />
       <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-7">
@@ -701,7 +701,7 @@ function SpotlightSongCard({ song }: { song: Song }) {
 function SpotlightArtistCard({ artist }: { artist: SpotlightArtistSummary }) {
   const { t } = useTranslation();
   return (
-    <div className="relative p-5 sm:p-7">
+    <div className="relative p-5 sm:p-7 w-full">
       <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/30 blur-[100px]" />
       <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-accent/20 blur-[120px]" />
       <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-7">
@@ -748,7 +748,7 @@ function SpotlightPlaylistCard({ playlist }: { playlist: SpotlightPlaylistSummar
   const { t } = useTranslation();
   const isDailyNewReleases = playlist.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111' || playlist.id === 'daily-new-releases';
   return (
-    <div className="relative p-5 sm:p-7">
+    <div className="relative p-5 sm:p-7 w-full">
       <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-teal-300/25 blur-[100px]" />
       <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-primary/25 blur-[120px]" />
       <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-7">
