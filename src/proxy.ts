@@ -6,6 +6,10 @@ import { isPrelaunchLockEnabled, isUserWhitelisted } from './lib/prelaunch';
 function isPublicPath(pathname: string) {
   return pathname === '/'
     || pathname === '/site.webmanifest'
+    || pathname === '/robots.txt'
+    || pathname === '/sitemap.xml'
+    || pathname === '/apple-app-site-association'
+    || pathname === '/.well-known/apple-app-site-association'
     || pathname.startsWith('/api/public')
     || pathname.startsWith('/login')
     || pathname.startsWith('/search')
@@ -25,6 +29,9 @@ function isPrelaunchAllowedPath(pathname: string) {
   return pathname === '/'
     || pathname === '/site.webmanifest'
     || pathname === '/robots.txt'
+    || pathname === '/sitemap.xml'
+    || pathname === '/apple-app-site-association'
+    || pathname === '/.well-known/apple-app-site-association'
     || pathname.startsWith('/login')
     || pathname.startsWith('/auth')
     || pathname.startsWith('/api/auth')
