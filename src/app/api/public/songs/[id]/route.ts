@@ -25,10 +25,6 @@ const PUBLIC_SONG_SELECT = [
   'track_number',
 ].join(', ');
 
-function publicSongFilter<T extends { or: (filters: string) => T }>(query: T): T {
-  return query.or('is_approved.is.true,is_approved.is.null');
-}
-
 function mapSong(row: Partial<Song>): Song {
   const artistName = row.artist_name || 'Creator';
 
@@ -64,12 +60,11 @@ export async function GET(
     const { id } = await params;
     const supabase = createPublicClient();
 
-    const { data: song, error } = await publicSongFilter(
-      supabase
-        .from('songs')
-        .select(PUBLIC_SONG_SELECT)
-        .eq('id', id),
-    ).maybeSingle();
+    const { data: song, error } = await supabase
+      .from('songs')
+      .select(PUBLIC_SONG_SELECT)
+      .eq('id', id)
+      .maybeSingle();
 
     if (error) {
       console.error('[GET /api/public/songs/:id]', error);
@@ -89,7 +84,7 @@ export async function GET(
       .limit(5);
 
     const { data: relatedSongs, error: relatedError } = artistName
-      ? await publicSongFilter(relatedQuery.eq('artist_name', artistName))
+      ? await relatedQuery.eq('artist_name', artistName)
       : { data: [], error: null };
 
     if (relatedError) {
