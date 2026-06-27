@@ -43,54 +43,55 @@ export default function SongPageClient({ songId }: { songId: string }) {
 
   useEffect(() => {
     if (!id) return;
+    let isMounted = true;
 
     const fetchSongDetails = async () => {
       setLoading(true);
-      
-      // Fetch the main song
-      const { data: songData, error: songError } = await supabase
-        .from('songs')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
 
-      if (songError) {
-        console.error('Failed to load song details:', songError);
-      }
-        
-      if (songData) {
-        const songWithProfile = songData as Song;
-        const creatorName = songWithProfile.artist_name || 'Creator';
-        const songForState: Song = { ...songWithProfile, creatorName };
+      try {
+        const response = await fetch(`/api/public/songs/${encodeURIComponent(id)}`);
 
-        setSong(songForState);
-        setEditHumanEdit(songData.human_edit ?? 0);
-        setEditVocalsType(songData.vocals_type || 'AI');
-        setEditArtistName(songData.artist_name || '');
-        setEditCredits(songData.credits || []);
-        
-        // Fetch related songs by the same artist
-        const artistName = songData.artist_name || 'Creator';
-        const { data: relatedData } = await supabase
-          .from('songs')
-          .select('*')
-          .eq('artist_name', artistName)
-          .neq('id', id)
-          .order('created_at', { ascending: false })
-          .limit(5);
-          
-        if (relatedData) {
-          setRelatedSongs(relatedData);
+        if (!response.ok) {
+          if (isMounted) {
+            setSong(null);
+            setRelatedSongs([]);
+          }
+        } else {
+          const payload = await response.json() as { song?: Song; relatedSongs?: Song[] };
+          const songData = payload.song;
+
+          if (isMounted && songData) {
+            const creatorName = songData.artist_name || 'Creator';
+            const songForState: Song = { ...songData, creatorName };
+
+            setSong(songForState);
+            setEditHumanEdit(songData.human_edit ?? 0);
+            setEditVocalsType(songData.vocals_type || 'AI');
+            setEditArtistName(songData.artist_name || '');
+            setEditCredits(songData.credits || []);
+            setRelatedSongs(payload.relatedSongs || []);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load song details:', error);
+        if (isMounted) {
+          setSong(null);
+          setRelatedSongs([]);
         }
       }
       
       const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
-
-      setLoading(false);
+      if (isMounted) {
+        setUser(session?.user || null);
+        setLoading(false);
+      }
     };
 
     fetchSongDetails();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id, supabase]);
 
   const handleSaveMetadata = async () => {
