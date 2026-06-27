@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 
 export const SITE_URL = 'https://www.yoriax.com';
 export const SITE_NAME = 'YORIAX';
-export const DEFAULT_OG_IMAGE = '/brand/yoriax-og.png';
-export const DEFAULT_OG_ALT = 'YORIAX - The AI Music Streamer';
+export const DEFAULT_OG_IMAGE = '/brand/yoriax-share.png';
+export const DEFAULT_OG_ALT = 'YORIAX logo on a dark purple music background';
 export const DEFAULT_TITLE = 'YORIAX | AI Music Streaming';
 export const DEFAULT_DESCRIPTION =
   'Discover AI-native music, stream new songs from emerging creators, explore viral charts, and build playlists on YORIAX.';

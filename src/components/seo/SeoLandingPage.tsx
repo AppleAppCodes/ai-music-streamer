@@ -47,15 +47,8 @@ export default function SeoLandingPage({ content, songs }: SeoLandingPageProps) 
     <div className="min-h-full bg-[#07070a] pb-28 text-white">
       <section className="relative isolate overflow-hidden">
         <div className="absolute inset-0">
-          <Image
-            src="/brand/yoriax-og.png"
-            alt=""
-            fill
-            sizes="100vw"
-            priority
-            className="object-cover opacity-35"
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,7,10,0.96),rgba(7,7,10,0.82)_48%,rgba(7,7,10,0.62))]" />
+          <div className="absolute inset-0 bg-[#07070a]" />
+          <div className="absolute inset-0 bg-[linear-gradient(125deg,rgba(124,58,237,0.24),rgba(7,7,10,0.76)_42%,rgba(20,184,166,0.1)),linear-gradient(180deg,rgba(255,255,255,0.035),transparent_42%)]" />
           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#07070a] to-transparent" />
         </div>
 
