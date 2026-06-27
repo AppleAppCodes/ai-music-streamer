@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 
 import { createPublicClient } from '@/utils/supabase/public';
+import { createClient as createServerClient } from '@/utils/supabase/server';
 import ArtistPageClient from './ArtistPageClient';
 
 interface ArtistPageProps {
@@ -95,14 +97,41 @@ async function loadArtistMetadata(artistName: string) {
   return { displayName, totalPlays, songCount: data.length };
 }
 
+/**
+ * The artist page is only publicly visible when the artist actually has at
+ * least one approved song. Until then the profile (banner / video / socials)
+ * stays hidden from everyone except the admins/mods and the creator who
+ * uploaded the pending songs themselves — those callers see at least one
+ * row thanks to the songs SELECT RLS policy.
+ */
+async function isArtistVisible(artistName: string): Promise<boolean> {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from('songs')
+    .select('id')
+    .ilike('artist_name', artistName)
+    .limit(1);
+  if (error) return false;
+  return (data ?? []).length > 0;
+}
+
 export async function generateMetadata({ params }: ArtistPageProps): Promise<Metadata> {
   const { name } = await params;
   const artistName = decodeArtistNameParam(name);
 
-  const [{ displayName, totalPlays, songCount }, shareImage] = await Promise.all([
+  const [visible, { displayName, totalPlays, songCount }, shareImage] = await Promise.all([
+    isArtistVisible(artistName),
     loadArtistMetadata(artistName),
     loadArtistShareImage(artistName),
   ]);
+
+  if (!visible) {
+    // Profile is not publicly visible yet (no approved songs). Don't index it.
+    return {
+      title: 'Künstler nicht gefunden',
+      robots: { index: false, follow: false },
+    };
+  }
 
   const title = `${displayName} auf YORIAX`;
   const descriptionParts: string[] = [];
@@ -152,5 +181,9 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
 
 export default async function ArtistPage({ params }: ArtistPageProps) {
   const { name } = await params;
-  return <ArtistPageClient artistName={decodeArtistNameParam(name)} />;
+  const artistName = decodeArtistNameParam(name);
+  if (!(await isArtistVisible(artistName))) {
+    notFound();
+  }
+  return <ArtistPageClient artistName={artistName} />;
 }
