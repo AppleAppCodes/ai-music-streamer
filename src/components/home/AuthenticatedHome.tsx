@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { MouseEvent } from 'react';
 import SongCard from '@/components/ui/SongCard';
-import { ChevronLeft, ChevronRight, Heart, ListMusic, Mic2, Music, Pause, Play, Sparkles, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, ListMusic, Mic2, Music, Pause, Pencil, Play, Sparkles, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,7 @@ import Image from 'next/image';
 
 import { Song } from '@/lib/types';
 import { getDailyTrendingSongs, getPersonalizedSongs } from '@/lib/homeRecommendations';
+import { isAdminUser } from '@/lib/admin';
 import type { OfficialPlaylistSummary, SpotlightArtistSummary, SpotlightPlaylistSummary } from '@/lib/public-music-data';
 
 type SongWithProfile = Song & {
@@ -115,7 +116,19 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
   const [recommendedSongs, setRecommendedSongs] = useState<Song[]>(initialHomeData?.recommendedSongs ?? []);
   const [artistCovers, setArtistCovers] = useState<string[]>(initialHomeData?.artistCovers ?? []);
   const [spotlightSong, setSpotlightSong] = useState<Song | null>(initialHomeData?.spotlightSong ?? null);
+  const [spotlightArtist, setSpotlightArtist] = useState<SpotlightArtistSummary | null>(initialHomeData?.spotlightArtist ?? null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(!initialHomeData);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!cancelled) setIsAdmin(isAdminUser(data.user ?? null));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (initialHomeData) return;
@@ -442,11 +455,14 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
       </section>
 
       {/* Spotlight Slider */}
-      {(spotlightSong || initialHomeData?.spotlightArtist || initialHomeData?.spotlightPlaylist) ? (
+      {(spotlightSong || spotlightArtist || initialHomeData?.spotlightPlaylist) ? (
         <SpotlightSlider
           song={spotlightSong}
-          artist={initialHomeData?.spotlightArtist ?? null}
+          artist={spotlightArtist}
           playlist={initialHomeData?.spotlightPlaylist ?? null}
+          isAdmin={isAdmin}
+          onSongCopyChange={(copy) => setSpotlightSong((prev) => (prev ? ({ ...prev, spotlight_copy: copy } as Song) : prev))}
+          onArtistCopyChange={(copy) => setSpotlightArtist((prev) => (prev ? { ...prev, spotlight_copy: copy } : prev))}
         />
       ) : null}
 
@@ -516,10 +532,16 @@ function SpotlightSlider({
   song,
   artist,
   playlist,
+  isAdmin,
+  onSongCopyChange,
+  onArtistCopyChange,
 }: {
   song: Song | null;
   artist: SpotlightArtistSummary | null;
   playlist: SpotlightPlaylistSummary | null;
+  isAdmin: boolean;
+  onSongCopyChange: (copy: string | null) => void;
+  onArtistCopyChange: (copy: string | null) => void;
 }) {
   const { t } = useTranslation();
 
@@ -620,8 +642,8 @@ function SpotlightSlider({
               style={{ width: `${100 / slides.length}%` }}
               aria-hidden={index !== boundedActive}
             >
-              {slide.kind === 'song' ? <SpotlightSongCard song={slide.song} /> : null}
-              {slide.kind === 'artist' ? <SpotlightArtistCard artist={slide.artist} /> : null}
+              {slide.kind === 'song' ? <SpotlightSongCard song={slide.song} isAdmin={isAdmin} onCopyChange={onSongCopyChange} /> : null}
+              {slide.kind === 'artist' ? <SpotlightArtistCard artist={slide.artist} isAdmin={isAdmin} onCopyChange={onArtistCopyChange} /> : null}
               {slide.kind === 'playlist' ? <SpotlightPlaylistCard playlist={slide.playlist} /> : null}
             </div>
           ))}
@@ -654,11 +676,20 @@ function SpotlightSlider({
   );
 }
 
-function SpotlightSongCard({ song }: { song: Song }) {
+function SpotlightSongCard({
+  song,
+  isAdmin,
+  onCopyChange,
+}: {
+  song: Song;
+  isAdmin: boolean;
+  onCopyChange: (copy: string | null) => void;
+}) {
   const { t } = useTranslation();
   const { playSong, setQueue, currentSong, isPlaying, togglePlayPause } = usePlayer();
   const isActive = currentSong?.id === song.id;
   const isThisPlaying = isActive && isPlaying;
+  const currentCopy = (song as unknown as { spotlight_copy?: string | null }).spotlight_copy ?? null;
 
   const handlePlay = useCallback(() => {
     if (isActive) {
@@ -668,6 +699,20 @@ function SpotlightSongCard({ song }: { song: Song }) {
     setQueue([song], 0);
     playSong(song);
   }, [isActive, togglePlayPause, setQueue, playSong, song]);
+
+  const handleEditCopy = useCallback(async () => {
+    const next = window.prompt(t('home.spotlightEditPrompt'), currentCopy ?? '');
+    if (next === null) return;
+    const trimmed = next.trim();
+    const value = trimmed.length > 0 ? trimmed : null;
+    const previous = currentCopy;
+    onCopyChange(value);
+    const { error } = await supabase.from('songs').update({ spotlight_copy: value }).eq('id', song.id);
+    if (error) {
+      onCopyChange(previous);
+      alert(t('home.spotlightEditError', { message: error.message }));
+    }
+  }, [t, currentCopy, onCopyChange, song.id]);
 
   return (
     <div className="relative p-5 sm:p-7 w-full">
@@ -695,9 +740,22 @@ function SpotlightSongCard({ song }: { song: Song }) {
           <p className="mt-1 truncate text-sm font-bold text-white/65">
             {song.artist_name || song.creatorName || t('guestHome.unknownArtist')}
           </p>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-white/55 line-clamp-3">
-            {(song as unknown as { spotlight_copy?: string | null }).spotlight_copy?.trim() || t('home.spotlightCopy')}
-          </p>
+          <div className="relative mt-3 max-w-xl">
+            <p className={`text-sm leading-6 text-white/55 line-clamp-3 ${isAdmin ? 'pr-8' : ''}`}>
+              {currentCopy?.trim() || t('home.spotlightCopy')}
+            </p>
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={handleEditCopy}
+                aria-label={t('home.spotlightEditCopy')}
+                title={t('home.spotlightEditCopy')}
+                className="absolute right-0 top-0 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/70 transition-colors hover:border-white/30 hover:bg-white/10 hover:text-white"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </div>
           <div className="mt-5 flex items-center justify-center gap-3 sm:justify-start">
             <button
               type="button"
@@ -715,8 +773,37 @@ function SpotlightSongCard({ song }: { song: Song }) {
   );
 }
 
-function SpotlightArtistCard({ artist }: { artist: SpotlightArtistSummary }) {
+function SpotlightArtistCard({
+  artist,
+  isAdmin,
+  onCopyChange,
+}: {
+  artist: SpotlightArtistSummary;
+  isAdmin: boolean;
+  onCopyChange: (copy: string | null) => void;
+}) {
   const { t } = useTranslation();
+  const currentCopy = artist.spotlight_copy ?? null;
+
+  const handleEditCopy = useCallback(async () => {
+    const next = window.prompt(t('home.spotlightEditPrompt'), currentCopy ?? '');
+    if (next === null) return;
+    const trimmed = next.trim();
+    const value = trimmed.length > 0 ? trimmed : null;
+    const previous = currentCopy;
+    onCopyChange(value);
+    const { error } = await supabase
+      .from('artist_profiles')
+      .update({ spotlight_copy: value })
+      .eq('artist_name', artist.artist_name);
+    if (error) {
+      onCopyChange(previous);
+      alert(t('home.spotlightEditError', { message: error.message }));
+    }
+  }, [t, currentCopy, onCopyChange, artist.artist_name]);
+
+  const hasCopy = Boolean(currentCopy?.trim());
+
   return (
     <div className="relative p-5 sm:p-7 w-full">
       <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/30 blur-[100px]" />
@@ -746,6 +833,28 @@ function SpotlightArtistCard({ artist }: { artist: SpotlightArtistSummary }) {
               plays: artist.total_plays.toLocaleString('de-DE'),
             })}
           </p>
+          {hasCopy || isAdmin ? (
+            <div className="relative mt-3 max-w-xl">
+              <p
+                className={`text-sm leading-6 line-clamp-3 ${isAdmin ? 'pr-8' : ''} ${
+                  hasCopy ? 'text-white/55' : 'italic text-white/35'
+                }`}
+              >
+                {hasCopy ? currentCopy : t('home.spotlightArtistCopyPlaceholder')}
+              </p>
+              {isAdmin ? (
+                <button
+                  type="button"
+                  onClick={handleEditCopy}
+                  aria-label={t('home.spotlightEditCopy')}
+                  title={t('home.spotlightEditCopy')}
+                  className="absolute right-0 top-0 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/70 transition-colors hover:border-white/30 hover:bg-white/10 hover:text-white"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <div className="mt-5 flex items-center justify-center gap-3 sm:justify-start">
             <Link
               href={`/artist/${encodeURIComponent(artist.artist_name)}`}

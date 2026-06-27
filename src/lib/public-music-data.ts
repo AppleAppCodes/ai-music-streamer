@@ -27,6 +27,7 @@ export type SpotlightArtistSummary = {
   banner_url: string | null;
   total_plays: number;
   song_count: number;
+  spotlight_copy: string | null;
 };
 
 export type SpotlightPlaylistSummary = OfficialPlaylistSummary;
@@ -115,7 +116,7 @@ async function loadSongsByDate(client: SupabaseClient, limit: number) {
 async function loadSpotlightArtist(client: SupabaseClient): Promise<SpotlightArtistSummary | null> {
   const { data: profile, error: profileError } = await client
     .from('artist_profiles')
-    .select('artist_name')
+    .select('artist_name, spotlight_copy')
     .eq('is_spotlight', true)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -123,6 +124,7 @@ async function loadSpotlightArtist(client: SupabaseClient): Promise<SpotlightArt
   if (profileError || !profile?.artist_name) return null;
 
   const artistName = profile.artist_name as string;
+  const spotlightCopy = (profile as { spotlight_copy?: string | null }).spotlight_copy ?? null;
   const { data: songs, error: songsError } = await client
     .from('songs')
     .select('cover_url, plays')
@@ -143,6 +145,7 @@ async function loadSpotlightArtist(client: SupabaseClient): Promise<SpotlightArt
     banner_url: null,
     total_plays: totalPlays,
     song_count: rows.length,
+    spotlight_copy: spotlightCopy,
   };
 }
 
