@@ -284,6 +284,7 @@ const translations = {
       topTen: 'Top 10',
       totalStreams: '%{value} Streams gesamt',
       verified: 'Verifizierter Künstler',
+      pending: 'Wartet auf Freigabe',
     },
     charts: {
       artistSubtitle: 'Künstler mit den stärksten Gesamt-Streams auf YORIAX.',
@@ -594,6 +595,7 @@ const translations = {
       topTen: 'Top 10',
       totalStreams: '%{value} total streams',
       verified: 'Verified artist',
+      pending: 'Awaiting approval',
     },
     charts: {
       artistSubtitle: 'Artists with the strongest total streams on YORIAX.',
