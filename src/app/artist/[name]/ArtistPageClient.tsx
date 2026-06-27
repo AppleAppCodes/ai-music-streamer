@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { Play, Pause, Share2, UserPlus, UserCheck, BadgeCheck, Shuffle, Edit2, Loader2, Save, X, Flag } from 'lucide-react';
+import { Play, Pause, Share2, UserPlus, UserCheck, BadgeCheck, Clock, Shuffle, Edit2, Loader2, Save, X, Flag } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
@@ -29,7 +29,7 @@ const ALLOWED_ARTIST_VIDEO_TYPES = new Set(['video/mp4', 'video/webm', 'video/qu
 const ALLOWED_ARTIST_VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'webm']);
 
 // Only fetch the columns we actually use – reduces payload significantly
-const SONG_SELECT_COLUMNS = 'id,title,cover_url,artist_name,audio_url,plays,duration,created_at,album_id,genre,creator_id' as const;
+const SONG_SELECT_COLUMNS = 'id,title,cover_url,artist_name,audio_url,plays,duration,created_at,album_id,genre,creator_id,is_approved' as const;
 const ALBUM_SELECT_COLUMNS = 'id,title,cover_url,created_at,type' as const;
 
 const InstagramIcon = ({ className }: { className?: string }) => (
@@ -159,6 +159,12 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
   // Admins and mods stay allowed regardless of authorship.
   const ownsAnyArtistSong = isCreatorUser(user) && Boolean(user?.id) && songs.some((song) => song.creator_id === user?.id);
   const canEditArtist = isAdmin || ownsAnyArtistSong;
+  // If none of the songs visible to the current viewer is approved yet,
+  // the artist is still pending — show that instead of "Verifizierter
+  // Künstler". (Anon users never reach this page in that state thanks
+  // to the server-side approval guard; this branch is for the creator
+  // and admins/mods who can preview their pending profile.)
+  const hasApprovedSong = songs.some((song) => (song as Song & { is_approved?: boolean | null }).is_approved !== false);
 
   useEffect(() => {
     async function loadArtistData() {
@@ -192,7 +198,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
           break;
         }
 
-        artistSongs.push(...(songsData as Song[]));
+        artistSongs.push(...(songsData as unknown as Song[]));
 
         if (songsData.length < ARTIST_SONG_PAGE_SIZE) {
           break;
@@ -649,9 +655,18 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
             </div>
           )}
 
-          <div className="flex items-center gap-2 mb-2 text-sm text-white/90">
-            <BadgeCheck className="w-5 h-5 fill-primary/20 text-primary-light" />
-            <span>Verifizierter Künstler</span>
+          <div className="flex items-center gap-2 mb-2 text-sm">
+            {hasApprovedSong ? (
+              <>
+                <BadgeCheck className="w-5 h-5 fill-primary/20 text-primary-light" />
+                <span className="text-white/90">Verifizierter Künstler</span>
+              </>
+            ) : (
+              <>
+                <Clock className="w-5 h-5 text-amber-300" />
+                <span className="text-amber-200/90">Wartet auf Freigabe</span>
+              </>
+            )}
           </div>
           
           <h1 className="text-5xl md:text-8xl font-black text-white tracking-tighter drop-shadow-2xl mb-1 md:mb-4 truncate w-full">
