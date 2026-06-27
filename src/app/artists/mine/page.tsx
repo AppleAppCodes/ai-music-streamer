@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Mic2, Music, Play, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { createClient } from '@/utils/supabase/client';
 import { isCreatorUser } from '@/lib/admin';
 
@@ -22,6 +23,7 @@ function sanitizeArtistName(name: string) {
 
 export default function MyArtistsPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [artists, setArtists] = useState<MyArtist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +103,7 @@ export default function MyArtistsPage() {
         setArtists(list);
       } catch (err) {
         if (!mounted) return;
-        setError(err instanceof Error ? err.message : 'Künstler konnten nicht geladen werden.');
+        setError(err instanceof Error ? err.message : t('myArtists.loadError'));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -111,7 +113,7 @@ export default function MyArtistsPage() {
     return () => {
       mounted = false;
     };
-  }, [router]);
+  }, [router, t]);
 
   return (
     <div className="px-4 sm:px-8 py-8 max-w-7xl mx-auto">
@@ -119,16 +121,14 @@ export default function MyArtistsPage() {
         <Link
           href="/"
           className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/65 transition-colors hover:bg-white/10 hover:text-white"
-          aria-label="Zurück"
+          aria-label={t('myArtists.back')}
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-violet-300/80">Meine Künstler</p>
-          <h1 className="mt-1 text-3xl sm:text-4xl font-black text-white tracking-tight">Deine Releases</h1>
-          <p className="mt-1 text-sm font-medium text-white/55">
-            Alle Künstlernamen, unter denen du auf YORIAX veröffentlicht hast — Klick öffnet das Profil.
-          </p>
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-violet-300/80">{t('myArtists.eyebrow')}</p>
+          <h1 className="mt-1 text-3xl sm:text-4xl font-black text-white tracking-tight">{t('myArtists.title')}</h1>
+          <p className="mt-1 text-sm font-medium text-white/55">{t('myArtists.subtitle')}</p>
         </div>
       </div>
 
@@ -146,17 +146,15 @@ export default function MyArtistsPage() {
             <Mic2 className="h-8 w-8" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-white">Noch keine Künstler</h2>
-            <p className="mt-1 max-w-sm text-sm text-white/55">
-              Sobald du deinen ersten Song hochlädst, erscheint hier dein Künstlerprofil. Lege jetzt los.
-            </p>
+            <h2 className="text-xl font-black text-white">{t('myArtists.empty')}</h2>
+            <p className="mt-1 max-w-sm text-sm text-white/55">{t('myArtists.emptyHint')}</p>
           </div>
           <Link
             href="/upload"
             className="inline-flex items-center gap-2 rounded-full bg-violet-500 px-5 py-2.5 text-sm font-black text-white shadow-[0_12px_30px_rgba(124,58,237,0.45)] transition-transform hover:scale-105"
           >
             <Play className="h-4 w-4 fill-current" />
-            Ersten Song hochladen
+            {t('myArtists.emptyCta')}
           </Link>
         </div>
       ) : (

@@ -61,6 +61,35 @@
     "spotlightPlay": "Play",
     "spotlightPause": "Pause"
   },
+  "myArtists": {
+    "eyebrow": "My Artists",
+    "title": "Your releases",
+    "subtitle": "Every artist name you have released under on YORIAX — click to open the profile.",
+    "back": "Back",
+    "empty": "No artists yet",
+    "emptyHint": "As soon as you upload your first song, your artist profile shows up here. Get started.",
+    "emptyCta": "Upload your first song",
+    "loadError": "Could not load your artists.",
+    "plays": "plays",
+    "song": "Song",
+    "songs": "Songs"
+  },
+  "artistPage": {
+    "verified": "Verified Artist",
+    "pending": "Awaiting approval",
+    "totalPlays": "total plays",
+    "editBanner": "Edit background",
+    "positionBanner": "Position banner",
+    "positionVideo": "Position video",
+    "positionDone": "Done positioning",
+    "recenter": "Re-center",
+    "dragBannerHint": "Drag the banner to the right spot",
+    "dragVideoHint": "Drag the video to the right spot",
+    "editVideo": "Change video",
+    "noVideo": "No video yet",
+    "addSocials": "Add socials",
+    "editSocials": "Edit socials"
+  },
   "song": {
     "single": "Single",
     "plays": "Plays",

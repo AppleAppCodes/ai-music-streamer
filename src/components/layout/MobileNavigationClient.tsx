@@ -3,29 +3,27 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Library, Mic2, Search, Sparkles, Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { isCreatorUser } from '@/lib/admin';
 import { useState } from 'react';
 
-const BASE_NAV_ITEMS = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/search', label: 'Suche', icon: Search },
-  { href: '/feed', label: 'Für dich', icon: Sparkles },
-  { href: '/playlists', label: 'Bibliothek', icon: Library },
-] as const;
-
 export default function MobileNavigationClient({ user }: { user: SupabaseUser | null }) {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const [pendingNav, setPendingNav] = useState<{ href: string; from: string } | null>(null);
-  
+
   const isCreator = isCreatorUser(user);
-  
+
   const navItems = [
-    ...BASE_NAV_ITEMS,
+    { href: '/', label: t('nav.home'), icon: Home },
+    { href: '/search', label: t('nav.search'), icon: Search },
+    { href: '/feed', label: t('nav.feed'), icon: Sparkles },
+    { href: '/playlists', label: t('nav.library'), icon: Library },
     ...(isCreator
       ? [
-          { href: '/upload', label: 'Upload', icon: Upload },
-          { href: '/artists/mine', label: 'Künstler', icon: Mic2 },
+          { href: '/upload', label: t('nav.upload'), icon: Upload },
+          { href: '/artists/mine', label: t('nav.myArtists'), icon: Mic2 },
         ]
       : []),
   ];
