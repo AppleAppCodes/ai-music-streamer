@@ -15,12 +15,6 @@ import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { isAdminUser } from '@/lib/admin';
 
-type SongWithProfile = Song & {
-  profiles?: {
-    username?: string | null;
-  } | null;
-};
-
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
   const mins = Math.floor(seconds / 60);
@@ -54,17 +48,20 @@ export default function SongPageClient({ songId }: { songId: string }) {
       setLoading(true);
       
       // Fetch the main song
-      const { data: songData } = await supabase
+      const { data: songData, error: songError } = await supabase
         .from('songs')
-        .select('*, profiles!songs_creator_id_fkey(username)')
+        .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
+
+      if (songError) {
+        console.error('Failed to load song details:', songError);
+      }
         
       if (songData) {
-        const songWithProfile = songData as SongWithProfile;
+        const songWithProfile = songData as Song;
         const creatorName = songWithProfile.artist_name || 'Creator';
-        const songForState: SongWithProfile = { ...songWithProfile, creatorName };
-        delete songForState.profiles;
+        const songForState: Song = { ...songWithProfile, creatorName };
 
         setSong(songForState);
         setEditHumanEdit(songData.human_edit ?? 0);
