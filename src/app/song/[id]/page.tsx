@@ -1,14 +1,12 @@
 import type { Metadata } from 'next';
 
 import { createPublicClient } from '@/utils/supabase/public';
+import { absoluteUrl, buildPageMetadata, jsonLdScript, secondsToIsoDuration, SITE_NAME, SITE_URL } from '@/lib/seo';
 import SongPageClient from './SongPageClient';
 
 interface SongPageProps {
   params: Promise<{ id: string }>;
 }
-
-const SITE_URL = 'https://www.yoriax.com';
-const FALLBACK_OG_IMAGE = '/brand/yoriax-og.png';
 
 type SongMetadataRow = {
   id: string;
@@ -16,30 +14,22 @@ type SongMetadataRow = {
   artist_name: string | null;
   cover_url: string | null;
   created_at: string | null;
+  duration: number | null;
+  genre: string | null;
   profiles?: { username?: string | null } | { username?: string | null }[] | null;
 };
 
-function getProfileUsername(profiles: SongMetadataRow['profiles']) {
+function getProfileUsername(profiles: SongMetadataRow['profiles'] | undefined) {
   if (!profiles) return null;
   if (Array.isArray(profiles)) return profiles[0]?.username ?? null;
   return profiles.username ?? null;
-}
-
-function absoluteUrl(pathOrUrl: string | null | undefined) {
-  if (!pathOrUrl) return `${SITE_URL}${FALLBACK_OG_IMAGE}`;
-
-  try {
-    return new URL(pathOrUrl, SITE_URL).toString();
-  } catch {
-    return `${SITE_URL}${FALLBACK_OG_IMAGE}`;
-  }
 }
 
 async function loadSongMetadata(id: string) {
   const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('songs')
-    .select('id, title, artist_name, cover_url, created_at, profiles!songs_creator_id_fkey(username)')
+    .select('id, title, artist_name, cover_url, created_at, duration, genre, profiles!songs_creator_id_fkey(username)')
     .eq('id', id)
     .maybeSingle();
 
@@ -52,23 +42,32 @@ export async function generateMetadata({ params }: SongPageProps): Promise<Metad
   const song = await loadSongMetadata(id);
 
   if (!song) {
-    return {
+    return buildPageMetadata({
       title: 'Song auf YORIAX',
       description: 'Entdecke AI-Musik auf YORIAX.',
-      alternates: { canonical: `/song/${id}` },
-    };
+      path: `/song/${id}`,
+      noIndex: true,
+    });
   }
 
   const title = song.title?.trim() || 'YORIAX Song';
   const artist = song.artist_name?.trim() || getProfileUsername(song.profiles)?.trim() || 'YORIAX Artist';
   const year = song.created_at ? new Date(song.created_at).getFullYear() : null;
-  const description = `${artist} · Song${year ? ` · ${year}` : ''}`;
+  const genre = song.genre?.trim();
+  const description = `Listen to "${title}" by ${artist} on YORIAX${genre ? `, a ${genre} AI music track` : ''}${year ? ` released in ${year}` : ''}.`;
   const url = `${SITE_URL}/song/${encodeURIComponent(song.id)}`;
   const imageUrl = absoluteUrl(song.cover_url);
   const imageAlt = `${title} von ${artist}`;
 
   return {
-    title,
+    ...buildPageMetadata({
+      title: `${title} by ${artist}`,
+      description,
+      path: `/song/${song.id}`,
+      image: imageUrl,
+      imageAlt,
+    }),
+    title: `${title} by ${artist}`,
     description,
     alternates: { canonical: url },
     openGraph: {
@@ -103,5 +102,42 @@ export async function generateMetadata({ params }: SongPageProps): Promise<Metad
 
 export default async function SongPage({ params }: SongPageProps) {
   const { id } = await params;
-  return <SongPageClient songId={id} />;
+  const song = await loadSongMetadata(id);
+  const title = song?.title?.trim() || 'YORIAX Song';
+  const artist = song?.artist_name?.trim() || getProfileUsername(song?.profiles)?.trim() || 'YORIAX Artist';
+  const url = `${SITE_URL}/song/${encodeURIComponent(id)}`;
+
+  const songJsonLd = song ? {
+    '@context': 'https://schema.org',
+    '@type': 'MusicRecording',
+    '@id': `${url}#recording`,
+    name: title,
+    url,
+    image: absoluteUrl(song.cover_url),
+    datePublished: song.created_at ?? undefined,
+    genre: song.genre ?? undefined,
+    duration: secondsToIsoDuration(song.duration),
+    byArtist: {
+      '@type': 'MusicGroup',
+      name: artist,
+      url: `${SITE_URL}/artist/${encodeURIComponent(artist)}`,
+    },
+    inAlbum: {
+      '@type': 'MusicAlbum',
+      name: SITE_NAME,
+    },
+  } : null;
+
+  return (
+    <>
+      {songJsonLd ? (
+        <script
+          id="yoriax-song-jsonld"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={jsonLdScript(songJsonLd)}
+        />
+      ) : null}
+      <SongPageClient songId={id} />
+    </>
+  );
 }

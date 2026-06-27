@@ -3,14 +3,12 @@ import { notFound } from 'next/navigation';
 
 import { createPublicClient } from '@/utils/supabase/public';
 import { createClient as createServerClient } from '@/utils/supabase/server';
+import { absoluteUrl, buildPageMetadata, jsonLdScript, SITE_NAME, SITE_URL } from '@/lib/seo';
 import ArtistPageClient from './ArtistPageClient';
 
 interface ArtistPageProps {
   params: Promise<{ name: string }>;
 }
-
-const SITE_URL = 'https://www.yoriax.com';
-const FALLBACK_OG_IMAGE = '/brand/yoriax-og.png';
 
 function decodeArtistNameParam(value: string) {
   let decoded = value;
@@ -30,15 +28,6 @@ function decodeArtistNameParam(value: string) {
 
 function sanitizedStorageName(artistName: string) {
   return artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-}
-
-function absoluteUrl(url: string | null | undefined) {
-  if (!url) return `${SITE_URL}${FALLBACK_OG_IMAGE}`;
-  try {
-    return new URL(url, SITE_URL).toString();
-  } catch {
-    return `${SITE_URL}${FALLBACK_OG_IMAGE}`;
-  }
 }
 
 async function loadArtistShareImage(artistName: string): Promise<string | null> {
@@ -127,10 +116,12 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
 
   if (!visible) {
     // Profile is not publicly visible yet (no approved songs). Don't index it.
-    return {
+    return buildPageMetadata({
       title: 'Künstler nicht gefunden',
-      robots: { index: false, follow: false },
-    };
+      description: 'Dieser Artist ist auf YORIAX noch nicht öffentlich sichtbar.',
+      path: `/artist/${encodeURIComponent(artistName)}`,
+      noIndex: true,
+    });
   }
 
   const title = `${displayName} auf YORIAX`;
@@ -146,6 +137,13 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
   const imageAlt = `${displayName} auf YORIAX`;
 
   return {
+    ...buildPageMetadata({
+      title,
+      description,
+      path: `/artist/${encodeURIComponent(displayName)}`,
+      image: imageUrl,
+      imageAlt,
+    }),
     title,
     description,
     alternates: { canonical: url },
@@ -185,5 +183,38 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
   if (!(await isArtistVisible(artistName))) {
     notFound();
   }
-  return <ArtistPageClient artistName={artistName} />;
+  const [{ displayName, totalPlays, songCount }, shareImage] = await Promise.all([
+    loadArtistMetadata(artistName),
+    loadArtistShareImage(artistName),
+  ]);
+  const url = `${SITE_URL}/artist/${encodeURIComponent(displayName)}`;
+  const artistJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'MusicGroup',
+    '@id': `${url}#artist`,
+    name: displayName,
+    url,
+    image: absoluteUrl(shareImage),
+    interactionStatistic: totalPlays > 0 ? {
+      '@type': 'InteractionCounter',
+      interactionType: 'https://schema.org/ListenAction',
+      userInteractionCount: totalPlays,
+    } : undefined,
+    track: songCount > 0 ? {
+      '@type': 'ItemList',
+      numberOfItems: songCount,
+      name: `${displayName} songs on ${SITE_NAME}`,
+    } : undefined,
+  };
+
+  return (
+    <>
+      <script
+        id="yoriax-artist-jsonld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScript(artistJsonLd)}
+      />
+      <ArtistPageClient artistName={artistName} />
+    </>
+  );
 }

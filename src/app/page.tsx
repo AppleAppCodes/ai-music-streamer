@@ -7,6 +7,13 @@ import { loadHomeInitialData } from '@/lib/public-music-data';
 import { isPrelaunchLockEnabled, isUserWhitelisted } from '@/lib/prelaunch';
 import { createClient } from '@/utils/supabase/server';
 import { headers } from 'next/headers';
+import { buildPageMetadata, DEFAULT_DESCRIPTION, DEFAULT_TITLE } from '@/lib/seo';
+
+export const metadata = buildPageMetadata({
+  title: DEFAULT_TITLE,
+  description: DEFAULT_DESCRIPTION,
+  path: '/',
+});
 
 export default async function Home() {
   const supabase = await createClient();
