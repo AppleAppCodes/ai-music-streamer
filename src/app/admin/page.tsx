@@ -131,13 +131,23 @@ export default function AdminPage() {
       }
 
       if (adminCheck) {
-        // Load Users
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, username, created_at, subscription_tier, followers_count, email, country, last_active_at, avatar_url, is_banned, role')
-          .order('created_at', { ascending: false });
-
-        if (profilesData) setProfiles(profilesData);
+        // Load Users via the service-role admin API. Profile email / account
+        // state columns are no longer readable by the browser client directly.
+        try {
+          const usersResponse = await fetch('/api/admin/users');
+          if (usersResponse.ok) {
+            const usersPayload = await usersResponse.json() as {
+              users?: ProfileData[];
+              dailyActiveUsers?: number;
+            };
+            if (usersPayload.users) setProfiles(usersPayload.users);
+            if (typeof usersPayload.dailyActiveUsers === 'number') {
+              setDailyActiveUsers(usersPayload.dailyActiveUsers);
+            }
+          }
+        } catch (usersError) {
+          console.error('Failed to load admin users:', usersError);
+        }
 
         // Load Songs & Streams
         const { data: songsData } = await supabase
@@ -154,9 +164,7 @@ export default function AdminPage() {
         const { count: likesCount } = await supabase.from('liked_songs').select('*', { count: 'exact', head: true });
         if (likesCount) setTotalLikes(likesCount);
 
-        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { count: dauCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('last_active_at', yesterday);
-        if (dauCount) setDailyActiveUsers(dauCount);
+        // Daily active users are returned by the admin users API above.
 
         // Load Ad Frequency
         const { data: settingsData } = await supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single();
@@ -380,11 +388,19 @@ export default function AdminPage() {
   const handleToggleBan = async (id: string, currentStatus: boolean, username: string) => {
     if (!window.confirm(`Möchtest du den Nutzer "${username}" wirklich ${currentStatus ? 'entsperren' : 'sperren'}?`)) return;
 
-    const { error } = await supabase.from('profiles').update({ is_banned: !currentStatus }).eq('id', id);
-    if (!error) {
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, is_banned: !currentStatus }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(payload?.error || 'Aktualisierung fehlgeschlagen');
+      }
       setProfiles(prev => prev.map(p => p.id === id ? { ...p, is_banned: !currentStatus } : p));
-    } else {
-      alert('Fehler beim Ändern des Status: ' + error.message);
+    } catch (err: unknown) {
+      alert('Fehler beim Ändern des Status: ' + (err as Error).message);
     }
   };
 
