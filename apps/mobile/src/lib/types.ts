@@ -12,6 +12,7 @@ export interface Song {
   created_at?: string | null;
   is_spotlight?: boolean | null;
   spotlight_copy?: string | null;
+  is_approved?: boolean | null;
 }
 
 export interface FeedClip {

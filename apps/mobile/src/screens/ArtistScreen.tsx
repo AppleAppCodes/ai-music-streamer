@@ -132,6 +132,12 @@ export function ArtistScreen({ route, navigation }: Props) {
     [songs],
   );
   const monthlyListeners = useMemo(() => getMonthlyListeners(songs), [songs]);
+  // The artist is only "verified" if the catalogue contains at least one
+  // approved song. Admins and the creator still see their pending profile
+  // through RLS, but the badge should be honest about its state.
+  const hasApprovedSong = useMemo(() => songs.some((song) => song.is_approved !== false), [songs]);
+  const badgeLabel = hasApprovedSong ? t('artist.verified') : t('artist.pending');
+  const badgeTone: 'verified' | 'pending' = hasApprovedSong ? 'verified' : 'pending';
   const artistQueue = useMemo(
     () => songs.map((song) => ({ ...song, creatorName: song.creatorName || artistName })),
     [artistName, songs],
@@ -279,7 +285,7 @@ export function ArtistScreen({ route, navigation }: Props) {
                   style={StyleSheet.absoluteFill}
                 />
                 <View style={styles.heroContent}>
-                  <VerifiedBadge label={t('artist.verified')} />
+                  <VerifiedBadge label={badgeLabel} tone={badgeTone} />
                   <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
                   <Text style={styles.subtitle}>
                     {t('artist.listeners', { value: monthlyListeners.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US') })}
@@ -294,7 +300,7 @@ export function ArtistScreen({ route, navigation }: Props) {
                   style={StyleSheet.absoluteFill}
                 />
                 <View style={styles.heroContent}>
-                  <VerifiedBadge label={t('artist.verified')} />
+                  <VerifiedBadge label={badgeLabel} tone={badgeTone} />
                   <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
                   <Text style={styles.subtitle}>
                     {t('artist.listeners', { value: monthlyListeners.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US') })}
@@ -304,7 +310,7 @@ export function ArtistScreen({ route, navigation }: Props) {
               </ImageBackground>
             ) : (
               <View style={styles.hero}>
-                <VerifiedBadge label={t('artist.verified')} />
+                <VerifiedBadge label={badgeLabel} tone={badgeTone} />
                 <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
                 <Text style={styles.subtitle}>
                   {t('artist.listeners', { value: monthlyListeners.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US') })}
@@ -459,13 +465,18 @@ export function ArtistScreen({ route, navigation }: Props) {
   );
 }
 
-function VerifiedBadge({ label }: { label: string }) {
+function VerifiedBadge({ label, tone = 'verified' }: { label: string; tone?: 'verified' | 'pending' }) {
+  const isPending = tone === 'pending';
   return (
     <View style={styles.verifiedRow}>
-      <View style={styles.verifiedIcon}>
-        <Ionicons name="checkmark" size={12} color="#60a5fa" />
+      <View style={[styles.verifiedIcon, isPending && styles.pendingIcon]}>
+        <Ionicons
+          name={isPending ? 'time-outline' : 'checkmark'}
+          size={12}
+          color={isPending ? '#fcd34d' : '#60a5fa'}
+        />
       </View>
-      <Text style={styles.verifiedText}>{label}</Text>
+      <Text style={[styles.verifiedText, isPending && styles.pendingText]}>{label}</Text>
     </View>
   );
 }
@@ -616,6 +627,13 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.88)',
     fontSize: 14,
     fontWeight: '700',
+  },
+  pendingIcon: {
+    backgroundColor: 'rgba(252,211,77,0.16)',
+    borderColor: 'rgba(252,211,77,0.58)',
+  },
+  pendingText: {
+    color: '#fde68a',
   },
   title: {
     color: theme.colors.text,
