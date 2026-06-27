@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { MouseEvent } from 'react';
 import SongCard from '@/components/ui/SongCard';
-import { ChevronRight, Heart, ListMusic, Music, Pause, Play, Sparkles, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, ListMusic, Mic2, Music, Pause, Play, Sparkles, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -12,7 +12,7 @@ import Image from 'next/image';
 
 import { Song } from '@/lib/types';
 import { getDailyTrendingSongs, getPersonalizedSongs } from '@/lib/homeRecommendations';
-import type { OfficialPlaylistSummary } from '@/lib/public-music-data';
+import type { OfficialPlaylistSummary, SpotlightArtistSummary, SpotlightPlaylistSummary } from '@/lib/public-music-data';
 
 type SongWithProfile = Song & {
   profiles?: {
@@ -26,6 +26,8 @@ type InitialHomeData = {
   recommendedSongs: Song[];
   officialPlaylists: OfficialPlaylistSummary[];
   spotlightSong: Song | null;
+  spotlightArtist: SpotlightArtistSummary | null;
+  spotlightPlaylist: SpotlightPlaylistSummary | null;
 };
 
 const HOME_SONG_GRID_CLASSES = 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-[repeat(auto-fill,minmax(160px,200px))]';
@@ -439,9 +441,13 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
         </div>
       </section>
 
-      {/* Spotlight Section */}
-      {spotlightSong ? (
-        <SpotlightSection song={spotlightSong} />
+      {/* Spotlight Slider */}
+      {(spotlightSong || initialHomeData?.spotlightArtist || initialHomeData?.spotlightPlaylist) ? (
+        <SpotlightSlider
+          song={spotlightSong}
+          artist={initialHomeData?.spotlightArtist ?? null}
+          playlist={initialHomeData?.spotlightPlaylist ?? null}
+        />
       ) : null}
 
       {/* Official Playlists Section */}
@@ -498,7 +504,140 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
   );
 }
 
-function SpotlightSection({ song }: { song: Song }) {
+const SPOTLIGHT_SLIDE_DURATION_MS = 8000;
+
+type SpotlightSlideKind = 'song' | 'artist' | 'playlist';
+type SpotlightSlide =
+  | { kind: 'song'; song: Song }
+  | { kind: 'artist'; artist: SpotlightArtistSummary }
+  | { kind: 'playlist'; playlist: SpotlightPlaylistSummary };
+
+function SpotlightSlider({
+  song,
+  artist,
+  playlist,
+}: {
+  song: Song | null;
+  artist: SpotlightArtistSummary | null;
+  playlist: SpotlightPlaylistSummary | null;
+}) {
+  const { t } = useTranslation();
+
+  const slides: SpotlightSlide[] = useMemo(() => {
+    const list: SpotlightSlide[] = [];
+    if (song) list.push({ kind: 'song', song });
+    if (artist) list.push({ kind: 'artist', artist });
+    if (playlist) list.push({ kind: 'playlist', playlist });
+    return list;
+  }, [song, artist, playlist]);
+
+  const [active, setActive] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  // Bound `active` at render time so we never index out of range when the
+  // slide set shrinks between renders.
+  const boundedActive = slides.length > 0 ? active % slides.length : 0;
+
+  useEffect(() => {
+    if (slides.length <= 1 || paused) return undefined;
+    let rafId = 0;
+    let startTime = 0;
+    const tick = (now: number) => {
+      if (startTime === 0) startTime = now;
+      const elapsed = now - startTime;
+      const ratio = Math.min(1, elapsed / SPOTLIGHT_SLIDE_DURATION_MS);
+      setProgress(ratio);
+      if (ratio >= 1) {
+        startTime = 0;
+        setProgress(0);
+        setActive((prev) => (prev + 1) % slides.length);
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [boundedActive, paused, slides.length]);
+
+  if (slides.length === 0) return null;
+  const current = slides[boundedActive];
+
+  const goTo = (index: number) => {
+    setActive(((index % slides.length) + slides.length) % slides.length);
+    setProgress(0);
+  };
+  const goPrev = () => goTo(boundedActive - 1);
+  const goNext = () => goTo(boundedActive + 1);
+
+  const headerTitle = current.kind === 'song'
+    ? t('home.spotlight')
+    : current.kind === 'artist'
+      ? t('home.spotlightArtistEyebrow').toUpperCase()
+      : t('home.spotlightPlaylistEyebrow').toUpperCase();
+
+  return (
+    <section
+      className="px-4 sm:px-8 relative z-10"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div className="mb-4 flex items-end justify-between gap-4">
+        <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">{headerTitle}</h2>
+        {slides.length > 1 ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={goPrev}
+              aria-label={t('home.spotlightPrev')}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              aria-label={t('home.spotlightNext')}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="relative overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/25 via-primary/10 to-accent/15 shadow-[0_24px_64px_rgba(124,58,237,0.18)]">
+        {current.kind === 'song' ? <SpotlightSongCard song={current.song} /> : null}
+        {current.kind === 'artist' ? <SpotlightArtistCard artist={current.artist} /> : null}
+        {current.kind === 'playlist' ? <SpotlightPlaylistCard playlist={current.playlist} /> : null}
+      </div>
+
+      {slides.length > 1 ? (
+        <div className="mt-3 flex items-center gap-2">
+          {slides.map((slide, index) => {
+            const isActive = index === boundedActive;
+            const fillPercent = isActive ? Math.round(progress * 100) : index < boundedActive ? 100 : 0;
+            return (
+              <button
+                key={slide.kind + index}
+                type="button"
+                onClick={() => goTo(index)}
+                className="group relative h-1.5 flex-1 overflow-hidden rounded-full bg-white/10"
+                aria-label={t(slide.kind === 'song' ? 'home.spotlight' : slide.kind === 'artist' ? 'home.spotlightArtistEyebrow' : 'home.spotlightPlaylistEyebrow')}
+              >
+                <span
+                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary-light to-accent transition-[width] duration-100"
+                  style={{ width: `${fillPercent}%` }}
+                />
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function SpotlightSongCard({ song }: { song: Song }) {
   const { t } = useTranslation();
   const { playSong, setQueue, currentSong, isPlaying, togglePlayPause } = usePlayer();
   const isActive = currentSong?.id === song.id;
@@ -514,60 +653,147 @@ function SpotlightSection({ song }: { song: Song }) {
   }, [isActive, togglePlayPause, setQueue, playSong, song]);
 
   return (
-    <section className="px-4 sm:px-8 relative z-10">
-      <SectionHeader title={t('home.spotlight')} />
-      <div className="relative overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/25 via-primary/10 to-accent/15 p-5 shadow-[0_24px_64px_rgba(124,58,237,0.18)] sm:p-7">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/30 blur-[100px]" />
-        <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-accent/20 blur-[120px]" />
-        <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-7">
-          <Link
-            href={`/song/${song.id}`}
-            className="relative flex h-32 w-32 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-black/40 shadow-2xl transition-transform hover:scale-[1.02] sm:h-40 sm:w-40"
-          >
-            {song.cover_url ? (
-              <Image
-                src={song.cover_url}
-                alt={song.title}
-                fill
-                sizes="(max-width: 640px) 128px, 160px"
-                className="object-cover"
-                priority
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-white/5">
-                <Sparkles className="h-10 w-10 text-white/40" />
-              </div>
-            )}
-          </Link>
-          <div className="flex min-w-0 flex-1 flex-col text-center sm:text-left">
-            <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-primary-light/90">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t('home.spotlightEyebrow')}
-            </span>
-            <h3 className="mt-2 truncate text-2xl font-black text-white sm:text-3xl">{song.title}</h3>
-            <p className="mt-1 truncate text-sm font-bold text-white/65">
-              {song.artist_name || song.creatorName || t('guestHome.unknownArtist')}
-            </p>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-white/55 line-clamp-3">
-              {(song as unknown as { spotlight_copy?: string | null }).spotlight_copy?.trim() || t('home.spotlightCopy')}
-            </p>
-            <div className="mt-5 flex items-center justify-center gap-3 sm:justify-start">
-              <button
-                type="button"
-                onClick={handlePlay}
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-black text-white shadow-[0_12px_30px_rgba(124,58,237,0.45)] transition-transform hover:scale-105"
-                aria-label={isThisPlaying ? t('home.spotlightPause') : t('home.spotlightPlay')}
-              >
-                {isThisPlaying ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
-                {isThisPlaying ? t('home.spotlightPause') : t('home.spotlightPlay')}
-              </button>
+    <div className="relative p-5 sm:p-7">
+      <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/30 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-accent/20 blur-[120px]" />
+      <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-7">
+        <Link
+          href={`/song/${song.id}`}
+          className="relative flex h-32 w-32 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-black/40 shadow-2xl transition-transform hover:scale-[1.02] sm:h-40 sm:w-40"
+        >
+          {song.cover_url ? (
+            <Image src={song.cover_url} alt={song.title} fill sizes="(max-width: 640px) 128px, 160px" className="object-cover" priority />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-white/5">
+              <Sparkles className="h-10 w-10 text-white/40" />
             </div>
+          )}
+        </Link>
+        <div className="flex min-w-0 flex-1 flex-col text-center sm:text-left">
+          <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-primary-light/90">
+            <Sparkles className="h-3.5 w-3.5" />
+            {t('home.spotlightEyebrow')}
+          </span>
+          <h3 className="mt-2 truncate text-2xl font-black text-white sm:text-3xl">{song.title}</h3>
+          <p className="mt-1 truncate text-sm font-bold text-white/65">
+            {song.artist_name || song.creatorName || t('guestHome.unknownArtist')}
+          </p>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-white/55 line-clamp-3">
+            {(song as unknown as { spotlight_copy?: string | null }).spotlight_copy?.trim() || t('home.spotlightCopy')}
+          </p>
+          <div className="mt-5 flex items-center justify-center gap-3 sm:justify-start">
+            <button
+              type="button"
+              onClick={handlePlay}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-black text-white shadow-[0_12px_30px_rgba(124,58,237,0.45)] transition-transform hover:scale-105"
+              aria-label={isThisPlaying ? t('home.spotlightPause') : t('home.spotlightPlay')}
+            >
+              {isThisPlaying ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
+              {isThisPlaying ? t('home.spotlightPause') : t('home.spotlightPlay')}
+            </button>
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
+
+function SpotlightArtistCard({ artist }: { artist: SpotlightArtistSummary }) {
+  const { t } = useTranslation();
+  return (
+    <div className="relative p-5 sm:p-7">
+      <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/30 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-accent/20 blur-[120px]" />
+      <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-7">
+        <Link
+          href={`/artist/${encodeURIComponent(artist.artist_name)}`}
+          className="relative flex h-32 w-32 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-black/40 shadow-2xl transition-transform hover:scale-[1.02] sm:h-40 sm:w-40"
+        >
+          {artist.cover_url ? (
+            <Image src={artist.cover_url} alt={artist.artist_name} fill sizes="(max-width: 640px) 128px, 160px" className="object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-white/5">
+              <Mic2 className="h-10 w-10 text-white/40" />
+            </div>
+          )}
+        </Link>
+        <div className="flex min-w-0 flex-1 flex-col text-center sm:text-left">
+          <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-primary-light/90">
+            <Mic2 className="h-3.5 w-3.5" />
+            {t('home.spotlightArtistEyebrow')}
+          </span>
+          <h3 className="mt-2 truncate text-2xl font-black text-white sm:text-3xl">{artist.artist_name}</h3>
+          <p className="mt-1 text-sm font-bold text-white/65">
+            {t('home.spotlightArtistStats', {
+              songs: artist.song_count.toLocaleString('de-DE'),
+              plays: artist.total_plays.toLocaleString('de-DE'),
+            })}
+          </p>
+          <div className="mt-5 flex items-center justify-center gap-3 sm:justify-start">
+            <Link
+              href={`/artist/${encodeURIComponent(artist.artist_name)}`}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-black text-white shadow-[0_12px_30px_rgba(124,58,237,0.45)] transition-transform hover:scale-105"
+            >
+              <ChevronRight className="h-4 w-4" />
+              {t('home.spotlightArtistCta')}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpotlightPlaylistCard({ playlist }: { playlist: SpotlightPlaylistSummary }) {
+  const { t } = useTranslation();
+  const isDailyNewReleases = playlist.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111' || playlist.id === 'daily-new-releases';
+  return (
+    <div className="relative p-5 sm:p-7">
+      <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-teal-300/25 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-primary/25 blur-[120px]" />
+      <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-7">
+        <Link
+          href={`/playlist/${playlist.id}`}
+          className="relative flex h-32 w-32 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-black/40 shadow-2xl transition-transform hover:scale-[1.02] sm:h-40 sm:w-40"
+        >
+          {playlist.cover_url ? (
+            <Image src={playlist.cover_url} alt={playlist.title} fill sizes="(max-width: 640px) 128px, 160px" className="object-cover" />
+          ) : isDailyNewReleases ? (
+            <Image src="/brand/yoriax-symbol.png" alt={playlist.title} fill sizes="(max-width: 640px) 128px, 160px" className="object-contain p-5" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-white/5">
+              <ListMusic className="h-10 w-10 text-white/40" />
+            </div>
+          )}
+        </Link>
+        <div className="flex min-w-0 flex-1 flex-col text-center sm:text-left">
+          <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-teal-200/90">
+            <ListMusic className="h-3.5 w-3.5" />
+            {t('home.spotlightPlaylistEyebrow')}
+          </span>
+          <h3 className="mt-2 truncate text-2xl font-black text-white sm:text-3xl">{playlist.title}</h3>
+          <p className="mt-1 truncate text-sm font-bold text-white/65">{playlist.creatorName}</p>
+          {playlist.description ? (
+            <p className="mt-3 max-w-xl text-sm leading-6 text-white/55 line-clamp-3">{playlist.description}</p>
+          ) : null}
+          <div className="mt-5 flex items-center justify-center gap-3 sm:justify-start">
+            <Link
+              href={`/playlist/${playlist.id}`}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-black text-white shadow-[0_12px_30px_rgba(124,58,237,0.45)] transition-transform hover:scale-105"
+            >
+              <ChevronRight className="h-4 w-4" />
+              {t('home.spotlightPlaylistCta')}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Keep the symbol so unused-import lint stays clean; SpotlightSlideKind is the
+// discriminator for slide kinds.
+export type { SpotlightSlideKind };
 
 function OfficialPlaylistsSection({ playlists }: { playlists: OfficialPlaylistSummary[] }) {
   const { t } = useTranslation();

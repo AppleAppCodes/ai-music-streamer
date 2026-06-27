@@ -21,12 +21,24 @@ export type OfficialPlaylistSummary = {
   creatorName: string;
 };
 
+export type SpotlightArtistSummary = {
+  artist_name: string;
+  cover_url: string | null;
+  banner_url: string | null;
+  total_plays: number;
+  song_count: number;
+};
+
+export type SpotlightPlaylistSummary = OfficialPlaylistSummary;
+
 type HomeInitialData = {
   artistCovers: string[];
   trendingSongs: Song[];
   recommendedSongs: Song[];
   officialPlaylists: OfficialPlaylistSummary[];
   spotlightSong: Song | null;
+  spotlightArtist: SpotlightArtistSummary | null;
+  spotlightPlaylist: SpotlightPlaylistSummary | null;
 };
 
 export type PublicChartsData = {
@@ -98,6 +110,60 @@ async function loadSongsByDate(client: SupabaseClient, limit: number) {
 
   if (error) throw new Error(error.message);
   return ((data || []) as unknown as SongRow[]).map(mapSong);
+}
+
+async function loadSpotlightArtist(client: SupabaseClient): Promise<SpotlightArtistSummary | null> {
+  const { data: profile, error: profileError } = await client
+    .from('artist_profiles')
+    .select('artist_name')
+    .eq('is_spotlight', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (profileError || !profile?.artist_name) return null;
+
+  const artistName = profile.artist_name as string;
+  const { data: songs, error: songsError } = await client
+    .from('songs')
+    .select('cover_url, plays')
+    .ilike('artist_name', artistName)
+    .eq('is_approved', true)
+    .order('plays', { ascending: false });
+  if (songsError) return null;
+
+  const rows = (songs ?? []) as Array<{ cover_url: string | null; plays: number | null }>;
+  if (rows.length === 0) return null;
+
+  const totalPlays = rows.reduce((sum, row) => sum + (row.plays ?? 0), 0);
+  const cover = rows.find((row) => Boolean(row.cover_url))?.cover_url ?? null;
+
+  return {
+    artist_name: artistName,
+    cover_url: cover,
+    banner_url: null,
+    total_plays: totalPlays,
+    song_count: rows.length,
+  };
+}
+
+async function loadSpotlightPlaylist(client: SupabaseClient): Promise<SpotlightPlaylistSummary | null> {
+  const { data, error } = await client
+    .from('playlists')
+    .select('id, title, description, cover_url, profiles!playlists_user_id_fkey(username)')
+    .eq('is_spotlight', true)
+    .eq('is_public', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  const profiles = (data as { profiles?: ProfileJoin }).profiles ?? null;
+  return {
+    id: data.id as string,
+    title: (data.title as string) ?? '',
+    description: (data.description as string) ?? null,
+    cover_url: (data.cover_url as string) ?? null,
+    creatorName: getProfileUsername(profiles) ?? 'YORIAX Team',
+  };
 }
 
 async function loadSpotlightSong(client: SupabaseClient) {
@@ -199,12 +265,14 @@ async function loadOfficialPlaylists(client: SupabaseClient): Promise<OfficialPl
 }
 
 export async function loadHomeInitialData(client: SupabaseClient, userId: string): Promise<HomeInitialData> {
-  const [popularSongs, recentSongs, signals, officialPlaylists, spotlightSong] = await Promise.all([
+  const [popularSongs, recentSongs, signals, officialPlaylists, spotlightSong, spotlightArtist, spotlightPlaylist] = await Promise.all([
     loadSongsByPopularity(client, 96),
     loadSongsByDate(client, 48),
     loadSongSignals(client, userId),
     loadOfficialPlaylists(client),
     loadSpotlightSong(client),
+    loadSpotlightArtist(client),
+    loadSpotlightPlaylist(client),
   ]);
 
   const songs = mergeSongs(popularSongs, recentSongs);
@@ -220,6 +288,8 @@ export async function loadHomeInitialData(client: SupabaseClient, userId: string
     recommendedSongs: (distinctRecommendations.length >= 8 ? distinctRecommendations : rankedRecommendations).slice(0, 8),
     officialPlaylists,
     spotlightSong,
+    spotlightArtist,
+    spotlightPlaylist,
   };
 }
 
