@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import SeoLandingPage, { type SeoLandingPageContent } from '@/components/seo/SeoLandingPage';
-import { buildPageMetadata, jsonLdScript, SITE_URL } from '@/lib/seo';
+import { breadcrumbStructuredData, buildPageMetadata, jsonLdScript, musicRecordingItemListStructuredData, SITE_URL } from '@/lib/seo';
 import { loadSeoSongPreviews } from '@/lib/seo-landing-pages';
 
 const content: SeoLandingPageContent = {
@@ -109,15 +109,18 @@ export default async function AiMusicPage() {
         },
       })),
     },
-    {
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'YORIAX', item: SITE_URL },
-        { '@type': 'ListItem', position: 2, name: 'AI Music', item: `${SITE_URL}/ai-music` },
-      ],
-    },
-  ];
+    breadcrumbStructuredData([
+      { name: 'YORIAX', path: '/' },
+      { name: 'AI Music', path: '/ai-music' },
+    ]),
+    songs.length > 0
+      ? musicRecordingItemListStructuredData({
+          name: 'Popular AI music on YORIAX',
+          path: '/ai-music',
+          songs,
+        })
+      : null,
+  ].filter(Boolean);
 
   return (
     <>

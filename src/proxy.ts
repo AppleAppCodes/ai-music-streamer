@@ -8,6 +8,7 @@ function isPublicPath(pathname: string) {
     || pathname === '/site.webmanifest'
     || pathname === '/robots.txt'
     || pathname === '/sitemap.xml'
+    || pathname === '/llms.txt'
     || pathname === '/apple-app-site-association'
     || pathname === '/.well-known/apple-app-site-association'
     || pathname === '/ai-music'
@@ -32,6 +33,7 @@ function isPrelaunchAllowedPath(pathname: string) {
     || pathname === '/site.webmanifest'
     || pathname === '/robots.txt'
     || pathname === '/sitemap.xml'
+    || pathname === '/llms.txt'
     || pathname === '/apple-app-site-association'
     || pathname === '/.well-known/apple-app-site-association'
     || pathname === '/ai-music'
@@ -55,7 +57,28 @@ function getSafeSignedInRedirect(request: NextRequest) {
 }
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  const host = request.headers.get('host')?.toLowerCase();
+  if (host === 'yoriax.com') {
+    const canonicalUrl = request.nextUrl.clone();
+    canonicalUrl.protocol = 'https';
+    canonicalUrl.hostname = 'www.yoriax.com';
+    canonicalUrl.port = '';
+    return NextResponse.redirect(canonicalUrl, 308);
+  }
+
   let response = NextResponse.next({ request });
+
+  if (
+    pathname === '/llms.txt'
+    || pathname === '/robots.txt'
+    || pathname === '/sitemap.xml'
+    || pathname === '/site.webmanifest'
+    || pathname === '/apple-app-site-association'
+    || pathname === '/.well-known/apple-app-site-association'
+  ) {
+    return response;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -75,7 +98,6 @@ export async function proxy(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-  const pathname = request.nextUrl.pathname;
   const isAdmin = isAdminUser(user);
   const isWhitelisted = isUserWhitelisted(user?.email);
 

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { createPublicClient } from '@/utils/supabase/public';
-import { absoluteUrl, buildPageMetadata, jsonLdScript, secondsToIsoDuration, SITE_NAME, SITE_URL } from '@/lib/seo';
+import { absoluteUrl, breadcrumbStructuredData, buildPageMetadata, jsonLdScript, secondsToIsoDuration, SITE_NAME, SITE_URL } from '@/lib/seo';
 import SongPageClient from './SongPageClient';
 
 interface SongPageProps {
@@ -36,8 +36,8 @@ export async function generateMetadata({ params }: SongPageProps): Promise<Metad
 
   if (!song) {
     return buildPageMetadata({
-      title: 'Song auf YORIAX',
-      description: 'Entdecke AI-Musik auf YORIAX.',
+      title: 'Song on YORIAX',
+      description: 'Discover AI music on YORIAX.',
       path: `/song/${id}`,
       noIndex: true,
     });
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: SongPageProps): Promise<Metad
   const description = `Listen to "${title}" by ${artist} on YORIAX${genre ? `, a ${genre} AI music track` : ''}${year ? ` released in ${year}` : ''}.`;
   const url = `${SITE_URL}/song/${encodeURIComponent(song.id)}`;
   const imageUrl = absoluteUrl(song.cover_url);
-  const imageAlt = `${title} von ${artist}`;
+  const imageAlt = `${title} by ${artist}`;
 
   return {
     ...buildPageMetadata({
@@ -76,7 +76,7 @@ export async function generateMetadata({ params }: SongPageProps): Promise<Metad
           alt: imageAlt,
         },
       ],
-      locale: 'de_DE',
+      locale: 'en_US',
       type: 'website',
     },
     twitter: {
@@ -100,7 +100,8 @@ export default async function SongPage({ params }: SongPageProps) {
   const artist = song?.artist_name?.trim() || 'YORIAX Artist';
   const url = `${SITE_URL}/song/${encodeURIComponent(id)}`;
 
-  const songJsonLd = song ? {
+  const jsonLd = song ? [
+    {
     '@context': 'https://schema.org',
     '@type': 'MusicRecording',
     '@id': `${url}#recording`,
@@ -119,15 +120,21 @@ export default async function SongPage({ params }: SongPageProps) {
       '@type': 'MusicAlbum',
       name: SITE_NAME,
     },
-  } : null;
+    },
+    breadcrumbStructuredData([
+      { name: 'YORIAX', path: '/' },
+      { name: 'AI Songs', path: '/ai-songs' },
+      { name: title, path: `/song/${id}` },
+    ]),
+  ] : null;
 
   return (
     <>
-      {songJsonLd ? (
+      {jsonLd ? (
         <script
           id="yoriax-song-jsonld"
           type="application/ld+json"
-          dangerouslySetInnerHTML={jsonLdScript(songJsonLd)}
+          dangerouslySetInnerHTML={jsonLdScript(jsonLd)}
         />
       ) : null}
       <SongPageClient songId={id} />

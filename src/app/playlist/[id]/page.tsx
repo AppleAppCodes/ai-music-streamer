@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 import PlaylistPageClient from './PlaylistPageClient';
 import { createPublicClient } from '@/utils/supabase/public';
-import { absoluteUrl, buildPageMetadata, jsonLdScript, SITE_NAME, SITE_URL } from '@/lib/seo';
+import { absoluteUrl, breadcrumbStructuredData, buildPageMetadata, jsonLdScript, SITE_NAME, SITE_URL } from '@/lib/seo';
 
 interface PlaylistPageProps {
   params: Promise<{ id: string }>;
@@ -75,8 +75,8 @@ export async function generateMetadata({ params }: PlaylistPageProps): Promise<M
 
   if (!data || !data.playlist.is_public) {
     return buildPageMetadata({
-      title: 'Playlist nicht gefunden',
-      description: 'Diese Playlist ist auf YORIAX nicht öffentlich sichtbar.',
+      title: 'Playlist not found',
+      description: 'This playlist is not publicly visible on YORIAX.',
       path: `/playlist/${encodeURIComponent(id)}`,
       noIndex: true,
     });
@@ -101,30 +101,38 @@ export async function generateMetadata({ params }: PlaylistPageProps): Promise<M
 export default async function PlaylistPage({ params }: PlaylistPageProps) {
   const { id } = await params;
   const data = await loadPlaylistMetadata(id);
+  const playlistPath = `/playlist/${id === DAILY_NEW_RELEASES_ID ? 'daily-new-releases' : id}`;
 
-  const playlistJsonLd = data?.playlist.is_public ? {
-    '@context': 'https://schema.org',
-    '@type': 'MusicPlaylist',
-    '@id': `${SITE_URL}/playlist/${encodeURIComponent(id)}#playlist`,
-    name: data.playlist.title ?? 'YORIAX Playlist',
-    description: data.playlist.description ?? undefined,
-    url: `${SITE_URL}/playlist/${encodeURIComponent(id)}`,
-    image: absoluteUrl(data.playlist.cover_url),
-    numTracks: data.trackCount,
-    creator: {
-      '@type': data.playlist.is_official ? 'Organization' : 'Person',
-      name: data.playlist.is_official ? SITE_NAME : getProfileUsername(data.playlist.profiles) ?? 'YORIAX Creator',
+  const jsonLd = data?.playlist.is_public ? [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'MusicPlaylist',
+      '@id': `${SITE_URL}${playlistPath}#playlist`,
+      name: data.playlist.title ?? 'YORIAX Playlist',
+      description: data.playlist.description ?? undefined,
+      url: `${SITE_URL}${playlistPath}`,
+      image: absoluteUrl(data.playlist.cover_url),
+      numTracks: data.trackCount,
+      creator: {
+        '@type': data.playlist.is_official ? 'Organization' : 'Person',
+        name: data.playlist.is_official ? SITE_NAME : getProfileUsername(data.playlist.profiles) ?? 'YORIAX Creator',
+      },
+      datePublished: data.playlist.created_at ?? undefined,
     },
-    datePublished: data.playlist.created_at ?? undefined,
-  } : null;
+    breadcrumbStructuredData([
+      { name: 'YORIAX', path: '/' },
+      { name: 'AI Music Playlists', path: '/discover/playlists' },
+      { name: data.playlist.title ?? 'YORIAX Playlist', path: playlistPath },
+    ]),
+  ] : null;
 
   return (
     <>
-      {playlistJsonLd ? (
+      {jsonLd ? (
         <script
           id="yoriax-playlist-jsonld"
           type="application/ld+json"
-          dangerouslySetInnerHTML={jsonLdScript(playlistJsonLd)}
+          dangerouslySetInnerHTML={jsonLdScript(jsonLd)}
         />
       ) : null}
       <PlaylistPageClient />

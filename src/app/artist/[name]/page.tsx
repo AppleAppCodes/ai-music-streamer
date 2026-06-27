@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { createPublicClient } from '@/utils/supabase/public';
 import { createClient as createServerClient } from '@/utils/supabase/server';
-import { absoluteUrl, buildPageMetadata, jsonLdScript, SITE_NAME, SITE_URL } from '@/lib/seo';
+import { absoluteUrl, breadcrumbStructuredData, buildPageMetadata, jsonLdScript, SITE_NAME, SITE_URL } from '@/lib/seo';
 import ArtistPageClient from './ArtistPageClient';
 
 interface ArtistPageProps {
@@ -117,24 +117,24 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
   if (!visible) {
     // Profile is not publicly visible yet (no approved songs). Don't index it.
     return buildPageMetadata({
-      title: 'Künstler nicht gefunden',
-      description: 'Dieser Artist ist auf YORIAX noch nicht öffentlich sichtbar.',
+      title: 'Artist not found',
+      description: 'This artist is not publicly visible on YORIAX yet.',
       path: `/artist/${encodeURIComponent(artistName)}`,
       noIndex: true,
     });
   }
 
-  const title = `${displayName} auf YORIAX`;
+  const title = `${displayName} on YORIAX`;
   const descriptionParts: string[] = [];
-  if (songCount > 0) descriptionParts.push(`${songCount} ${songCount === 1 ? 'Song' : 'Songs'}`);
-  if (totalPlays > 0) descriptionParts.push(`${totalPlays.toLocaleString('de-DE')} Aufrufe`);
+  if (songCount > 0) descriptionParts.push(`${songCount} ${songCount === 1 ? 'song' : 'songs'}`);
+  if (totalPlays > 0) descriptionParts.push(`${totalPlays.toLocaleString('en-US')} plays`);
   const description = descriptionParts.length > 0
-    ? `${displayName} — ${descriptionParts.join(' · ')} auf YORIAX.`
-    : `Entdecke ${displayName} auf YORIAX.`;
+    ? `${displayName} — ${descriptionParts.join(' · ')} on YORIAX.`
+    : `Discover ${displayName} on YORIAX.`;
 
   const url = `${SITE_URL}/artist/${encodeURIComponent(displayName)}`;
   const imageUrl = absoluteUrl(shareImage);
-  const imageAlt = `${displayName} auf YORIAX`;
+  const imageAlt = `${displayName} on YORIAX`;
 
   return {
     ...buildPageMetadata({
@@ -160,7 +160,7 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
           alt: imageAlt,
         },
       ],
-      locale: 'de_DE',
+      locale: 'en_US',
       type: 'profile',
     },
     twitter: {
@@ -188,31 +188,38 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
     loadArtistShareImage(artistName),
   ]);
   const url = `${SITE_URL}/artist/${encodeURIComponent(displayName)}`;
-  const artistJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'MusicGroup',
-    '@id': `${url}#artist`,
-    name: displayName,
-    url,
-    image: absoluteUrl(shareImage),
-    interactionStatistic: totalPlays > 0 ? {
-      '@type': 'InteractionCounter',
-      interactionType: 'https://schema.org/ListenAction',
-      userInteractionCount: totalPlays,
-    } : undefined,
-    track: songCount > 0 ? {
-      '@type': 'ItemList',
-      numberOfItems: songCount,
-      name: `${displayName} songs on ${SITE_NAME}`,
-    } : undefined,
-  };
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'MusicGroup',
+      '@id': `${url}#artist`,
+      name: displayName,
+      url,
+      image: absoluteUrl(shareImage),
+      interactionStatistic: totalPlays > 0 ? {
+        '@type': 'InteractionCounter',
+        interactionType: 'https://schema.org/ListenAction',
+        userInteractionCount: totalPlays,
+      } : undefined,
+      track: songCount > 0 ? {
+        '@type': 'ItemList',
+        numberOfItems: songCount,
+        name: `${displayName} songs on ${SITE_NAME}`,
+      } : undefined,
+    },
+    breadcrumbStructuredData([
+      { name: 'YORIAX', path: '/' },
+      { name: 'AI Artists', path: '/artists' },
+      { name: displayName, path: `/artist/${encodeURIComponent(displayName)}` },
+    ]),
+  ];
 
   return (
     <>
       <script
         id="yoriax-artist-jsonld"
         type="application/ld+json"
-        dangerouslySetInnerHTML={jsonLdScript(artistJsonLd)}
+        dangerouslySetInnerHTML={jsonLdScript(jsonLd)}
       />
       <ArtistPageClient artistName={artistName} />
     </>

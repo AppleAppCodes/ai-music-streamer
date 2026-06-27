@@ -1,10 +1,14 @@
 import type { Metadata } from 'next';
 import LegalPageShell from '@/components/legal/LegalPageShell';
+import { buildPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Impressum | YORIAX',
-  description: 'Impressum und Anbieterkennzeichnung von YORIAX.',
-};
+export const metadata: Metadata = buildPageMetadata({
+  title: 'Legal Notice',
+  description: 'Legal notice and provider information for YORIAX.',
+  path: '/impressum',
+  noIndex: true,
+  follow: true,
+});
 
 export default function ImpressumPage() {
   return (

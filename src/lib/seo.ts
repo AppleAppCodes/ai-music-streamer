@@ -27,6 +27,19 @@ type BuildPageMetadataOptions = {
   image?: string | null;
   imageAlt?: string;
   noIndex?: boolean;
+  follow?: boolean;
+};
+
+type BreadcrumbItem = {
+  name: string;
+  path: string;
+};
+
+export type StructuredSongListItem = {
+  id: string;
+  title: string | null;
+  artist_name?: string | null;
+  cover_url?: string | null;
 };
 
 export function absoluteUrl(pathOrUrl: string | null | undefined) {
@@ -50,9 +63,11 @@ export function buildPageMetadata({
   image = DEFAULT_OG_IMAGE,
   imageAlt = DEFAULT_OG_ALT,
   noIndex = false,
+  follow = false,
 }: BuildPageMetadataOptions): Metadata {
   const url = canonicalUrl(path);
   const imageUrl = absoluteUrl(image);
+  const shouldFollow = noIndex ? follow : true;
 
   return {
     title,
@@ -64,10 +79,10 @@ export function buildPageMetadata({
     robots: noIndex
       ? {
           index: false,
-          follow: false,
+          follow: shouldFollow,
           googleBot: {
             index: false,
-            follow: false,
+            follow: shouldFollow,
           },
         }
       : {
@@ -95,7 +110,6 @@ export function buildPageMetadata({
         },
       ],
       locale: 'en_US',
-      alternateLocale: ['de_DE'],
       type: 'website',
     },
     twitter: {
@@ -109,6 +123,66 @@ export function buildPageMetadata({
         },
       ],
     },
+  };
+}
+
+export function breadcrumbStructuredData(items: BreadcrumbItem[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: canonicalUrl(item.path),
+    })),
+  };
+}
+
+export function musicRecordingItemListStructuredData({
+  name,
+  path,
+  songs,
+}: {
+  name: string;
+  path: string;
+  songs: StructuredSongListItem[];
+}) {
+  const url = canonicalUrl(path);
+  const itemListElement = songs
+    .filter((song) => Boolean(song.id))
+    .map((song, index) => {
+      const artist = song.artist_name?.trim();
+      const title = song.title?.trim() || 'YORIAX Song';
+
+      return {
+        '@type': 'ListItem',
+        position: index + 1,
+        url: canonicalUrl(`/song/${encodeURIComponent(song.id)}`),
+        item: {
+          '@type': 'MusicRecording',
+          name: title,
+          url: canonicalUrl(`/song/${encodeURIComponent(song.id)}`),
+          image: song.cover_url ? absoluteUrl(song.cover_url) : undefined,
+          byArtist: artist
+            ? {
+                '@type': 'MusicGroup',
+                name: artist,
+                url: canonicalUrl(`/artist/${encodeURIComponent(artist)}`),
+              }
+            : undefined,
+        },
+      };
+    });
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    '@id': `${url}#songs`,
+    name,
+    url,
+    numberOfItems: itemListElement.length,
+    itemListElement,
   };
 }
 

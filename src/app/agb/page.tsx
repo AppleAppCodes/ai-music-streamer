@@ -1,10 +1,14 @@
 import type { Metadata } from 'next';
 import LegalPageShell from '@/components/legal/LegalPageShell';
+import { buildPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'AGB | YORIAX',
-  description: 'Allgemeine Nutzungsbedingungen für YORIAX.',
-};
+export const metadata: Metadata = buildPageMetadata({
+  title: 'Terms of Service',
+  description: 'Terms of service for YORIAX.',
+  path: '/agb',
+  noIndex: true,
+  follow: true,
+});
 
 export default function AgbPage() {
   return (
