@@ -93,7 +93,14 @@
     "spotlightEyebrow": "Single Highlight",
     "spotlightCopy": "Lewnamoon legt einen frechen, glänzenden Club-Impuls hin: direkt, catchy und genau der Track, der beim ersten Bounce hängen bleibt.",
     "spotlightPlay": "Abspielen",
-    "spotlightPause": "Pause"
+    "spotlightPause": "Pause",
+    "spotlightArtistEyebrow": "Artist Highlight",
+    "spotlightArtistCta": "Profil ansehen",
+    "spotlightArtistStats": "{{songs}} Songs · {{plays}} Aufrufe",
+    "spotlightPlaylistEyebrow": "Playlist der Woche",
+    "spotlightPlaylistCta": "Playlist öffnen",
+    "spotlightPrev": "Vorheriger Slide",
+    "spotlightNext": "Nächster Slide"
   },
   "myArtists": {
     "eyebrow": "Meine Künstler",

@@ -93,7 +93,14 @@
     "spotlightEyebrow": "Single highlight",
     "spotlightCopy": "Lewnamoon drops a cheeky, glossy club spark: direct, catchy, and built to stick from the first bounce.",
     "spotlightPlay": "Play",
-    "spotlightPause": "Pause"
+    "spotlightPause": "Pause",
+    "spotlightArtistEyebrow": "Artist highlight",
+    "spotlightArtistCta": "View profile",
+    "spotlightArtistStats": "{{songs}} songs · {{plays}} plays",
+    "spotlightPlaylistEyebrow": "Playlist of the week",
+    "spotlightPlaylistCta": "Open playlist",
+    "spotlightPrev": "Previous slide",
+    "spotlightNext": "Next slide"
   },
   "myArtists": {
     "eyebrow": "My Artists",
