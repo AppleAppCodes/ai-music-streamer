@@ -71,7 +71,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       supabase
         .from('songs')
         .select('id, created_at')
-        .eq('is_approved', true)
         .order('plays', { ascending: false })
         .limit(2000),
       supabase
@@ -83,7 +82,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       supabase
         .from('songs')
         .select('artist_name, created_at, plays')
-        .eq('is_approved', true)
         .not('artist_name', 'is', null)
         .order('plays', { ascending: false })
         .limit(2000),

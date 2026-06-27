@@ -16,20 +16,13 @@ type SongMetadataRow = {
   created_at: string | null;
   duration: number | null;
   genre: string | null;
-  profiles?: { username?: string | null } | { username?: string | null }[] | null;
 };
-
-function getProfileUsername(profiles: SongMetadataRow['profiles'] | undefined) {
-  if (!profiles) return null;
-  if (Array.isArray(profiles)) return profiles[0]?.username ?? null;
-  return profiles.username ?? null;
-}
 
 async function loadSongMetadata(id: string) {
   const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('songs')
-    .select('id, title, artist_name, cover_url, created_at, duration, genre, profiles!songs_creator_id_fkey(username)')
+    .select('id, title, artist_name, cover_url, created_at, duration, genre')
     .eq('id', id)
     .maybeSingle();
 
@@ -51,7 +44,7 @@ export async function generateMetadata({ params }: SongPageProps): Promise<Metad
   }
 
   const title = song.title?.trim() || 'YORIAX Song';
-  const artist = song.artist_name?.trim() || getProfileUsername(song.profiles)?.trim() || 'YORIAX Artist';
+  const artist = song.artist_name?.trim() || 'YORIAX Artist';
   const year = song.created_at ? new Date(song.created_at).getFullYear() : null;
   const genre = song.genre?.trim();
   const description = `Listen to "${title}" by ${artist} on YORIAX${genre ? `, a ${genre} AI music track` : ''}${year ? ` released in ${year}` : ''}.`;
@@ -104,7 +97,7 @@ export default async function SongPage({ params }: SongPageProps) {
   const { id } = await params;
   const song = await loadSongMetadata(id);
   const title = song?.title?.trim() || 'YORIAX Song';
-  const artist = song?.artist_name?.trim() || getProfileUsername(song?.profiles)?.trim() || 'YORIAX Artist';
+  const artist = song?.artist_name?.trim() || 'YORIAX Artist';
   const url = `${SITE_URL}/song/${encodeURIComponent(id)}`;
 
   const songJsonLd = song ? {
