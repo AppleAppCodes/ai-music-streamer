@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { createAdminServiceClient } from '@/lib/yoriax-admin-api';
 import type { Song } from '@/lib/types';
+import { createPublicClient } from '@/utils/supabase/public';
 
 const PUBLIC_SONG_SELECT = [
   'id',
@@ -62,7 +62,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = createAdminServiceClient();
+    const supabase = createPublicClient();
 
     const { data: song, error } = await publicSongFilter(
       supabase
