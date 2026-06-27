@@ -12,7 +12,6 @@ function isPublicPath(pathname: string) {
     || pathname === '/.well-known/apple-app-site-association'
     || pathname === '/ai-music'
     || pathname === '/ai-songs'
-    || pathname === '/ki-musik'
     || pathname.startsWith('/api/public')
     || pathname.startsWith('/login')
     || pathname.startsWith('/search')
@@ -37,7 +36,6 @@ function isPrelaunchAllowedPath(pathname: string) {
     || pathname === '/.well-known/apple-app-site-association'
     || pathname === '/ai-music'
     || pathname === '/ai-songs'
-    || pathname === '/ki-musik'
     || pathname.startsWith('/login')
     || pathname.startsWith('/auth')
     || pathname.startsWith('/api/auth')

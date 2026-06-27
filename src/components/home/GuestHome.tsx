@@ -135,7 +135,7 @@ export default function GuestHome({ songs }: { songs: GuestSong[] }) {
             {[
               { href: '/ai-music', label: 'AI Music' },
               { href: '/ai-songs', label: 'AI Songs' },
-              { href: '/ki-musik', label: 'KI Musik' },
+              { href: '/artists', label: 'AI Artists' },
             ].map((item) => (
               <Link
                 key={item.href}

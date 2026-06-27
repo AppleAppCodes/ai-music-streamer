@@ -27,6 +27,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/ki-musik',
+        destination: '/ai-music',
+        permanent: true,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

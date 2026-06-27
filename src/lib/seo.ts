@@ -16,8 +16,8 @@ const DEFAULT_KEYWORDS = [
   'AI music streaming',
   'AI artists',
   'viral AI songs',
-  'KI Musik',
-  'KI Songs',
+  'AI music app',
+  'AI streaming platform',
 ];
 
 type BuildPageMetadataOptions = {

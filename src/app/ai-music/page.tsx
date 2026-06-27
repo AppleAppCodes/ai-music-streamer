@@ -67,9 +67,9 @@ const content: SeoLandingPageContent = {
       description: 'Browse tracks, artists, and song pages made for AI-native music discovery.',
     },
     {
-      href: '/ki-musik',
-      label: 'KI Musik',
-      description: 'Deutsche Einstiegsseite für KI-Musik, AI Songs und Streaming auf YORIAX.',
+      href: '/artists',
+      label: 'AI artists',
+      description: 'Explore public artist pages and discover the creators shaping AI-native music.',
     },
     {
       href: '/discover/playlists',
