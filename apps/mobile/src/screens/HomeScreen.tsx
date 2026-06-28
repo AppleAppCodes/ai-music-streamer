@@ -9,6 +9,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CoverArt, IconButton, StateCard, YoriaxPlaylistCover } from '../components/YoriaxUI';
+import { UpdateBanner } from '../components/UpdateBanner';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
 import { loadHomeMusic, type HomeMusicData, type SpotlightArtist, type SpotlightPlaylist, DAILY_NEW_RELEASES_PLAYLIST_ID } from '../lib/music-data';
@@ -170,6 +171,8 @@ export function HomeScreen() {
       <View style={styles.header}>
         <IconButton icon="person-circle-outline" onPress={() => navigation.navigate('Profile')} />
       </View>
+
+      <UpdateBanner />
 
       <View style={styles.quickGrid}>
         {quickTiles.map((tile) => (

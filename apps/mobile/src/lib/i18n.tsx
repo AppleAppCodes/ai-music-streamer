@@ -85,6 +85,12 @@ const translations = {
       trending: 'Trending heute',
       officialPlaylists: 'YORIAX Offizielle Playlists',
     },
+    update: {
+      title: 'Neue Version verfügbar',
+      subtitle: 'Version %{version} ist im App Store verfügbar. Jetzt aktualisieren für die neuesten Features.',
+      action: 'Aktualisieren',
+      dismiss: 'Hinweis schließen',
+    },
     player: {
       addedToFavorites: 'Hinzugefügt zu: Lieblingssongs.',
       addToFavorites: 'Zu Lieblingssongs hinzufügen',
@@ -401,6 +407,12 @@ const translations = {
       spotlightSwipeHint: 'Swipe for more',
       trending: 'Trending today',
       officialPlaylists: 'YORIAX Official Playlists',
+    },
+    update: {
+      title: 'New version available',
+      subtitle: 'Version %{version} is available on the App Store. Update now for the latest features.',
+      action: 'Update',
+      dismiss: 'Dismiss',
     },
     player: {
       addedToFavorites: 'Added to Liked Songs.',
