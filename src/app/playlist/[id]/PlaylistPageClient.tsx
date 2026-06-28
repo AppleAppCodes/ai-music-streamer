@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X, Search, Plus, CheckCircle2, ShieldCheck, Flag, Sparkles, Video } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X, Search, Plus, CheckCircle2, ShieldCheck, Flag, Sparkles, Video, Move } from 'lucide-react';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
@@ -41,6 +41,7 @@ interface PlaylistData {
   is_official: boolean;
   video_url?: string | null;
   video_storage_path?: string | null;
+  video_position?: string | null;
   created_at: string;
   profiles?: {
     username: string;
@@ -88,6 +89,8 @@ export default function PlaylistPage() {
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [isDeletingVideo, setIsDeletingVideo] = useState(false);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
+  const [videoPosition, setVideoPosition] = useState<string | null>(null);
+  const [isPositioningVideo, setIsPositioningVideo] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -129,11 +132,12 @@ export default function PlaylistPage() {
         let dbTitle: string | null = null;
         let dbDescription: string | null = null;
         let dbUserId: string | null = null;
+        let dbVideoPosition: string | null = null;
 
         try {
           const { data: dbPlaylist } = await supabase
             .from('playlists')
-            .select('user_id, title, description, cover_url, video_url, video_storage_path')
+            .select('user_id, title, description, cover_url, video_url, video_storage_path, video_position')
             .eq('id', 'da114eeb-ecea-5e55-9ee1-ea5e5da11111')
             .maybeSingle();
 
@@ -144,6 +148,7 @@ export default function PlaylistPage() {
             dbTitle = dbPlaylist.title || null;
             dbDescription = dbPlaylist.description || null;
             dbUserId = dbPlaylist.user_id || null;
+            dbVideoPosition = (dbPlaylist as { video_position?: string | null }).video_position || null;
           }
         } catch (dbErr) {
           console.warn('Failed to fetch DB cover/video fields for Daily New Releases:', dbErr);
@@ -159,6 +164,7 @@ export default function PlaylistPage() {
           is_official: true,
           video_url: dbVideoUrl,
           video_storage_path: dbVideoStoragePath,
+          video_position: dbVideoPosition,
           created_at: new Date().toISOString(),
           profiles: {
             username: 'YORIAX Team',
@@ -166,6 +172,7 @@ export default function PlaylistPage() {
           }
         });
         setIsOwner(!!session?.user && !!dbUserId && session.user.id === dbUserId);
+        setVideoPosition(dbVideoPosition);
         setEditTitle(dbTitle || t('playlists.dailyNewReleases.title'));
         setEditDescription(dbDescription || t('playlists.dailyNewReleases.description'));
 
@@ -205,17 +212,18 @@ export default function PlaylistPage() {
       // 1. Fetch Playlist details
       const { data: playlistData, error: playlistError } = await supabase
         .from('playlists')
-        .select('id, user_id, title, description, cover_url, is_public, is_official, created_at, video_url, video_storage_path, profiles(username, avatar_url)')
+        .select('id, user_id, title, description, cover_url, is_public, is_official, created_at, video_url, video_storage_path, video_position, profiles(username, avatar_url)')
         .eq('id', playlistId)
         .single();
-        
+
       if (playlistError || !playlistData) {
         console.error('Playlist not found:', playlistError);
         router.push('/playlists');
         return;
       }
-      
+
       setPlaylist(playlistData as unknown as PlaylistData);
+      setVideoPosition((playlistData as { video_position?: string | null }).video_position ?? null);
       setEditTitle(playlistData.title);
       setEditDescription(playlistData.description || '');
       
@@ -621,6 +629,48 @@ export default function PlaylistPage() {
     }
   }, [isAdmin, playlist, supabase]);
 
+  const canManageVideo = isAdmin && !!playlist?.is_official;
+
+  const saveVideoPositionToDb = useCallback(async (value: string) => {
+    if (!playlist || !(isAdmin && playlist.is_official)) return;
+    const { error } = await supabase
+      .from('playlists')
+      .update({ video_position: value })
+      .eq('id', playlist.id);
+    if (error) console.error('Failed to save video_position', error);
+  }, [isAdmin, playlist, supabase]);
+
+  const beginVideoPositioning = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!canManageVideo || !isPositioningVideo) return;
+    const container = event.currentTarget;
+    container.setPointerCapture(event.pointerId);
+    const rect = container.getBoundingClientRect();
+    const toValue = (clientX: number, clientY: number) => {
+      const x = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+      const y = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100));
+      return `${x.toFixed(1)}% ${y.toFixed(1)}%`;
+    };
+    setVideoPosition(toValue(event.clientX, event.clientY));
+    const onMove = (ev: PointerEvent) => setVideoPosition(toValue(ev.clientX, ev.clientY));
+    const onUp = (ev: PointerEvent) => {
+      container.removeEventListener('pointermove', onMove);
+      container.removeEventListener('pointerup', onUp);
+      container.removeEventListener('pointercancel', onUp);
+      try { container.releasePointerCapture(ev.pointerId); } catch { /* already released */ }
+      const finalValue = toValue(ev.clientX, ev.clientY);
+      setVideoPosition(finalValue);
+      void saveVideoPositionToDb(finalValue);
+    };
+    container.addEventListener('pointermove', onMove);
+    container.addEventListener('pointerup', onUp);
+    container.addEventListener('pointercancel', onUp);
+  }, [canManageVideo, isPositioningVideo, saveVideoPositionToDb]);
+
+  const resetVideoPosition = useCallback(() => {
+    setVideoPosition('50% 50%');
+    void saveVideoPositionToDb('50% 50%');
+  }, [saveVideoPositionToDb]);
+
   const handleSongSearchQueryChange = useCallback((value: string) => {
     setSongSearchQuery(value);
 
@@ -692,16 +742,45 @@ export default function PlaylistPage() {
       </button>
 
       {/* Admin: manage the playlist banner video inline (official playlists) */}
-      {isAdmin && playlist.is_official && (
-        <button
-          type="button"
-          onClick={() => setIsVideoModalOpen(true)}
-          className="pointer-events-auto absolute right-4 top-4 z-30 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur-md transition-colors hover:bg-black/60 hover:text-white md:right-8 md:top-8"
-          title="Playlist-Video verwalten"
-        >
-          <Video className="h-3.5 w-3.5" />
-          {playlist.video_url ? 'Video ändern' : 'Video hinzufügen'}
-        </button>
+      {canManageVideo && (
+        <div className="pointer-events-auto absolute right-4 top-4 z-40 flex flex-col items-end gap-2 md:right-8 md:top-8">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsVideoModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur-md transition-colors hover:bg-black/60 hover:text-white"
+              title="Playlist-Video verwalten"
+            >
+              <Video className="h-3.5 w-3.5" />
+              {playlist.video_url ? 'Video ändern' : 'Video hinzufügen'}
+            </button>
+            {playlist.video_url && (
+              <button
+                type="button"
+                onClick={() => setIsPositioningVideo((prev) => !prev)}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold backdrop-blur-md transition-colors ${isPositioningVideo ? 'border-primary-light bg-primary/80 text-white hover:bg-primary' : 'border-white/15 bg-black/40 text-white/80 hover:bg-black/60 hover:text-white'}`}
+                title="Video-Ausschnitt verschieben"
+              >
+                <Move className="h-3.5 w-3.5" />
+                {isPositioningVideo ? 'Fertig' : 'Verschieben'}
+              </button>
+            )}
+          </div>
+          {isPositioningVideo && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={resetVideoPosition}
+                className="rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur-md transition-colors hover:bg-black/60 hover:text-white"
+              >
+                Zentrieren
+              </button>
+              <span className="rounded-full bg-black/55 px-2 py-1 text-[11px] text-white/80 backdrop-blur-md">
+                Video ziehen zum Positionieren
+              </span>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Playlist Banner Video Background */}
@@ -714,9 +793,18 @@ export default function PlaylistPage() {
             muted
             playsInline
             className="w-full h-full object-cover opacity-25 filter blur-[1px]"
+            style={{ objectPosition: videoPosition ?? '50% 50%' }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/40 to-transparent"></div>
         </div>
+      )}
+
+      {/* Drag layer to reposition the banner video (above hero content) */}
+      {playlist.video_url && isPositioningVideo && canManageVideo && (
+        <div
+          className="absolute left-0 top-0 z-30 h-[320px] w-full cursor-move touch-none ring-2 ring-inset ring-primary-light/60 md:h-[380px]"
+          onPointerDown={beginVideoPositioning}
+        />
       )}
       
       {/* Hero Content */}
