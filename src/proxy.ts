@@ -76,6 +76,7 @@ export async function proxy(request: NextRequest) {
     || pathname === '/site.webmanifest'
     || pathname === '/apple-app-site-association'
     || pathname === '/.well-known/apple-app-site-association'
+    || pathname === '/.well-known/security.txt'
   ) {
     return response;
   }
