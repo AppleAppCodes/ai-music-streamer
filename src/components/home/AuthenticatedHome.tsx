@@ -32,6 +32,7 @@ type InitialHomeData = {
 };
 
 const HOME_SONG_GRID_CLASSES = 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-[repeat(auto-fill,minmax(160px,200px))]';
+const ARTIST_VIDEO_EXTENSIONS = /\.(mp4|webm|mov|m4v)$/i;
 
 function SectionHeader({ title, actionLabel, href }: { title: string; actionLabel?: string; href?: string }) {
   return (
@@ -117,6 +118,7 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
   const [artistCovers, setArtistCovers] = useState<string[]>(initialHomeData?.artistCovers ?? []);
   const [spotlightSong, setSpotlightSong] = useState<Song | null>(initialHomeData?.spotlightSong ?? null);
   const [spotlightArtist, setSpotlightArtist] = useState<SpotlightArtistSummary | null>(initialHomeData?.spotlightArtist ?? null);
+  const [heroArtistVideoUrl, setHeroArtistVideoUrl] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(!initialHomeData);
 
@@ -224,6 +226,29 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
     updateGreeting();
     const interval = window.setInterval(updateGreeting, 60_000);
     return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRandomArtistVideo() {
+      const { data: banners } = await supabase.storage.from('covers').list('banners', { limit: 1000 });
+      if (cancelled || !banners?.length) return;
+
+      const videoFiles = banners.filter((file) => file.name.includes('_video') && ARTIST_VIDEO_EXTENSIONS.test(file.name));
+      if (videoFiles.length === 0) return;
+
+      const selectedVideo = videoFiles[Math.floor(Math.random() * videoFiles.length)];
+      const { data: urlData } = supabase.storage.from('covers').getPublicUrl(`banners/${selectedVideo.name}`);
+      const cacheKey = new Date(selectedVideo.updated_at || selectedVideo.created_at || 0).getTime();
+      setHeroArtistVideoUrl(`${urlData.publicUrl}?t=${cacheKey}`);
+    }
+
+    loadRandomArtistVideo();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const greeting = t(`home.greetings.${greetingKey}`);
@@ -347,13 +372,29 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
       {/* Dynamic Blurred Backgrounds */}
       <div className="absolute top-0 left-0 w-full h-[500px] pointer-events-none z-0 overflow-hidden">
 
+        {heroArtistVideoUrl ? (
+          <video
+            src={heroArtistVideoUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            controlsList="nodownload"
+            onContextMenu={(event) => event.preventDefault()}
+            className={`absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-1000 ${
+              hoveredBg ? 'opacity-20' : 'opacity-[0.42]'
+            }`}
+          />
+        ) : null}
+
         {/* Default Ambient Purple Glow */}
         <div
-          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out blur-[60px] z-0 ${hoveredBg ? 'opacity-0' : 'opacity-60'}`}
+          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out blur-[60px] z-0 ${hoveredBg || heroArtistVideoUrl ? 'opacity-0' : 'opacity-60'}`}
           style={{ backgroundImage: "linear-gradient(135deg, #4f46e5 0%, #312e81 100%)" }}
         />
 
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black z-10 opacity-50" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_14%,rgba(45,212,191,0.16),transparent_34%),linear-gradient(90deg,rgba(4,7,18,0.58),rgba(10,4,24,0.36)_42%,rgba(5,5,12,0.74))] z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black z-10 opacity-55" />
 
         {allBackgroundImages.map((img) => {
           const isUrl = img.startsWith('/') || img.startsWith('http');

@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { ArrowLeft, Mic2, Play, Users, Edit2, Loader2, Music, GripHorizontal, Save } from 'lucide-react';
 import { Reorder } from 'framer-motion';
@@ -22,6 +22,43 @@ interface ArtistStat {
   createdAt: string;
   sortOrder?: number;
   isOriginal?: boolean;
+}
+
+const DAILY_SPOTLIGHT_ARTIST_COUNT = 8;
+
+function getBerlinDateKey() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+
+  const year = parts.find((part) => part.type === 'year')?.value ?? '1970';
+  const month = parts.find((part) => part.type === 'month')?.value ?? '01';
+  const day = parts.find((part) => part.type === 'day')?.value ?? '01';
+
+  return `${year}-${month}-${day}`;
+}
+
+function hashDailyArtistKey(value: string) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function getDailySpotlightArtists(artists: ArtistStat[], dayKey: string) {
+  return [...artists]
+    .sort((a, b) => {
+      const aHash = hashDailyArtistKey(`${dayKey}:${a.name}`);
+      const bHash = hashDailyArtistKey(`${dayKey}:${b.name}`);
+      if (aHash !== bHash) return aHash - bHash;
+      return a.name.localeCompare(b.name);
+    })
+    .slice(0, DAILY_SPOTLIGHT_ARTIST_COUNT);
 }
 
 function ArtistVideo({ src, artistName, play }: { src: string; artistName: string; play: boolean }) {
@@ -124,10 +161,20 @@ export default function ArtistsPage() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [spotlightDayKey, setSpotlightDayKey] = useState(getBerlinDateKey);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const supabase = createClient();
   const isAdmin = isAdminUser(user);
+  const dailySpotlightArtists = useMemo(() => getDailySpotlightArtists(artists, spotlightDayKey), [artists, spotlightDayKey]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setSpotlightDayKey(getBerlinDateKey());
+    }, 60000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   const fetchArtists = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -444,7 +491,7 @@ export default function ArtistsPage() {
           ) : (
             <div className="flex flex-col gap-16">
               {/* Yoriax Spotlight */}
-              {artists.filter(a => a.isOriginal).length > 0 && (
+              {dailySpotlightArtists.length > 0 && (
                 <section>
                   <div className="flex items-center gap-3 mb-8">
                     <div className="bg-gradient-primary flex h-10 w-10 items-center justify-center rounded-full shadow-[0_0_20px_rgba(168,85,247,0.4)]">
@@ -452,8 +499,8 @@ export default function ArtistsPage() {
                     </div>
                     <h2 className="text-3xl font-black text-white tracking-tight">Yoriax Spotlight</h2>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {artists.filter(a => a.isOriginal).slice(0, 12).map((artist) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                    {dailySpotlightArtists.map((artist) => (
                       <ArtistCard key={artist.name} artist={artist} />
                     ))}
                   </div>

@@ -131,22 +131,19 @@ export default function AdminPage() {
       }
 
       if (adminCheck) {
-        // Load Users via the service-role admin API. Profile email / account
-        // state columns are no longer readable by the browser client directly.
-        try {
-          const usersResponse = await fetch('/api/admin/users');
-          if (usersResponse.ok) {
-            const usersPayload = await usersResponse.json() as {
-              users?: ProfileData[];
-              dailyActiveUsers?: number;
-            };
-            if (usersPayload.users) setProfiles(usersPayload.users);
-            if (typeof usersPayload.dailyActiveUsers === 'number') {
-              setDailyActiveUsers(usersPayload.dailyActiveUsers);
-            }
-          }
-        } catch (usersError) {
+        // Load Users via an admin-only SECURITY DEFINER RPC. Profile email /
+        // account-state columns are no longer readable by the browser client
+        // directly; the function self-authorizes via is_admin().
+        const { data: usersData, error: usersError } = await supabase.rpc('get_admin_user_list');
+        if (usersError) {
           console.error('Failed to load admin users:', usersError);
+        } else if (usersData) {
+          const rows = usersData as ProfileData[];
+          setProfiles(rows);
+          const since = Date.now() - 24 * 60 * 60 * 1000;
+          setDailyActiveUsers(
+            rows.filter((u) => u.last_active_at && new Date(u.last_active_at).getTime() >= since).length,
+          );
         }
 
         // Load Songs & Streams
@@ -389,15 +386,11 @@ export default function AdminPage() {
     if (!window.confirm(`Möchtest du den Nutzer "${username}" wirklich ${currentStatus ? 'entsperren' : 'sperren'}?`)) return;
 
     try {
-      const response = await fetch('/api/admin/users', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, is_banned: !currentStatus }),
+      const { error } = await supabase.rpc('set_user_banned', {
+        target_user_id: id,
+        banned: !currentStatus,
       });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null) as { error?: string } | null;
-        throw new Error(payload?.error || 'Aktualisierung fehlgeschlagen');
-      }
+      if (error) throw error;
       setProfiles(prev => prev.map(p => p.id === id ? { ...p, is_banned: !currentStatus } : p));
     } catch (err: unknown) {
       alert('Fehler beim Ändern des Status: ' + (err as Error).message);
