@@ -34,6 +34,13 @@ type InitialHomeData = {
 const HOME_SONG_GRID_CLASSES = 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-[repeat(auto-fill,minmax(160px,200px))]';
 const ARTIST_VIDEO_EXTENSIONS = /\.(mp4|webm|mov|m4v)$/i;
 
+// Matches the storage filename sanitization used for artist banner videos
+// (`<sanitized artist name>_video.<ext>`), so a selected hero artist can be
+// mapped back to their video file.
+function sanitizeArtistName(name: string) {
+  return name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+}
+
 function SectionHeader({ title, actionLabel, href }: { title: string; actionLabel?: string; href?: string }) {
   return (
     <div className="flex items-end justify-between gap-4 mb-5">
@@ -119,6 +126,9 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
   const [spotlightSong, setSpotlightSong] = useState<Song | null>(initialHomeData?.spotlightSong ?? null);
   const [spotlightArtist, setSpotlightArtist] = useState<SpotlightArtistSummary | null>(initialHomeData?.spotlightArtist ?? null);
   const [heroArtistVideoUrl, setHeroArtistVideoUrl] = useState<string | null>(null);
+  const [heroArtistName, setHeroArtistName] = useState<string | null>(null);
+  const [videoArtists, setVideoArtists] = useState<string[]>([]);
+  const [heroPickerOpen, setHeroPickerOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(!initialHomeData);
 
@@ -228,28 +238,73 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
     return () => window.clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadHeroVideo = useCallback(async () => {
+    // Which artist's video did the admin pin? (null = auto/random)
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('hero_artist_name')
+      .eq('id', 'global')
+      .maybeSingle();
+    const selected = (settings?.hero_artist_name as string | null) ?? null;
+    setHeroArtistName(selected);
 
-    async function loadRandomArtistVideo() {
-      const { data: banners } = await supabase.storage.from('covers').list('banners', { limit: 1000 });
-      if (cancelled || !banners?.length) return;
-
-      const videoFiles = banners.filter((file) => file.name.includes('_video') && ARTIST_VIDEO_EXTENSIONS.test(file.name));
-      if (videoFiles.length === 0) return;
-
-      const selectedVideo = videoFiles[Math.floor(Math.random() * videoFiles.length)];
-      const { data: urlData } = supabase.storage.from('covers').getPublicUrl(`banners/${selectedVideo.name}`);
-      const cacheKey = new Date(selectedVideo.updated_at || selectedVideo.created_at || 0).getTime();
-      setHeroArtistVideoUrl(`${urlData.publicUrl}?t=${cacheKey}`);
+    const { data: banners } = await supabase.storage.from('covers').list('banners', { limit: 1000 });
+    const videoFiles = (banners ?? []).filter(
+      (file) => file.name.includes('_video') && ARTIST_VIDEO_EXTENSIONS.test(file.name),
+    );
+    if (videoFiles.length === 0) {
+      setHeroArtistVideoUrl(null);
+      setVideoArtists([]);
+      return;
     }
 
-    loadRandomArtistVideo();
+    // Map sanitized base name -> video file (base = filename up to "_video").
+    const videoByBase = new Map<string, (typeof videoFiles)[number]>();
+    for (const file of videoFiles) {
+      const base = file.name.slice(0, file.name.indexOf('_video'));
+      if (base && !videoByBase.has(base)) videoByBase.set(base, file);
+    }
 
-    return () => {
-      cancelled = true;
-    };
+    // Picker options: artist display names that actually have a video.
+    const { data: artistRows } = await supabase
+      .from('artist_profiles')
+      .select('artist_name')
+      .order('artist_name', { ascending: true });
+    setVideoArtists(
+      (artistRows ?? [])
+        .map((row) => row.artist_name as string)
+        .filter((name) => name && videoByBase.has(sanitizeArtistName(name))),
+    );
+
+    // Use the pinned artist's video if available, otherwise pick a random one.
+    const chosen =
+      (selected ? videoByBase.get(sanitizeArtistName(selected)) : undefined) ??
+      videoFiles[Math.floor(Math.random() * videoFiles.length)];
+    const { data: urlData } = supabase.storage.from('covers').getPublicUrl(`banners/${chosen.name}`);
+    const cacheKey = new Date(chosen.updated_at || chosen.created_at || 0).getTime();
+    setHeroArtistVideoUrl(`${urlData.publicUrl}?t=${cacheKey}`);
   }, []);
+
+  useEffect(() => {
+    loadHeroVideo();
+  }, [loadHeroVideo]);
+
+  const handleSelectHeroArtist = useCallback(
+    async (name: string | null) => {
+      setHeroPickerOpen(false);
+      const { error } = await supabase
+        .from('app_settings')
+        .update({ hero_artist_name: name })
+        .eq('id', 'global');
+      if (error) {
+        alert('Konnte Hero-Video nicht speichern: ' + error.message);
+        return;
+      }
+      setHeroArtistName(name);
+      await loadHeroVideo();
+    },
+    [loadHeroVideo],
+  );
 
   const greeting = t(`home.greetings.${greetingKey}`);
 
@@ -411,6 +466,47 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
 
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/80 to-black z-20" />
       </div>
+
+      {/* Admin: pick which artist's video shows as the home hero (or auto/random) */}
+      {isAdmin ? (
+        <div className="pointer-events-auto absolute right-4 top-4 z-30">
+          <button
+            type="button"
+            onClick={() => setHeroPickerOpen((open) => !open)}
+            className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur transition-colors hover:bg-black/60 hover:text-white"
+            title="Hero-Video auswählen"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Hero-Video
+          </button>
+          {heroPickerOpen ? (
+            <div className="absolute right-0 mt-2 max-h-72 w-60 overflow-y-auto rounded-xl border border-white/10 bg-[#0d0a17] p-2 shadow-2xl">
+              <button
+                type="button"
+                onClick={() => handleSelectHeroArtist(null)}
+                className={`block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/10 ${heroArtistName === null ? 'text-primary' : 'text-white/80'}`}
+              >
+                Auto (zufällig)
+              </button>
+              {videoArtists.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-white/40">Keine Artists mit Video gefunden.</p>
+              ) : (
+                videoArtists.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => handleSelectHeroArtist(name)}
+                    className={`block w-full truncate rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/10 ${heroArtistName === name ? 'text-primary' : 'text-white/80'}`}
+                  >
+                    {name}
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="pointer-events-none absolute right-[-120px] top-24 z-0 h-72 w-72 rounded-full bg-primary/20 blur-[90px]" />
       <div className="pointer-events-none absolute left-[-120px] top-72 z-0 h-72 w-72 rounded-full bg-accent/10 blur-[100px]" />
 
