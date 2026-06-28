@@ -128,11 +128,12 @@ export default function PlaylistPage() {
         let dbVideoStoragePath: string | null = null;
         let dbTitle: string | null = null;
         let dbDescription: string | null = null;
+        let dbUserId: string | null = null;
 
         try {
           const { data: dbPlaylist } = await supabase
             .from('playlists')
-            .select('title, description, cover_url, video_url, video_storage_path')
+            .select('user_id, title, description, cover_url, video_url, video_storage_path')
             .eq('id', 'da114eeb-ecea-5e55-9ee1-ea5e5da11111')
             .maybeSingle();
 
@@ -142,6 +143,7 @@ export default function PlaylistPage() {
             dbVideoStoragePath = dbPlaylist.video_storage_path || null;
             dbTitle = dbPlaylist.title || null;
             dbDescription = dbPlaylist.description || null;
+            dbUserId = dbPlaylist.user_id || null;
           }
         } catch (dbErr) {
           console.warn('Failed to fetch DB cover/video fields for Daily New Releases:', dbErr);
@@ -149,7 +151,7 @@ export default function PlaylistPage() {
 
         setPlaylist({
           id: 'da114eeb-ecea-5e55-9ee1-ea5e5da11111',
-          user_id: 'system',
+          user_id: dbUserId || 'system',
           title: dbTitle || t('playlists.dailyNewReleases.title'),
           description: dbDescription || t('playlists.dailyNewReleases.description'),
           cover_url: dbCoverUrl,
@@ -163,8 +165,10 @@ export default function PlaylistPage() {
             avatar_url: null
           }
         });
-        setIsOwner(false);
-        
+        setIsOwner(!!session?.user && !!dbUserId && session.user.id === dbUserId);
+        setEditTitle(dbTitle || t('playlists.dailyNewReleases.title'));
+        setEditDescription(dbDescription || t('playlists.dailyNewReleases.description'));
+
         if (session?.user && isModUser(session.user)) {
           setIsAdmin(true);
         } else {
@@ -686,6 +690,19 @@ export default function PlaylistPage() {
       >
         <ArrowLeft className="h-6 w-6" />
       </button>
+
+      {/* Admin: manage the playlist banner video inline (official playlists) */}
+      {isAdmin && playlist.is_official && (
+        <button
+          type="button"
+          onClick={() => setIsVideoModalOpen(true)}
+          className="pointer-events-auto absolute right-4 top-4 z-30 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur-md transition-colors hover:bg-black/60 hover:text-white md:right-8 md:top-8"
+          title="Playlist-Video verwalten"
+        >
+          <Video className="h-3.5 w-3.5" />
+          {playlist.video_url ? 'Video ändern' : 'Video hinzufügen'}
+        </button>
+      )}
 
       {/* Playlist Banner Video Background */}
       {playlist.video_url && (
