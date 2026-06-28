@@ -496,7 +496,9 @@ export default function FeedPage() {
           .select('id, title, artist_name, cover_url, plays, genre, created_at, creator_id, duration, audio_url, profiles!songs_creator_id_fkey(username, avatar_url)')
           .order('plays', { ascending: false })
           .order('created_at', { ascending: false })
-          .limit(80),
+          // Load the full catalog so every genre is selectable in EXPLORE (the
+          // genre filter is derived from loaded songs) and the feed feels endless.
+          .limit(500),
         supabase
           .from('song_feed_clips')
           .select('song_id, video_url, cover_url, hook_start_seconds, hook_end_seconds'),
