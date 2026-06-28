@@ -126,11 +126,13 @@ export default function PlaylistPage() {
         let dbCoverUrl: string | null = null;
         let dbVideoUrl: string | null = null;
         let dbVideoStoragePath: string | null = null;
+        let dbTitle: string | null = null;
+        let dbDescription: string | null = null;
 
         try {
           const { data: dbPlaylist } = await supabase
             .from('playlists')
-            .select('cover_url, video_url, video_storage_path')
+            .select('title, description, cover_url, video_url, video_storage_path')
             .eq('id', 'da114eeb-ecea-5e55-9ee1-ea5e5da11111')
             .maybeSingle();
 
@@ -138,6 +140,8 @@ export default function PlaylistPage() {
             dbCoverUrl = dbPlaylist.cover_url || null;
             dbVideoUrl = dbPlaylist.video_url || null;
             dbVideoStoragePath = dbPlaylist.video_storage_path || null;
+            dbTitle = dbPlaylist.title || null;
+            dbDescription = dbPlaylist.description || null;
           }
         } catch (dbErr) {
           console.warn('Failed to fetch DB cover/video fields for Daily New Releases:', dbErr);
@@ -146,8 +150,8 @@ export default function PlaylistPage() {
         setPlaylist({
           id: 'da114eeb-ecea-5e55-9ee1-ea5e5da11111',
           user_id: 'system',
-          title: t('playlists.dailyNewReleases.title'),
-          description: t('playlists.dailyNewReleases.description'),
+          title: dbTitle || t('playlists.dailyNewReleases.title'),
+          description: dbDescription || t('playlists.dailyNewReleases.description'),
           cover_url: dbCoverUrl,
           is_public: true,
           is_official: true,
@@ -371,19 +375,20 @@ export default function PlaylistPage() {
   }, [playlistId, isSaved, supabase, router, t]);
 
   const handleSaveTitle = useCallback(async () => {
-    if (!playlist || !isOwner || editTitle.trim() === playlist.title) {
+    const canEdit = isOwner || (isAdmin && !!playlist?.is_official);
+    if (!playlist || !canEdit || editTitle.trim() === playlist.title) {
       setIsEditingTitle(false);
       setEditTitle(playlist?.title || '');
       return;
     }
-    
+
     const newTitle = editTitle.trim() || t('playlistEditor.untitled');
     try {
       const { error } = await supabase
         .from('playlists')
         .update({ title: newTitle })
-        .eq('id', playlistId);
-        
+        .eq('id', playlist.id);
+
       if (error) throw error;
       setPlaylist({ ...playlist, title: newTitle });
     } catch (err: unknown) {
@@ -393,17 +398,18 @@ export default function PlaylistPage() {
     } finally {
       setIsEditingTitle(false);
     }
-  }, [playlist, isOwner, editTitle, playlistId, supabase]);
+  }, [playlist, isOwner, isAdmin, editTitle, supabase, t]);
 
   const handleSaveDetails = useCallback(async () => {
-    if (!playlist || !isOwner) return;
+    const canEdit = isOwner || (isAdmin && !!playlist?.is_official);
+    if (!playlist || !canEdit) return;
     const newTitle = editTitle.trim() || t('playlistEditor.untitled');
     try {
       const { error } = await supabase
         .from('playlists')
         .update({ title: newTitle, description: editDescription.trim() })
-        .eq('id', playlistId);
-        
+        .eq('id', playlist.id);
+
       if (error) throw error;
       setPlaylist({ ...playlist, title: newTitle, description: editDescription.trim() });
       setIsEditModalOpen(false);
@@ -411,7 +417,7 @@ export default function PlaylistPage() {
       console.error('Error updating details:', err);
       alert('Fehler beim Aktualisieren: ' + getErrorMessage(err));
     }
-  }, [playlist, isOwner, editTitle, editDescription, playlistId, supabase]);
+  }, [playlist, isOwner, isAdmin, editTitle, editDescription, supabase, t]);
 
   const handleTogglePublic = useCallback(async () => {
     if (!playlist) return;
