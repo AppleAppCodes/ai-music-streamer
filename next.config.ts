@@ -56,6 +56,12 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
+      {
+        // Google OAuth profile photos (avatar_url for users who sign in with
+        // Google) are served from lh3..lh6.googleusercontent.com.
+        protocol: 'https',
+        hostname: '**.googleusercontent.com',
+      },
     ],
   },
 };
