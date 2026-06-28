@@ -37,6 +37,14 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    // Reduce Vercel Image Optimization "transformations" usage (free-tier limit):
+    // keep optimized variants cached far longer and generate fewer width variants.
+    minimumCacheTTL: 2678400, // 31 days (default is only 4h -> constant re-transforms)
+    deviceSizes: [640, 828, 1080, 1920, 2048], // trimmed from 8 defaults (dropped 750/1200/3840)
+    imageSizes: [48, 96, 256, 384], // trimmed from 7 defaults
+    // Only optimize images from our own Supabase storage (+ unsplash placeholders).
+    // The previous `hostname: '**'` let anyone push arbitrary external images
+    // through our optimizer, draining the transformation quota.
     remotePatterns: [
       {
         protocol: 'https',
@@ -44,11 +52,10 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/storage/v1/object/public/**',
       },
-      // allow fallback to any external image if needed temporarily
       {
         protocol: 'https',
-        hostname: '**',
-      }
+        hostname: 'images.unsplash.com',
+      },
     ],
   },
 };
