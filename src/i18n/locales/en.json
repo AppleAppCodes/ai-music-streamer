@@ -141,7 +141,7 @@
     "moreBy": "More by {{artist}}",
     "title": "Title",
     "date": "Date",
-    "song": "1 Song"
+    "songCount": "1 Song"
   },
   "upload": {
     "title": "Upload Song",
