@@ -1054,28 +1054,22 @@ function OfficialPlaylistsSection({ playlists }: { playlists: OfficialPlaylistSu
   return (
     <section className="px-4 sm:px-8 relative z-10">
       <SectionHeader title={t('home.officialPlaylists')} actionLabel={t('home.seeAll')} href="/discover/playlists" />
-      <div
-        className="-mx-4 flex gap-3 overflow-x-auto px-4 pt-3 pb-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:px-8 sm:gap-4"
-        style={{
-          maskImage: 'linear-gradient(to right, transparent, black 2%, black 98%, transparent)',
-          WebkitMaskImage: 'linear-gradient(to right, transparent, black 2%, black 98%, transparent)',
-        }}
-      >
+      <div className={HOME_SONG_GRID_CLASSES}>
         {playlists.map((playlist) => {
           const isDailyNewReleases = playlist.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111' || playlist.id === 'daily-new-releases';
           return (
             <Link
               key={playlist.id}
               href={`/playlist/${playlist.id}`}
-              className="group relative flex w-[148px] shrink-0 flex-col gap-2 rounded-2xl border border-teal-300/15 bg-gradient-to-br from-teal-300/[0.08] via-white/[0.03] to-primary/[0.08] p-3 transition-all duration-300 hover:-translate-y-1 hover:border-teal-200/40 sm:w-[168px]"
+              className="group relative flex cursor-pointer flex-col gap-3 rounded-[1.35rem] border border-teal-300/15 bg-gradient-to-br from-teal-300/[0.08] via-white/[0.03] to-primary/[0.08] p-4 transition-all hover:-translate-y-0.5 hover:border-teal-200/40"
             >
-              <div className="relative aspect-square overflow-hidden rounded-xl bg-white/5 shadow-lg">
+              <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-[1.1rem] border border-white/10 bg-white/5 shadow-[0_18px_38px_rgba(0,0,0,0.34)]">
                 {playlist.cover_url ? (
                   <Image
                     src={playlist.cover_url}
                     alt={playlist.title}
                     fill
-                    sizes="(max-width: 640px) 148px, 168px"
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 200px"
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 ) : isDailyNewReleases ? (
@@ -1083,8 +1077,8 @@ function OfficialPlaylistsSection({ playlists }: { playlists: OfficialPlaylistSu
                     src="/brand/yoriax-symbol.png"
                     alt={playlist.title}
                     fill
-                    sizes="(max-width: 640px) 148px, 168px"
-                    className="object-contain p-6 transition-transform duration-500 group-hover:scale-105"
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 200px"
+                    className="object-contain p-8 transition-transform duration-500 group-hover:scale-105"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
@@ -1096,8 +1090,8 @@ function OfficialPlaylistsSection({ playlists }: { playlists: OfficialPlaylistSu
                 </div>
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-white">{playlist.title}</p>
-                <p className="mt-0.5 truncate text-xs font-semibold text-white/45">
+                <p className="truncate text-base font-semibold text-white">{playlist.title}</p>
+                <p className="mt-0.5 truncate text-sm font-semibold text-white/45">
                   {playlist.creatorName}
                 </p>
               </div>

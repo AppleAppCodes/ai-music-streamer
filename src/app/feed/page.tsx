@@ -88,8 +88,28 @@ const DEFAULT_HOOK_DURATION_SECONDS = 20;
 function getClip(record: FeedSongRecord, relation?: FeedClip | null): FeedClip {
   const fallbackEnd = Math.max(1, Math.min(record.duration || DEFAULT_HOOK_DURATION_SECONDS, DEFAULT_HOOK_DURATION_SECONDS));
 
-  const rawStart = Math.max(0, Number(relation?.hook_start_seconds) || 0);
-  const rawEnd = Number(relation?.hook_end_seconds);
+  const configuredStart = Math.max(0, Number(relation?.hook_start_seconds) || 0);
+
+  let rawStart: number;
+  let rawEnd: number;
+  if (configuredStart > 0) {
+    // Admin has set a hook time for this song.
+    rawStart = configuredStart;
+    rawEnd = Number(relation?.hook_end_seconds);
+  } else {
+    // No hook time set yet (e.g. a newly approved song): derive a deterministic
+    // pseudo-random start from the song id so it never begins from 0 in FOR YOU
+    // (stable per song across loads, but varied across songs).
+    const dur = record.duration && record.duration > 0 ? record.duration : 90;
+    const lo = Math.floor(dur * 0.1);
+    const span = Math.max(1, Math.floor(dur * 0.45));
+    rawStart = Math.min(
+      Math.max(3, lo + (Math.abs(stableHash(record.id)) % span)),
+      Math.max(1, dur - DEFAULT_HOOK_DURATION_SECONDS - 1),
+    );
+    rawEnd = rawStart + DEFAULT_HOOK_DURATION_SECONDS;
+  }
+
   const maxEnd = record.duration ? Math.max(1, record.duration) : undefined;
   const start = maxEnd ? Math.min(rawStart, Math.max(0, maxEnd - 0.25)) : rawStart;
   const end = Math.max(
