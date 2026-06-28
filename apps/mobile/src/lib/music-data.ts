@@ -27,6 +27,22 @@ export type ArtistMedia = {
   videoUrl?: string | null;
 };
 
+export interface SpotlightArtist {
+  artist_name: string;
+  cover_url: string | null;
+  total_plays: number;
+  song_count: number;
+  spotlight_copy: string | null;
+}
+
+export interface SpotlightPlaylist {
+  id: string;
+  title: string;
+  description: string | null;
+  cover_url: string | null;
+  creatorName: string;
+}
+
 export interface HomeMusicData {
   totalSongs: number;
   trendingSongs: Song[];
@@ -34,6 +50,8 @@ export interface HomeMusicData {
   latestSongs: Song[];
   officialPlaylists: DiscoverPlaylist[];
   spotlightSong: Song | null;
+  spotlightArtist: SpotlightArtist | null;
+  spotlightPlaylist: SpotlightPlaylist | null;
 }
 
 export interface LibraryMusicData {
@@ -198,6 +216,7 @@ async function loadSongs(limit = 80, orderBy: 'created_at' | 'plays' = 'created_
   const withProfile = await client
     .from('songs')
     .select(SONG_SELECT_WITH_PROFILE)
+    .eq('is_approved', true)
     .order(orderBy, { ascending: false })
     .limit(limit);
 
@@ -208,6 +227,7 @@ async function loadSongs(limit = 80, orderBy: 'created_at' | 'plays' = 'created_
   const fallback = await client
     .from('songs')
     .select(SONG_SELECT)
+    .eq('is_approved', true)
     .order(orderBy, { ascending: false })
     .limit(limit);
 
@@ -282,12 +302,14 @@ async function loadSongSignals(userId: string) {
 }
 
 export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
-  const [popularSongs, latestSongs, signals, discoverPlaylistsData, spotlightSong] = await Promise.all([
+  const [popularSongs, latestSongs, signals, discoverPlaylistsData, spotlightSong, spotlightArtist, spotlightPlaylist] = await Promise.all([
     loadSongs(96, 'plays'),
     loadSongs(48, 'created_at'),
     loadSongSignals(userId),
     loadDiscoverPlaylists(),
     loadSpotlightSong(),
+    loadSpotlightArtist(),
+    loadSpotlightPlaylist(),
   ]);
   const songs = mergeSongs(popularSongs, latestSongs);
   const trendingSongs = getDailyTrendingSongs(songs, 6);
@@ -302,6 +324,8 @@ export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
     latestSongs: latestSongs.slice(0, 6),
     officialPlaylists: discoverPlaylistsData.officialPlaylists,
     spotlightSong,
+    spotlightArtist,
+    spotlightPlaylist,
   };
 }
 
@@ -334,6 +358,65 @@ async function loadSpotlightSong(): Promise<Song | null> {
   }
 
   return mapSong(fallback.data as SongRow);
+}
+
+async function loadSpotlightArtist(): Promise<SpotlightArtist | null> {
+  const client = requireClient();
+  const { data: profile, error: profileError } = await client
+    .from('artist_profiles')
+    .select('artist_name, spotlight_copy')
+    .eq('is_spotlight', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (profileError || !profile?.artist_name) return null;
+
+  const artistName = profile.artist_name as string;
+  const spotlightCopy = (profile as { spotlight_copy?: string | null }).spotlight_copy ?? null;
+
+  const { data: songs, error: songsError } = await client
+    .from('songs')
+    .select('cover_url, plays')
+    .ilike('artist_name', artistName)
+    .eq('is_approved', true)
+    .order('plays', { ascending: false });
+  if (songsError) return null;
+
+  const rows = (songs ?? []) as Array<{ cover_url: string | null; plays: number | null }>;
+  if (rows.length === 0) return null;
+
+  const totalPlays = rows.reduce((sum, row) => sum + (row.plays ?? 0), 0);
+  const cover = rows.find((row) => Boolean(row.cover_url))?.cover_url ?? null;
+
+  return {
+    artist_name: artistName,
+    cover_url: cover,
+    total_plays: totalPlays,
+    song_count: rows.length,
+    spotlight_copy: spotlightCopy,
+  };
+}
+
+async function loadSpotlightPlaylist(): Promise<SpotlightPlaylist | null> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('playlists')
+    .select('id, title, description, cover_url, profiles!playlists_user_id_fkey(username)')
+    .eq('is_spotlight', true)
+    .eq('is_public', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const profiles = (data as { profiles?: ProfileJoin }).profiles ?? null;
+  return {
+    id: data.id as string,
+    title: (data.title as string) ?? '',
+    description: (data.description as string) ?? null,
+    cover_url: (data.cover_url as string) ?? null,
+    creatorName: getProfileUsername(profiles) ?? 'YORIAX Team',
+  };
 }
 
 export async function loadLibraryMusic(userId: string): Promise<LibraryMusicData> {
@@ -435,6 +518,7 @@ export async function loadFeedPreview(userId: string): Promise<FeedPreviewSong[]
   const feedQuery = await client
     .from('songs')
     .select(`${SONG_SELECT_WITH_PROFILE}, song_feed_stats(song_id, likes_count)`)
+    .eq('is_approved', true)
     .in('id', configuredSongIds)
     .order('plays', { ascending: false });
 
@@ -489,6 +573,7 @@ export async function loadFollowingFeed(userId: string): Promise<FeedPreviewSong
   const feedQuery = await client
     .from('songs')
     .select(`${SONG_SELECT_WITH_PROFILE}, song_feed_stats(song_id, likes_count)`)
+    .eq('is_approved', true)
     .in('id', configuredSongIds)
     .in('artist_name', followingNames)
     .order('created_at', { ascending: false })
@@ -530,6 +615,7 @@ export async function loadExploreFeed(userId: string): Promise<FeedPreviewSong[]
   const feedQuery = await client
     .from('songs')
     .select(`${SONG_SELECT_WITH_PROFILE}, song_feed_stats(song_id, likes_count)`)
+    .eq('is_approved', true)
     .in('id', configuredSongIds)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -568,6 +654,7 @@ export async function searchMusic(query: string): Promise<Song[]> {
   const { data, error } = await client
     .from('songs')
     .select(SONG_SELECT_WITH_PROFILE)
+    .eq('is_approved', true)
     .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern},genre.ilike.${searchPattern}`)
     .order('plays', { ascending: false })
     .limit(30);
@@ -577,6 +664,7 @@ export async function searchMusic(query: string): Promise<Song[]> {
     const fallback = await client
       .from('songs')
       .select(SONG_SELECT)
+      .eq('is_approved', true)
       .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern},genre.ilike.${searchPattern}`)
       .order('plays', { ascending: false })
       .limit(30);
@@ -594,6 +682,7 @@ export async function loadArtistSongs(artistName: string): Promise<Song[]> {
   const { data, error } = await client
     .from('songs')
     .select(SONG_SELECT_WITH_PROFILE)
+    .eq('is_approved', true)
     .or(`artist_name.eq."${artistName}",creator_id.in.(select id from profiles where username = "${artistName}")`)
     .order('plays', { ascending: false });
 
@@ -602,6 +691,7 @@ export async function loadArtistSongs(artistName: string): Promise<Song[]> {
     const fallback = await client
       .from('songs')
       .select(SONG_SELECT)
+      .eq('is_approved', true)
       .eq('artist_name', artistName)
       .order('plays', { ascending: false });
 
@@ -717,6 +807,7 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
     const { data: songsData } = await client
       .from('songs')
       .select(SONG_SELECT_WITH_PROFILE)
+      .eq('is_approved', true)
       .in('id', songIds);
 
     if (songsData) {
@@ -990,8 +1081,8 @@ export async function loadChartsData(): Promise<ChartsData> {
   const todayUtc = new Date().toISOString().slice(0, 10);
 
   const [viralQuery, artistQuery, dailyQuery] = await Promise.all([
-    client.from('songs').select(SONG_SELECT_WITH_PROFILE).order('plays', { ascending: false }).limit(80),
-    client.from('songs').select(SONG_SELECT_WITH_PROFILE).order('plays', { ascending: false }).limit(200),
+    client.from('songs').select(SONG_SELECT_WITH_PROFILE).eq('is_approved', true).order('plays', { ascending: false }).limit(80),
+    client.from('songs').select(SONG_SELECT_WITH_PROFILE).eq('is_approved', true).order('plays', { ascending: false }).limit(200),
     client.from('song_daily_plays').select('song_id, plays').eq('play_date', todayUtc).order('plays', { ascending: false }).limit(50),
   ]);
 
@@ -1011,7 +1102,7 @@ export async function loadChartsData(): Promise<ChartsData> {
   const dailySongIds = dailyPlays.map(({ song_id }) => song_id);
   const dailySongRows =
     dailySongIds.length > 0
-      ? await client.from('songs').select(SONG_SELECT_WITH_PROFILE).in('id', dailySongIds)
+      ? await client.from('songs').select(SONG_SELECT_WITH_PROFILE).eq('is_approved', true).in('id', dailySongIds)
       : { data: [], error: null };
 
   if (dailySongRows.error) throw new Error(dailySongRows.error.message);
@@ -1049,7 +1140,8 @@ export async function loadArtistsData(): Promise<ArtistStat[]> {
 
   const { data: songsData, error: songsError } = await client
     .from('songs')
-    .select('artist_name, plays, cover_url, created_at');
+    .select('artist_name, plays, cover_url, created_at')
+    .eq('is_approved', true);
 
   if (songsError) throw new Error(songsError.message);
 

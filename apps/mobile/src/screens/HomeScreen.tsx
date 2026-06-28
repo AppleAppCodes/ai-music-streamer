@@ -1,4 +1,5 @@
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useEffect, useMemo, useState, memo, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CoverArt, IconButton, StateCard, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
-import { loadHomeMusic, type HomeMusicData, DAILY_NEW_RELEASES_PLAYLIST_ID } from '../lib/music-data';
+import { loadHomeMusic, type HomeMusicData, type SpotlightArtist, type SpotlightPlaylist, DAILY_NEW_RELEASES_PLAYLIST_ID } from '../lib/music-data';
 import { readPersistedCache, writePersistedCache } from '../lib/persisted-cache';
 import { usePlayerControls } from '../lib/player-context';
 import { useMusicPreferences } from '../lib/music-preferences-context';
@@ -142,6 +143,10 @@ export function HomeScreen() {
     navigation.navigate('Playlist', { playlistId });
   }, [navigation]);
 
+  const handleOpenArtist = useCallback((artistName: string) => {
+    navigation.navigate('Artist', { artistId: artistName });
+  }, [navigation]);
+
   return (
     <ScrollView
       style={styles.container}
@@ -200,7 +205,13 @@ export function HomeScreen() {
             playlists={data.officialPlaylists}
             onPressPlaylist={handleOpenPlaylist}
           />
-          <SpotlightSection song={data.spotlightSong} />
+          <SpotlightCarousel
+            song={data.spotlightSong}
+            artist={data.spotlightArtist}
+            playlist={data.spotlightPlaylist}
+            onOpenArtist={handleOpenArtist}
+            onOpenPlaylist={handleOpenPlaylist}
+          />
           <SongRail title={t('home.trending')} songs={data.trendingSongs} />
           <SongRail title={t('home.forYouSelected')} songs={data.recommendedSongs} />
           <SongRail title={t('home.latest')} songs={data.latestSongs} />
@@ -257,16 +268,102 @@ const SongRailItem = memo(function SongRailItem({
   );
 });
 
-const SpotlightSection = memo(function SpotlightSection({ song }: { song?: Song | null }) {
+type SpotlightSlide =
+  | { kind: 'song'; song: Song }
+  | { kind: 'artist'; artist: SpotlightArtist }
+  | { kind: 'playlist'; playlist: SpotlightPlaylist };
+
+const SpotlightCarousel = memo(function SpotlightCarousel({
+  song,
+  artist,
+  playlist,
+  onOpenArtist,
+  onOpenPlaylist,
+}: {
+  song?: Song | null;
+  artist?: SpotlightArtist | null;
+  playlist?: SpotlightPlaylist | null;
+  onOpenArtist: (artistName: string) => void;
+  onOpenPlaylist: (playlistId: string) => void;
+}) {
+  const { t } = useI18n();
+  const [width, setWidth] = useState(0);
+  const [active, setActive] = useState(0);
+
+  const slides = useMemo<SpotlightSlide[]>(() => {
+    const list: SpotlightSlide[] = [];
+    if (song) list.push({ kind: 'song', song });
+    if (artist) list.push({ kind: 'artist', artist });
+    if (playlist) list.push({ kind: 'playlist', playlist });
+    return list;
+  }, [song, artist, playlist]);
+
+  const handleMomentumEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (width <= 0) return;
+    const next = Math.round(event.nativeEvent.contentOffset.x / width);
+    setActive(Math.max(0, Math.min(next, slides.length - 1)));
+  }, [slides.length, width]);
+
+  if (slides.length === 0) return null;
+
+  const boundedActive = Math.min(active, slides.length - 1);
+  const hasMultiple = slides.length > 1;
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.spotlightHeaderRow}>
+        <Text style={styles.sectionTitle}>{t('home.spotlight')}</Text>
+        {hasMultiple ? (
+          <View style={styles.spotlightSwipeHint}>
+            <Text style={styles.spotlightSwipeHintText}>{t('home.spotlightSwipeHint')}</Text>
+            <Ionicons name="chevron-forward" size={14} color={theme.colors.muted} />
+          </View>
+        ) : null}
+      </View>
+
+      <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
+        {width > 0 ? (
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleMomentumEnd}
+            scrollEnabled={hasMultiple}
+            decelerationRate="fast"
+          >
+            {slides.map((slide) => (
+              <View key={slide.kind} style={{ width }}>
+                {slide.kind === 'song' ? <SpotlightSongSlide song={slide.song} /> : null}
+                {slide.kind === 'artist' ? <SpotlightArtistSlide artist={slide.artist} onOpen={onOpenArtist} /> : null}
+                {slide.kind === 'playlist' ? <SpotlightPlaylistSlide playlist={slide.playlist} onOpen={onOpenPlaylist} /> : null}
+              </View>
+            ))}
+          </ScrollView>
+        ) : null}
+      </View>
+
+      {hasMultiple ? (
+        <View style={styles.spotlightDots}>
+          {slides.map((slide, index) => (
+            <View
+              key={slide.kind}
+              style={[styles.spotlightDot, index === boundedActive && styles.spotlightDotActive]}
+            />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+});
+
+const SpotlightSongSlide = memo(function SpotlightSongSlide({ song }: { song: Song }) {
   const { t } = useI18n();
   const { activeSong, isBuffering, isPlaying, playSong, setQueue, toggle } = usePlayerControls();
 
-  const isActive = activeSong?.id === song?.id;
+  const isActive = activeSong?.id === song.id;
   const isLoading = Boolean(isActive && isBuffering);
 
   const handlePress = useCallback(() => {
-    if (!song) return;
-
     if (isActive) {
       toggle();
       return;
@@ -276,38 +373,104 @@ const SpotlightSection = memo(function SpotlightSection({ song }: { song?: Song 
     void playSong(song);
   }, [isActive, playSong, setQueue, song, toggle]);
 
-  if (!song) return null;
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      activeOpacity={0.92}
+      onPress={handlePress}
+      style={[styles.spotlightCard, isActive && styles.spotlightCardActive]}
+    >
+      <CoverArt uri={song.cover_url} size={118} radius={18} />
+      <View style={styles.spotlightText}>
+        <Text style={styles.spotlightEyebrow} numberOfLines={1}>{t('home.spotlightSingle')}</Text>
+        <Text style={styles.spotlightTitle} numberOfLines={1}>{song.title}</Text>
+        <Text style={styles.spotlightArtist} numberOfLines={1}>
+          {song.artist_name || song.creatorName || t('common.creator')}
+        </Text>
+        <Text style={styles.spotlightCopy} numberOfLines={3}>{song.spotlight_copy?.trim() || t('home.spotlightBubbleButtCopy')}</Text>
+        <View style={[styles.spotlightAction, isActive && styles.spotlightActionActive]}>
+          {isLoading ? (
+            <ActivityIndicator color={theme.colors.text} size="small" />
+          ) : (
+            <Ionicons name={isActive && isPlaying ? 'pause' : 'play'} size={15} color={theme.colors.text} />
+          )}
+          <Text style={styles.spotlightActionText}>
+            {isActive && isPlaying ? t('playlist.pause') : t('playlist.play')}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+const SpotlightArtistSlide = memo(function SpotlightArtistSlide({
+  artist,
+  onOpen,
+}: {
+  artist: SpotlightArtist;
+  onOpen: (artistName: string) => void;
+}) {
+  const { t } = useI18n();
+  const copy = artist.spotlight_copy?.trim();
 
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{t('home.spotlight')}</Text>
-      <TouchableOpacity
-        accessibilityRole="button"
-        activeOpacity={0.92}
-        onPress={handlePress}
-        style={[styles.spotlightCard, isActive && styles.spotlightCardActive]}
-      >
-        <CoverArt uri={song.cover_url} size={118} radius={18} />
-        <View style={styles.spotlightText}>
-          <Text style={styles.spotlightEyebrow} numberOfLines={1}>{t('home.spotlightSingle')}</Text>
-          <Text style={styles.spotlightTitle} numberOfLines={1}>{song.title}</Text>
-          <Text style={styles.spotlightArtist} numberOfLines={1}>
-            {song.artist_name || song.creatorName || t('common.creator')}
-          </Text>
-          <Text style={styles.spotlightCopy} numberOfLines={3}>{song.spotlight_copy?.trim() || t('home.spotlightBubbleButtCopy')}</Text>
-          <View style={[styles.spotlightAction, isActive && styles.spotlightActionActive]}>
-            {isLoading ? (
-              <ActivityIndicator color={theme.colors.text} size="small" />
-            ) : (
-              <Ionicons name={isActive && isPlaying ? 'pause' : 'play'} size={15} color={theme.colors.text} />
-            )}
-            <Text style={styles.spotlightActionText}>
-              {isActive && isPlaying ? t('playlist.pause') : t('playlist.play')}
-            </Text>
-          </View>
+    <TouchableOpacity
+      accessibilityRole="button"
+      activeOpacity={0.92}
+      onPress={() => onOpen(artist.artist_name)}
+      style={styles.spotlightCard}
+    >
+      <CoverArt uri={artist.cover_url} size={118} radius={18} />
+      <View style={styles.spotlightText}>
+        <Text style={styles.spotlightEyebrow} numberOfLines={1}>{t('home.spotlightArtistEyebrow')}</Text>
+        <Text style={styles.spotlightTitle} numberOfLines={1}>{artist.artist_name}</Text>
+        <Text style={styles.spotlightArtist} numberOfLines={1}>
+          {t('home.spotlightArtistStats', { songs: artist.song_count, plays: formatPlays(artist.total_plays) })}
+        </Text>
+        {copy ? <Text style={styles.spotlightCopy} numberOfLines={3}>{copy}</Text> : null}
+        <View style={styles.spotlightAction}>
+          <Ionicons name="person" size={15} color={theme.colors.text} />
+          <Text style={styles.spotlightActionText}>{t('home.spotlightArtistCta')}</Text>
         </View>
-      </TouchableOpacity>
-    </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+const SpotlightPlaylistSlide = memo(function SpotlightPlaylistSlide({
+  playlist,
+  onOpen,
+}: {
+  playlist: SpotlightPlaylist;
+  onOpen: (playlistId: string) => void;
+}) {
+  const { t } = useI18n();
+  const isDailyNewReleases = playlist.id === DAILY_NEW_RELEASES_PLAYLIST_ID || playlist.id === 'daily-new-releases';
+  const description = playlist.description?.trim();
+
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      activeOpacity={0.92}
+      onPress={() => onOpen(playlist.id)}
+      style={styles.spotlightCard}
+    >
+      {isDailyNewReleases && !playlist.cover_url ? (
+        <YoriaxPlaylistCover size={118} radius={18} />
+      ) : (
+        <CoverArt uri={playlist.cover_url} size={118} radius={18} />
+      )}
+      <View style={styles.spotlightText}>
+        <Text style={styles.spotlightEyebrow} numberOfLines={1}>{t('home.spotlightPlaylistEyebrow')}</Text>
+        <Text style={styles.spotlightTitle} numberOfLines={1}>{playlist.title}</Text>
+        <Text style={styles.spotlightArtist} numberOfLines={1}>{playlist.creatorName}</Text>
+        {description ? <Text style={styles.spotlightCopy} numberOfLines={3}>{description}</Text> : null}
+        <View style={styles.spotlightAction}>
+          <Ionicons name="play-skip-forward" size={15} color={theme.colors.text} />
+          <Text style={styles.spotlightActionText}>{t('home.spotlightPlaylistCta')}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 });
 
@@ -574,6 +737,38 @@ const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: '900',
     marginTop: 4,
+  },
+  spotlightHeaderRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  spotlightSwipeHint: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 2,
+  },
+  spotlightSwipeHintText: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  spotlightDots: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  spotlightDot: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 999,
+    height: 6,
+    width: 6,
+  },
+  spotlightDotActive: {
+    backgroundColor: theme.colors.primaryLight,
+    width: 18,
   },
   playBadge: {
     alignItems: 'center',

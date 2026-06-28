@@ -37,6 +37,14 @@ function collectHomeCoverUris(home: HomeMusicData) {
   if (home.spotlightSong) {
     addSongCovers(uris, [home.spotlightSong]);
   }
+  const spotlightArtistCover = home.spotlightArtist?.cover_url;
+  if (isRemoteUri(spotlightArtistCover)) {
+    uris.add(spotlightArtistCover);
+  }
+  const spotlightPlaylistCover = home.spotlightPlaylist?.cover_url;
+  if (isRemoteUri(spotlightPlaylistCover)) {
+    uris.add(spotlightPlaylistCover);
+  }
 
   for (const playlist of home.officialPlaylists) {
     addPlaylistCover(uris, playlist);
