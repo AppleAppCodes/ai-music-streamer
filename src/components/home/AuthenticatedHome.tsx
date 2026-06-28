@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { MouseEvent } from 'react';
+import type { MouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import SongCard from '@/components/ui/SongCard';
-import { ChevronLeft, ChevronRight, Heart, ListMusic, Mic2, Music, Pause, Pencil, Play, Sparkles, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, ListMusic, Mic2, Move, Music, Pause, Pencil, Play, Sparkles, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -127,6 +127,8 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
   const [spotlightArtist, setSpotlightArtist] = useState<SpotlightArtistSummary | null>(initialHomeData?.spotlightArtist ?? null);
   const [heroArtistVideoUrl, setHeroArtistVideoUrl] = useState<string | null>(null);
   const [heroArtistName, setHeroArtistName] = useState<string | null>(null);
+  const [heroVideoPosition, setHeroVideoPosition] = useState<string | null>(null);
+  const [isPositioningHero, setIsPositioningHero] = useState(false);
   const [videoArtists, setVideoArtists] = useState<string[]>([]);
   const [heroPickerOpen, setHeroPickerOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -242,11 +244,12 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
     // Which artist's video did the admin pin? (null = auto/random)
     const { data: settings } = await supabase
       .from('app_settings')
-      .select('hero_artist_name')
+      .select('hero_artist_name, hero_video_position')
       .eq('id', 'global')
       .maybeSingle();
     const selected = (settings?.hero_artist_name as string | null) ?? null;
     setHeroArtistName(selected);
+    setHeroVideoPosition((settings?.hero_video_position as string | null) ?? null);
 
     const { data: banners } = await supabase.storage.from('covers').list('banners', { limit: 1000 });
     const videoFiles = (banners ?? []).filter(
@@ -305,6 +308,46 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
     },
     [loadHeroVideo],
   );
+
+  const saveHeroVideoPosition = useCallback(async (value: string) => {
+    if (!isAdmin) return;
+    const { error } = await supabase
+      .from('app_settings')
+      .update({ hero_video_position: value })
+      .eq('id', 'global');
+    if (error) console.error('Failed to save hero_video_position', error);
+  }, [isAdmin]);
+
+  const beginHeroPositioning = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!isAdmin || !isPositioningHero) return;
+    const container = event.currentTarget;
+    container.setPointerCapture(event.pointerId);
+    const rect = container.getBoundingClientRect();
+    const toValue = (clientX: number, clientY: number) => {
+      const x = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+      const y = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100));
+      return `${x.toFixed(1)}% ${y.toFixed(1)}%`;
+    };
+    setHeroVideoPosition(toValue(event.clientX, event.clientY));
+    const onMove = (ev: PointerEvent) => setHeroVideoPosition(toValue(ev.clientX, ev.clientY));
+    const onUp = (ev: PointerEvent) => {
+      container.removeEventListener('pointermove', onMove);
+      container.removeEventListener('pointerup', onUp);
+      container.removeEventListener('pointercancel', onUp);
+      try { container.releasePointerCapture(ev.pointerId); } catch { /* already released */ }
+      const finalValue = toValue(ev.clientX, ev.clientY);
+      setHeroVideoPosition(finalValue);
+      void saveHeroVideoPosition(finalValue);
+    };
+    container.addEventListener('pointermove', onMove);
+    container.addEventListener('pointerup', onUp);
+    container.addEventListener('pointercancel', onUp);
+  }, [isAdmin, isPositioningHero, saveHeroVideoPosition]);
+
+  const resetHeroPosition = useCallback(() => {
+    setHeroVideoPosition('50% 50%');
+    void saveHeroVideoPosition('50% 50%');
+  }, [saveHeroVideoPosition]);
 
   const greeting = t(`home.greetings.${greetingKey}`);
 
@@ -436,6 +479,7 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
             playsInline
             controlsList="nodownload"
             onContextMenu={(event) => event.preventDefault()}
+            style={{ objectPosition: heroVideoPosition ?? '50% 50%' }}
             className={`absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-1000 ${
               hoveredBg ? 'opacity-20' : 'opacity-[0.42]'
             }`}
@@ -467,41 +511,78 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/80 to-black z-20" />
       </div>
 
-      {/* Admin: pick which artist's video shows as the home hero (or auto/random) */}
+      {/* Drag layer to reposition the hero video (above content) */}
+      {isAdmin && heroArtistVideoUrl && isPositioningHero ? (
+        <div
+          className="absolute left-0 top-0 z-30 h-[500px] w-full cursor-move touch-none ring-2 ring-inset ring-primary-light/60"
+          onPointerDown={beginHeroPositioning}
+        />
+      ) : null}
+
+      {/* Admin: pick which artist's video shows as the home hero + reposition it */}
       {isAdmin ? (
-        <div className="pointer-events-auto absolute right-4 top-4 z-30">
-          <button
-            type="button"
-            onClick={() => setHeroPickerOpen((open) => !open)}
-            className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur transition-colors hover:bg-black/60 hover:text-white"
-            title="Hero-Video auswählen"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Hero-Video
-          </button>
-          {heroPickerOpen ? (
-            <div className="absolute right-0 mt-2 max-h-72 w-60 overflow-y-auto rounded-xl border border-white/10 bg-[#0d0a17] p-2 shadow-2xl">
+        <div className="pointer-events-auto absolute right-4 top-4 z-40 flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
+            <div className="relative">
               <button
                 type="button"
-                onClick={() => handleSelectHeroArtist(null)}
-                className={`block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/10 ${heroArtistName === null ? 'text-primary' : 'text-white/80'}`}
+                onClick={() => setHeroPickerOpen((open) => !open)}
+                className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur transition-colors hover:bg-black/60 hover:text-white"
+                title="Hero-Video auswählen"
               >
-                Auto (zufällig)
+                <Pencil className="h-3.5 w-3.5" />
+                Hero-Video
               </button>
-              {videoArtists.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-white/40">Keine Artists mit Video gefunden.</p>
-              ) : (
-                videoArtists.map((name) => (
+              {heroPickerOpen ? (
+                <div className="absolute right-0 mt-2 max-h-72 w-60 overflow-y-auto rounded-xl border border-white/10 bg-[#0d0a17] p-2 shadow-2xl">
                   <button
-                    key={name}
                     type="button"
-                    onClick={() => handleSelectHeroArtist(name)}
-                    className={`block w-full truncate rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/10 ${heroArtistName === name ? 'text-primary' : 'text-white/80'}`}
+                    onClick={() => handleSelectHeroArtist(null)}
+                    className={`block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/10 ${heroArtistName === null ? 'text-primary' : 'text-white/80'}`}
                   >
-                    {name}
+                    Auto (zufällig)
                   </button>
-                ))
-              )}
+                  {videoArtists.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-white/40">Keine Artists mit Video gefunden.</p>
+                  ) : (
+                    videoArtists.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => handleSelectHeroArtist(name)}
+                        className={`block w-full truncate rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/10 ${heroArtistName === name ? 'text-primary' : 'text-white/80'}`}
+                      >
+                        {name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : null}
+            </div>
+            {heroArtistVideoUrl ? (
+              <button
+                type="button"
+                onClick={() => setIsPositioningHero((prev) => !prev)}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold backdrop-blur transition-colors ${isPositioningHero ? 'border-primary-light bg-primary/80 text-white hover:bg-primary' : 'border-white/15 bg-black/40 text-white/80 hover:bg-black/60 hover:text-white'}`}
+                title="Hero-Video verschieben"
+              >
+                <Move className="h-3.5 w-3.5" />
+                {isPositioningHero ? 'Fertig' : 'Verschieben'}
+              </button>
+            ) : null}
+          </div>
+          {isPositioningHero ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={resetHeroPosition}
+                className="rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur transition-colors hover:bg-black/60 hover:text-white"
+              >
+                Zentrieren
+              </button>
+              <span className="rounded-full bg-black/55 px-2 py-1 text-[11px] text-white/80 backdrop-blur">
+                Video ziehen zum Positionieren
+              </span>
             </div>
           ) : null}
         </div>
