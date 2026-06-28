@@ -2,7 +2,10 @@ import type { Metadata } from 'next';
 
 export const SITE_URL = 'https://www.yoriax.com';
 export const SITE_NAME = 'YORIAX';
-export const DEFAULT_OG_IMAGE = '/brand/yoriax-share.png';
+// Served from a fresh URL (identical bytes to yoriax-share.png) so Google and
+// social scrapers re-fetch the current logo instead of a stale cached copy of
+// the old share image they had under the previous filename.
+export const DEFAULT_OG_IMAGE = '/brand/yoriax-og.png';
 export const DEFAULT_OG_ALT = 'YORIAX logo on a dark purple music background';
 export const DEFAULT_TITLE = 'YORIAX | AI Music Streaming';
 export const DEFAULT_DESCRIPTION =
