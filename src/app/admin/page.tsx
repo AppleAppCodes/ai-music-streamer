@@ -10,6 +10,28 @@ import { isAdminUser, isModUser } from '@/lib/admin';
 
 type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot' | 'spotlight';
 
+// Reads the real duration (seconds) of an audio File via its metadata, client-side.
+function readAudioFileDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    try {
+      const url = URL.createObjectURL(file);
+      const audio = new Audio();
+      audio.preload = 'metadata';
+      audio.onloadedmetadata = () => {
+        URL.revokeObjectURL(url);
+        resolve(Number.isFinite(audio.duration) ? Math.round(audio.duration) : null);
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      audio.src = url;
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 interface McpLog {
   id: string;
   tool_name: string;
@@ -389,14 +411,26 @@ export default function AdminPage() {
         .from('songs')
         .getPublicUrl(audioPath);
 
+      // Capture the new file's real duration so the displayed length updates too
+      // (previously only audio_url was changed, leaving a stale duration).
+      const newDuration = await readAudioFileDuration(file);
+      const updatePayload: { audio_url: string; duration?: number } =
+        newDuration && newDuration > 0
+          ? { audio_url: audioUrl, duration: newDuration }
+          : { audio_url: audioUrl };
+
       const { error: updateError } = await supabase
         .from('songs')
-        .update({ audio_url: audioUrl })
+        .update(updatePayload)
         .eq('id', id);
 
       if (updateError) throw updateError;
 
-      alert('Audiodatei erfolgreich ausgetauscht!');
+      alert(
+        newDuration && newDuration > 0
+          ? `Audiodatei erfolgreich ausgetauscht! Neue Länge: ${Math.floor(newDuration / 60)}:${String(newDuration % 60).padStart(2, '0')}`
+          : 'Audiodatei erfolgreich ausgetauscht!',
+      );
     } catch (err: unknown) {
       alert('Fehler beim Austauschen der Audiodatei: ' + (err as Error).message);
     } finally {
