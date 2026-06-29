@@ -90,6 +90,7 @@ export default function AdminPage() {
   const [adFiles, setAdFiles] = useState<AdFile[]>([]);
   const [isReplacingAudio, setIsReplacingAudio] = useState<string | null>(null);
   const [mcpLogs, setMcpLogs] = useState<McpLog[]>([]);
+  const [liveConnected, setLiveConnected] = useState(false);
   const [spotlightArtists, setSpotlightArtists] = useState<Array<{ artist_name: string; is_spotlight: boolean }>>([]);
   const [spotlightPlaylists, setSpotlightPlaylists] = useState<Array<{ id: string; title: string; is_spotlight: boolean }>>([]);
   const [spotlightSaving, setSpotlightSaving] = useState<'artist' | 'playlist' | null>(null);
@@ -210,6 +211,28 @@ export default function AdminPage() {
 
     checkAuthAndLoadData();
   }, [router, supabase]);
+
+  // Live activity feed for the Bot Control tab: new mcp_logs rows (bot / admin /
+  // MCP actions, written by the DB audit triggers) stream in without a reload.
+  // RLS ensures only admins receive these rows.
+  useEffect(() => {
+    const channel = supabase
+      .channel('mcp_logs_activity')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'mcp_logs' },
+        (payload) => {
+          setMcpLogs((prev) => [payload.new as McpLog, ...prev].slice(0, 100));
+        },
+      )
+      .subscribe((status) => {
+        setLiveConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   const handleDeleteSong = async (id: string, title: string) => {
     if (!window.confirm(`Möchtest du den Song "${title}" wirklich unwiderruflich löschen?`)) return;
@@ -1160,17 +1183,19 @@ export default function AdminPage() {
               <div className="max-w-4xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="text-2xl font-bold text-white mb-2">OpenClaw Bot Control</h2>
-                    <p className="text-white/60 text-sm">
-                      Überwache hier in Echtzeit, welche Aktionen dein Telegram-Bot (MCP) ausführt.
+                    <h2 className="text-2xl font-bold text-white mb-2">Bot- &amp; Admin-Aktivität</h2>
+                    <p className="text-white/60 text-sm max-w-2xl">
+                      Live-Protokoll aller Änderungen an der Datenbank durch Bots, KI-Assistenten
+                      oder Admins – z.&nbsp;B. Songs hochladen, umbenennen oder löschen und Playlists
+                      bearbeiten. Aktionen normaler Nutzer (z.&nbsp;B. Abspielen) erscheinen hier nicht.
                     </p>
                   </div>
-                  <div className="bg-green-500/10 text-green-400 border border-green-500/20 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2">
+                  <div className={`${liveConnected ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-white/5 text-white/40 border-white/10'} border px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shrink-0`}>
                     <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                      {liveConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${liveConnected ? 'bg-green-500' : 'bg-white/30'}`}></span>
                     </span>
-                    MCP Server Aktiv
+                    {liveConnected ? 'Live' : 'Verbinde …'}
                   </div>
                 </div>
 
@@ -1181,32 +1206,46 @@ export default function AdminPage() {
                   </div>
                   {mcpLogs.length === 0 ? (
                     <div className="p-8 text-center text-white/40 text-sm">
-                      Noch keine Aktivitäten aufgezeichnet.
+                      Noch keine Aktivitäten. Sobald ein Bot, KI-Assistent oder Admin etwas ändert
+                      (Song hochladen, umbenennen, Playlist bearbeiten …), erscheint es hier sofort.
                     </div>
                   ) : (
                     <div className="divide-y divide-white/5 max-h-[600px] overflow-y-auto">
-                      {mcpLogs.map((log) => (
-                        <div key={log.id} className="p-4 hover:bg-white/5 transition-colors">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-mono text-sm font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">
-                              {log.tool_name}
-                            </span>
-                            <span className="text-xs text-white/40">
-                              {new Date(log.created_at).toLocaleString('de-DE')}
-                            </span>
+                      {mcpLogs.map((log) => {
+                        const actor = typeof log.arguments?._akteur === 'string' ? (log.arguments._akteur as string) : null;
+                        const actorLabel = actor === 'system' ? 'Bot / MCP' : actor === 'service_role' ? 'Service' : actor;
+                        const detailKeys = log.arguments ? Object.keys(log.arguments).filter((k) => k !== '_akteur') : [];
+                        return (
+                          <div key={log.id} className="p-4 hover:bg-white/5 transition-colors">
+                            <div className="flex items-start justify-between gap-3 mb-1.5">
+                              <span className="text-sm font-semibold text-white/90">
+                                {log.response_summary || log.tool_name}
+                              </span>
+                              <span className="shrink-0 text-xs text-white/40">
+                                {new Date(log.created_at).toLocaleString('de-DE')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-mono text-[11px] font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded">
+                                {log.tool_name}
+                              </span>
+                              {actorLabel && (
+                                <span className="text-[11px] text-white/40 bg-white/5 px-2 py-0.5 rounded">
+                                  {actorLabel}
+                                </span>
+                              )}
+                            </div>
+                            {detailKeys.length > 0 && (
+                              <details className="text-xs">
+                                <summary className="cursor-pointer select-none text-white/40 hover:text-white/60">Details</summary>
+                                <div className="mt-1 font-mono text-white/60 bg-black/40 p-2 rounded border border-white/5 break-all">
+                                  {JSON.stringify(log.arguments)}
+                                </div>
+                              </details>
+                            )}
                           </div>
-                          {log.arguments && Object.keys(log.arguments).length > 0 && (
-                            <div className="text-xs font-mono text-white/60 mb-2 bg-black/40 p-2 rounded border border-white/5">
-                              {JSON.stringify(log.arguments)}
-                            </div>
-                          )}
-                          {log.response_summary && (
-                            <div className="text-sm text-white/80">
-                              {log.response_summary}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
