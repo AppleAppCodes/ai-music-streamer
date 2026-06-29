@@ -22,7 +22,7 @@ const content: SeoLandingPageContent = {
   introTitle: 'What is AI music on YORIAX?',
   intro: [
     'AI music is music created, shaped, or performed with artificial intelligence tools. On YORIAX, that does not mean random audio dumps. The platform is built around listening: songs, artists, charts, playlists, and discovery paths that make AI-native music feel like a real streaming experience.',
-    'Listeners can discover AI songs across Hip-Hop, Pop, EDM, RnB, Afrobeat, House, Phonk, Latin, Chillhop, and more. Every public song page is structured so people and search engines can understand the track, artist, genre, cover artwork, and release context.',
+    'Listeners can discover AI songs across Hip-Hop, Pop, RnB, Afrobeat, House, Phonk, Latin, Chillhop, and more. Every public song page is structured so people and search engines can understand the track, artist, genre, cover artwork, and release context.',
   ],
   proofPoints: [
     'Viral charts surface AI music based on listening signals, not only upload date.',
@@ -40,7 +40,7 @@ const content: SeoLandingPageContent = {
     },
     {
       title: 'Stream by genre and mood',
-      body: 'Genre pages make AI music easier to explore when listeners want a specific sound, from high-energy EDM to late-night RnB and chillhop.',
+      body: 'Genre pages make AI music easier to explore when listeners want a specific sound, from high-energy House to late-night RnB and chillhop.',
     },
   ],
   faq: [
@@ -57,7 +57,7 @@ const content: SeoLandingPageContent = {
     {
       question: 'What kind of AI music is on YORIAX?',
       answer:
-        'The catalog includes AI Hip-Hop, Pop, EDM, RnB, Afrobeat, House, Phonk, Latin, Chillhop, Country, Metal, and more genres as the platform grows.',
+        'The catalog includes AI Hip-Hop, Pop, RnB, Afrobeat, House, Phonk, Latin, Chillhop, Country, and more genres as the platform grows.',
     },
   ],
   related: [

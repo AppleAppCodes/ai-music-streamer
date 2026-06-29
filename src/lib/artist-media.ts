@@ -18,11 +18,16 @@ export function isArtistBannerFile(fileName: string, artistSlug: string) {
 
 export function isArtistVideoFile(fileName: string, artistSlug: string) {
   const normalizedName = fileName.toLowerCase();
-  const expectedPrefix = `${artistSlug}_video_`;
-  if (!normalizedName.startsWith(expectedPrefix)) return false;
+  const underscoredPrefix = `${artistSlug}_video_`;
+  const dashedPrefix = `${artistSlug}_video-`;
 
-  const suffix = normalizedName.slice(expectedPrefix.length);
-  return /^\d{10,}\.[a-z0-9]+$/.test(suffix);
+  const suffix = normalizedName.startsWith(underscoredPrefix)
+    ? normalizedName.slice(underscoredPrefix.length)
+    : normalizedName.startsWith(dashedPrefix)
+      ? normalizedName.slice(dashedPrefix.length)
+      : null;
+
+  return Boolean(suffix && /^[a-z0-9][a-z0-9_-]*\.(mp4|webm|mov|m4v)$/.test(suffix));
 }
 
 export function getArtistBannerPath(artistName: string, extension: string | null | undefined) {

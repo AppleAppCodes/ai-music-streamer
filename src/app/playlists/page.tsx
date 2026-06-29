@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { ArrowLeft, Heart, Library, Music, Plus, Sparkles } from 'lucide-react';
+import { ArrowLeft, Heart, Library, Loader2, Music, Plus, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import Image from 'next/image';
 interface Playlist {
   id: string;
   title: string;
+  description: string | null;
   cover_url: string | null;
   created_at: string;
 }
@@ -18,6 +19,7 @@ interface Playlist {
 interface SavedPlaylist {
   id: string;
   title: string;
+  description: string | null;
   cover_url: string | null;
   created_at: string;
   user_id: string | null;
@@ -38,6 +40,9 @@ export default function PlaylistsPage() {
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
   const [likedSongsCount, setLikedSongsCount] = useState(0);
   const [creating, setCreating] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftDescription, setDraftDescription] = useState('');
 
   useEffect(() => {
     async function loadPlaylists() {
@@ -50,12 +55,12 @@ export default function PlaylistsPage() {
       const [playlistsRes, savedRes, likedRes] = await Promise.all([
         supabase
           .from('playlists')
-          .select('id, title, cover_url, created_at')
+          .select('id, title, description, cover_url, created_at')
           .eq('user_id', session.user.id)
           .order('created_at', { ascending: false }),
         supabase
           .from('playlist_saves')
-          .select('playlist:playlists(id, title, cover_url, created_at, user_id, is_official, profiles(username))')
+          .select('playlist:playlists(id, title, description, cover_url, created_at, user_id, is_official, profiles(username))')
           .eq('user_id', session.user.id),
         supabase
           .from('liked_songs')
@@ -80,25 +85,38 @@ export default function PlaylistsPage() {
     loadPlaylists();
   }, [supabase, router]);
 
+  const openCreateModal = () => {
+    setDraftTitle(`${t('nav.myPlaylists')} #${playlists.length + 1}`);
+    setDraftDescription('');
+    setIsCreateModalOpen(true);
+  };
+
   const handleCreate = async () => {
     setCreating(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const newTitle = `${t('nav.myPlaylists')} #${playlists.length + 1}`;
+      const newTitle = draftTitle.trim() || t('playlistEditor.untitled');
+      const newDescription = draftDescription.trim();
       const { data: newPlaylist, error } = await supabase
         .from('playlists')
         .insert({
           user_id: session.user.id,
           title: newTitle,
+          description: newDescription || null,
           is_public: false
         })
         .select()
         .single();
 
       if (error) throw error;
-      if (newPlaylist) router.push(`/playlist/${newPlaylist.id}`);
+      if (newPlaylist) {
+        setIsCreateModalOpen(false);
+        setDraftTitle('');
+        setDraftDescription('');
+        router.push(`/playlist/${newPlaylist.id}`);
+      }
     } catch (err) {
       console.error(err);
       alert('Fehler beim Erstellen der Playlist.');
@@ -133,7 +151,7 @@ export default function PlaylistsPage() {
             <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">{t('library.title')}</h1>
           </div>
           <button 
-            onClick={handleCreate}
+            onClick={openCreateModal}
             disabled={creating}
             className="flex shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-black shadow-xl transition-transform hover:scale-105 hover:bg-gray-200 disabled:opacity-50 sm:px-6"
           >
@@ -216,11 +234,13 @@ export default function PlaylistsPage() {
                             ? t('playlists.dailyNewReleases.title')
                             : playlist.title}
                         </span>
-                        <span className="mt-0.5 truncate text-xs text-white/40">
-                          {playlist.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111'
-                            ? t('library.byYoriax')
-                            : t('playlists.byCreator', { creator: creatorName })}
-                        </span>
+	                        <span className="mt-0.5 truncate text-xs text-white/40">
+	                          {playlist.description?.trim()
+	                            ? playlist.description.trim()
+	                            : playlist.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111'
+	                            ? t('library.byYoriax')
+	                            : t('playlists.byCreator', { creator: creatorName })}
+	                        </span>
                       </div>
                     </Link>
                   );
@@ -244,7 +264,7 @@ export default function PlaylistsPage() {
                   {t('library.noPlaylistsDesc')}
                 </p>
                 <button 
-                  onClick={handleCreate}
+                  onClick={openCreateModal}
                   disabled={creating}
                   className="px-8 py-3 bg-primary hover:bg-primary-hover text-white rounded-full font-bold transition-colors"
                 >
@@ -276,7 +296,7 @@ export default function PlaylistsPage() {
                     <div className="flex min-w-0 flex-col">
                       <span className="truncate text-sm font-semibold text-white">{playlist.title}</span>
                       <span className="mt-0.5 truncate text-xs text-white/40">
-                        {t('library.byYou')}
+                        {playlist.description?.trim() || t('library.byYou')}
                       </span>
                     </div>
                   </Link>
@@ -286,6 +306,62 @@ export default function PlaylistsPage() {
           </section>
         </div>
       </div>
+
+      {isCreateModalOpen ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => !creating && setIsCreateModalOpen(false)}>
+          <div className="yoriax-card w-full max-w-[480px] overflow-hidden rounded-[1.75rem] p-6" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <h2 className="text-2xl font-black text-white">{t('library.createBtn')}</h2>
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                disabled={creating}
+                className="rounded-full p-1 text-white/50 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+                aria-label={t('common.cancel')}
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <input
+                type="text"
+                value={draftTitle}
+                onChange={(event) => setDraftTitle(event.target.value)}
+                className="yoriax-input w-full rounded-xl p-3 text-sm"
+                placeholder={t('playlist.addNamePlaceholder')}
+                autoFocus
+              />
+              <textarea
+                value={draftDescription}
+                onChange={(event) => setDraftDescription(event.target.value)}
+                className="yoriax-input min-h-[120px] w-full resize-none rounded-xl p-3 text-sm"
+                placeholder={t('playlist.addDescPlaceholder')}
+              />
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                disabled={creating}
+                className="rounded-full border border-white/15 px-5 py-3 text-sm font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={creating}
+                className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-black transition-transform hover:scale-105 disabled:cursor-wait disabled:opacity-70 disabled:hover:scale-100"
+              >
+                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {creating ? t('playlist.creating') : t('library.createBtn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

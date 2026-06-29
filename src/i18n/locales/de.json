@@ -160,7 +160,11 @@
     "publishButton": "Song veröffentlichen",
     "uploadingButton": "Wird hochgeladen...",
     "successTitle": "Upload erfolgreich!",
-    "successText": "Dein Song ist jetzt live. Du wirst weitergeleitet..."
+    "successText": "Dein Song ist jetzt live.",
+    "successPendingText": "Dein Upload war erfolgreich. Unser Team prüft ihn und schaltet ihn in Kürze frei.",
+    "viewSong": "Zum Song",
+    "viewAlbum": "Zum Album",
+    "backHome": "Zur Startseite"
   },
   "player": {
     "creatorFallback": "Künstler",
@@ -347,6 +351,8 @@
     "official": "Offiziell",
     "private": "Privat",
     "clickToEdit": "Klicken zum Bearbeiten",
+    "addDescription": "Beschreibung hinzufügen",
+    "creating": "Wird erstellt…",
     "save": "Speichern",
     "savePlaylist": "Playlist speichern",
     "unsavePlaylist": "Aus Gespeichert entfernen"

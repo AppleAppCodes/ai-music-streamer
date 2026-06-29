@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { UploadCloud, Music, Image as ImageIcon, Loader2, CheckCircle2, Plus, X } from 'lucide-react';
+import { UploadCloud, Music, Image as ImageIcon, Loader2, CheckCircle2, Plus, X, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ArtistAutocomplete from '@/components/ui/ArtistAutocomplete';
 import CustomSelect from '@/components/ui/CustomSelect';
@@ -46,6 +47,8 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [uploadedSongId, setUploadedSongId] = useState<string | null>(null);
+  const [uploadedAlbumId, setUploadedAlbumId] = useState<string | null>(null);
 
   const [user, setUser] = useState<SupabaseUser | null>(null);
 
@@ -171,6 +174,8 @@ export default function UploadPage() {
 
     setLoading(true);
     setError(null);
+    setUploadedSongId(null);
+    setUploadedAlbumId(null);
 
     try {
       // Creators may only release under an artist name that is either new or
@@ -248,7 +253,7 @@ export default function UploadPage() {
           .from('songs')
           .getPublicUrl(audioPath);
 
-        const { error: dbError } = await supabase
+        const { data: songData, error: dbError } = await supabase
           .from('songs')
           .insert({
             creator_id: user.id,
@@ -264,8 +269,12 @@ export default function UploadPage() {
             duration: audioDuration || null,
             plays: 0,
             is_approved: isAdminUser(user)
-          });
-        if (dbError) throw new Error('Datenbank-Fehler: ' + dbError.message);
+          })
+          .select('id')
+          .single();
+        if (dbError || !songData?.id) throw new Error('Datenbank-Fehler: ' + (dbError?.message || 'Song konnte nicht gespeichert werden.'));
+
+        setUploadedSongId(songData.id);
 
       } else {
         // --- ALBUM UPLOAD ---
@@ -279,6 +288,7 @@ export default function UploadPage() {
           }).select().single();
 
         if (albumError || !albumData) throw new Error('Fehler beim Erstellen des Albums.');
+        setUploadedAlbumId(albumData.id);
 
         // Upload all songs
         for (let i = 0; i < albumFiles.length; i++) {
@@ -295,7 +305,7 @@ export default function UploadPage() {
             .from('songs')
             .getPublicUrl(audioPath);
 
-          const { error: dbError } = await supabase
+          const { data: songData, error: dbError } = await supabase
             .from('songs')
             .insert({
               creator_id: user.id,
@@ -313,16 +323,16 @@ export default function UploadPage() {
               album_id: albumData.id,
               track_number: i + 1,
               is_approved: isAdminUser(user)
-            });
+            })
+            .select('id')
+            .single();
 
-          if (dbError) throw new Error(`Fehler beim Speichern von ${item.title}`);
+          if (dbError || !songData?.id) throw new Error(`Fehler beim Speichern von ${item.title}`);
+          if (i === 0) setUploadedSongId(songData.id);
         }
       }
 
       setSuccess(true);
-      setTimeout(() => {
-        router.push('/');
-      }, 2000);
 
     } catch (err: unknown) {
       setError(getErrorMessage(err));
@@ -333,15 +343,40 @@ export default function UploadPage() {
 
   if (!user) return null; // Wait for auth redirect
   if (success) {
+    const successHref = uploadedAlbumId
+      ? `/album/${encodeURIComponent(uploadedAlbumId)}`
+      : uploadedSongId
+        ? `/song/${encodeURIComponent(uploadedSongId)}`
+        : null;
+    const successLinkLabel = uploadedAlbumId ? t('upload.viewAlbum') : t('upload.viewSong');
+    const canOpenUploadedRelease = Boolean(successHref) && isAdminUser(user);
+
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-full">
         <CheckCircle2 className="w-24 h-24 text-green-500 mb-6 animate-pulse" />
         <h1 className="text-3xl font-bold text-white mb-2">{t('upload.successTitle')}</h1>
-        <p className="text-white/60">
+        <p className="max-w-md text-center text-white/60">
           {isAdminUser(user)
             ? t('upload.successText')
-            : 'Dein Upload war erfolgreich! Er wird nun von unserem Team geprüft und in Kürze freigeschaltet.'}
+            : t('upload.successPendingText')}
         </p>
+        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
+          {canOpenUploadedRelease && successHref ? (
+            <Link
+              href={successHref}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-bold text-black transition-transform hover:scale-105 hover:bg-white/90"
+            >
+              {successLinkLabel}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : null}
+          <Link
+            href="/"
+            className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 px-6 text-sm font-bold text-white/80 transition-colors hover:border-white/30 hover:text-white"
+          >
+            {t('upload.backHome')}
+          </Link>
+        </div>
       </div>
     );
   }

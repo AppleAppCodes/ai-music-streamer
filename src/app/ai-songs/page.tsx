@@ -52,7 +52,7 @@ const content: SeoLandingPageContent = {
     {
       question: 'Are AI songs on YORIAX organized by genre?',
       answer:
-        'Yes. YORIAX supports genre discovery across Hip-Hop, Pop, EDM, RnB, Afrobeat, House, Phonk, Latin, Chillhop, and more.',
+        'Yes. YORIAX supports genre discovery across Hip-Hop, Pop, RnB, Afrobeat, House, Phonk, Latin, Chillhop, and more.',
     },
     {
       question: 'Can AI songs have artist pages?',

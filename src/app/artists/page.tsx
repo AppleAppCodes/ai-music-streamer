@@ -7,7 +7,6 @@ import { createClient } from '@/utils/supabase/client';
 import { ArrowLeft, Mic2, Play, Users, Edit2, Loader2, Music, GripHorizontal, Save } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -52,7 +51,8 @@ function hashDailyArtistKey(value: string) {
 }
 
 function getDailySpotlightArtists(artists: ArtistStat[], dayKey: string) {
-  return [...artists]
+  return artists
+    .filter((artist) => Boolean(artist.videoUrl))
     .sort((a, b) => {
       const aHash = hashDailyArtistKey(`${dayKey}:${a.name}`);
       const bHash = hashDailyArtistKey(`${dayKey}:${b.name}`);
@@ -106,6 +106,7 @@ function ArtistVideo({ src, artistName, play }: { src: string; artistName: strin
 
 function ArtistCard({ artist }: { artist: ArtistStat }) {
   const [isHovered, setIsHovered] = useState(false);
+  if (!artist.videoUrl) return null;
 
   return (
     <Link 
@@ -114,20 +115,7 @@ function ArtistCard({ artist }: { artist: ArtistStat }) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Background Image or Video */}
-      {artist.videoUrl ? (
-        <ArtistVideo src={artist.videoUrl} artistName={artist.name} play={isHovered} />
-      ) : (
-        <Image 
-          src={artist.coverUrl} 
-          alt={artist.name} 
-          fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          onContextMenu={(e) => e.preventDefault()}
-          onDragStart={(e) => e.preventDefault()}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-none select-none" 
-        />
-      )}
+      <ArtistVideo src={artist.videoUrl} artistName={artist.name} play={isHovered} />
       
       {/* Premium Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500 pointer-events-none" />
@@ -223,8 +211,9 @@ export default function ArtistsPage() {
       
       const artistArray = Array.from(artistMap.values());
       
-      // Fetch all banners
-      const { data: banners } = await supabase.storage.from('covers').list('banners', { limit: 100 });
+      // Fetch artist videos for the rotating spotlight. Cover/banner images must not
+      // be used as fallbacks in this section.
+      const { data: banners } = await supabase.storage.from('covers').list('banners', { limit: 1000 });
       if (banners) {
         artistArray.forEach(artist => {
           const artistStorageSlug = getArtistStorageSlug(artist.name);

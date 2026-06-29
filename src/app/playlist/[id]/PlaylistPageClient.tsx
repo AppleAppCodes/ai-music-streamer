@@ -416,14 +416,15 @@ export default function PlaylistPage() {
     const canEdit = isOwner || (isAdmin && !!playlist?.is_official);
     if (!playlist || !canEdit) return;
     const newTitle = editTitle.trim() || t('playlistEditor.untitled');
+    const newDescription = editDescription.trim();
     try {
       const { error } = await supabase
         .from('playlists')
-        .update({ title: newTitle, description: editDescription.trim() })
+        .update({ title: newTitle, description: newDescription || null })
         .eq('id', playlist.id);
 
       if (error) throw error;
-      setPlaylist({ ...playlist, title: newTitle, description: editDescription.trim() });
+      setPlaylist({ ...playlist, title: newTitle, description: newDescription || null });
       setIsEditModalOpen(false);
     } catch (err: unknown) {
       console.error('Error updating details:', err);
@@ -730,6 +731,9 @@ export default function PlaylistPage() {
 
   if (!playlist) return null;
 
+  const canEditPlaylistDetails = isOwner || (isAdmin && playlist.is_official);
+  const playlistDescription = playlist.description?.trim() || '';
+
   return (
     <div className="yoriax-page flex-1 overflow-y-auto pb-32 relative">
       <button
@@ -912,6 +916,27 @@ export default function PlaylistPage() {
               </span>
             )}
           </div>
+          {playlistDescription && canEditPlaylistDetails ? (
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(true)}
+              className="max-w-2xl whitespace-pre-line text-center text-base leading-7 text-white/62 underline-offset-4 transition-colors hover:text-white hover:underline md:text-left"
+            >
+              {playlistDescription}
+            </button>
+          ) : playlistDescription ? (
+            <p className="max-w-2xl whitespace-pre-line text-center text-base leading-7 text-white/62 md:text-left">
+              {playlistDescription}
+            </p>
+          ) : canEditPlaylistDetails ? (
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(true)}
+              className="text-sm font-bold text-white/45 underline-offset-4 transition-colors hover:text-white hover:underline"
+            >
+              {t('playlist.addDescription')}
+            </button>
+          ) : null}
         </div>
       </div>
 

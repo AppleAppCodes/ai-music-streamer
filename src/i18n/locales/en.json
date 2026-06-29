@@ -160,7 +160,11 @@
     "publishButton": "Publish Song",
     "uploadingButton": "Uploading...",
     "successTitle": "Upload successful!",
-    "successText": "Your song is now live. Redirecting..."
+    "successText": "Your song is now live.",
+    "successPendingText": "Your upload was successful. Our team will review it and publish it soon.",
+    "viewSong": "Go to song",
+    "viewAlbum": "Go to album",
+    "backHome": "Back to home"
   },
   "player": {
     "creatorFallback": "Artist",
@@ -347,6 +351,8 @@
     "official": "Official",
     "private": "Private",
     "clickToEdit": "Click to edit",
+    "addDescription": "Add description",
+    "creating": "Creating…",
     "save": "Save",
     "savePlaylist": "Save Playlist",
     "unsavePlaylist": "Remove from Saved"
