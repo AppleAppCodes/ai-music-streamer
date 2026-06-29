@@ -8,6 +8,7 @@ import { ArrowLeft, Mic2, Music, Play, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { createClient } from '@/utils/supabase/client';
 import { isCreatorUser } from '@/lib/admin';
+import { getArtistStorageSlug, isArtistBannerFile } from '@/lib/artist-media';
 
 type MyArtist = {
   name: string;
@@ -16,10 +17,6 @@ type MyArtist = {
   coverUrl: string | null;
   bannerUrl: string | null;
 };
-
-function sanitizeArtistName(name: string) {
-  return name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-}
 
 export default function MyArtistsPage() {
   const router = useRouter();
@@ -78,12 +75,12 @@ export default function MyArtistsPage() {
 
         await Promise.all(
           list.map(async (artist) => {
-            const sanitized = sanitizeArtistName(artist.name);
+            const artistStorageSlug = getArtistStorageSlug(artist.name);
             const { data: files } = await supabase.storage
               .from('covers')
-              .list('banners', { search: sanitized });
+              .list('banners', { search: artistStorageSlug });
             const banner = (files ?? [])
-              .filter((f) => f.name.startsWith(sanitized) && !f.name.includes('_video'))
+              .filter((f) => isArtistBannerFile(f.name, artistStorageSlug))
               .sort((a, b) => {
                 const ta = new Date(a.updated_at || a.created_at || 0).getTime();
                 const tb = new Date(b.updated_at || b.created_at || 0).getTime();

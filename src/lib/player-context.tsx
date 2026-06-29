@@ -245,9 +245,12 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
 
     // Load available ads and global config when context initializes
     const loadAdsAndConfig = async () => {
-      const { data: adsData } = await supabase.storage.from('ads').list();
+      const { data: adsData } = await supabase.rpc('get_public_ad_files');
       if (adsData) {
-        setAvailableAds(adsData.filter(f => f.name !== '.emptyFolderPlaceholder'));
+        setAvailableAds(
+          (adsData as StorageObject[])
+            .filter((file) => Boolean(file.name && file.name !== '.emptyFolderPlaceholder'))
+        );
       }
 
       const { data: configData } = await supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single();

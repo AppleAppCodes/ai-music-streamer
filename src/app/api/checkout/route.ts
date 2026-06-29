@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@/utils/supabase/server';
+import { SITE_URL } from '@/lib/seo';
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -23,8 +24,6 @@ export async function POST(request: Request) {
       apiVersion: '2023-10-16',
     });
 
-    const origin = request.headers.get('origin') || 'https://www.yoriax.com';
-
     // Create Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card', 'paypal'], // Configure in Stripe dashboard
@@ -35,7 +34,7 @@ export async function POST(request: Request) {
             product_data: {
               name: 'YORIAX Pro',
               description: 'Werbefrei streamen, MP3s herunterladen und exklusive Premium-Playlists freischalten.',
-              images: [`${origin}/brand/yoriax-app-icon-192.png`],
+              images: [`${SITE_URL}/brand/yoriax-app-icon-192.png`],
             },
             unit_amount: 499, // 4.99 EUR
             recurring: {
@@ -46,8 +45,8 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'subscription',
-      success_url: `${origin}/?success=true`,
-      cancel_url: `${origin}/pro?canceled=true`,
+      success_url: `${SITE_URL}/?success=true`,
+      cancel_url: `${SITE_URL}/pro?canceled=true`,
       client_reference_id: user.id,
       customer_email: user.email,
       metadata: {

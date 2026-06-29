@@ -35,6 +35,17 @@ function getStringArgument(args: unknown, key: string) {
   return typeof value === "string" ? value : "";
 }
 
+function getExactStringArgument(args: unknown, key: string) {
+  const value = getStringArgument(args, key).trim();
+  if (!value) {
+    throw new Error(`Argument '${key}' darf nicht leer sein.`);
+  }
+  if (value.length > 200) {
+    throw new Error(`Argument '${key}' ist zu lang.`);
+  }
+  return value;
+}
+
 const server = new Server(
   {
     name: "yoriax-mcp",
@@ -128,25 +139,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const supabase = getSupabaseAdmin();
 
     if (name === "get_user_info") {
-      const username = getStringArgument(args, "username");
+      const username = getExactStringArgument(args, "username");
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
-        .ilike("username", username)
-        .limit(1);
+        .select("id, username, bio, avatar_url, followers_count, subscription_tier, role, is_banned, created_at")
+        .eq("username", username)
+        .maybeSingle();
 
       if (error) throw error;
-      if (!data || data.length === 0) {
+      if (!data) {
         resultText = `Kein Nutzer namens '${username}' gefunden.`;
       } else {
-        resultText = `User gefunden: ${JSON.stringify(data[0], null, 2)}`;
+        resultText = `User gefunden: ${JSON.stringify(data, null, 2)}`;
       }
     } else if (name === "get_song_stats") {
-      const title = getStringArgument(args, "title");
+      const title = getExactStringArgument(args, "title");
       const { data, error } = await supabase
         .from("songs")
-        .select("*")
-        .ilike("title", title);
+        .select("id, title, artist_name, plays, duration, genre, created_at, is_approved")
+        .eq("title", title)
+        .limit(10);
 
       if (error) throw error;
       if (!data || data.length === 0) {
@@ -159,12 +171,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { count: songCount } = await supabase.from("songs").select("*", { count: "exact", head: true });
       resultText = `Gesamtnutzer: ${userCount}, Gesamtsongs: ${songCount}`;
     } else if (name === "verify_artist") {
-      const username = getStringArgument(args, "username");
+      const username = getExactStringArgument(args, "username");
       const { data: user, error: findError } = await supabase
         .from("profiles")
         .select("id")
-        .ilike("username", username)
-        .single();
+        .eq("username", username)
+        .maybeSingle();
         
       if (findError || !user) {
         resultText = `Fehler: Konnte Nutzer '${username}' nicht finden.`;
@@ -178,12 +190,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         resultText = `Nutzer '${username}' wurde als Künstler verifiziert.`;
       }
     } else if (name === "rename_song") {
-      const oldTitle = getStringArgument(args, "old_title");
-      const newTitle = getStringArgument(args, "new_title");
+      const oldTitle = getExactStringArgument(args, "old_title");
+      const newTitle = getExactStringArgument(args, "new_title");
       const { data: song, error: findError } = await supabase
         .from("songs")
         .select("id")
-        .ilike("title", oldTitle)
+        .eq("title", oldTitle)
         .limit(1)
         .single();
         

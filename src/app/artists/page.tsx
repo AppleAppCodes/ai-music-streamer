@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { getErrorMessage } from '@/lib/errors';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { isAdminUser } from '@/lib/admin';
+import { getArtistStorageSlug, isArtistVideoFile } from '@/lib/artist-media';
 
 interface ArtistStat {
   name: string;
@@ -226,8 +227,8 @@ export default function ArtistsPage() {
       const { data: banners } = await supabase.storage.from('covers').list('banners', { limit: 100 });
       if (banners) {
         artistArray.forEach(artist => {
-          const sanitizedName = artist.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-          const videoFiles = banners.filter(f => f.name.startsWith(sanitizedName + '_video'));
+          const artistStorageSlug = getArtistStorageSlug(artist.name);
+          const videoFiles = banners.filter(f => isArtistVideoFile(f.name, artistStorageSlug));
           if (videoFiles.length > 0) {
             videoFiles.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
             const videoFile = videoFiles[0];

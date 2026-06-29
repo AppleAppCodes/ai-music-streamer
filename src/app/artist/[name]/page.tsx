@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { createPublicClient } from '@/utils/supabase/public';
 import { createClient as createServerClient } from '@/utils/supabase/server';
+import { getArtistStorageSlug, isArtistBannerFile } from '@/lib/artist-media';
 import { absoluteUrl, breadcrumbStructuredData, buildPageMetadata, jsonLdScript, SITE_NAME, SITE_URL } from '@/lib/seo';
 import ArtistPageClient from './ArtistPageClient';
 
@@ -26,20 +27,16 @@ function decodeArtistNameParam(value: string) {
   return decoded;
 }
 
-function sanitizedStorageName(artistName: string) {
-  return artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-}
-
 async function loadArtistShareImage(artistName: string): Promise<string | null> {
   const supabase = createPublicClient();
-  const sanitized = sanitizedStorageName(artistName);
+  const artistStorageSlug = getArtistStorageSlug(artistName);
 
   const { data: bannerFiles } = await supabase.storage
     .from('covers')
-    .list('banners', { search: sanitized });
+    .list('banners', { search: artistStorageSlug });
 
   const banner = (bannerFiles ?? [])
-    .filter((file) => file.name.startsWith(sanitized) && !file.name.includes('_video'))
+    .filter((file) => isArtistBannerFile(file.name, artistStorageSlug))
     .sort((a, b) => {
       const ta = new Date(a.updated_at || a.created_at || 0).getTime();
       const tb = new Date(b.updated_at || b.created_at || 0).getTime();

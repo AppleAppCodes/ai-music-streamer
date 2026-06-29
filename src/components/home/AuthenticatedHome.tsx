@@ -11,6 +11,7 @@ import { usePlayer } from '@/lib/player-context';
 import Image from 'next/image';
 
 import { Song } from '@/lib/types';
+import { getArtistStorageSlug, isArtistVideoFile } from '@/lib/artist-media';
 import { getDailyTrendingSongs, getPersonalizedSongs } from '@/lib/homeRecommendations';
 import { isAdminUser } from '@/lib/admin';
 import type { OfficialPlaylistSummary, SpotlightArtistSummary, SpotlightPlaylistSummary } from '@/lib/public-music-data';
@@ -33,13 +34,6 @@ type InitialHomeData = {
 
 const HOME_SONG_GRID_CLASSES = 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-[repeat(auto-fill,minmax(160px,200px))]';
 const ARTIST_VIDEO_EXTENSIONS = /\.(mp4|webm|mov|m4v)$/i;
-
-// Matches the storage filename sanitization used for artist banner videos
-// (`<sanitized artist name>_video.<ext>`), so a selected hero artist can be
-// mapped back to their video file.
-function sanitizeArtistName(name: string) {
-  return name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-}
 
 function SectionHeader({ title, actionLabel, href }: { title: string; actionLabel?: string; href?: string }) {
   return (
@@ -253,7 +247,7 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
 
     const { data: banners } = await supabase.storage.from('covers').list('banners', { limit: 1000 });
     const videoFiles = (banners ?? []).filter(
-      (file) => file.name.includes('_video') && ARTIST_VIDEO_EXTENSIONS.test(file.name),
+      (file) => file.name.includes('_video_') && ARTIST_VIDEO_EXTENSIONS.test(file.name),
     );
     if (videoFiles.length === 0) {
       setHeroArtistVideoUrl(null);
@@ -261,10 +255,10 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
       return;
     }
 
-    // Map sanitized base name -> video file (base = filename up to "_video").
+    // Map exact artist storage slug -> video file.
     const videoByBase = new Map<string, (typeof videoFiles)[number]>();
     for (const file of videoFiles) {
-      const base = file.name.slice(0, file.name.indexOf('_video'));
+      const base = file.name.slice(0, file.name.indexOf('_video_'));
       if (base && !videoByBase.has(base)) videoByBase.set(base, file);
     }
 
@@ -276,12 +270,17 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
     setVideoArtists(
       (artistRows ?? [])
         .map((row) => row.artist_name as string)
-        .filter((name) => name && videoByBase.has(sanitizeArtistName(name))),
+        .filter((name) => {
+          const slug = getArtistStorageSlug(name);
+          const file = videoByBase.get(slug);
+          return Boolean(name && file && isArtistVideoFile(file.name, slug));
+        }),
     );
 
     // Use the pinned artist's video if available, otherwise pick a random one.
+    const selectedSlug = selected ? getArtistStorageSlug(selected) : null;
     const chosen =
-      (selected ? videoByBase.get(sanitizeArtistName(selected)) : undefined) ??
+      (selectedSlug ? videoByBase.get(selectedSlug) : undefined) ??
       videoFiles[Math.floor(Math.random() * videoFiles.length)];
     const { data: urlData } = supabase.storage.from('covers').getPublicUrl(`banners/${chosen.name}`);
     const cacheKey = new Date(chosen.updated_at || chosen.created_at || 0).getTime();
@@ -289,7 +288,10 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
   }, []);
 
   useEffect(() => {
-    loadHeroVideo();
+    const timeout = window.setTimeout(() => {
+      void loadHeroVideo();
+    }, 0);
+    return () => window.clearTimeout(timeout);
   }, [loadHeroVideo]);
 
   const handleSelectHeroArtist = useCallback(
