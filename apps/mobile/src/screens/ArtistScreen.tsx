@@ -1,4 +1,4 @@
-import { ActivityIndicator, Alert, FlatList, Image, ImageBackground, Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, ImageBackground, Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { theme } from '../theme';
 import { usePlayerControls } from '../lib/player-context';
@@ -276,9 +276,6 @@ export function ArtistScreen({ route, navigation }: Props) {
           <>
             {bannerVideoUrl ? (
               <View style={styles.heroBanner}>
-                {bannerUrl ? (
-                  <Image source={{ uri: bannerUrl }} style={styles.heroMedia} alt="" />
-                ) : null}
                 <ArtistVideoMedia uri={bannerVideoUrl} style={styles.heroMedia} />
                 <LinearGradient
                   colors={['rgba(12,10,18,0.10)', 'rgba(12,10,18,0.58)', '#0c0a12']}
@@ -582,6 +579,7 @@ const styles = StyleSheet.create({
     paddingBottom: 120, // space for MiniPlayer
   },
   heroBanner: {
+    backgroundColor: theme.colors.background,
     justifyContent: 'flex-end',
     minHeight: 310,
     overflow: 'hidden',
