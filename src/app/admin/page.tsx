@@ -1199,6 +1199,52 @@ export default function AdminPage() {
                   </div>
                 </div>
 
+                {/* How to connect a bot / agent */}
+                <div className="mb-6 rounded-2xl border border-indigo-400/15 bg-indigo-500/[0.06] p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Terminal className="w-4 h-4 text-indigo-300" />
+                    <h3 className="text-sm font-bold text-white">So verbindest du deinen Bot</h3>
+                  </div>
+                  <p className="text-sm text-white/60 mb-4">
+                    Du musst nichts Spezielles einrichten: Jede Änderung an der Datenbank durch einen
+                    Bot, KI-Assistenten oder Admin landet automatisch in diesem Protokoll.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                      <div className="text-[11px] font-black uppercase tracking-wider text-teal-300/80 mb-1">Methode 1 · am einfachsten</div>
+                      <div className="text-sm font-semibold text-white mb-1">Supabase-MCP</div>
+                      <p className="text-xs text-white/55 leading-relaxed">
+                        Verbinde in deinem KI-Tool (Claude Desktop, Cursor, Antigravity) den
+                        Supabase-MCP-Server. Deine Aktionen erscheinen dann automatisch hier – das
+                        nutzt du bereits.
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                      <div className="text-[11px] font-black uppercase tracking-wider text-indigo-300/80 mb-1">Methode 2 · eigene Tools</div>
+                      <div className="text-sm font-semibold text-white mb-1">YORIAX-MCP-Server</div>
+                      <p className="text-xs text-white/55 leading-relaxed">
+                        Für Komfort-Befehle (Song hochladen, umbenennen, Playlist verwalten) trägst
+                        du den YORIAX-Server in die MCP-Config deines Agenten ein.
+                      </p>
+                    </div>
+                  </div>
+                  <details className="mt-3">
+                    <summary className="cursor-pointer select-none text-xs text-white/50 hover:text-white/70">Config-Beispiel (Methode 2) anzeigen</summary>
+                    <pre className="mt-2 overflow-x-auto rounded-lg border border-white/10 bg-black/50 p-3 text-[11px] leading-relaxed text-white/70">{`"yoriax": {
+  "command": "node",
+  "args": ["/Pfad/zu/mcp-server/dist/index.js"],
+  "env": {
+    "SUPABASE_URL": "https://eiqelhjugiwckvxyixyh.supabase.co",
+    "SUPABASE_SERVICE_ROLE_KEY": "<dein Service-Role-Key>"
+  }
+}`}</pre>
+                  </details>
+                  <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
+                    <span className="rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-green-300">✓ Geloggt: Uploads, Umbenennungen, Löschungen, Playlists, Rollen</span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-white/45">✗ Ignoriert: normales Abspielen &amp; Stöbern</span>
+                  </div>
+                </div>
+
                 <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
                   <div className="p-4 border-b border-white/10 bg-black/20 flex items-center gap-2">
                     <Terminal className="w-4 h-4 text-white/40" />
