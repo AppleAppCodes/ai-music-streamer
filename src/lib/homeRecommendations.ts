@@ -54,8 +54,8 @@ function dailyShuffle(songs: Song[], namespace: string, date: Date): Song[] {
   ));
 }
 
-// Trending must never include House, and should lean heavily toward RnB.
-const HOUSE_GENRE = /house/i;
+// Trending must never include House or Chillhop, and should lean heavily toward RnB.
+const EXCLUDED_TRENDING_GENRES = /house|chillhop/i;
 
 function isRnbGenre(song: Song): boolean {
   const g = normalize(song.genre);
@@ -63,8 +63,8 @@ function isRnbGenre(song: Song): boolean {
 }
 
 export function getDailyTrendingSongs(songs: Song[], limit = 4, date = new Date()): Song[] {
-  // Never surface House (e.g. "Deephouse") in Trending.
-  const eligible = songs.filter((song) => !HOUSE_GENRE.test(song.genre || ''));
+  // Never surface House (e.g. "Deephouse") or Chillhop in Trending.
+  const eligible = songs.filter((song) => !EXCLUDED_TRENDING_GENRES.test(song.genre || ''));
   const shuffled = dailyShuffle(eligible, 'trending', date);
 
   const rnb = shuffled.filter(isRnbGenre);
