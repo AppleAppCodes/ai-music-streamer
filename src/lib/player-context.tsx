@@ -559,8 +559,68 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
     }
   }, []);
 
+  // "Radio": when the queue runs out — a single, a single highlight, the main
+  // play button (which sets no queue), or the end of a playlist — keep playback
+  // going with a genre-similar approved song instead of stopping. Spotify-style
+  // autoplay so a song is ALWAYS followed by another and it never goes silent.
+  const playRadioNext = useCallback(async () => {
+    const seed = currentSong;
+    if (!seed) {
+      setIsPlaying(false);
+      return;
+    }
+    try {
+      const supabase = createClient();
+      const queueIds = queue.map((s) => s.id);
+
+      const fetchCandidates = async (sameGenre: boolean, exclude: Set<string>) => {
+        let q = supabase
+          .from('songs')
+          .select('*')
+          .eq('is_approved', true)
+          .neq('id', seed.id)
+          .limit(60);
+        if (sameGenre && seed.genre) q = q.eq('genre', seed.genre);
+        const { data } = await q;
+        return ((data as Song[] | null) ?? []).filter((s) => s.audio_url && !exclude.has(s.id));
+      };
+
+      // Prefer same genre & avoid what just played; widen the net step by step
+      // so playback never stops: 1) same genre, no recent repeats →
+      // 2) any genre, no recent repeats → 3) any genre, repeats allowed.
+      const avoidRecent = new Set<string>([seed.id, ...queueIds]);
+      let candidates = await fetchCandidates(true, avoidRecent);
+      if (candidates.length === 0) candidates = await fetchCandidates(false, avoidRecent);
+      if (candidates.length === 0) candidates = await fetchCandidates(false, new Set([seed.id]));
+
+      if (candidates.length === 0) {
+        // Catalog has only the current song → loop it rather than go silent.
+        playSong(seed);
+        return;
+      }
+
+      // Bias toward more-played tracks, but keep variety (random within top pool).
+      candidates.sort((a, b) => (b.plays || 0) - (a.plays || 0));
+      const pool = candidates.slice(0, Math.min(20, candidates.length));
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+
+      const baseQueue = queue.length > 0 ? queue : [seed];
+      const newQueue = [...baseQueue, pick];
+      setQueueState(newQueue);
+      setQueueIndex(newQueue.length - 1);
+      playSong(pick);
+    } catch (err) {
+      console.error('Autoplay radio failed:', err);
+      setIsPlaying(false);
+    }
+  }, [currentSong, queue, playSong]);
+
   const playNext = useCallback(() => {
-    if (queue.length === 0) return;
+    // No queue (e.g. a single via the main play button) → radio, don't stop.
+    if (queue.length === 0) {
+      void playRadioNext();
+      return;
+    }
 
     if (isShuffling && queue.length > 1) {
       let nextIndex = Math.floor(Math.random() * queue.length);
@@ -580,9 +640,10 @@ export function PlayerProvider({ children, isAuthenticated }: PlayerProviderProp
       setQueueIndex(0);
       playSong(queue[0]);
     } else {
-      setIsPlaying(false);
+      // End of queue and not repeating → keep going with similar songs.
+      void playRadioNext();
     }
-  }, [playSong, queue, queueIndex, isShuffling, repeatMode]);
+  }, [playSong, queue, queueIndex, isShuffling, repeatMode, playRadioNext]);
 
   const playPrevious = useCallback(() => {
     if (queue.length === 0) return;
