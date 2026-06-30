@@ -33,5 +33,5 @@ export async function generateMetadata({ params }: GenrePageProps): Promise<Meta
 
 export default async function GenrePage({ params }: GenrePageProps) {
   const { name } = await params;
-  return <GenrePageClient genreName={name} />;
+  return <GenrePageClient genreName={decodeGenreParam(name)} />;
 }
