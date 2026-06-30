@@ -5,6 +5,7 @@ import { activateExclusivePlaybackSession, addTrackRemoteCommandListeners, setTr
 import type { Song } from './types';
 import { useAuth } from './auth-context';
 import { supabase } from './supabase';
+import { fetchRadioNextSong } from './music-data';
 import { useI18n } from './i18n';
 
 interface StorageListItem {
@@ -488,8 +489,39 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     void playSong(song, activeSong?.id === song.id ? { startAt: 0 } : undefined);
   }, [activeSong?.id, playSong]);
 
+  // "Radio": when the queue runs out — a single, a single highlight, or the end
+  // of a playlist — keep playback going with a genre-similar approved song instead
+  // of stopping. Spotify-style autoplay so a song is ALWAYS followed by another.
+  const playRadioNext = useCallback(async () => {
+    const seed = activeSongRef.current;
+    if (!seed) {
+      player.pause();
+      intendsToPlayRef.current = false;
+      return;
+    }
+    try {
+      const pick = await fetchRadioNextSong(seed, queue.map((song) => song.id));
+      if (!pick) {
+        // Catalog exhausted → loop the current song rather than go silent.
+        playQueueSong(seed, queueIndex >= 0 ? queueIndex : 0);
+        return;
+      }
+      const baseQueue = queue.length > 0 ? queue : [seed];
+      const newQueue = [...baseQueue, pick];
+      setQueueState(newQueue);
+      playQueueSong(pick, newQueue.length - 1);
+    } catch {
+      player.pause();
+      intendsToPlayRef.current = false;
+    }
+  }, [queue, queueIndex, player, playQueueSong]);
+
   const playNext = useCallback(() => {
-    if (queue.length === 0) return;
+    // No queue (e.g. a single) → radio instead of stopping.
+    if (queue.length === 0) {
+      void playRadioNext();
+      return;
+    }
 
     if (isShuffling && queue.length > 1) {
       let nextIndex = Math.floor(Math.random() * queue.length);
@@ -506,10 +538,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     } else if (repeatMode === 'all') {
       playQueueSong(queue[0], 0);
     } else {
-      player.pause();
-      intendsToPlayRef.current = false;
+      // End of queue and not repeating → keep going with similar songs.
+      void playRadioNext();
     }
-  }, [queue, isShuffling, queueIndex, repeatMode, player, playQueueSong]);
+  }, [queue, isShuffling, queueIndex, repeatMode, playQueueSong, playRadioNext]);
 
   const playPrevious = useCallback(() => {
     if (queue.length === 0) return;

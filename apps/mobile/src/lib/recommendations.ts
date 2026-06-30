@@ -56,8 +56,42 @@ function dailyShuffle(songs: Song[], namespace: string, date: Date): Song[] {
   );
 }
 
+// Trending must never include House or Chillhop, and should lean heavily toward RnB.
+const EXCLUDED_TRENDING_GENRES = /house|chillhop/i;
+
+function isRnbGenre(song: Song): boolean {
+  const g = normalize(song.genre);
+  return g === 'rnb' || g === 'r&b' || g === 'r and b';
+}
+
 export function getDailyTrendingSongs(songs: Song[], limit = 4, date = new Date()): Song[] {
-  return dailyShuffle(songs, 'trending', date).slice(0, limit);
+  // Never surface House (e.g. "Deephouse") or Chillhop in Trending.
+  const eligible = songs.filter((song) => !EXCLUDED_TRENDING_GENRES.test(song.genre || ''));
+  const shuffled = dailyShuffle(eligible, 'trending', date);
+
+  const rnb = shuffled.filter(isRnbGenre);
+  const others = shuffled.filter((song) => !isRnbGenre(song));
+
+  // Mostly RnB: aim for ~70% of the slots, then fill the rest with variety.
+  const rnbTarget = Math.min(rnb.length, Math.max(1, Math.ceil(limit * 0.7)));
+  const selection = [
+    ...rnb.slice(0, rnbTarget),
+    ...others.slice(0, Math.max(0, limit - rnbTarget)),
+  ];
+
+  if (selection.length < limit) {
+    const used = new Set(selection.map((song) => song.id));
+    for (const song of [...rnb, ...others]) {
+      if (selection.length >= limit) break;
+      if (!used.has(song.id)) {
+        used.add(song.id);
+        selection.push(song);
+      }
+    }
+  }
+
+  // Re-shuffle (daily) so the RnB-heavy mix isn't a rigid block but rotates.
+  return dailyShuffle(selection.slice(0, limit), 'trending-order', date);
 }
 
 export function getPersonalizedSongs(

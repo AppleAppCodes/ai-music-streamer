@@ -419,6 +419,37 @@ async function loadSpotlightPlaylist(): Promise<SpotlightPlaylist | null> {
   };
 }
 
+// Picks a genre-similar approved song to keep playback going (Spotify-style radio)
+// when the queue runs out. Widens the net step by step so it never returns nothing
+// for a non-empty catalog: same genre → any genre → repeats allowed.
+export async function fetchRadioNextSong(seed: Song, excludeIds: string[]): Promise<Song | null> {
+  const client = requireClient();
+
+  const fetchCandidates = async (sameGenre: boolean, exclude: Set<string>): Promise<Song[]> => {
+    let query = client
+      .from('songs')
+      .select(SONG_SELECT)
+      .eq('is_approved', true)
+      .neq('id', seed.id)
+      .limit(60);
+    if (sameGenre && seed.genre) query = query.eq('genre', seed.genre);
+    const { data } = await query;
+    return ((data || []) as SongRow[])
+      .map(mapSong)
+      .filter((song) => Boolean(song.audio_url) && !exclude.has(song.id));
+  };
+
+  const avoidRecent = new Set<string>([seed.id, ...excludeIds]);
+  let candidates = await fetchCandidates(true, avoidRecent);
+  if (candidates.length === 0) candidates = await fetchCandidates(false, avoidRecent);
+  if (candidates.length === 0) candidates = await fetchCandidates(false, new Set<string>([seed.id]));
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => (b.plays || 0) - (a.plays || 0));
+  const pool = candidates.slice(0, Math.min(20, candidates.length));
+  return pool[Math.floor(Math.random() * pool.length)] ?? null;
+}
+
 export async function loadLibraryMusic(userId: string): Promise<LibraryMusicData> {
   const client = requireClient();
   const [{ data: likedRows, error: likedError }, { data: playlistRows, error: playlistsError }] =
@@ -456,6 +487,7 @@ export async function loadDiscoverPlaylists(searchQuery = ''): Promise<DiscoverP
     .from('playlists')
     .select('id, user_id, title, description, cover_url, is_public, is_official, created_at, profiles(username)')
     .eq('is_public', true)
+    .order('official_sort_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
     .limit(80);
 
