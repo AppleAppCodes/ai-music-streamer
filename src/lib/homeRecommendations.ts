@@ -93,6 +93,16 @@ export function getDailyTrendingSongs(songs: Song[], limit = 4, date = new Date(
   return dailyShuffle(selection.slice(0, limit), 'trending-order', date);
 }
 
+// Prefer the admin-curated Trending songs (trending_sort_order) when any are set;
+// otherwise fall back to the daily algorithm.
+export function getCuratedOrTrendingSongs(songs: Song[], limit = 6, date = new Date()): Song[] {
+  const curated = songs
+    .filter((song) => song.trending_sort_order != null)
+    .sort((a, b) => (a.trending_sort_order ?? 0) - (b.trending_sort_order ?? 0));
+  if (curated.length > 0) return curated.slice(0, limit);
+  return getDailyTrendingSongs(songs, limit, date);
+}
+
 export function getPersonalizedSongs(
   songs: Song[],
   signals: RecommendationSignals,

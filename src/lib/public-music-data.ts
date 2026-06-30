@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getDailyTrendingSongs, getPersonalizedSongs, type PlaybackSignal, type SongSignal } from '@/lib/homeRecommendations';
+import { getCuratedOrTrendingSongs, getPersonalizedSongs, type PlaybackSignal, type SongSignal } from '@/lib/homeRecommendations';
 import type { Song } from '@/lib/types';
 
 const SONG_SELECT =
-  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at, is_spotlight, spotlight_copy';
+  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at, is_spotlight, spotlight_copy, trending_sort_order';
 
 const SONG_SELECT_WITH_PROFILE = `${SONG_SELECT}, profiles!songs_creator_id_fkey(username)`;
 const PUBLIC_CHART_SONG_SELECT =
@@ -281,7 +281,7 @@ export async function loadHomeInitialData(client: SupabaseClient, userId: string
 
   const songs = mergeSongs(popularSongs, recentSongs);
   const artistCovers = Array.from(new Set(songs.map((song) => song.cover_url).filter(Boolean))).slice(0, 4) as string[];
-  const trendingSongs = getDailyTrendingSongs(songs, 8);
+  const trendingSongs = getCuratedOrTrendingSongs(songs, 6);
   const rankedRecommendations = getPersonalizedSongs(songs, signals, songs.length);
   const trendingIds = new Set(trendingSongs.map(({ id }) => id));
   const distinctRecommendations = rankedRecommendations.filter(({ id }) => !trendingIds.has(id));

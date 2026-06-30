@@ -34,6 +34,7 @@ export interface Song {
   creatorName?: string;
   album_id?: string | null;
   track_number?: number | null;
+  trending_sort_order?: number | null;
   album?: Album; // for joined queries
 }
 

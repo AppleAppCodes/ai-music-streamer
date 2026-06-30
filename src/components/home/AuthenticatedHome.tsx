@@ -12,7 +12,7 @@ import Image from 'next/image';
 
 import { Song } from '@/lib/types';
 import { getArtistStorageSlug, isArtistVideoFile } from '@/lib/artist-media';
-import { getDailyTrendingSongs, getPersonalizedSongs } from '@/lib/homeRecommendations';
+import { getCuratedOrTrendingSongs, getPersonalizedSongs } from '@/lib/homeRecommendations';
 import { isAdminUser } from '@/lib/admin';
 import type { OfficialPlaylistSummary, SpotlightArtistSummary, SpotlightPlaylistSummary } from '@/lib/public-music-data';
 
@@ -145,13 +145,13 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
       const [{ data: allSongs }, { data: spotlightData }, { data: { session } }] = await Promise.all([
         supabase
           .from('songs')
-          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, spotlight_copy, profiles!songs_creator_id_fkey(username)')
+          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, spotlight_copy, trending_sort_order, profiles!songs_creator_id_fkey(username)')
           .order('plays', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(200),
         supabase
           .from('songs')
-          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, spotlight_copy, profiles!songs_creator_id_fkey(username)')
+          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, spotlight_copy, trending_sort_order, profiles!songs_creator_id_fkey(username)')
           .eq('is_spotlight', true)
           .eq('is_approved', true)
           .order('created_at', { ascending: false })
@@ -172,7 +172,7 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
       const covers = Array.from(new Set(songs.map(s => s.cover_url).filter(Boolean))).slice(0, 4) as string[];
       setArtistCovers(covers);
 
-      const dailySongs = getDailyTrendingSongs(songs, 8);
+      const dailySongs = getCuratedOrTrendingSongs(songs, 6);
       setDailyTrendingSongs(dailySongs);
 
       if (!session) {

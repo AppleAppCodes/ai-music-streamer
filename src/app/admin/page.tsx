@@ -68,6 +68,7 @@ interface SongData {
   is_spotlight?: boolean;
   spotlight_copy?: string | null;
   genre?: string | null;
+  trending_sort_order?: number | null;
 }
 
 function openTrustedExternalUrl(value?: string | null) {
@@ -120,6 +121,9 @@ export default function AdminPage() {
   const [spotlightSaving, setSpotlightSaving] = useState<'artist' | 'playlist' | null>(null);
   const [officialOrder, setOfficialOrder] = useState<Array<{ id: string; title: string }>>([]);
   const [savingOfficialOrder, setSavingOfficialOrder] = useState(false);
+  const [trendingPicks, setTrendingPicks] = useState<Array<{ id: string; title: string; artist_name: string }>>([]);
+  const [trendingSearch, setTrendingSearch] = useState('');
+  const [savingTrending, setSavingTrending] = useState(false);
 
   // Analytics
   const [totalStreams, setTotalStreams] = useState(0);
@@ -176,12 +180,17 @@ export default function AdminPage() {
         // Load Songs & Streams
         const { data: songsData } = await supabase
           .from('songs')
-          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight, spotlight_copy, genre')
+          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight, spotlight_copy, genre, trending_sort_order')
           .order('created_at', { ascending: false });
 
         if (songsData) {
           setSongs(songsData);
           setTotalStreams(songsData.reduce((acc, song) => acc + (song.plays || 0), 0));
+          const picks = (songsData as SongData[])
+            .filter((s) => s.trending_sort_order != null)
+            .sort((a, b) => (a.trending_sort_order ?? 0) - (b.trending_sort_order ?? 0))
+            .map((s) => ({ id: s.id, title: s.title, artist_name: s.artist_name }));
+          setTrendingPicks(picks);
         }
 
         // Load Analytics
@@ -396,6 +405,51 @@ export default function AdminPage() {
       setSavingOfficialOrder(false);
     }
   };
+
+  const addTrendingPick = (song: { id: string; title: string; artist_name: string }) => {
+    setTrendingPicks((prev) => {
+      if (prev.length >= 6 || prev.some((p) => p.id === song.id)) return prev;
+      return [...prev, { id: song.id, title: song.title, artist_name: song.artist_name }];
+    });
+    setTrendingSearch('');
+  };
+
+  const removeTrendingPick = (id: string) => {
+    setTrendingPicks((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const moveTrendingPick = (index: number, direction: -1 | 1) => {
+    setTrendingPicks((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const handleSaveTrending = async () => {
+    setSavingTrending(true);
+    try {
+      const { error } = await supabase.rpc('set_trending_songs', { song_ids: trendingPicks.map((p) => p.id) });
+      if (error) throw error;
+      alert('Trending-Songs gespeichert!');
+    } catch (err: unknown) {
+      alert('Fehler beim Speichern der Trending-Songs: ' + (err as Error).message);
+    } finally {
+      setSavingTrending(false);
+    }
+  };
+
+  const trendingSearchResults = trendingSearch.trim()
+    ? songs
+        .filter((s) =>
+          !trendingPicks.some((p) => p.id === s.id) &&
+          ((s.title || '').toLowerCase().includes(trendingSearch.toLowerCase()) ||
+            (s.artist_name || '').toLowerCase().includes(trendingSearch.toLowerCase())),
+        )
+        .slice(0, 6)
+    : [];
 
   const handleSetSpotlightSong = async (id: string, title: string) => {
     if (!window.confirm(`Möchtest du "${title}" als Home-Spotlight setzen? Das ersetzt das aktuelle Spotlight.`)) return;
@@ -1307,6 +1361,80 @@ export default function AdminPage() {
                       <li className="px-1 text-sm text-white/40">Keine offiziellen Playlists gefunden.</li>
                     )}
                   </ul>
+                </div>
+
+                <div className="mt-8 rounded-2xl border border-white/8 bg-white/[0.035] p-6">
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <label className="block text-xs font-black uppercase tracking-[0.22em] text-teal-300/80">Trending · 6 Plätze</label>
+                    <button
+                      onClick={handleSaveTrending}
+                      disabled={savingTrending}
+                      className="rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white transition-transform hover:scale-105 disabled:opacity-50"
+                    >
+                      {savingTrending ? 'Speichert…' : 'Trending speichern'}
+                    </button>
+                  </div>
+                  <p className="mb-3 text-sm text-white/55">
+                    Lege bis zu 6 Songs für die {'„Trending"'}-Reihe auf der Startseite fest (oben = erster). Ist die Liste leer, greift automatisch der Algorithmus.
+                  </p>
+
+                  <ul className="space-y-2">
+                    {trendingPicks.map((p, index) => (
+                      <li key={p.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
+                        <span className="w-6 text-center text-sm font-bold text-white/40">{index + 1}</span>
+                        <span className="flex-1 truncate text-sm font-semibold text-white">
+                          {p.title} <span className="font-normal text-white/45">· {p.artist_name}</span>
+                        </span>
+                        <button
+                          onClick={() => moveTrendingPick(index, -1)}
+                          disabled={index === 0}
+                          aria-label="Nach oben"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg leading-none text-white/70 transition-colors hover:bg-white/10 disabled:opacity-30"
+                        >↑</button>
+                        <button
+                          onClick={() => moveTrendingPick(index, 1)}
+                          disabled={index === trendingPicks.length - 1}
+                          aria-label="Nach unten"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg leading-none text-white/70 transition-colors hover:bg-white/10 disabled:opacity-30"
+                        >↓</button>
+                        <button
+                          onClick={() => removeTrendingPick(p.id)}
+                          aria-label="Entfernen"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-300 transition-colors hover:bg-red-500/20"
+                        >×</button>
+                      </li>
+                    ))}
+                    {trendingPicks.length === 0 && (
+                      <li className="px-1 text-sm text-white/40">Noch keine Trending-Songs gewählt — der Algorithmus entscheidet.</li>
+                    )}
+                  </ul>
+
+                  {trendingPicks.length < 6 && (
+                    <div className="mt-4">
+                      <input
+                        type="text"
+                        value={trendingSearch}
+                        onChange={(e) => setTrendingSearch(e.target.value)}
+                        placeholder="Song suchen, um ihn hinzuzufügen…"
+                        className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-teal-300/55 focus:outline-none"
+                      />
+                      {trendingSearchResults.length > 0 && (
+                        <ul className="mt-2 max-h-60 overflow-y-auto rounded-xl border border-white/10 bg-black/50">
+                          {trendingSearchResults.map((s) => (
+                            <li key={s.id}>
+                              <button
+                                onClick={() => addTrendingPick(s)}
+                                className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/10"
+                              >
+                                <span className="truncate">{s.title} <span className="text-white/45">· {s.artist_name}</span></span>
+                                <span className="shrink-0 text-teal-300">+ Hinzufügen</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
