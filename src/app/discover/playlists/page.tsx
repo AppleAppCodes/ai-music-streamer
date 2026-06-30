@@ -46,8 +46,9 @@ export default function DiscoverPlaylistsPage() {
   const fetchPlaylists = async (searchStr: string) => {
     let query = supabase
       .from('playlists')
-      .select('id, title, description, cover_url, created_at, is_official, profiles(username)')
+      .select('id, title, description, cover_url, created_at, is_official, official_sort_order, profiles(username)')
       .eq('is_public', true)
+      .order('official_sort_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
       .limit(50);
 

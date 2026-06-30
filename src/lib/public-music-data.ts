@@ -250,6 +250,7 @@ async function loadOfficialPlaylists(client: SupabaseClient): Promise<OfficialPl
     .select('id, title, description, cover_url, is_official, profiles!playlists_user_id_fkey(username)')
     .eq('is_public', true)
     .eq('is_official', true)
+    .order('official_sort_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
     .limit(12);
 

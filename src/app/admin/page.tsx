@@ -116,6 +116,8 @@ export default function AdminPage() {
   const [spotlightArtists, setSpotlightArtists] = useState<Array<{ artist_name: string; is_spotlight: boolean }>>([]);
   const [spotlightPlaylists, setSpotlightPlaylists] = useState<Array<{ id: string; title: string; is_spotlight: boolean }>>([]);
   const [spotlightSaving, setSpotlightSaving] = useState<'artist' | 'playlist' | null>(null);
+  const [officialOrder, setOfficialOrder] = useState<Array<{ id: string; title: string }>>([]);
+  const [savingOfficialOrder, setSavingOfficialOrder] = useState(false);
 
   // Analytics
   const [totalStreams, setTotalStreams] = useState(0);
@@ -218,6 +220,16 @@ export default function AdminPage() {
           .eq('is_public', true)
           .order('title', { ascending: true });
         if (playlistRows) setSpotlightPlaylists((playlistRows as Array<{ id: string; title: string; is_spotlight: boolean }>));
+
+        // Official playlists in their display order (for the reorder control).
+        const { data: officialRows } = await supabase
+          .from('playlists')
+          .select('id, title')
+          .eq('is_official', true)
+          .eq('is_public', true)
+          .order('official_sort_order', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: false });
+        if (officialRows) setOfficialOrder(officialRows as Array<{ id: string; title: string }>);
       }
 
       // Load Reports
@@ -346,6 +358,30 @@ export default function AdminPage() {
       }
     }
     setSpotlightSaving(null);
+  };
+
+  const moveOfficialPlaylist = (index: number, direction: -1 | 1) => {
+    setOfficialOrder((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const handleSaveOfficialOrder = async () => {
+    setSavingOfficialOrder(true);
+    try {
+      const orderData = officialOrder.map((p, index) => ({ id: p.id, official_sort_order: index }));
+      const { error } = await supabase.rpc('update_official_playlist_order', { order_data: orderData });
+      if (error) throw error;
+      alert('Reihenfolge der offiziellen Playlists gespeichert!');
+    } catch (err: unknown) {
+      alert('Fehler beim Speichern der Reihenfolge: ' + (err as Error).message);
+    } finally {
+      setSavingOfficialOrder(false);
+    }
   };
 
   const handleSetSpotlightSong = async (id: string, title: string) => {
@@ -1208,6 +1244,43 @@ export default function AdminPage() {
                 <p className="text-xs text-white/40">
                   Sobald ein Slot leer ist, wird die entsprechende Slide einfach weggelassen — der Slider zeigt dann nur die übrigen Slides.
                 </p>
+
+                <div className="mt-8 rounded-2xl border border-white/8 bg-white/[0.035] p-6">
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <label className="block text-xs font-black uppercase tracking-[0.22em] text-teal-300/80">Reihenfolge: Offizielle Playlists</label>
+                    <button
+                      onClick={handleSaveOfficialOrder}
+                      disabled={savingOfficialOrder || officialOrder.length === 0}
+                      className="rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white transition-transform hover:scale-105 disabled:opacity-50"
+                    >
+                      {savingOfficialOrder ? 'Speichert…' : 'Reihenfolge speichern'}
+                    </button>
+                  </div>
+                  <p className="mb-3 text-sm text-white/55">Bestimmt die Reihenfolge der {'„Official YORIAX Playlists"'} auf der Startseite (oben in der Liste = ganz links).</p>
+                  <ul className="space-y-2">
+                    {officialOrder.map((p, index) => (
+                      <li key={p.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
+                        <span className="w-6 text-center text-sm font-bold text-white/40">{index + 1}</span>
+                        <span className="flex-1 truncate text-sm font-semibold text-white">{p.title}</span>
+                        <button
+                          onClick={() => moveOfficialPlaylist(index, -1)}
+                          disabled={index === 0}
+                          aria-label="Nach oben"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg leading-none text-white/70 transition-colors hover:bg-white/10 disabled:opacity-30"
+                        >↑</button>
+                        <button
+                          onClick={() => moveOfficialPlaylist(index, 1)}
+                          disabled={index === officialOrder.length - 1}
+                          aria-label="Nach unten"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg leading-none text-white/70 transition-colors hover:bg-white/10 disabled:opacity-30"
+                        >↓</button>
+                      </li>
+                    ))}
+                    {officialOrder.length === 0 && (
+                      <li className="px-1 text-sm text-white/40">Keine offiziellen Playlists gefunden.</li>
+                    )}
+                  </ul>
+                </div>
               </div>
             </div>
           )}
