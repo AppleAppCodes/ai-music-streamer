@@ -65,6 +65,8 @@ export default function PlaylistPage() {
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSaved, setIsSaved] = useState(false);
   const [songSearchQuery, setSongSearchQuery] = useState('');
   const [songSearchResults, setSongSearchResults] = useState<Song[]>([]);
@@ -721,6 +723,37 @@ export default function PlaylistPage() {
     }
   }, [t, playlistId, supabase, songs]);
 
+  const toggleSelectSong = useCallback((songId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(songId)) next.delete(songId); else next.add(songId);
+      return next;
+    });
+  }, []);
+
+  const exitSelectMode = useCallback(() => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const removeSelectedSongs = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(t('playlist.removeSelectedConfirm', { count: ids.length }))) return;
+    try {
+      await supabase
+        .from('playlist_songs')
+        .delete()
+        .eq('playlist_id', playlistId)
+        .in('song_id', ids);
+      setSongs(prev => prev.filter(s => !selectedIds.has(s.id)));
+      exitSelectMode();
+    } catch (err) {
+      console.error(err);
+      alert(t('playlist.removeError') + getErrorMessage(err));
+    }
+  }, [selectedIds, playlistId, supabase, t, exitSelectMode]);
+
   if (loading) {
     return (
       <div className="yoriax-page flex min-h-screen flex-1 items-center justify-center">
@@ -970,8 +1003,18 @@ export default function PlaylistPage() {
             </button>
           )}
           
+          {isOwner && songs.length > 0 && !selectMode && (
+            <button
+              onClick={() => setSelectMode(true)}
+              className="flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              {t('playlist.selectMode')}
+            </button>
+          )}
+
           <div className="relative" ref={menuRef}>
-            <button 
+            <button
               className="text-white/50 hover:text-white transition-colors p-2"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
@@ -1137,6 +1180,27 @@ export default function PlaylistPage() {
 
         {/* Songs List */}
         <div className="mb-12">
+          {selectMode && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5">
+              <span className="text-sm font-semibold text-white">{t('playlist.selectedCount', { count: selectedIds.size })}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exitSelectMode}
+                  className="rounded-full border border-white/15 px-4 py-1.5 text-xs font-bold text-white/70 transition-colors hover:bg-white/10"
+                >
+                  {t('playlist.cancelSelect')}
+                </button>
+                <button
+                  onClick={removeSelectedSongs}
+                  disabled={selectedIds.size === 0}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-red-500/90 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-500 disabled:opacity-40"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {t('playlist.removeSelected')}
+                </button>
+              </div>
+            </div>
+          )}
           {songs.length > 0 ? (
             <div className="flex flex-col">
               {/* Table Header */}
@@ -1153,9 +1217,10 @@ export default function PlaylistPage() {
                 const displayArtist = song.artist_name || t('guestHome.unknownArtist');
                 
                 return (
-                  <div 
+                  <div
                     key={song.id}
                     onClick={() => {
+                    if (selectMode) { toggleSelectSong(song.id); return; }
                     if (currentSong?.id !== song.id) {
                       const queueWithNames = songs.map(s => ({ ...s, creatorName: s.artist_name || 'Creator' }));
                       setQueue(queueWithNames, index);
@@ -1163,19 +1228,27 @@ export default function PlaylistPage() {
                     }
                       else togglePlayPause();
                     }}
-                    className="grid grid-cols-[16px_1fr_50px] md:grid-cols-[24px_2fr_1.5fr_1fr_120px] gap-4 px-4 py-2.5 rounded-lg hover:bg-white/5 group cursor-pointer items-center transition-colors"
+                    className={`grid grid-cols-[16px_1fr_50px] md:grid-cols-[24px_2fr_1.5fr_1fr_120px] gap-4 px-4 py-2.5 rounded-lg group cursor-pointer items-center transition-colors ${selectMode && selectedIds.has(song.id) ? 'bg-primary/15' : 'hover:bg-white/5'}`}
                   >
-                    <div className="text-white/50 group-hover:text-white text-base font-mono">
-                      {isThisSongPlaying ? (
-                        <div className="w-4 h-4 flex items-end justify-between">
-                          <div className="w-1 bg-primary h-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                          <div className="w-1 bg-primary h-2/3 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                          <div className="w-1 bg-primary h-4/5 animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                        </div>
+                    <div className="flex items-center text-white/50 group-hover:text-white text-base font-mono">
+                      {selectMode ? (
+                        selectedIds.has(song.id)
+                          ? <CheckCircle2 className="w-5 h-5 text-primary" />
+                          : <div className="h-5 w-5 rounded-full border border-white/30" />
                       ) : (
-                        <span className="group-hover:hidden">{index + 1}</span>
+                        <>
+                          {isThisSongPlaying ? (
+                            <div className="w-4 h-4 flex items-end justify-between">
+                              <div className="w-1 bg-primary h-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                              <div className="w-1 bg-primary h-2/3 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                              <div className="w-1 bg-primary h-4/5 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                            </div>
+                          ) : (
+                            <span className="group-hover:hidden">{index + 1}</span>
+                          )}
+                          {!isThisSongPlaying && <Play className="w-4 h-4 hidden group-hover:block fill-current" />}
+                        </>
                       )}
-                      {!isThisSongPlaying && <Play className="w-4 h-4 hidden group-hover:block fill-current" />}
                     </div>
                     
                     <div className="flex items-center gap-3 overflow-hidden">
