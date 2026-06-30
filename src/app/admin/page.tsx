@@ -7,6 +7,7 @@ import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft, Radio, UploadClou
 import Link from 'next/link';
 import Image from 'next/image';
 import { isAdminUser, isModUser } from '@/lib/admin';
+import { GENRES } from '@/lib/constants';
 
 type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot' | 'spotlight';
 
@@ -66,6 +67,7 @@ interface SongData {
   cover_url?: string;
   is_spotlight?: boolean;
   spotlight_copy?: string | null;
+  genre?: string | null;
 }
 
 function openTrustedExternalUrl(value?: string | null) {
@@ -174,7 +176,7 @@ export default function AdminPage() {
         // Load Songs & Streams
         const { data: songsData } = await supabase
           .from('songs')
-          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight, spotlight_copy')
+          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight, spotlight_copy, genre')
           .order('created_at', { ascending: false });
 
         if (songsData) {
@@ -288,6 +290,17 @@ export default function AdminPage() {
       setSongs(prev => prev.map(s => s.id === id ? { ...s, title: newTitle.trim() } : s));
     } else {
       alert('Fehler beim Ändern des Songtitels: ' + error.message);
+    }
+  };
+
+  const handleChangeGenre = async (id: string, newGenre: string) => {
+    if (!newGenre) return;
+    const previous = songs;
+    setSongs(prev => prev.map(s => s.id === id ? { ...s, genre: newGenre } : s));
+    const { error } = await supabase.from('songs').update({ genre: newGenre }).eq('id', id);
+    if (error) {
+      setSongs(previous);
+      alert('Fehler beim Ändern des Genres: ' + error.message);
     }
   };
 
@@ -896,6 +909,20 @@ export default function AdminPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                        <select
+                          value={song.genre ?? ''}
+                          onChange={(e) => handleChangeGenre(song.id, e.target.value)}
+                          title="Genre ändern"
+                          className="rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white/80 focus:border-indigo-400/55 focus:outline-none"
+                        >
+                          {!song.genre && <option value="" disabled>Genre…</option>}
+                          {song.genre && !GENRES.some((g) => g.name === song.genre) && (
+                            <option value={song.genre}>{song.genre}</option>
+                          )}
+                          {GENRES.map((g) => (
+                            <option key={g.name} value={g.name}>{g.name}</option>
+                          ))}
+                        </select>
                         <label
                           className="p-2 cursor-pointer text-white/40 hover:text-green-400 hover:bg-green-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                           title="Audiodatei austauschen"
