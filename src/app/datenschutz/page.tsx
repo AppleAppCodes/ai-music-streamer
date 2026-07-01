@@ -1,10 +1,14 @@
 import type { Metadata } from 'next';
 import LegalPageShell from '@/components/legal/LegalPageShell';
+import { buildPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Datenschutz | YORIAX',
-  description: 'Datenschutzerklärung für YORIAX.',
-};
+export const metadata: Metadata = buildPageMetadata({
+  title: 'Privacy Policy',
+  description: 'Privacy policy for YORIAX.',
+  path: '/datenschutz',
+  noIndex: true,
+  follow: true,
+});
 
 export default function DatenschutzPage() {
   return (

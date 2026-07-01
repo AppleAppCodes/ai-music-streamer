@@ -160,7 +160,11 @@
     "publishButton": "Song veröffentlichen",
     "uploadingButton": "Wird hochgeladen...",
     "successTitle": "Upload erfolgreich!",
-    "successText": "Dein Song ist jetzt live. Du wirst weitergeleitet..."
+    "successText": "Dein Song ist jetzt live.",
+    "successPendingText": "Dein Upload war erfolgreich. Unser Team prüft ihn und schaltet ihn in Kürze frei.",
+    "viewSong": "Zum Song",
+    "viewAlbum": "Zum Album",
+    "backHome": "Zur Startseite"
   },
   "player": {
     "creatorFallback": "Künstler",
@@ -334,6 +338,16 @@
     "consentText": "Wenn du fortfährst, stimmst du zu, dass die Plattform auf dein hochgeladenes Bild zugreift. Stell bitte sicher, dass du berechtigt bist, dieses Bild hochzuladen.",
     "removeConfirm": "Song aus der Playlist entfernen?",
     "removeError": "Fehler beim Entfernen: ",
+    "selectMode": "Auswählen",
+    "cancelSelect": "Abbrechen",
+    "removeSelected": "Entfernen",
+    "selectedCount": "{{count}} ausgewählt",
+    "removeSelectedConfirm": "{{count}} Songs aus dieser Playlist entfernen?",
+    "reorderMode": "Reihenfolge ändern",
+    "reorderHint": "Ziehe die Songs in die gewünschte Reihenfolge.",
+    "reorderDone": "Fertig",
+    "reorderSaving": "Reihenfolge wird gespeichert …",
+    "reorderError": "Reihenfolge konnte nicht gespeichert werden: ",
     "editDetails": "Details bearbeiten",
     "markPrivate": "Als privat markieren",
     "markPublic": "Als öffentlich markieren",
@@ -347,6 +361,8 @@
     "official": "Offiziell",
     "private": "Privat",
     "clickToEdit": "Klicken zum Bearbeiten",
+    "addDescription": "Beschreibung hinzufügen",
+    "creating": "Wird erstellt…",
     "save": "Speichern",
     "savePlaylist": "Playlist speichern",
     "unsavePlaylist": "Aus Gespeichert entfernen"

@@ -7,8 +7,31 @@ import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft, Radio, UploadClou
 import Link from 'next/link';
 import Image from 'next/image';
 import { isAdminUser, isModUser } from '@/lib/admin';
+import { GENRES } from '@/lib/constants';
 
 type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot' | 'spotlight';
+
+// Reads the real duration (seconds) of an audio File via its metadata, client-side.
+function readAudioFileDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    try {
+      const url = URL.createObjectURL(file);
+      const audio = new Audio();
+      audio.preload = 'metadata';
+      audio.onloadedmetadata = () => {
+        URL.revokeObjectURL(url);
+        resolve(Number.isFinite(audio.duration) ? Math.round(audio.duration) : null);
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      audio.src = url;
+    } catch {
+      resolve(null);
+    }
+  });
+}
 
 interface McpLog {
   id: string;
@@ -44,6 +67,8 @@ interface SongData {
   cover_url?: string;
   is_spotlight?: boolean;
   spotlight_copy?: string | null;
+  genre?: string | null;
+  trending_sort_order?: number | null;
 }
 
 function openTrustedExternalUrl(value?: string | null) {
@@ -90,9 +115,15 @@ export default function AdminPage() {
   const [adFiles, setAdFiles] = useState<AdFile[]>([]);
   const [isReplacingAudio, setIsReplacingAudio] = useState<string | null>(null);
   const [mcpLogs, setMcpLogs] = useState<McpLog[]>([]);
+  const [liveConnected, setLiveConnected] = useState(false);
   const [spotlightArtists, setSpotlightArtists] = useState<Array<{ artist_name: string; is_spotlight: boolean }>>([]);
   const [spotlightPlaylists, setSpotlightPlaylists] = useState<Array<{ id: string; title: string; is_spotlight: boolean }>>([]);
   const [spotlightSaving, setSpotlightSaving] = useState<'artist' | 'playlist' | null>(null);
+  const [officialOrder, setOfficialOrder] = useState<Array<{ id: string; title: string }>>([]);
+  const [savingOfficialOrder, setSavingOfficialOrder] = useState(false);
+  const [trendingPicks, setTrendingPicks] = useState<Array<{ id: string; title: string; artist_name: string }>>([]);
+  const [trendingSearch, setTrendingSearch] = useState('');
+  const [savingTrending, setSavingTrending] = useState(false);
 
   // Analytics
   const [totalStreams, setTotalStreams] = useState(0);
@@ -131,32 +162,42 @@ export default function AdminPage() {
       }
 
       if (adminCheck) {
-        // Load Users
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, username, created_at, subscription_tier, followers_count, email, country, last_active_at, avatar_url, is_banned, role')
-          .order('created_at', { ascending: false });
-
-        if (profilesData) setProfiles(profilesData);
+        // Load Users via an admin-only SECURITY DEFINER RPC. Profile email /
+        // account-state columns are no longer readable by the browser client
+        // directly; the function self-authorizes via is_admin().
+        const { data: usersData, error: usersError } = await supabase.rpc('get_admin_user_list');
+        if (usersError) {
+          console.error('Failed to load admin users:', usersError);
+        } else if (usersData) {
+          const rows = usersData as ProfileData[];
+          setProfiles(rows);
+          const since = Date.now() - 24 * 60 * 60 * 1000;
+          setDailyActiveUsers(
+            rows.filter((u) => u.last_active_at && new Date(u.last_active_at).getTime() >= since).length,
+          );
+        }
 
         // Load Songs & Streams
         const { data: songsData } = await supabase
           .from('songs')
-          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight, spotlight_copy')
+          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight, spotlight_copy, genre, trending_sort_order')
           .order('created_at', { ascending: false });
 
         if (songsData) {
           setSongs(songsData);
           setTotalStreams(songsData.reduce((acc, song) => acc + (song.plays || 0), 0));
+          const picks = (songsData as SongData[])
+            .filter((s) => s.trending_sort_order != null)
+            .sort((a, b) => (a.trending_sort_order ?? 0) - (b.trending_sort_order ?? 0))
+            .map((s) => ({ id: s.id, title: s.title, artist_name: s.artist_name }));
+          setTrendingPicks(picks);
         }
 
         // Load Analytics
         const { count: likesCount } = await supabase.from('liked_songs').select('*', { count: 'exact', head: true });
         if (likesCount) setTotalLikes(likesCount);
 
-        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { count: dauCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('last_active_at', yesterday);
-        if (dauCount) setDailyActiveUsers(dauCount);
+        // Daily active users are returned by the admin users API above.
 
         // Load Ad Frequency
         const { data: settingsData } = await supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single();
@@ -190,6 +231,16 @@ export default function AdminPage() {
           .eq('is_public', true)
           .order('title', { ascending: true });
         if (playlistRows) setSpotlightPlaylists((playlistRows as Array<{ id: string; title: string; is_spotlight: boolean }>));
+
+        // Official playlists in their display order (for the reorder control).
+        const { data: officialRows } = await supabase
+          .from('playlists')
+          .select('id, title')
+          .eq('is_official', true)
+          .eq('is_public', true)
+          .order('official_sort_order', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: false });
+        if (officialRows) setOfficialOrder(officialRows as Array<{ id: string; title: string }>);
       }
 
       // Load Reports
@@ -205,6 +256,28 @@ export default function AdminPage() {
 
     checkAuthAndLoadData();
   }, [router, supabase]);
+
+  // Live activity feed for the Bot Control tab: new mcp_logs rows (bot / admin /
+  // MCP actions, written by the DB audit triggers) stream in without a reload.
+  // RLS ensures only admins receive these rows.
+  useEffect(() => {
+    const channel = supabase
+      .channel('mcp_logs_activity')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'mcp_logs' },
+        (payload) => {
+          setMcpLogs((prev) => [payload.new as McpLog, ...prev].slice(0, 100));
+        },
+      )
+      .subscribe((status) => {
+        setLiveConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   const handleDeleteSong = async (id: string, title: string) => {
     if (!window.confirm(`Möchtest du den Song "${title}" wirklich unwiderruflich löschen?`)) return;
@@ -226,6 +299,17 @@ export default function AdminPage() {
       setSongs(prev => prev.map(s => s.id === id ? { ...s, title: newTitle.trim() } : s));
     } else {
       alert('Fehler beim Ändern des Songtitels: ' + error.message);
+    }
+  };
+
+  const handleChangeGenre = async (id: string, newGenre: string) => {
+    if (!newGenre) return;
+    const previous = songs;
+    setSongs(prev => prev.map(s => s.id === id ? { ...s, genre: newGenre } : s));
+    const { error } = await supabase.from('songs').update({ genre: newGenre }).eq('id', id);
+    if (error) {
+      setSongs(previous);
+      alert('Fehler beim Ändern des Genres: ' + error.message);
     }
   };
 
@@ -298,6 +382,75 @@ export default function AdminPage() {
     setSpotlightSaving(null);
   };
 
+  const moveOfficialPlaylist = (index: number, direction: -1 | 1) => {
+    setOfficialOrder((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const handleSaveOfficialOrder = async () => {
+    setSavingOfficialOrder(true);
+    try {
+      const orderData = officialOrder.map((p, index) => ({ id: p.id, official_sort_order: index }));
+      const { error } = await supabase.rpc('update_official_playlist_order', { order_data: orderData });
+      if (error) throw error;
+      alert('Reihenfolge der offiziellen Playlists gespeichert!');
+    } catch (err: unknown) {
+      alert('Fehler beim Speichern der Reihenfolge: ' + (err as Error).message);
+    } finally {
+      setSavingOfficialOrder(false);
+    }
+  };
+
+  const addTrendingPick = (song: { id: string; title: string; artist_name: string }) => {
+    setTrendingPicks((prev) => {
+      if (prev.length >= 6 || prev.some((p) => p.id === song.id)) return prev;
+      return [...prev, { id: song.id, title: song.title, artist_name: song.artist_name }];
+    });
+    setTrendingSearch('');
+  };
+
+  const removeTrendingPick = (id: string) => {
+    setTrendingPicks((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const moveTrendingPick = (index: number, direction: -1 | 1) => {
+    setTrendingPicks((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const handleSaveTrending = async () => {
+    setSavingTrending(true);
+    try {
+      const { error } = await supabase.rpc('set_trending_songs', { song_ids: trendingPicks.map((p) => p.id) });
+      if (error) throw error;
+      alert('Trending-Songs gespeichert!');
+    } catch (err: unknown) {
+      alert('Fehler beim Speichern der Trending-Songs: ' + (err as Error).message);
+    } finally {
+      setSavingTrending(false);
+    }
+  };
+
+  const trendingSearchResults = trendingSearch.trim()
+    ? songs
+        .filter((s) =>
+          !trendingPicks.some((p) => p.id === s.id) &&
+          ((s.title || '').toLowerCase().includes(trendingSearch.toLowerCase()) ||
+            (s.artist_name || '').toLowerCase().includes(trendingSearch.toLowerCase())),
+        )
+        .slice(0, 6)
+    : [];
+
   const handleSetSpotlightSong = async (id: string, title: string) => {
     if (!window.confirm(`Möchtest du "${title}" als Home-Spotlight setzen? Das ersetzt das aktuelle Spotlight.`)) return;
 
@@ -361,14 +514,26 @@ export default function AdminPage() {
         .from('songs')
         .getPublicUrl(audioPath);
 
+      // Capture the new file's real duration so the displayed length updates too
+      // (previously only audio_url was changed, leaving a stale duration).
+      const newDuration = await readAudioFileDuration(file);
+      const updatePayload: { audio_url: string; duration?: number } =
+        newDuration && newDuration > 0
+          ? { audio_url: audioUrl, duration: newDuration }
+          : { audio_url: audioUrl };
+
       const { error: updateError } = await supabase
         .from('songs')
-        .update({ audio_url: audioUrl })
+        .update(updatePayload)
         .eq('id', id);
 
       if (updateError) throw updateError;
 
-      alert('Audiodatei erfolgreich ausgetauscht!');
+      alert(
+        newDuration && newDuration > 0
+          ? `Audiodatei erfolgreich ausgetauscht! Neue Länge: ${Math.floor(newDuration / 60)}:${String(newDuration % 60).padStart(2, '0')}`
+          : 'Audiodatei erfolgreich ausgetauscht!',
+      );
     } catch (err: unknown) {
       alert('Fehler beim Austauschen der Audiodatei: ' + (err as Error).message);
     } finally {
@@ -380,11 +545,15 @@ export default function AdminPage() {
   const handleToggleBan = async (id: string, currentStatus: boolean, username: string) => {
     if (!window.confirm(`Möchtest du den Nutzer "${username}" wirklich ${currentStatus ? 'entsperren' : 'sperren'}?`)) return;
 
-    const { error } = await supabase.from('profiles').update({ is_banned: !currentStatus }).eq('id', id);
-    if (!error) {
+    try {
+      const { error } = await supabase.rpc('set_user_banned', {
+        target_user_id: id,
+        banned: !currentStatus,
+      });
+      if (error) throw error;
       setProfiles(prev => prev.map(p => p.id === id ? { ...p, is_banned: !currentStatus } : p));
-    } else {
-      alert('Fehler beim Ändern des Status: ' + error.message);
+    } catch (err: unknown) {
+      alert('Fehler beim Ändern des Status: ' + (err as Error).message);
     }
   };
 
@@ -794,6 +963,20 @@ export default function AdminPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                        <select
+                          value={song.genre ?? ''}
+                          onChange={(e) => handleChangeGenre(song.id, e.target.value)}
+                          title="Genre ändern"
+                          className="rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white/80 focus:border-indigo-400/55 focus:outline-none"
+                        >
+                          {!song.genre && <option value="" disabled>Genre…</option>}
+                          {song.genre && !GENRES.some((g) => g.name === song.genre) && (
+                            <option value={song.genre}>{song.genre}</option>
+                          )}
+                          {GENRES.map((g) => (
+                            <option key={g.name} value={g.name}>{g.name}</option>
+                          ))}
+                        </select>
                         <label
                           className="p-2 cursor-pointer text-white/40 hover:text-green-400 hover:bg-green-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                           title="Audiodatei austauschen"
@@ -1142,6 +1325,117 @@ export default function AdminPage() {
                 <p className="text-xs text-white/40">
                   Sobald ein Slot leer ist, wird die entsprechende Slide einfach weggelassen — der Slider zeigt dann nur die übrigen Slides.
                 </p>
+
+                <div className="mt-8 rounded-2xl border border-white/8 bg-white/[0.035] p-6">
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <label className="block text-xs font-black uppercase tracking-[0.22em] text-teal-300/80">Reihenfolge: Offizielle Playlists</label>
+                    <button
+                      onClick={handleSaveOfficialOrder}
+                      disabled={savingOfficialOrder || officialOrder.length === 0}
+                      className="rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white transition-transform hover:scale-105 disabled:opacity-50"
+                    >
+                      {savingOfficialOrder ? 'Speichert…' : 'Reihenfolge speichern'}
+                    </button>
+                  </div>
+                  <p className="mb-3 text-sm text-white/55">Bestimmt die Reihenfolge der {'„Official YORIAX Playlists"'} auf der Startseite (oben in der Liste = ganz links).</p>
+                  <ul className="space-y-2">
+                    {officialOrder.map((p, index) => (
+                      <li key={p.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
+                        <span className="w-6 text-center text-sm font-bold text-white/40">{index + 1}</span>
+                        <span className="flex-1 truncate text-sm font-semibold text-white">{p.title}</span>
+                        <button
+                          onClick={() => moveOfficialPlaylist(index, -1)}
+                          disabled={index === 0}
+                          aria-label="Nach oben"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg leading-none text-white/70 transition-colors hover:bg-white/10 disabled:opacity-30"
+                        >↑</button>
+                        <button
+                          onClick={() => moveOfficialPlaylist(index, 1)}
+                          disabled={index === officialOrder.length - 1}
+                          aria-label="Nach unten"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg leading-none text-white/70 transition-colors hover:bg-white/10 disabled:opacity-30"
+                        >↓</button>
+                      </li>
+                    ))}
+                    {officialOrder.length === 0 && (
+                      <li className="px-1 text-sm text-white/40">Keine offiziellen Playlists gefunden.</li>
+                    )}
+                  </ul>
+                </div>
+
+                <div className="mt-8 rounded-2xl border border-white/8 bg-white/[0.035] p-6">
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <label className="block text-xs font-black uppercase tracking-[0.22em] text-teal-300/80">Trending · 6 Plätze</label>
+                    <button
+                      onClick={handleSaveTrending}
+                      disabled={savingTrending}
+                      className="rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white transition-transform hover:scale-105 disabled:opacity-50"
+                    >
+                      {savingTrending ? 'Speichert…' : 'Trending speichern'}
+                    </button>
+                  </div>
+                  <p className="mb-3 text-sm text-white/55">
+                    Lege bis zu 6 Songs für die {'„Trending"'}-Reihe auf der Startseite fest (oben = erster). Ist die Liste leer, greift automatisch der Algorithmus.
+                  </p>
+
+                  <ul className="space-y-2">
+                    {trendingPicks.map((p, index) => (
+                      <li key={p.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
+                        <span className="w-6 text-center text-sm font-bold text-white/40">{index + 1}</span>
+                        <span className="flex-1 truncate text-sm font-semibold text-white">
+                          {p.title} <span className="font-normal text-white/45">· {p.artist_name}</span>
+                        </span>
+                        <button
+                          onClick={() => moveTrendingPick(index, -1)}
+                          disabled={index === 0}
+                          aria-label="Nach oben"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg leading-none text-white/70 transition-colors hover:bg-white/10 disabled:opacity-30"
+                        >↑</button>
+                        <button
+                          onClick={() => moveTrendingPick(index, 1)}
+                          disabled={index === trendingPicks.length - 1}
+                          aria-label="Nach unten"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg leading-none text-white/70 transition-colors hover:bg-white/10 disabled:opacity-30"
+                        >↓</button>
+                        <button
+                          onClick={() => removeTrendingPick(p.id)}
+                          aria-label="Entfernen"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-300 transition-colors hover:bg-red-500/20"
+                        >×</button>
+                      </li>
+                    ))}
+                    {trendingPicks.length === 0 && (
+                      <li className="px-1 text-sm text-white/40">Noch keine Trending-Songs gewählt — der Algorithmus entscheidet.</li>
+                    )}
+                  </ul>
+
+                  {trendingPicks.length < 6 && (
+                    <div className="mt-4">
+                      <input
+                        type="text"
+                        value={trendingSearch}
+                        onChange={(e) => setTrendingSearch(e.target.value)}
+                        placeholder="Song suchen, um ihn hinzuzufügen…"
+                        className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-teal-300/55 focus:outline-none"
+                      />
+                      {trendingSearchResults.length > 0 && (
+                        <ul className="mt-2 max-h-60 overflow-y-auto rounded-xl border border-white/10 bg-black/50">
+                          {trendingSearchResults.map((s) => (
+                            <li key={s.id}>
+                              <button
+                                onClick={() => addTrendingPick(s)}
+                                className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/10"
+                              >
+                                <span className="truncate">{s.title} <span className="text-white/45">· {s.artist_name}</span></span>
+                                <span className="shrink-0 text-teal-300">+ Hinzufügen</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1151,17 +1445,65 @@ export default function AdminPage() {
               <div className="max-w-4xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="text-2xl font-bold text-white mb-2">OpenClaw Bot Control</h2>
-                    <p className="text-white/60 text-sm">
-                      Überwache hier in Echtzeit, welche Aktionen dein Telegram-Bot (MCP) ausführt.
+                    <h2 className="text-2xl font-bold text-white mb-2">Bot- &amp; Admin-Aktivität</h2>
+                    <p className="text-white/60 text-sm max-w-2xl">
+                      Live-Protokoll aller Änderungen an der Datenbank durch Bots, KI-Assistenten
+                      oder Admins – z.&nbsp;B. Songs hochladen, umbenennen oder löschen und Playlists
+                      bearbeiten. Aktionen normaler Nutzer (z.&nbsp;B. Abspielen) erscheinen hier nicht.
                     </p>
                   </div>
-                  <div className="bg-green-500/10 text-green-400 border border-green-500/20 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2">
+                  <div className={`${liveConnected ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-white/5 text-white/40 border-white/10'} border px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shrink-0`}>
                     <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                      {liveConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${liveConnected ? 'bg-green-500' : 'bg-white/30'}`}></span>
                     </span>
-                    MCP Server Aktiv
+                    {liveConnected ? 'Live' : 'Verbinde …'}
+                  </div>
+                </div>
+
+                {/* How to connect a bot / agent */}
+                <div className="mb-6 rounded-2xl border border-indigo-400/15 bg-indigo-500/[0.06] p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Terminal className="w-4 h-4 text-indigo-300" />
+                    <h3 className="text-sm font-bold text-white">So verbindest du deinen Bot</h3>
+                  </div>
+                  <p className="text-sm text-white/60 mb-4">
+                    Du musst nichts Spezielles einrichten: Jede Änderung an der Datenbank durch einen
+                    Bot, KI-Assistenten oder Admin landet automatisch in diesem Protokoll.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                      <div className="text-[11px] font-black uppercase tracking-wider text-teal-300/80 mb-1">Methode 1 · am einfachsten</div>
+                      <div className="text-sm font-semibold text-white mb-1">Supabase-MCP</div>
+                      <p className="text-xs text-white/55 leading-relaxed">
+                        Verbinde in deinem KI-Tool (Claude Desktop, Cursor, Antigravity) den
+                        Supabase-MCP-Server. Deine Aktionen erscheinen dann automatisch hier – das
+                        nutzt du bereits.
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                      <div className="text-[11px] font-black uppercase tracking-wider text-indigo-300/80 mb-1">Methode 2 · eigene Tools</div>
+                      <div className="text-sm font-semibold text-white mb-1">YORIAX-MCP-Server</div>
+                      <p className="text-xs text-white/55 leading-relaxed">
+                        Für Komfort-Befehle (Song hochladen, umbenennen, Playlist verwalten) trägst
+                        du den YORIAX-Server in die MCP-Config deines Agenten ein.
+                      </p>
+                    </div>
+                  </div>
+                  <details className="mt-3">
+                    <summary className="cursor-pointer select-none text-xs text-white/50 hover:text-white/70">Config-Beispiel (Methode 2) anzeigen</summary>
+                    <pre className="mt-2 overflow-x-auto rounded-lg border border-white/10 bg-black/50 p-3 text-[11px] leading-relaxed text-white/70">{`"yoriax": {
+  "command": "node",
+  "args": ["/Pfad/zu/mcp-server/dist/index.js"],
+  "env": {
+    "SUPABASE_URL": "https://eiqelhjugiwckvxyixyh.supabase.co",
+    "SUPABASE_SERVICE_ROLE_KEY": "<dein Service-Role-Key>"
+  }
+}`}</pre>
+                  </details>
+                  <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
+                    <span className="rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-green-300">✓ Geloggt: Uploads, Umbenennungen, Löschungen, Playlists, Rollen</span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-white/45">✗ Ignoriert: normales Abspielen &amp; Stöbern</span>
                   </div>
                 </div>
 
@@ -1172,32 +1514,46 @@ export default function AdminPage() {
                   </div>
                   {mcpLogs.length === 0 ? (
                     <div className="p-8 text-center text-white/40 text-sm">
-                      Noch keine Aktivitäten aufgezeichnet.
+                      Noch keine Aktivitäten. Sobald ein Bot, KI-Assistent oder Admin etwas ändert
+                      (Song hochladen, umbenennen, Playlist bearbeiten …), erscheint es hier sofort.
                     </div>
                   ) : (
                     <div className="divide-y divide-white/5 max-h-[600px] overflow-y-auto">
-                      {mcpLogs.map((log) => (
-                        <div key={log.id} className="p-4 hover:bg-white/5 transition-colors">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-mono text-sm font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">
-                              {log.tool_name}
-                            </span>
-                            <span className="text-xs text-white/40">
-                              {new Date(log.created_at).toLocaleString('de-DE')}
-                            </span>
+                      {mcpLogs.map((log) => {
+                        const actor = typeof log.arguments?._akteur === 'string' ? (log.arguments._akteur as string) : null;
+                        const actorLabel = actor === 'system' ? 'Bot / MCP' : actor === 'service_role' ? 'Service' : actor;
+                        const detailKeys = log.arguments ? Object.keys(log.arguments).filter((k) => k !== '_akteur') : [];
+                        return (
+                          <div key={log.id} className="p-4 hover:bg-white/5 transition-colors">
+                            <div className="flex items-start justify-between gap-3 mb-1.5">
+                              <span className="text-sm font-semibold text-white/90">
+                                {log.response_summary || log.tool_name}
+                              </span>
+                              <span className="shrink-0 text-xs text-white/40">
+                                {new Date(log.created_at).toLocaleString('de-DE')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-mono text-[11px] font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded">
+                                {log.tool_name}
+                              </span>
+                              {actorLabel && (
+                                <span className="text-[11px] text-white/40 bg-white/5 px-2 py-0.5 rounded">
+                                  {actorLabel}
+                                </span>
+                              )}
+                            </div>
+                            {detailKeys.length > 0 && (
+                              <details className="text-xs">
+                                <summary className="cursor-pointer select-none text-white/40 hover:text-white/60">Details</summary>
+                                <div className="mt-1 font-mono text-white/60 bg-black/40 p-2 rounded border border-white/5 break-all">
+                                  {JSON.stringify(log.arguments)}
+                                </div>
+                              </details>
+                            )}
                           </div>
-                          {log.arguments && Object.keys(log.arguments).length > 0 && (
-                            <div className="text-xs font-mono text-white/60 mb-2 bg-black/40 p-2 rounded border border-white/5">
-                              {JSON.stringify(log.arguments)}
-                            </div>
-                          )}
-                          {log.response_summary && (
-                            <div className="text-sm text-white/80">
-                              {log.response_summary}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

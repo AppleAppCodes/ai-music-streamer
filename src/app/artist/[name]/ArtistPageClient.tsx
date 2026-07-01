@@ -16,6 +16,13 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { isCreatorUser, isModUser } from '@/lib/admin';
 import { useTranslation } from 'react-i18next';
 import Image from 'next/image';
+import {
+  getArtistBannerPath,
+  getArtistStorageSlug,
+  getArtistVideoFileName,
+  isArtistBannerFile,
+  isArtistVideoFile,
+} from '@/lib/artist-media';
 
 function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '--:--';
@@ -252,11 +259,11 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
       
       // 2–4. Run banner, follow-check, and socials fetch in PARALLEL
       //       since they are independent of each other.
-      const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const artistStorageSlug = getArtistStorageSlug(artistName);
 
       const [bannerResult, followResult, socialsResult] = await Promise.all([
         // 2. Check if a custom banner exists
-        supabase.storage.from('covers').list('banners', { search: sanitizedName }),
+        supabase.storage.from('covers').list('banners', { search: artistStorageSlug }),
         // 3. Check if user follows this artist
         session?.user
           ? supabase.from('follows').select('id').eq('user_id', session.user.id).eq('artist_name', artistName).maybeSingle()
@@ -268,7 +275,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
       // Process banner files
       const files = bannerResult.data;
       if (files && files.length > 0) {
-        const bannerFiles = files.filter(f => f.name.startsWith(sanitizedName) && !f.name.includes('_video'));
+        const bannerFiles = files.filter(f => isArtistBannerFile(f.name, artistStorageSlug));
         if (bannerFiles.length > 0) {
           bannerFiles.sort((a, b) => getStorageSortTime(b) - getStorageSortTime(a));
           const bannerFile = bannerFiles[0];
@@ -276,7 +283,7 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
           setBannerUrl(withCacheBust(data.publicUrl, getStorageCacheKey(bannerFile)));
         }
 
-        const videoFiles = files.filter(f => f.name.startsWith(sanitizedName + '_video'));
+        const videoFiles = files.filter(f => isArtistVideoFile(f.name, artistStorageSlug));
         if (videoFiles.length > 0) {
           videoFiles.sort((a, b) => getStorageSortTime(b) - getStorageSortTime(a));
           const videoFile = videoFiles[0];
@@ -474,9 +481,8 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
     
     try {
       file = await compressImage(file);
-      const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
       const ext = file.name.split('.').pop();
-      const path = `banners/${sanitizedName}.${ext}`;
+      const path = getArtistBannerPath(artistName, ext);
 
       const { error } = await supabase.storage
         .from('covers')
@@ -516,10 +522,10 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
     }
 
     setIsUploadingArtistVideo(true);
-    const sanitizedName = artistName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const artistStorageSlug = getArtistStorageSlug(artistName);
     const cacheKey = Date.now();
     const uploadExt = ext || (file.type === 'video/webm' ? 'webm' : file.type === 'video/quicktime' ? 'mov' : 'mp4');
-    const videoFileName = `${sanitizedName}_video_${cacheKey}.${uploadExt}`;
+    const videoFileName = getArtistVideoFileName(artistName, cacheKey, uploadExt);
     const path = `banners/${videoFileName}`;
 
     try {
@@ -531,9 +537,9 @@ export default function ArtistPageClient({ artistName }: { artistName: string })
 
       const { data: existingFiles } = await supabase.storage
         .from('covers')
-        .list('banners', { search: `${sanitizedName}_video` });
+        .list('banners', { search: `${artistStorageSlug}_video_` });
       const staleVideoPaths = (existingFiles || [])
-        .filter((existingFile) => existingFile.name.startsWith(`${sanitizedName}_video`) && existingFile.name !== videoFileName)
+        .filter((existingFile) => isArtistVideoFile(existingFile.name, artistStorageSlug) && existingFile.name !== videoFileName)
         .map((existingFile) => `banners/${existingFile.name}`);
 
       if (staleVideoPaths.length > 0) {

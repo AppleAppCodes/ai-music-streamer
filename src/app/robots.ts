@@ -5,7 +5,17 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/api/', '/admin/', '/settings/'],
+      disallow: [
+        '/api/',
+        '/admin/',
+        '/settings/',
+        '/upload/',
+        '/following/',
+        '/collection/',
+        '/playlists/',
+        '/artists/mine/',
+        '/search?*',
+      ],
     },
     sitemap: 'https://www.yoriax.com/sitemap.xml',
   };

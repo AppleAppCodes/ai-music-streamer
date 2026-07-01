@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { MouseEvent } from 'react';
+import type { MouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import SongCard from '@/components/ui/SongCard';
-import { ChevronLeft, ChevronRight, Heart, ListMusic, Mic2, Music, Pause, Pencil, Play, Sparkles, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, ListMusic, Mic2, Move, Music, Pause, Pencil, Play, Sparkles, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -11,7 +11,8 @@ import { usePlayer } from '@/lib/player-context';
 import Image from 'next/image';
 
 import { Song } from '@/lib/types';
-import { getDailyTrendingSongs, getPersonalizedSongs } from '@/lib/homeRecommendations';
+import { getArtistStorageSlug, isArtistVideoFile } from '@/lib/artist-media';
+import { getCuratedOrTrendingSongs, getPersonalizedSongs } from '@/lib/homeRecommendations';
 import { isAdminUser } from '@/lib/admin';
 import type { OfficialPlaylistSummary, SpotlightArtistSummary, SpotlightPlaylistSummary } from '@/lib/public-music-data';
 
@@ -32,6 +33,7 @@ type InitialHomeData = {
 };
 
 const HOME_SONG_GRID_CLASSES = 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-[repeat(auto-fill,minmax(160px,200px))]';
+const ARTIST_VIDEO_EXTENSIONS = /\.(mp4|webm|mov|m4v)$/i;
 
 function SectionHeader({ title, actionLabel, href }: { title: string; actionLabel?: string; href?: string }) {
   return (
@@ -117,6 +119,12 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
   const [artistCovers, setArtistCovers] = useState<string[]>(initialHomeData?.artistCovers ?? []);
   const [spotlightSong, setSpotlightSong] = useState<Song | null>(initialHomeData?.spotlightSong ?? null);
   const [spotlightArtist, setSpotlightArtist] = useState<SpotlightArtistSummary | null>(initialHomeData?.spotlightArtist ?? null);
+  const [heroArtistVideoUrl, setHeroArtistVideoUrl] = useState<string | null>(null);
+  const [heroArtistName, setHeroArtistName] = useState<string | null>(null);
+  const [heroVideoPosition, setHeroVideoPosition] = useState<string | null>(null);
+  const [isPositioningHero, setIsPositioningHero] = useState(false);
+  const [videoArtists, setVideoArtists] = useState<string[]>([]);
+  const [heroPickerOpen, setHeroPickerOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(!initialHomeData);
 
@@ -137,13 +145,13 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
       const [{ data: allSongs }, { data: spotlightData }, { data: { session } }] = await Promise.all([
         supabase
           .from('songs')
-          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, spotlight_copy, profiles!songs_creator_id_fkey(username)')
+          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, spotlight_copy, trending_sort_order, profiles!songs_creator_id_fkey(username)')
           .order('plays', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(200),
         supabase
           .from('songs')
-          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, spotlight_copy, profiles!songs_creator_id_fkey(username)')
+          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, spotlight_copy, trending_sort_order, profiles!songs_creator_id_fkey(username)')
           .eq('is_spotlight', true)
           .eq('is_approved', true)
           .order('created_at', { ascending: false })
@@ -164,7 +172,7 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
       const covers = Array.from(new Set(songs.map(s => s.cover_url).filter(Boolean))).slice(0, 4) as string[];
       setArtistCovers(covers);
 
-      const dailySongs = getDailyTrendingSongs(songs, 8);
+      const dailySongs = getCuratedOrTrendingSongs(songs, 6);
       setDailyTrendingSongs(dailySongs);
 
       if (!session) {
@@ -225,6 +233,123 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
     const interval = window.setInterval(updateGreeting, 60_000);
     return () => window.clearInterval(interval);
   }, []);
+
+  const loadHeroVideo = useCallback(async () => {
+    // Which artist's video did the admin pin? (null = auto/random)
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('hero_artist_name, hero_video_position')
+      .eq('id', 'global')
+      .maybeSingle();
+    const selected = (settings?.hero_artist_name as string | null) ?? null;
+    setHeroArtistName(selected);
+    setHeroVideoPosition((settings?.hero_video_position as string | null) ?? null);
+
+    const { data: banners } = await supabase.storage.from('covers').list('banners', { limit: 1000 });
+    const videoFiles = (banners ?? []).filter(
+      (file) => file.name.includes('_video_') && ARTIST_VIDEO_EXTENSIONS.test(file.name),
+    );
+    if (videoFiles.length === 0) {
+      setHeroArtistVideoUrl(null);
+      setVideoArtists([]);
+      return;
+    }
+
+    // Map exact artist storage slug -> video file.
+    const videoByBase = new Map<string, (typeof videoFiles)[number]>();
+    for (const file of videoFiles) {
+      const base = file.name.slice(0, file.name.indexOf('_video_'));
+      if (base && !videoByBase.has(base)) videoByBase.set(base, file);
+    }
+
+    // Picker options: artist display names that actually have a video.
+    const { data: artistRows } = await supabase
+      .from('artist_profiles')
+      .select('artist_name')
+      .order('artist_name', { ascending: true });
+    setVideoArtists(
+      (artistRows ?? [])
+        .map((row) => row.artist_name as string)
+        .filter((name) => {
+          const slug = getArtistStorageSlug(name);
+          const file = videoByBase.get(slug);
+          return Boolean(name && file && isArtistVideoFile(file.name, slug));
+        }),
+    );
+
+    // Use the pinned artist's video if available, otherwise pick a random one.
+    const selectedSlug = selected ? getArtistStorageSlug(selected) : null;
+    const chosen =
+      (selectedSlug ? videoByBase.get(selectedSlug) : undefined) ??
+      videoFiles[Math.floor(Math.random() * videoFiles.length)];
+    const { data: urlData } = supabase.storage.from('covers').getPublicUrl(`banners/${chosen.name}`);
+    const cacheKey = new Date(chosen.updated_at || chosen.created_at || 0).getTime();
+    setHeroArtistVideoUrl(`${urlData.publicUrl}?t=${cacheKey}`);
+  }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadHeroVideo();
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadHeroVideo]);
+
+  const handleSelectHeroArtist = useCallback(
+    async (name: string | null) => {
+      setHeroPickerOpen(false);
+      const { error } = await supabase
+        .from('app_settings')
+        .update({ hero_artist_name: name })
+        .eq('id', 'global');
+      if (error) {
+        alert('Konnte Hero-Video nicht speichern: ' + error.message);
+        return;
+      }
+      setHeroArtistName(name);
+      await loadHeroVideo();
+    },
+    [loadHeroVideo],
+  );
+
+  const saveHeroVideoPosition = useCallback(async (value: string) => {
+    if (!isAdmin) return;
+    const { error } = await supabase
+      .from('app_settings')
+      .update({ hero_video_position: value })
+      .eq('id', 'global');
+    if (error) console.error('Failed to save hero_video_position', error);
+  }, [isAdmin]);
+
+  const beginHeroPositioning = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!isAdmin || !isPositioningHero) return;
+    const container = event.currentTarget;
+    container.setPointerCapture(event.pointerId);
+    const rect = container.getBoundingClientRect();
+    const toValue = (clientX: number, clientY: number) => {
+      const x = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+      const y = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100));
+      return `${x.toFixed(1)}% ${y.toFixed(1)}%`;
+    };
+    setHeroVideoPosition(toValue(event.clientX, event.clientY));
+    const onMove = (ev: PointerEvent) => setHeroVideoPosition(toValue(ev.clientX, ev.clientY));
+    const onUp = (ev: PointerEvent) => {
+      container.removeEventListener('pointermove', onMove);
+      container.removeEventListener('pointerup', onUp);
+      container.removeEventListener('pointercancel', onUp);
+      try { container.releasePointerCapture(ev.pointerId); } catch { /* already released */ }
+      const finalValue = toValue(ev.clientX, ev.clientY);
+      setHeroVideoPosition(finalValue);
+      void saveHeroVideoPosition(finalValue);
+    };
+    container.addEventListener('pointermove', onMove);
+    container.addEventListener('pointerup', onUp);
+    container.addEventListener('pointercancel', onUp);
+  }, [isAdmin, isPositioningHero, saveHeroVideoPosition]);
+
+  const resetHeroPosition = useCallback(() => {
+    setHeroVideoPosition('50% 50%');
+    void saveHeroVideoPosition('50% 50%');
+  }, [saveHeroVideoPosition]);
 
   const greeting = t(`home.greetings.${greetingKey}`);
 
@@ -347,13 +472,30 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
       {/* Dynamic Blurred Backgrounds */}
       <div className="absolute top-0 left-0 w-full h-[500px] pointer-events-none z-0 overflow-hidden">
 
+        {heroArtistVideoUrl ? (
+          <video
+            src={heroArtistVideoUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            controlsList="nodownload"
+            onContextMenu={(event) => event.preventDefault()}
+            style={{ objectPosition: heroVideoPosition ?? '50% 50%' }}
+            className={`absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-1000 ${
+              hoveredBg ? 'opacity-20' : 'opacity-[0.42]'
+            }`}
+          />
+        ) : null}
+
         {/* Default Ambient Purple Glow */}
         <div
-          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out blur-[60px] z-0 ${hoveredBg ? 'opacity-0' : 'opacity-60'}`}
+          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out blur-[60px] z-0 ${hoveredBg || heroArtistVideoUrl ? 'opacity-0' : 'opacity-60'}`}
           style={{ backgroundImage: "linear-gradient(135deg, #4f46e5 0%, #312e81 100%)" }}
         />
 
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black z-10 opacity-50" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_14%,rgba(45,212,191,0.16),transparent_34%),linear-gradient(90deg,rgba(4,7,18,0.58),rgba(10,4,24,0.36)_42%,rgba(5,5,12,0.74))] z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black z-10 opacity-55" />
 
         {allBackgroundImages.map((img) => {
           const isUrl = img.startsWith('/') || img.startsWith('http');
@@ -370,6 +512,84 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
 
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/80 to-black z-20" />
       </div>
+
+      {/* Drag layer to reposition the hero video (above content) */}
+      {isAdmin && heroArtistVideoUrl && isPositioningHero ? (
+        <div
+          className="absolute left-0 top-0 z-30 h-[500px] w-full cursor-move touch-none ring-2 ring-inset ring-primary-light/60"
+          onPointerDown={beginHeroPositioning}
+        />
+      ) : null}
+
+      {/* Admin: pick which artist's video shows as the home hero + reposition it */}
+      {isAdmin ? (
+        <div className="pointer-events-auto absolute right-4 top-4 z-40 flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setHeroPickerOpen((open) => !open)}
+                className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur transition-colors hover:bg-black/60 hover:text-white"
+                title="Hero-Video auswählen"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Hero-Video
+              </button>
+              {heroPickerOpen ? (
+                <div className="absolute right-0 mt-2 max-h-72 w-60 overflow-y-auto rounded-xl border border-white/10 bg-[#0d0a17] p-2 shadow-2xl">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectHeroArtist(null)}
+                    className={`block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/10 ${heroArtistName === null ? 'text-primary' : 'text-white/80'}`}
+                  >
+                    Auto (zufällig)
+                  </button>
+                  {videoArtists.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-white/40">Keine Artists mit Video gefunden.</p>
+                  ) : (
+                    videoArtists.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => handleSelectHeroArtist(name)}
+                        className={`block w-full truncate rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/10 ${heroArtistName === name ? 'text-primary' : 'text-white/80'}`}
+                      >
+                        {name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : null}
+            </div>
+            {heroArtistVideoUrl ? (
+              <button
+                type="button"
+                onClick={() => setIsPositioningHero((prev) => !prev)}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold backdrop-blur transition-colors ${isPositioningHero ? 'border-primary-light bg-primary/80 text-white hover:bg-primary' : 'border-white/15 bg-black/40 text-white/80 hover:bg-black/60 hover:text-white'}`}
+                title="Hero-Video verschieben"
+              >
+                <Move className="h-3.5 w-3.5" />
+                {isPositioningHero ? 'Fertig' : 'Verschieben'}
+              </button>
+            ) : null}
+          </div>
+          {isPositioningHero ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={resetHeroPosition}
+                className="rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur transition-colors hover:bg-black/60 hover:text-white"
+              >
+                Zentrieren
+              </button>
+              <span className="rounded-full bg-black/55 px-2 py-1 text-[11px] text-white/80 backdrop-blur">
+                Video ziehen zum Positionieren
+              </span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="pointer-events-none absolute right-[-120px] top-24 z-0 h-72 w-72 rounded-full bg-primary/20 blur-[90px]" />
       <div className="pointer-events-none absolute left-[-120px] top-72 z-0 h-72 w-72 rounded-full bg-accent/10 blur-[100px]" />
 
@@ -638,14 +858,14 @@ function SpotlightSlider({
                 key={slide.kind + index}
                 type="button"
                 onClick={() => goTo(index)}
-                className="relative h-[3px] w-10 overflow-hidden rounded-full bg-white/15 transition-colors hover:bg-white/25"
+                className="relative h-[3px] w-10 overflow-hidden rounded-full bg-[#251033]/90 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] transition-colors hover:bg-[#321545]"
                 aria-label={t(slide.kind === 'song' ? 'home.spotlight' : slide.kind === 'artist' ? 'home.spotlightArtistEyebrow' : 'home.spotlightPlaylistEyebrow')}
               >
                 {isActive ? (
                   <span
                     key={`fill-${boundedActive}`}
                     onAnimationEnd={() => setActive((prev) => (prev + 1) % slides.length)}
-                    className="absolute inset-y-0 left-0 rounded-full bg-primary-light"
+                    className="absolute inset-y-0 left-0 w-full origin-left rounded-full bg-gradient-to-r from-[#4c1d95] via-[#5b21b6] to-[#6d28d9] shadow-[0_0_12px_rgba(91,33,182,0.55)]"
                     style={{
                       animation: `spotlightFill ${SPOTLIGHT_SLIDE_DURATION_MS}ms linear forwards`,
                       animationPlayState: paused ? 'paused' : 'running',
@@ -653,8 +873,8 @@ function SpotlightSlider({
                   />
                 ) : (
                   <span
-                    className="absolute inset-y-0 left-0 rounded-full bg-primary-light"
-                    style={{ width: isPast ? '100%' : '0%' }}
+                    className="absolute inset-y-0 left-0 w-full origin-left rounded-full bg-gradient-to-r from-[#4c1d95] via-[#5b21b6] to-[#6d28d9] shadow-[0_0_12px_rgba(91,33,182,0.45)]"
+                    style={{ transform: `scaleX(${isPast ? 1 : 0})` }}
                   />
                 )}
               </button>
@@ -917,28 +1137,22 @@ function OfficialPlaylistsSection({ playlists }: { playlists: OfficialPlaylistSu
   return (
     <section className="px-4 sm:px-8 relative z-10">
       <SectionHeader title={t('home.officialPlaylists')} actionLabel={t('home.seeAll')} href="/discover/playlists" />
-      <div
-        className="-mx-4 flex gap-3 overflow-x-auto px-4 pt-3 pb-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:px-8 sm:gap-4"
-        style={{
-          maskImage: 'linear-gradient(to right, transparent, black 2%, black 98%, transparent)',
-          WebkitMaskImage: 'linear-gradient(to right, transparent, black 2%, black 98%, transparent)',
-        }}
-      >
+      <div className={HOME_SONG_GRID_CLASSES}>
         {playlists.map((playlist) => {
           const isDailyNewReleases = playlist.id === 'da114eeb-ecea-5e55-9ee1-ea5e5da11111' || playlist.id === 'daily-new-releases';
           return (
             <Link
               key={playlist.id}
               href={`/playlist/${playlist.id}`}
-              className="group relative flex w-[148px] shrink-0 flex-col gap-2 rounded-2xl border border-teal-300/15 bg-gradient-to-br from-teal-300/[0.08] via-white/[0.03] to-primary/[0.08] p-3 transition-all duration-300 hover:-translate-y-1 hover:border-teal-200/40 sm:w-[168px]"
+              className="group relative flex cursor-pointer flex-col gap-3 rounded-[1.35rem] border border-teal-300/15 bg-gradient-to-br from-teal-300/[0.08] via-white/[0.03] to-primary/[0.08] p-4 transition-all hover:-translate-y-0.5 hover:border-teal-200/40"
             >
-              <div className="relative aspect-square overflow-hidden rounded-xl bg-white/5 shadow-lg">
+              <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-[1.1rem] border border-white/10 bg-white/5 shadow-[0_18px_38px_rgba(0,0,0,0.34)]">
                 {playlist.cover_url ? (
                   <Image
                     src={playlist.cover_url}
                     alt={playlist.title}
                     fill
-                    sizes="(max-width: 640px) 148px, 168px"
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 200px"
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 ) : isDailyNewReleases ? (
@@ -946,8 +1160,8 @@ function OfficialPlaylistsSection({ playlists }: { playlists: OfficialPlaylistSu
                     src="/brand/yoriax-symbol.png"
                     alt={playlist.title}
                     fill
-                    sizes="(max-width: 640px) 148px, 168px"
-                    className="object-contain p-6 transition-transform duration-500 group-hover:scale-105"
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 200px"
+                    className="object-contain p-8 transition-transform duration-500 group-hover:scale-105"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
@@ -959,8 +1173,8 @@ function OfficialPlaylistsSection({ playlists }: { playlists: OfficialPlaylistSu
                 </div>
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-white">{playlist.title}</p>
-                <p className="mt-0.5 truncate text-xs font-semibold text-white/45">
+                <p className="truncate text-base font-semibold text-white">{playlist.title}</p>
+                <p className="mt-0.5 truncate text-sm font-semibold text-white/45">
                   {playlist.creatorName}
                 </p>
               </div>

@@ -131,6 +131,21 @@ export default function GuestHome({ songs }: { songs: GuestSong[] }) {
           <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
             {t('guestHome.ctaDescription')}
           </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {[
+              { href: '/ai-music', label: 'AI Music' },
+              { href: '/ai-songs', label: 'AI Songs' },
+              { href: '/artists', label: 'AI Artists' },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-black text-white/75 transition-colors hover:bg-white/[0.1] hover:text-white"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
         </section>
       </div>
     </div>

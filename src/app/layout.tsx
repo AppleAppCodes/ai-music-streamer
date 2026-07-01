@@ -15,6 +15,17 @@ import { isAdminUser } from "@/lib/admin";
 import { getAppVersionLabel } from "@/lib/app-version";
 import { isPrelaunchLockEnabled, isUserWhitelisted } from "@/lib/prelaunch";
 import { getLocaleFromAcceptLanguage } from "@/lib/locale";
+import {
+  DEFAULT_DESCRIPTION,
+  DEFAULT_OG_ALT,
+  DEFAULT_OG_IMAGE,
+  DEFAULT_TITLE,
+  SITE_NAME,
+  SITE_URL,
+  buildPageMetadata,
+  jsonLdScript,
+  rootStructuredData,
+} from "@/lib/seo";
 import { headers } from "next/headers";
 
 const geistSans = Geist({
@@ -34,32 +45,26 @@ const syncopate = Syncopate({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.yoriax.com"),
-  title: "Yoriax | The AI Music Streamer",
-  description: "Discover, stream, and share the best AI-generated songs. Yoriax is the premier streaming platform built for AI-native music.",
+  ...buildPageMetadata({
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    path: '/',
+    image: DEFAULT_OG_IMAGE,
+    imageAlt: DEFAULT_OG_ALT,
+  }),
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: DEFAULT_TITLE,
+    template: `%s | ${SITE_NAME}`,
+  },
+  applicationName: SITE_NAME,
+  appleWebApp: {
+    capable: true,
+    title: SITE_NAME,
+    statusBarStyle: 'black-translucent',
+  },
+  category: 'music',
   manifest: "/site.webmanifest",
-  openGraph: {
-    title: "Yoriax | The AI Music Streamer",
-    description: "Discover the world's best AI songs. Become a top artist in the new era.",
-    url: "https://www.yoriax.com",
-    siteName: "Yoriax",
-    images: [
-      {
-        url: "/brand/yoriax-og.png",
-        width: 1200,
-        height: 630,
-        alt: "Yoriax - The AI Music Streamer",
-      },
-    ],
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Yoriax | The AI Music Streamer",
-    description: "The premier streaming platform built for AI-native music.",
-    images: ["/brand/yoriax-og.png"],
-  },
   icons: {
     icon: [
       { url: "/favicon.ico?v=4", type: "image/x-icon" },
@@ -70,6 +75,7 @@ export const metadata: Metadata = {
   },
   other: {
     "apple-itunes-app": "app-id=6780680190, app-argument=https://www.yoriax.com",
+    "theme-color": "#08030f",
   },
 };
 
@@ -95,6 +101,11 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${syncopate.variable} h-full antialiased dark`}
     >
       <body className="flex min-h-full flex-col overflow-x-hidden bg-background text-foreground md:h-full md:overflow-hidden">
+        <script
+          id="yoriax-root-jsonld"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={jsonLdScript(rootStructuredData)}
+        />
         <PlayerLayout isAuthenticated={shouldRenderAppShell}>
           {isPrelaunchLocked ? (
             <main className="relative z-0 min-h-dvh w-full">

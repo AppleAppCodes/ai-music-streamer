@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: userId,
         title: body.title.trim(),
+        description: typeof body.description === 'string' && body.description.trim() ? body.description.trim() : null,
         is_public: body.is_public ?? false,
       })
       .select()

@@ -141,7 +141,7 @@
     "moreBy": "More by {{artist}}",
     "title": "Title",
     "date": "Date",
-    "song": "1 Song"
+    "songCount": "1 Song"
   },
   "upload": {
     "title": "Upload Song",
@@ -160,7 +160,11 @@
     "publishButton": "Publish Song",
     "uploadingButton": "Uploading...",
     "successTitle": "Upload successful!",
-    "successText": "Your song is now live. Redirecting..."
+    "successText": "Your song is now live.",
+    "successPendingText": "Your upload was successful. Our team will review it and publish it soon.",
+    "viewSong": "Go to song",
+    "viewAlbum": "Go to album",
+    "backHome": "Back to home"
   },
   "player": {
     "creatorFallback": "Artist",
@@ -334,6 +338,16 @@
     "consentText": "By continuing, you agree to allow the platform to access your uploaded image. Please ensure you have permission to upload this image.",
     "removeConfirm": "Remove song from playlist?",
     "removeError": "Error removing: ",
+    "selectMode": "Select",
+    "cancelSelect": "Cancel",
+    "removeSelected": "Remove",
+    "selectedCount": "{{count}} selected",
+    "removeSelectedConfirm": "Remove {{count}} songs from this playlist?",
+    "reorderMode": "Reorder",
+    "reorderHint": "Drag the songs into the order you want.",
+    "reorderDone": "Done",
+    "reorderSaving": "Saving order …",
+    "reorderError": "Order could not be saved: ",
     "editDetails": "Edit details",
     "markPrivate": "Mark as Private",
     "markPublic": "Mark as Public",
@@ -347,6 +361,8 @@
     "official": "Official",
     "private": "Private",
     "clickToEdit": "Click to edit",
+    "addDescription": "Add description",
+    "creating": "Creating…",
     "save": "Save",
     "savePlaylist": "Save Playlist",
     "unsavePlaylist": "Remove from Saved"

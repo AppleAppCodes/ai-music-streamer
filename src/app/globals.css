@@ -273,8 +273,12 @@ input, textarea, p, h1, h2, h3, h4, span {
 }
 
 @keyframes spotlightFill {
-  from { width: 0%; }
-  to { width: 100%; }
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 @keyframes yoriaxFeedPurpleDrift {

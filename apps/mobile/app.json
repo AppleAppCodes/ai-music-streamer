@@ -3,14 +3,14 @@
     "name": "Yoriax",
     "slug": "yoriax",
     "scheme": "yoriax",
-    "version": "1.0.5",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#050505",
     "ios": {
       "bundleIdentifier": "com.yoriax.app",
-      "buildNumber": "156",
+      "buildNumber": "166",
       "usesAppleSignIn": true,
       "supportsTablet": false,
       "associatedDomains": [
@@ -33,7 +33,27 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#050505"
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "www.yoriax.com"
+            },
+            {
+              "scheme": "https",
+              "host": "yoriax.com"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "plugins": [
       "expo-apple-authentication",
@@ -53,11 +73,21 @@
           "supportedLocales": {
             "ios": [
               "de",
-              "en"
+              "en",
+              "es",
+              "fr",
+              "it",
+              "pt",
+              "nl"
             ],
             "android": [
               "de",
-              "en"
+              "en",
+              "es",
+              "fr",
+              "it",
+              "pt",
+              "nl"
             ]
           }
         }

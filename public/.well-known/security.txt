@@ -1,0 +1,8 @@
+# YORIAX security contact (RFC 9116)
+# If you find a security vulnerability, please report it privately to the
+# address below. Please do not publicly disclose until we've had a chance to fix it.
+
+Contact: mailto:info@fragenta.com
+Expires: 2027-06-28T00:00:00.000Z
+Preferred-Languages: de, en
+Canonical: https://www.yoriax.com/.well-known/security.txt
