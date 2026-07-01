@@ -16,6 +16,8 @@
 
 import { sign as cryptoSign } from 'crypto';
 import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
@@ -34,15 +36,40 @@ type AppleAdsConfig = {
   orgId?: string;
 };
 
-function loadConfig(): AppleAdsConfig | null {
-  const clientId = process.env.APPLE_ADS_CLIENT_ID || '';
-  const teamId = process.env.APPLE_ADS_TEAM_ID || '';
-  const keyId = process.env.APPLE_ADS_KEY_ID || '';
-  let privateKey = process.env.APPLE_ADS_PRIVATE_KEY || '';
+// Single well-known credentials file so the server finds its Apple Ads config
+// no matter which MCP client (OpenClaw, Antigravity, Claude Desktop …) starts
+// it and without touching any client config. Env vars still take precedence.
+const CREDENTIALS_FILE = path.join(os.homedir(), '.yoriax', 'apple-ads.env');
 
-  if (!privateKey && process.env.APPLE_ADS_PRIVATE_KEY_PATH) {
+function readCredentialsFile(): Record<string, string> {
+  try {
+    const values: Record<string, string> = {};
+    for (const line of fs.readFileSync(CREDENTIALS_FILE, 'utf8').split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq === -1) continue;
+      values[trimmed.slice(0, eq).trim()] = trimmed.slice(eq + 1).trim();
+    }
+    return values;
+  } catch {
+    return {};
+  }
+}
+
+function loadConfig(): AppleAdsConfig | null {
+  const fileValues = readCredentialsFile();
+  const get = (key: string) => process.env[key] || fileValues[key] || '';
+
+  const clientId = get('APPLE_ADS_CLIENT_ID');
+  const teamId = get('APPLE_ADS_TEAM_ID');
+  const keyId = get('APPLE_ADS_KEY_ID');
+  let privateKey = get('APPLE_ADS_PRIVATE_KEY');
+
+  const privateKeyPath = get('APPLE_ADS_PRIVATE_KEY_PATH');
+  if (!privateKey && privateKeyPath) {
     try {
-      privateKey = fs.readFileSync(process.env.APPLE_ADS_PRIVATE_KEY_PATH, 'utf8');
+      privateKey = fs.readFileSync(privateKeyPath, 'utf8');
     } catch {
       privateKey = '';
     }
@@ -57,12 +84,13 @@ function loadConfig(): AppleAdsConfig | null {
     teamId,
     keyId,
     privateKey,
-    orgId: process.env.APPLE_ADS_ORG_ID || undefined,
+    orgId: get('APPLE_ADS_ORG_ID') || undefined,
   };
 }
 
 const SETUP_HELP = [
-  'Apple Ads ist nicht konfiguriert. Benötigte Environment-Variablen für den MCP-Server:',
+  'Apple Ads ist nicht konfiguriert. Lege die Datei ~/.yoriax/apple-ads.env an (KEY=VALUE pro Zeile)',
+  'oder setze dieselben Werte als Environment-Variablen:',
   '',
   '  APPLE_ADS_CLIENT_ID   (Apple Search Ads → Account Settings → API)',
   '  APPLE_ADS_TEAM_ID',
