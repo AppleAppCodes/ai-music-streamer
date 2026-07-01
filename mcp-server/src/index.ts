@@ -19,6 +19,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { registerAppleAdsTools } from './apple-ads.js';
 
 const execAsync = promisify(exec);
 
@@ -560,6 +561,10 @@ end tell
     }
   }
 );
+
+// ── Apple Ads Tools (Apple Search Ads campaigns for the YORIAX app) ────────
+
+registerAppleAdsTools(server, logAction);
 
 // ── Start Server ────────────────────────────────────────────────────────────
 
