@@ -828,8 +828,9 @@ export async function loadPlaylistDetails(playlistId: string): Promise<{ playlis
 
   const { data: mappingData } = await client
     .from('playlist_songs')
-    .select('song_id, added_at')
+    .select('song_id, added_at, position')
     .eq('playlist_id', playlistId)
+    .order('position', { ascending: true, nullsFirst: false })
     .order('added_at', { ascending: false });
 
   let songs: Song[] = [];

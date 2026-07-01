@@ -4,7 +4,8 @@ import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
-import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X, Search, Plus, CheckCircle2, ShieldCheck, Flag, Sparkles, Video, Move } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Clock3, MoreHorizontal, Edit2, Loader2, Trash2, Music, Globe, Lock, X, Search, Plus, CheckCircle2, ShieldCheck, Flag, Sparkles, Video, Move, GripVertical, ArrowUpDown } from 'lucide-react';
+import { Reorder } from 'framer-motion';
 import { usePlayer } from '@/lib/player-context';
 import LikeButton from '@/components/ui/LikeButton';
 import PlaylistAddButton from '@/components/ui/PlaylistAddButton';
@@ -67,6 +68,9 @@ export default function PlaylistPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [reorderMode, setReorderMode] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const songsRef = useRef<(Song & { added_at?: string })[]>([]);
   const [isSaved, setIsSaved] = useState(false);
   const [songSearchQuery, setSongSearchQuery] = useState('');
   const [songSearchResults, setSongSearchResults] = useState<Song[]>([]);
@@ -237,11 +241,12 @@ export default function PlaylistPage() {
         setIsAdmin(true);
       }
       
-      // 2. Fetch Songs in playlist
+      // 2. Fetch Songs in playlist (custom order first, then newest-added)
       const { data: mappingData } = await supabase
         .from('playlist_songs')
-        .select('song_id, added_at')
+        .select('song_id, added_at, position')
         .eq('playlist_id', playlistId)
+        .order('position', { ascending: true, nullsFirst: false })
         .order('added_at', { ascending: false });
         
       if (mappingData && mappingData.length > 0) {
@@ -323,7 +328,7 @@ export default function PlaylistPage() {
       if (pid === playlistId) {
         const { data } = await supabase.from('songs').select('id, title, artist_name, cover_url, plays, audio_url, duration, genre').eq('id', sid).single();
         if (data) {
-          setSongs(prev => [data as unknown as Song, ...prev]);
+          setSongs(prev => (prev.some(s => s.id === sid) ? prev : [...prev, data as unknown as Song]));
         }
       }
     };
@@ -690,13 +695,13 @@ export default function PlaylistPage() {
     try {
       const { error } = await supabase
         .from('playlist_songs')
-        .insert({ playlist_id: playlistId, song_id: song.id });
+        .insert({ playlist_id: playlistId, song_id: song.id, position: songsRef.current.length });
 
       if (error && error.code !== '23505') throw error;
 
       setSongs((previousSongs) => {
         if (previousSongs.some((existingSong) => existingSong.id === song.id)) return previousSongs;
-        return [{ ...song, added_at: new Date().toISOString() }, ...previousSongs];
+        return [...previousSongs, { ...song, added_at: new Date().toISOString() }];
       });
     } catch (err: unknown) {
       console.error('Error adding song to playlist:', err);
@@ -753,6 +758,36 @@ export default function PlaylistPage() {
       alert(t('playlist.removeError') + getErrorMessage(err));
     }
   }, [selectedIds, playlistId, supabase, t, exitSelectMode]);
+
+  // Keep a live ref of the current order so drag callbacks always persist the latest.
+  useEffect(() => {
+    songsRef.current = songs;
+  }, [songs]);
+
+  const persistOrder = useCallback(async (ordered: (Song & { added_at?: string })[]) => {
+    setSavingOrder(true);
+    try {
+      const { error } = await supabase.rpc('reorder_playlist_songs', {
+        p_playlist_id: playlistId,
+        p_song_ids: ordered.map((s) => s.id),
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.error('Reorder failed', err);
+      alert(t('playlist.reorderError') + getErrorMessage(err));
+    } finally {
+      setSavingOrder(false);
+    }
+  }, [playlistId, supabase, t]);
+
+  const handleReorderDragEnd = useCallback(() => {
+    void persistOrder(songsRef.current);
+  }, [persistOrder]);
+
+  const exitReorderMode = useCallback(() => {
+    void persistOrder(songsRef.current);
+    setReorderMode(false);
+  }, [persistOrder]);
 
   if (loading) {
     return (
@@ -1003,13 +1038,23 @@ export default function PlaylistPage() {
             </button>
           )}
           
-          {isOwner && songs.length > 0 && !selectMode && (
+          {isOwner && songs.length > 0 && !selectMode && !reorderMode && (
             <button
               onClick={() => setSelectMode(true)}
               className="flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white"
             >
               <CheckCircle2 className="w-4 h-4" />
               {t('playlist.selectMode')}
+            </button>
+          )}
+
+          {isOwner && songs.length > 1 && !selectMode && !reorderMode && (
+            <button
+              onClick={() => setReorderMode(true)}
+              className="flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <ArrowUpDown className="w-4 h-4" />
+              {t('playlist.reorderMode')}
             </button>
           )}
 
@@ -1201,6 +1246,20 @@ export default function PlaylistPage() {
               </div>
             </div>
           )}
+          {reorderMode && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5">
+              <span className="flex items-center gap-2 text-sm font-semibold text-white">
+                <GripVertical className="h-4 w-4 text-white/60" />
+                {savingOrder ? t('playlist.reorderSaving') : t('playlist.reorderHint')}
+              </span>
+              <button
+                onClick={exitReorderMode}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-primary/90"
+              >
+                {t('playlist.reorderDone')}
+              </button>
+            </div>
+          )}
           {songs.length > 0 ? (
             <div className="flex flex-col">
               {/* Table Header */}
@@ -1212,14 +1271,20 @@ export default function PlaylistPage() {
                 <div className="text-right flex items-center justify-end"><Clock3 className="w-4 h-4" /></div>
               </div>
 
+              <Reorder.Group as="div" axis="y" values={songs} onReorder={setSongs} className="flex flex-col">
               {songs.map((song, index) => {
                 const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
                 const displayArtist = song.artist_name || t('guestHome.unknownArtist');
-                
+
                 return (
-                  <div
+                  <Reorder.Item
+                    as="div"
                     key={song.id}
+                    value={song}
+                    dragListener={reorderMode}
+                    onDragEnd={handleReorderDragEnd}
                     onClick={() => {
+                    if (reorderMode) return;
                     if (selectMode) { toggleSelectSong(song.id); return; }
                     if (currentSong?.id !== song.id) {
                       const queueWithNames = songs.map(s => ({ ...s, creatorName: s.artist_name || 'Creator' }));
@@ -1228,10 +1293,12 @@ export default function PlaylistPage() {
                     }
                       else togglePlayPause();
                     }}
-                    className={`grid grid-cols-[16px_1fr_50px] md:grid-cols-[24px_2fr_1.5fr_1fr_120px] gap-4 px-4 py-2.5 rounded-lg group cursor-pointer items-center transition-colors ${selectMode && selectedIds.has(song.id) ? 'bg-primary/15' : 'hover:bg-white/5'}`}
+                    className={`grid grid-cols-[16px_1fr_50px] md:grid-cols-[24px_2fr_1.5fr_1fr_120px] gap-4 px-4 py-2.5 rounded-lg group items-center transition-colors ${reorderMode ? 'cursor-grab active:cursor-grabbing select-none' : 'cursor-pointer'} ${selectMode && selectedIds.has(song.id) ? 'bg-primary/15' : reorderMode ? 'bg-white/5' : 'hover:bg-white/5'}`}
                   >
                     <div className="flex items-center text-white/50 group-hover:text-white text-base font-mono">
-                      {selectMode ? (
+                      {reorderMode ? (
+                        <GripVertical className="w-5 h-5 text-white/40" />
+                      ) : selectMode ? (
                         selectedIds.has(song.id)
                           ? <CheckCircle2 className="w-5 h-5 text-primary" />
                           : <div className="h-5 w-5 rounded-full border border-white/30" />
@@ -1270,16 +1337,16 @@ export default function PlaylistPage() {
                         <span className={`text-base font-medium truncate ${currentSong?.id === song.id ? 'text-primary' : 'text-white/90'}`}>
                           {song.title}
                         </span>
-                        <Link href={`/artist/${encodeURIComponent(displayArtist)}`} onClick={e => e.stopPropagation()} className="text-sm text-white/50 hover:underline hover:text-white truncate">
+                        <Link href={`/artist/${encodeURIComponent(displayArtist)}`} onClick={e => e.stopPropagation()} className={`text-sm text-white/50 hover:underline hover:text-white truncate ${reorderMode ? 'pointer-events-none' : ''}`}>
                           {displayArtist}
                         </Link>
                       </div>
                     </div>
                     
-                    <Link 
-                      href={song.album_id ? `/album/${song.album_id}` : `/song/${song.id}`} 
-                      onClick={e => e.stopPropagation()} 
-                      className="hidden md:flex items-center text-sm text-white/50 hover:text-white hover:underline truncate"
+                    <Link
+                      href={song.album_id ? `/album/${song.album_id}` : `/song/${song.id}`}
+                      onClick={e => e.stopPropagation()}
+                      className={`hidden md:flex items-center text-sm text-white/50 hover:text-white hover:underline truncate ${reorderMode ? 'pointer-events-none' : ''}`}
                     >
                       {song.album?.title || song.title}
                     </Link>
@@ -1289,7 +1356,7 @@ export default function PlaylistPage() {
                     </div>
 
                     <div className="text-right text-sm text-white/50 tracking-wider flex items-center justify-end gap-3">
-                      <div onClick={(e) => e.stopPropagation()} className="hidden md:flex items-center gap-4 mr-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div onClick={(e) => e.stopPropagation()} className={`hidden md:flex items-center gap-4 mr-4 opacity-0 group-hover:opacity-100 transition-opacity ${reorderMode ? 'pointer-events-none' : ''}`}>
                         <LikeButton songId={song.id} iconClassName="w-5 h-5" />
                         <PlaylistAddButton 
                           songId={song.id} 
@@ -1304,9 +1371,10 @@ export default function PlaylistPage() {
                         <MobileSongMenu song={song} />
                       </div>
                     </div>
-                  </div>
+                  </Reorder.Item>
                 );
               })}
+              </Reorder.Group>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center border-t border-white/5">
