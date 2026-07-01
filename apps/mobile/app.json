@@ -64,11 +64,13 @@
           "supportedLocales": {
             "ios": [
               "de",
-              "en"
+              "en",
+              "es"
             ],
             "android": [
               "de",
-              "en"
+              "en",
+              "es"
             ]
           }
         }
