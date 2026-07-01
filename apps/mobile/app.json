@@ -3,14 +3,14 @@
     "name": "Yoriax",
     "slug": "yoriax",
     "scheme": "yoriax",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#050505",
     "ios": {
       "bundleIdentifier": "com.yoriax.app",
-      "buildNumber": "164",
+      "buildNumber": "165",
       "usesAppleSignIn": true,
       "supportsTablet": false,
       "associatedDomains": [
@@ -39,10 +39,19 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "www.yoriax.com" },
-            { "scheme": "https", "host": "yoriax.com" }
+            {
+              "scheme": "https",
+              "host": "www.yoriax.com"
+            },
+            {
+              "scheme": "https",
+              "host": "yoriax.com"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
