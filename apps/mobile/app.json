@@ -74,12 +74,18 @@
             "ios": [
               "de",
               "en",
-              "es"
+              "es",
+              "fr",
+              "it",
+              "pt"
             ],
             "android": [
               "de",
               "en",
-              "es"
+              "es",
+              "fr",
+              "it",
+              "pt"
             ]
           }
         }
