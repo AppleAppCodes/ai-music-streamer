@@ -638,7 +638,10 @@ export function ForYouScreen() {
   const { user } = useAuth();
   const { revision: preferenceRevision } = useMusicPreferences();
   const { height: itemHeight, width: itemWidth } = useWindowDimensions();
-  const { playSong, reset: resetMainPlayer, setQueue } = usePlayerControls();
+  // Pause (not reset) the main player while the feed takes over the audio: the
+  // feed only needs silence, and a full reset wiped the listener's song + queue
+  // just for glancing at this tab. The MiniPlayer is hidden here anyway.
+  const { playSong, pause: pauseMainPlayer, setQueue } = usePlayerControls();
   const previewPlayerA = useAudioPlayer(null, PREVIEW_PLAYER_OPTIONS);
   const previewPlayerB = useAudioPlayer(null, PREVIEW_PLAYER_OPTIONS);
   const [activeFeed, setActiveFeed] = useState<'foryou' | 'following' | 'explore'>('foryou');
@@ -1086,7 +1089,7 @@ export function ForYouScreen() {
       transitionToken.current += 1;
       pendingTransitionIndex.current = null;
       stopAllPreviewPlayers();
-      resetMainPlayer();
+      pauseMainPlayer();
       setLoading(true);
       setError(null);
 
@@ -1134,7 +1137,7 @@ export function ForYouScreen() {
 
     load();
     return () => { mounted = false; };
-  }, [user, activeFeed, preferenceRevision, resetMainPlayer, stopAllPreviewPlayers, t]);
+  }, [user, activeFeed, preferenceRevision, pauseMainPlayer, stopAllPreviewPlayers, t]);
 
   const clearDragSettleTimer = useCallback(() => {
     if (!dragSettleTimer.current) return;
@@ -1151,7 +1154,7 @@ export function ForYouScreen() {
       return;
     }
 
-    resetMainPlayer();
+    pauseMainPlayer();
     if (!loading && songsRef.current.length > 0) {
       void transitionToIndex(activeIndexRef.current, true);
     }
@@ -1165,7 +1168,7 @@ export function ForYouScreen() {
   }, [
     isFocused,
     loading,
-    resetMainPlayer,
+    pauseMainPlayer,
     stopAllPreviewPlayers,
     transitionToIndex,
   ]);

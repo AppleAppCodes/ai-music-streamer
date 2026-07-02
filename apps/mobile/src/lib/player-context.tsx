@@ -1,7 +1,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync, useAudioPlayerStatus } from 'expo-audio';
 import type { AudioLockScreenOptions, AudioPlayer } from 'expo-audio';
-import { activateExclusivePlaybackSession, addTrackRemoteCommandListeners, setTrackRemoteCommandsEnabled } from 'yoriax-remote-commands';
+import { activateExclusivePlaybackSession, addAudioInterruptionListener, addTrackRemoteCommandListeners, setTrackRemoteCommandsEnabled } from 'yoriax-remote-commands';
 import type { Song } from './types';
 import { useAuth } from './auth-context';
 import { supabase } from './supabase';
@@ -21,6 +21,9 @@ const PLAYBACK_READY_TIMEOUT_MS = 2500;
 const PLAYBACK_READY_POLL_MS = 50;
 const PAUSE_FADE_OUT_MS = 90;
 const NOW_PLAYING_REASSERT_DELAYS_MS = [160, 600] as const;
+// A play only counts once the listener actually heard this much of the song
+// (or it finished, for shorter tracks) — starting a song is not listening.
+const PLAY_COUNT_THRESHOLD_SECONDS = 25;
 
 interface PlayerContextValue {
   activeSong: Song | null;
@@ -382,17 +385,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setIsAdPlaying(false);
         if (!isSameSong) {
           setSongsPlayed(prev => prev + 1);
-          // Record the play: bumps the global count + daily charts and, for a
-          // signed-in listener, the per-user history (user_song_plays). This is
-          // what makes app listening visible in charts and the admin dashboard.
-          // Fire-and-forget — playback must never wait on analytics.
-          if (supabase) {
-            void supabase
-              .rpc('increment_song_plays', { target_song_id: song.id })
-              .then(({ error }) => {
-                if (error) console.warn('increment_song_plays failed:', error.message);
-              });
-          }
+          // The play COUNT is recorded in the playback-status listener once the
+          // listener actually heard PLAY_COUNT_THRESHOLD_SECONDS (or the song
+          // finished) — skipping through a playlist must not inflate charts.
         }
       }
 
@@ -609,6 +604,34 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     playPreviousRef.current = playPrevious;
   }, [playPrevious]);
 
+  // Auto-resume after interruptions (phone calls, Siri, alarms). iOS's own
+  // shouldResume hint distinguishes "interruption over, keep playing" from a
+  // deliberate user pause — AppState alone cannot tell these apart.
+  const wasPlayingBeforeInterruptionRef = useRef(false);
+  useEffect(() => {
+    const removeListener = addAudioInterruptionListener((event) => {
+      if (event.type === 'began') {
+        wasPlayingBeforeInterruptionRef.current = intendsToPlayRef.current;
+        return;
+      }
+
+      if (
+        event.shouldResume
+        && wasPlayingBeforeInterruptionRef.current
+        && intendsToPlayRef.current
+        && activeSongRef.current
+      ) {
+        void (async () => {
+          await activateYoriaxPlaybackSession();
+          player.play();
+        })();
+      }
+      wasPlayingBeforeInterruptionRef.current = false;
+    });
+
+    return removeListener;
+  }, [player]);
+
   useEffect(() => {
     setTrackRemoteCommandsEnabled(true);
     const removeListeners = addTrackRemoteCommandListeners({
@@ -664,8 +687,31 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Handle native end-of-track notifications once.
   // We attach a direct listener to the native player object instead of using a React hook (useAudioPlayerStatus),
   // because React hooks do not update/execute when the app is in the background or screen is locked.
+  const playCountedSongIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     const subscription = player.addListener('playbackStatusUpdate', (status) => {
+      // Count the play once the listener genuinely heard the song (threshold
+      // reached or track finished). Runs in this native listener so background
+      // listening counts too. The server keeps its own 30-min replay cooldown.
+      const currentSong = activeSongRef.current;
+      if (
+        currentSong
+        && currentSong.id !== 'yoriax-audio-ad'
+        && !isAdPlayingRef.current
+        && playCountedSongIdRef.current !== currentSong.id
+        && ((status.currentTime || 0) >= PLAY_COUNT_THRESHOLD_SECONDS || status.didJustFinish)
+      ) {
+        playCountedSongIdRef.current = currentSong.id;
+        if (supabase) {
+          void supabase
+            .rpc('increment_song_plays', { target_song_id: currentSong.id })
+            .then(({ error }) => {
+              if (error) console.warn('increment_song_plays failed:', error.message);
+            });
+        }
+      }
+
       if (!status.didJustFinish) {
         finishEventConsumedRef.current = false;
         return;
