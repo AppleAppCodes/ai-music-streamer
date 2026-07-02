@@ -809,7 +809,11 @@ export async function loadExploreFeed(userId: string): Promise<FeedPreviewSong[]
 export async function searchMusic(query: string): Promise<Song[]> {
   if (!query || query.trim() === '') return [];
   const client = requireClient();
-  const searchPattern = `%${query}%`;
+  // Quote the pattern for PostgREST: unquoted commas/parentheses in the query
+  // are .or() syntax characters and made searches like "hip,hop" fail with 400.
+  const sanitized = query.trim().replace(/["\\]/g, '');
+  if (!sanitized) return [];
+  const searchPattern = `"%${sanitized}%"`;
 
   const { data, error } = await client
     .from('songs')
@@ -839,26 +843,30 @@ export async function searchMusic(query: string): Promise<Song[]> {
 export async function loadArtistSongs(artistName: string): Promise<Song[]> {
   const client = requireClient();
 
-  const { data, error } = await client
+  // PostgREST does not support SQL subqueries inside filters — the previous
+  // `creator_id.in.(select …)` variant always returned 400 and silently fell
+  // back to the artist_name-only match. Resolve the creator id first instead.
+  const { data: profile } = await client
+    .from('profiles')
+    .select('id')
+    .eq('username', artistName)
+    .maybeSingle();
+
+  let query = client
     .from('songs')
     .select(SONG_SELECT_WITH_PROFILE)
     .eq('is_approved', true)
-    .or(`artist_name.eq."${artistName}",creator_id.in.(select id from profiles where username = "${artistName}")`)
     .order('plays', { ascending: false });
 
-  if (error) {
-    // Fallback if subquery fails
-    const fallback = await client
-      .from('songs')
-      .select(SONG_SELECT)
-      .eq('is_approved', true)
-      .eq('artist_name', artistName)
-      .order('plays', { ascending: false });
-
-    if (fallback.error) throw new Error(fallback.error.message);
-    return ((fallback.data || []) as SongRow[]).map(mapSong);
+  if (profile?.id) {
+    const quotedName = `"${artistName.replace(/["\\]/g, '')}"`;
+    query = query.or(`artist_name.eq.${quotedName},creator_id.eq.${profile.id}`);
+  } else {
+    query = query.eq('artist_name', artistName);
   }
 
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
   return ((data || []) as SongRow[]).map(mapSong);
 }
 

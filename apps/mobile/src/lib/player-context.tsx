@@ -183,17 +183,31 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   // Ad & User State
   const { user } = useAuth();
-  const [isPro, setIsPro] = useState(false);
+  // null = subscription tier not resolved yet. Ads only play once we KNOW the
+  // listener is not Pro — otherwise a paying user could hear an ad right after
+  // app start (or whenever the profile fetch fails).
+  const [isPro, setIsPro] = useState<boolean | null>(null);
   const [songsPlayed, setSongsPlayed] = useState(0);
   const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const isAdPlayingRef = useRef(false);
   const [adFrequency, setAdFrequency] = useState(3);
   const [pendingSongToPlayAfterAd, setPendingSongToPlayAfterAd] = useState<Song | null>(null);
   const [availableAds, setAvailableAds] = useState<StorageListItem[]>([]);
 
   useEffect(() => {
+    isAdPlayingRef.current = isAdPlaying;
+  }, [isAdPlaying]);
+
+  useEffect(() => {
+    if (!user) {
+      // Deferred so the lint-guarded "no sync setState in effect" rule holds;
+      // clears the previous account's tier on sign-out/user switch.
+      const timeout = setTimeout(() => setIsPro(null), 0);
+      return () => clearTimeout(timeout);
+    }
     if (user && supabase) {
       supabase.from('profiles').select('subscription_tier').eq('id', user.id).single()
-        .then(({ data }) => setIsPro(data?.subscription_tier === 'pro'));
+        .then(({ data }) => setIsPro(data ? data.subscription_tier === 'pro' : null));
     }
     const loadAdsAndConfig = async () => {
       if (!supabase) return;
@@ -308,13 +322,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setIsPreparingPlayback(true);
 
     try {
-      const isSameSong = loadedSongIdRef.current === song.id;
+      let isSameSong = loadedSongIdRef.current === song.id;
       const fadeInMs = Math.max(0, options.fadeInMs ?? 0);
 
-      // AD LOGIC
-      if (!isPro && song.id !== 'yoriax-audio-ad' && songsPlayed >= adFrequency && availableAds.length > 0) {
+      // AD LOGIC (only once we positively know the listener is not Pro)
+      if (isPro === false && song.id !== 'yoriax-audio-ad' && songsPlayed >= adFrequency && availableAds.length > 0) {
         setPendingSongToPlayAfterAd(song);
         setIsAdPlaying(true);
+        // Reset the counter when the ad STARTS, not when it finishes. If the ad
+        // is skipped (lock screen) or fails to load, the next playSong would
+        // otherwise immediately trigger another ad — an ad loop.
+        setSongsPlayed(0);
 
         let selectedAdUrl = '';
         if (availableAds.length > 0 && supabase) {
@@ -338,16 +356,26 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         player.replace({ name: adSong.title, uri: adSong.audio_url });
         activeSongRef.current = adSong;
         setActiveSong(adSong);
-        await waitForPlayerReady(player, isCurrentRequest);
+        const adReady = await waitForPlayerReady(player, isCurrentRequest);
         if (!isCurrentRequest()) return;
-        loadedSongIdRef.current = adSong.id;
-        await activateYoriaxPlaybackSession();
-        if (!isCurrentRequest()) return;
-        player.play();
-        intendsToPlayRef.current = true;
-        setLockScreenMetadata(player, adSong);
-        scheduleNowPlayingRefresh(adSong, playRequestId);
-        return;
+        if (adReady) {
+          loadedSongIdRef.current = adSong.id;
+          await activateYoriaxPlaybackSession();
+          if (!isCurrentRequest()) return;
+          player.play();
+          intendsToPlayRef.current = true;
+          setLockScreenMetadata(player, adSong);
+          scheduleNowPlayingRefresh(adSong, playRequestId);
+          return;
+        }
+
+        // The ad source never became ready (bad network / missing file). Skip
+        // the ad and fall through to the requested song instead of leaving the
+        // player stuck on a broken "WERBUNG" item.
+        setIsAdPlaying(false);
+        setPendingSongToPlayAfterAd(null);
+        loadedSongIdRef.current = null;
+        isSameSong = false;
       }
 
       if (song.id !== 'yoriax-audio-ad') {
@@ -381,8 +409,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setActiveSong(song);
         // Do not update lock screen controls until the new source is ready and playing.
         // Doing it early triggers native route adjustments that interrupt active audio.
-        await waitForPlayerReady(player, isCurrentRequest);
+        const ready = await waitForPlayerReady(player, isCurrentRequest);
         if (!isCurrentRequest()) return;
+        if (!ready) {
+          // Surface the failure instead of "playing" a source that never loaded
+          // (silent ghost playback on slow/broken networks).
+          setError(t('player.playbackFailed'));
+          return;
+        }
 
         loadedSongIdRef.current = song.id;
         if (fadeInMs > 0) {
@@ -578,8 +612,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setTrackRemoteCommandsEnabled(true);
     const removeListeners = addTrackRemoteCommandListeners({
-      onNextTrack: () => playNextRef.current(),
-      onPreviousTrack: () => playPreviousRef.current(),
+      // Lock-screen skip must not escape an ad: skipping mid-ad used to land in
+      // playSong with the pre-reset counter and immediately queue ANOTHER ad.
+      onNextTrack: () => {
+        if (!isAdPlayingRef.current) playNextRef.current();
+      },
+      onPreviousTrack: () => {
+        if (!isAdPlayingRef.current) playPreviousRef.current();
+      },
     });
 
     return () => {
@@ -605,11 +645,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!song || (!status.playing && !intendsToPlayRef.current)) return;
     scheduleNowPlayingRefresh(song);
   }, [scheduleNowPlayingRefresh, status.playing]);
-
-  const isAdPlayingRef = useRef(isAdPlaying);
-  useEffect(() => {
-    isAdPlayingRef.current = isAdPlaying;
-  }, [isAdPlaying]);
 
   const pendingSongToPlayAfterAdRef = useRef(pendingSongToPlayAfterAd);
   useEffect(() => {
@@ -643,7 +678,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setTimeout(() => {
         if (isAdPlayingRef.current) {
           setIsAdPlaying(false);
-          setSongsPlayed(0);
+          // songsPlayed is already reset when the ad starts (ad-loop fix).
 
           if (pendingSongToPlayAfterAdRef.current) {
             void playSongRef.current(pendingSongToPlayAfterAdRef.current);
