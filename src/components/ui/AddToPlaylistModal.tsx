@@ -39,18 +39,20 @@ export default function AddToPlaylistModal({ songId, onClose, currentPlaylistId,
         return;
       }
 
-      // Fetch playlists of the user
       const { data: plData } = await supabase
         .from('playlists')
         .select('id, title, cover_url')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
-      // Fetch which of these playlists already contain the song
-      const { data: songPlData } = await supabase
-        .from('playlist_songs')
-        .select('playlist_id')
-        .eq('song_id', songId);
+      const playlistIds = (plData || []).map((playlist) => playlist.id);
+      const { data: songPlData } = playlistIds.length > 0
+        ? await supabase
+          .from('playlist_songs')
+          .select('playlist_id')
+          .eq('song_id', songId)
+          .in('playlist_id', playlistIds)
+        : { data: [] };
 
       if (plData) {
         setPlaylists(plData);

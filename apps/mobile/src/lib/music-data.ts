@@ -22,6 +22,9 @@ type StorageFile = {
   updated_at?: string | null;
 };
 
+const FEED_CLIP_MAP_CACHE_TTL_MS = 60_000;
+let feedClipMapCache: { data: Map<string, FeedClip>; loadedAt: number } | null = null;
+
 export type ArtistMedia = {
   bannerUrl?: string | null;
   videoUrl?: string | null;
@@ -631,6 +634,10 @@ function getLikes(row: FeedRow): number {
 }
 
 async function loadFeedClipMap(): Promise<Map<string, FeedClip>> {
+  if (feedClipMapCache && Date.now() - feedClipMapCache.loadedAt < FEED_CLIP_MAP_CACHE_TTL_MS) {
+    return feedClipMapCache.data;
+  }
+
   const client = requireClient();
   const { data, error } = await client
     .from('song_feed_clips')
@@ -655,7 +662,9 @@ async function loadFeedClipMap(): Promise<Map<string, FeedClip>> {
     }];
   });
 
-  return new Map(clips.map((clip) => [clip.song_id, clip]));
+  const clipMap = new Map(clips.map((clip) => [clip.song_id, clip]));
+  feedClipMapCache = { data: clipMap, loadedAt: Date.now() };
+  return clipMap;
 }
 
 export async function loadFeedPreview(userId: string): Promise<FeedPreviewSong[]> {
@@ -1112,20 +1121,10 @@ export async function createPlaylist(userId: string, title: string): Promise<Pla
 export async function addSongToPlaylist(playlistId: string, songId: string): Promise<void> {
   const client = requireClient();
 
-  // check if already in playlist
-  const { data: existing } = await client
-    .from('playlist_songs')
-    .select('song_id')
-    .eq('playlist_id', playlistId)
-    .eq('song_id', songId)
-    .single();
-
-  if (existing) return; // already added
-
   const { error } = await client
     .from('playlist_songs')
     .insert({ playlist_id: playlistId, song_id: songId });
-  if (error) throw new Error(error.message);
+  if (error && error.code !== '23505') throw new Error(error.message);
 }
 
 export async function removeSongFromPlaylist(playlistId: string, songId: string): Promise<void> {
@@ -1232,18 +1231,15 @@ export async function loadChartsData(): Promise<ChartsData> {
   const client = requireClient();
   const todayUtc = new Date().toISOString().slice(0, 10);
 
-  const [viralQuery, artistQuery, dailyQuery] = await Promise.all([
-    client.from('songs').select(SONG_SELECT_WITH_PROFILE).eq('is_approved', true).order('plays', { ascending: false }).limit(80),
+  const [rankedSongsQuery, dailyQuery] = await Promise.all([
     client.from('songs').select(SONG_SELECT_WITH_PROFILE).eq('is_approved', true).order('plays', { ascending: false }).limit(200),
     client.from('song_daily_plays').select('song_id, plays').eq('play_date', todayUtc).order('plays', { ascending: false }).limit(50),
   ]);
 
-  if (viralQuery.error) throw new Error(viralQuery.error.message);
-  if (artistQuery.error) throw new Error(artistQuery.error.message);
+  if (rankedSongsQuery.error) throw new Error(rankedSongsQuery.error.message);
   if (dailyQuery.error) throw new Error(dailyQuery.error.message);
 
-  const viralPool = ((viralQuery.data || []) as SongRow[]).map(mapSong);
-  const artistPool = ((artistQuery.data || []) as SongRow[]).map(mapSong);
+  const rankedPool = ((rankedSongsQuery.data || []) as SongRow[]).map(mapSong);
   const dailyPlays = (dailyQuery.data || []) as { song_id: string; plays: number }[];
 
   const dailyPlayMap: Record<string, number> = {};
@@ -1259,10 +1255,10 @@ export async function loadChartsData(): Promise<ChartsData> {
 
   if (dailySongRows.error) throw new Error(dailySongRows.error.message);
 
-  const viralSongs = viralPool.slice(0, 20);
+  const viralSongs = rankedPool.slice(0, 20);
   const songById = new Map<string, Song>();
 
-  [...viralPool, ...((dailySongRows.data || []) as SongRow[]).map(mapSong)].forEach((song) => {
+  [...rankedPool, ...((dailySongRows.data || []) as SongRow[]).map(mapSong)].forEach((song) => {
     songById.set(song.id, song);
   });
 
@@ -1270,8 +1266,8 @@ export async function loadChartsData(): Promise<ChartsData> {
     .map((songId) => songById.get(songId))
     .filter((song): song is Song => Boolean(song));
   const dailyIds = new Set(dailySongsFromToday.map(({ id }) => id));
-  const dailySongs = [...dailySongsFromToday, ...viralPool.filter((song) => !dailyIds.has(song.id))].slice(0, 50);
-  const artistCharts = buildArtistStatsFromSongs(artistPool).slice(0, 30);
+  const dailySongs = [...dailySongsFromToday, ...rankedPool.filter((song) => !dailyIds.has(song.id))].slice(0, 50);
+  const artistCharts = buildArtistStatsFromSongs(rankedPool).slice(0, 30);
   const data = { viralSongs, dailySongs, artistCharts, dailyPlayMap };
 
   chartsCache = { data, loadedAt: Date.now() };

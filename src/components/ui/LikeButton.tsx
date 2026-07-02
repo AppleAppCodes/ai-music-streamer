@@ -85,22 +85,6 @@ export default function LikeButton({ songId, className = '', iconClassName = 'w-
     if (newStatus) {
       setIsAnimating(true);
       setTimeout(() => setIsAnimating(false), 300); // Remove animation class after 300ms
-
-      const { data: existing, error: lookupError } = await supabase
-        .from('liked_songs')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('song_id', songId)
-        .limit(1);
-
-      if (lookupError) {
-        setIsLiked(false);
-        emitLikedSongChange(songId, false);
-        console.error('Error checking liked song:', lookupError);
-        return;
-      }
-
-      if (existing?.length) return;
       
       const { error } = await supabase
         .from('liked_songs')
