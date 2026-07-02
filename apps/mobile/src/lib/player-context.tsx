@@ -354,6 +354,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setIsAdPlaying(false);
         if (!isSameSong) {
           setSongsPlayed(prev => prev + 1);
+          // Record the play: bumps the global count + daily charts and, for a
+          // signed-in listener, the per-user history (user_song_plays). This is
+          // what makes app listening visible in charts and the admin dashboard.
+          // Fire-and-forget — playback must never wait on analytics.
+          if (supabase) {
+            void supabase
+              .rpc('increment_song_plays', { target_song_id: song.id })
+              .then(({ error }) => {
+                if (error) console.warn('increment_song_plays failed:', error.message);
+              });
+          }
         }
       }
 
