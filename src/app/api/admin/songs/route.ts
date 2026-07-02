@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest } from 'next/server';
+import { ilikePattern } from '@/lib/searchPattern';
 import {
   ALLOWED_AUDIO_EXTENSIONS,
   ALLOWED_AUDIO_TYPES,
@@ -76,7 +77,8 @@ export async function GET(request: NextRequest) {
   }
 
   if (search) {
-    query = query.or(`title.ilike.%${search}%,artist_name.ilike.%${search}%`);
+    const searchPattern = ilikePattern(search);
+    query = query.or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern}`);
   }
 
   const { data, error } = await query;

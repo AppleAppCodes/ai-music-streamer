@@ -14,6 +14,7 @@ import ReportDialog from '@/components/ui/ReportDialog';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getErrorMessage } from '@/lib/errors';
+import { ilikePattern } from '@/lib/searchPattern';
 import { compressImage } from '@/lib/imageCompression';
 import { isModUser } from '@/lib/admin';
 import { useTranslation } from 'react-i18next';
@@ -292,7 +293,7 @@ export default function PlaylistPage() {
 
     async function searchSongs() {
       setSongSearchLoading(true);
-      const searchPattern = `%${trimmedQuery}%`;
+      const searchPattern = ilikePattern(trimmedQuery);
       const { data, error } = await supabase
         .from('songs')
         .select('id, title, artist_name, cover_url, plays')

@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { usePlayer } from '@/lib/player-context';
 import { Song } from '@/lib/types';
+import { ilikePattern } from '@/lib/searchPattern';
 import { Loader2, Play, Mic2, Music } from 'lucide-react';
 
 interface HeaderClientProps {
@@ -74,7 +75,7 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
     let isActive = true;
     async function searchSongs() {
       setSearchLoading(true);
-      const searchPattern = `%${trimmedQuery}%`;
+      const searchPattern = ilikePattern(trimmedQuery);
       const { data, error } = await supabase
         .from('songs')
         .select('*')

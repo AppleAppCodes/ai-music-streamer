@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Song } from '@/lib/types';
+import { ilikePattern } from '@/lib/searchPattern';
 import Link from 'next/link';
 import { Mic2, Music, Search } from 'lucide-react';
 import Image from 'next/image';
@@ -49,6 +50,7 @@ function SearchResults() {
 
       setLoading(true);
 
+      const searchPattern = ilikePattern(trimmedQuery);
       const [
         { data: songsData },
         { data: playlistsData },
@@ -57,7 +59,7 @@ function SearchResults() {
         supabase
           .from('songs')
           .select('id, title, artist_name, cover_url, plays')
-          .or(`title.ilike.%${trimmedQuery}%,artist_name.ilike.%${trimmedQuery}%,genre.ilike.%${trimmedQuery}%`)
+          .or(`title.ilike.${searchPattern},artist_name.ilike.${searchPattern},genre.ilike.${searchPattern}`)
           .order('plays', { ascending: false })
           .limit(20),
         supabase
