@@ -1,194 +1,33 @@
 'use client';
 
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft, Radio, UploadCloud, Loader2, Edit2, FileAudio, Terminal, Play, Heart, Activity, UserPlus, Sparkles, Megaphone } from 'lucide-react';
+import { ShieldAlert, Users, Music, Search, ArrowLeft, Radio, Terminal, Play, Heart, Activity, UserPlus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { isAdminUser, isModUser } from '@/lib/admin';
-import { GENRES } from '@/lib/constants';
+import { UsersTab } from './tabs/UsersTab';
+import { SongsTab } from './tabs/SongsTab';
+import { ApprovalsTab } from './tabs/ApprovalsTab';
+import { ModerationTab } from './tabs/ModerationTab';
+import { AdsTab } from './tabs/AdsTab';
+import { SpotlightTab } from './tabs/SpotlightTab';
+import { BotTab } from './tabs/BotTab';
+import {
+  createSlug,
+  readAudioFileDuration,
+  toAdminNumber,
+  type AdminTab,
+  type AdFile,
+  type HighlightNewsForm,
+  type McpLog,
+  type NewsPostData,
+  type ProfileData,
+  type Report,
+  type SongData,
+  type SongPerformanceRow,
+} from './types';
 
-type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot' | 'spotlight';
-
-// Reads the real duration (seconds) of an audio File via its metadata, client-side.
-function readAudioFileDuration(file: File): Promise<number | null> {
-  return new Promise((resolve) => {
-    try {
-      const url = URL.createObjectURL(file);
-      const audio = new Audio();
-      audio.preload = 'metadata';
-      audio.onloadedmetadata = () => {
-        URL.revokeObjectURL(url);
-        resolve(Number.isFinite(audio.duration) ? Math.round(audio.duration) : null);
-      };
-      audio.onerror = () => {
-        URL.revokeObjectURL(url);
-        resolve(null);
-      };
-      audio.src = url;
-    } catch {
-      resolve(null);
-    }
-  });
-}
-
-interface McpLog {
-  id: string;
-  tool_name: string;
-  arguments: Record<string, unknown>;
-  response_summary: string;
-  created_at: string;
-}
-
-interface ProfileData {
-  id: string;
-  username: string;
-  email?: string;
-  last_active_at?: string;
-  country?: string;
-  created_at: string;
-  subscription_tier: string;
-  followers_count: number;
-  avatar_url?: string;
-  is_banned?: boolean;
-  role?: string;
-  // Engagement (merged from get_admin_user_engagement)
-  songs_played?: number;
-  total_plays?: number;
-  last_played_at?: string | null;
-  likes?: number;
-  follows?: number;
-  playlists?: number;
-}
-
-interface SongData {
-  id: string;
-  title: string;
-  artist_name: string;
-  plays: number;
-  ai_tool?: string;
-  created_at: string;
-  is_approved?: boolean;
-  audio_url?: string;
-  cover_url?: string;
-  is_spotlight?: boolean;
-  spotlight_copy?: string | null;
-  genre?: string | null;
-  trending_sort_order?: number | null;
-  plays_24h?: number;
-  plays_7d?: number;
-  plays_30d?: number;
-  previous_7d?: number;
-  trend_percent?: number;
-  unique_listeners?: number;
-  likes_count?: number;
-  playlist_adds?: number;
-  last_played_at?: string | null;
-}
-
-type SongPerformanceRow = {
-  song_id: string;
-  plays_total: number | string | null;
-  plays_24h: number | string | null;
-  plays_7d: number | string | null;
-  plays_30d: number | string | null;
-  previous_7d: number | string | null;
-  trend_percent: number | string | null;
-  unique_listeners: number | string | null;
-  likes: number | string | null;
-  playlist_adds: number | string | null;
-  last_played_at: string | null;
-};
-
-type HighlightNewsForm = {
-  id: string | null;
-  enabled: boolean;
-  slug: string;
-  title: string;
-  body: string;
-  imageUrl: string;
-  ctaLabel: string;
-  ctaUrl: string;
-};
-
-type NewsPostData = {
-  id: string;
-  slug: string;
-  title: string;
-  excerpt?: string | null;
-  body?: string | null;
-  image_url?: string | null;
-  cta_label?: string | null;
-  cta_url?: string | null;
-  is_published: boolean;
-  is_featured: boolean;
-  published_at?: string | null;
-  created_at?: string | null;
-};
-
-function toAdminNumber(value?: number | string | null) {
-  const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatAdminNumber(value?: number | null) {
-  return (value ?? 0).toLocaleString('de-DE');
-}
-
-function formatTrendPercent(value?: number | null) {
-  const number = value ?? 0;
-  const prefix = number > 0 ? '+' : '';
-  return `${prefix}${number.toLocaleString('de-DE', { maximumFractionDigits: 1 })}%`;
-}
-
-function getTrendClasses(value?: number | null) {
-  const number = value ?? 0;
-  if (number > 0) return 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300';
-  if (number < 0) return 'border-red-400/25 bg-red-400/10 text-red-300';
-  return 'border-white/10 bg-white/5 text-white/45';
-}
-
-function createSlug(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 90);
-}
-
-function openTrustedExternalUrl(value?: string | null) {
-  if (!value) return;
-
-  try {
-    const url = new URL(value);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
-    window.open(url.toString(), '_blank', 'noopener,noreferrer');
-  } catch {
-    // Ignore malformed URLs from pending creator submissions.
-  }
-}
-
-interface Report {
-  id: string;
-  status: string;
-  entity_type: string;
-  entity_id: string;
-  reason: string;
-  created_at: string;
-  [key: string]: unknown;
-}
-
-interface AdFile {
-  id?: string | number;
-  name: string;
-  created_at?: string;
-  metadata?: { size?: number; [key: string]: unknown };
-  [key: string]: unknown;
-}
 export default function AdminPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
@@ -870,7 +709,7 @@ export default function AdminPage() {
       const userId = session?.user?.id || 'admin';
 
       const audioExt = file.name.split('.').pop();
-      // eslint-disable-next-line react-hooks/purity
+       
       const audioPath = `${userId}/replaced_${Date.now()}_song.${audioExt}`;
 
       const { error: uploadError } = await supabase.storage
@@ -1027,6 +866,11 @@ export default function AdminPage() {
         alert('Fehler beim Ablehnen: ' + error.message);
       }
     }
+  };
+
+  const handleResolveReport = async (reportId: string) => {
+    await supabase.from('reports').update({ status: 'resolved' }).eq('id', reportId);
+    setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'resolved' } : r));
   };
 
   const filteredProfiles = profiles.filter(p => p.username?.toLowerCase().includes(searchTerm.toLowerCase()) || p.email?.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -1226,923 +1070,89 @@ export default function AdminPage() {
         {/* Content Area */}
         <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm">
           {activeTab === 'users' && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-white/70">
-                <thead className="text-xs uppercase bg-black/40 text-white/50">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold">Nutzername</th>
-                    <th className="px-6 py-4 font-semibold">E-Mail</th>
-                    <th className="px-6 py-4 font-semibold">Tarif (Plan)</th>
-                    <th className="px-6 py-4 font-semibold">Land</th>
-                    <th className="px-6 py-4 font-semibold">Zuletzt aktiv</th>
-                    <th className="px-6 py-4 font-semibold">Aktivität</th>
-                    <th className="px-6 py-4 font-semibold">Zuletzt gehört</th>
-                    <th className="px-6 py-4 font-semibold">Beigetreten am</th>
-                    <th className="px-6 py-4 font-semibold text-right">Aktion</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {filteredProfiles.length > 0 ? filteredProfiles.map((profile) => (
-                    <tr key={profile.id} className="hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
-                        {profile.avatar_url ? (
-                          <Image src={profile.avatar_url} alt={profile.username} width={32} height={32} className="rounded-full object-cover shadow-md" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shadow-md">
-                            {profile.username?.[0]?.toUpperCase() || '?'}
-                          </div>
-                        )}
-                        <span className="flex items-center gap-2">
-                          {profile.username || 'Unbekannt'}
-                          {profile.role === 'admin' && <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase">Admin</span>}
-                          {profile.role === 'mod' && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-bold uppercase">Mod</span>}
-                          {profile.role === 'creator' && <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-bold uppercase">Creator</span>}
-                          {profile.is_banned && <span className="text-[10px] bg-red-500/20 text-red-500 px-2 py-0.5 rounded-full font-bold uppercase">Gesperrt</span>}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">{profile.email || '-'}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wider ${
-                          profile.subscription_tier === 'pro' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' :
-                          profile.subscription_tier === 'premium' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-                          'bg-white/10 text-white/60'
-                        }`}>
-                          {(profile.subscription_tier || 'Free').toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">{profile.country || '-'}</td>
-                      <td className="px-6 py-4">{profile.last_active_at ? new Date(profile.last_active_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-0.5 whitespace-nowrap">
-                          <span className="text-white/80">▶ {(profile.total_plays ?? 0).toLocaleString('de-DE')} <span className="text-white/40">({profile.songs_played ?? 0} Songs)</span></span>
-                          <span className="text-xs text-white/40">❤ {profile.likes ?? 0} · ✚ {profile.follows ?? 0} · ☰ {profile.playlists ?? 0}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{profile.last_played_at ? new Date(profile.last_played_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</td>
-                      <td className="px-6 py-4">{new Date(profile.created_at).toLocaleDateString('de-DE')}</td>
-                      <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                        <select
-                          className="bg-white/5 border border-white/10 rounded-md text-xs px-2 py-1.5 text-white/80 focus:outline-none focus:border-indigo-500"
-                          value={profile.role || 'user'}
-                          onChange={(e) => handleRoleChange(profile.id, e.target.value, profile.username)}
-                        >
-                          <option value="user">User</option>
-                          <option value="creator">Creator</option>
-                          <option value="mod">MOD</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                        <button
-                          onClick={() => handleToggleBan(profile.id, !!profile.is_banned, profile.username)}
-                          className={`text-xs px-3 py-1.5 rounded-md font-bold transition-colors ${
-                            profile.is_banned
-                              ? 'bg-white/10 hover:bg-white/20 text-white'
-                              : 'bg-red-500/10 hover:bg-red-500/20 text-red-500'
-                          }`}
-                        >
-                          {profile.is_banned ? 'Entsperren' : 'Sperren'}
-                        </button>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={9} className="px-6 py-12 text-center text-white/40">Keine Nutzer gefunden.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <UsersTab
+              profiles={filteredProfiles}
+              onRoleChange={handleRoleChange}
+              onToggleBan={handleToggleBan}
+            />
           )}
 
           {activeTab === 'songs' && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-white/70">
-                <thead className="text-xs uppercase bg-black/40 text-white/50">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold">Song Titel</th>
-                    <th className="px-6 py-4 font-semibold">Künstler</th>
-                    <th className="px-6 py-4 font-semibold">Performance</th>
-                    <th className="px-6 py-4 font-semibold">Engagement</th>
-                    <th className="px-6 py-4 font-semibold">Trend</th>
-                    <th className="px-6 py-4 font-semibold">Zuletzt</th>
-                    <th className="px-6 py-4 font-semibold">AI Tool</th>
-                    <th className="px-6 py-4 font-semibold text-right">Aktion</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {filteredSongs.length > 0 ? filteredSongs.map((song) => {
-                    const expanded = expandedSongId === song.id;
-                    const trend = song.trend_percent ?? 0;
-                    const isNewTrend = (song.previous_7d ?? 0) === 0 && (song.plays_7d ?? 0) > 0;
-
-                    return (
-                      <Fragment key={song.id}>
-                        <tr className="hover:bg-white/5 transition-colors group">
-                          <td className="px-6 py-4 font-medium text-white max-w-[220px] truncate" title={song.title}>
-                            <Link href={`/song/${song.id}`} className="hover:text-indigo-400 hover:underline">
-                              {song.title}
-                            </Link>
-                          </td>
-                          <td className="px-6 py-4 max-w-[150px] truncate" title={song.artist_name}>{song.artist_name || 'Unbekannt'}</td>
-                          <td className="px-6 py-4">
-                            <div className="font-mono text-white">{formatAdminNumber(song.plays)}</div>
-                            <div className="mt-1 whitespace-nowrap text-xs text-white/40">
-                              24h {formatAdminNumber(song.plays_24h)} · 7d {formatAdminNumber(song.plays_7d)} · 30d {formatAdminNumber(song.plays_30d)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="whitespace-nowrap text-white/75">👤 {formatAdminNumber(song.unique_listeners)} Listener</div>
-                            <div className="mt-1 whitespace-nowrap text-xs text-white/40">
-                              ❤ {formatAdminNumber(song.likes_count)} · ☰ {formatAdminNumber(song.playlist_adds)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex min-w-[72px] justify-center rounded-full border px-2.5 py-1 text-xs font-bold ${getTrendClasses(trend)}`}>
-                              {isNewTrend ? 'Neu' : formatTrendPercent(trend)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-xs text-white/50">
-                            {song.last_played_at ? new Date(song.last_played_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="px-2 py-1 bg-white/5 rounded text-xs border border-white/10">
-                              {song.ai_tool || 'N/A'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => setExpandedSongId(expanded ? null : song.id)}
-                              className={`p-2 rounded-lg transition-all ${
-                                expanded
-                                  ? 'text-indigo-300 bg-indigo-400/15'
-                                  : 'text-white/40 hover:text-indigo-300 hover:bg-indigo-400/10'
-                              }`}
-                              title={expanded ? 'Details schließen' : 'Performance-Details anzeigen'}
-                            >
-                              <Activity className="w-4 h-4" />
-                            </button>
-                            <select
-                              value={song.genre ?? ''}
-                              onChange={(e) => handleChangeGenre(song.id, e.target.value)}
-                              title="Genre ändern"
-                              className="rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white/80 focus:border-indigo-400/55 focus:outline-none"
-                            >
-                              {!song.genre && <option value="" disabled>Genre…</option>}
-                              {song.genre && !GENRES.some((g) => g.name === song.genre) && (
-                                <option value={song.genre}>{song.genre}</option>
-                              )}
-                              {GENRES.map((g) => (
-                                <option key={g.name} value={g.name}>{g.name}</option>
-                              ))}
-                            </select>
-                            <label
-                              className="p-2 cursor-pointer text-white/40 hover:text-green-400 hover:bg-green-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                              title="Audiodatei austauschen"
-                            >
-                              {isReplacingAudio === song.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <FileAudio className="w-4 h-4" />
-                              )}
-                              <input
-                                type="file"
-                                accept="audio/*"
-                                className="hidden"
-                                onChange={(e) => handleReplaceAudio(e, song.id, song.title)}
-                                disabled={isReplacingAudio === song.id}
-                              />
-                            </label>
-                            <button
-                              onClick={() => handleSetSpotlightSong(song.id, song.title)}
-                              className={`p-2 rounded-lg transition-all ${
-                                song.is_spotlight
-                                  ? 'text-fuchsia-300 bg-fuchsia-400/15'
-                                  : 'text-white/40 hover:text-fuchsia-300 hover:bg-fuchsia-400/10 opacity-0 group-hover:opacity-100'
-                              }`}
-                              title={song.is_spotlight ? 'Aktuelles Home-Spotlight' : 'Als Home-Spotlight setzen'}
-                            >
-                              <Sparkles className="w-4 h-4" />
-                            </button>
-                            {song.is_spotlight ? (
-                              <button
-                                onClick={() => handleEditSpotlightCopy(song.id, song.title, song.spotlight_copy ?? null)}
-                                className="p-2 text-fuchsia-300/80 hover:text-fuchsia-200 hover:bg-fuchsia-400/10 rounded-lg transition-all"
-                                title={song.spotlight_copy ? 'Spotlight-Text bearbeiten' : 'Spotlight-Text setzen'}
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                            ) : null}
-                            <button
-                              onClick={() => handleEditSongTitle(song.id, song.title)}
-                              className="p-2 text-white/40 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                              title="Song umbenennen"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteSong(song.id, song.title)}
-                              className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                              title="Song endgültig löschen"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                        {expanded ? (
-                          <tr className="bg-indigo-500/[0.035]">
-                            <td colSpan={8} className="px-6 py-4">
-                              <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
-                                {[
-                                  ['Gesamt-Plays', formatAdminNumber(song.plays)],
-                                  ['24h', formatAdminNumber(song.plays_24h)],
-                                  ['7 Tage', formatAdminNumber(song.plays_7d)],
-                                  ['30 Tage', formatAdminNumber(song.plays_30d)],
-                                  ['Unique Listener', formatAdminNumber(song.unique_listeners)],
-                                  ['Likes', formatAdminNumber(song.likes_count)],
-                                  ['Playlist-Adds', formatAdminNumber(song.playlist_adds)],
-                                  ['Trend vs. Vorwoche', isNewTrend ? 'Neu' : formatTrendPercent(song.trend_percent)],
-                                ].map(([label, value]) => (
-                                  <div key={label} className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
-                                    <div className="text-[10px] uppercase tracking-[0.18em] text-white/35">{label}</div>
-                                    <div className="mt-1 text-lg font-black text-white">{value}</div>
-                                  </div>
-                                ))}
-                              </div>
-                            </td>
-                          </tr>
-                        ) : null}
-                      </Fragment>
-                    );
-                  }) : (
-                    <tr>
-                      <td colSpan={8} className="px-6 py-12 text-center text-white/40">Keine Songs gefunden.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <SongsTab
+              songs={filteredSongs}
+              expandedSongId={expandedSongId}
+              isReplacingAudio={isReplacingAudio}
+              onToggleExpanded={setExpandedSongId}
+              onChangeGenre={handleChangeGenre}
+              onReplaceAudio={handleReplaceAudio}
+              onSetSpotlightSong={handleSetSpotlightSong}
+              onEditSpotlightCopy={handleEditSpotlightCopy}
+              onEditSongTitle={handleEditSongTitle}
+              onDeleteSong={handleDeleteSong}
+            />
           )}
 
           {activeTab === 'approvals' && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-white/70">
-                <thead className="text-xs uppercase bg-black/40 text-white/50">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold">Titel</th>
-                    <th className="px-6 py-4 font-semibold">Künstler</th>
-                    <th className="px-6 py-4 font-semibold">Datum</th>
-                    <th className="px-6 py-4 font-semibold text-right">Aktionen</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {pendingSongs.length > 0 ? pendingSongs.map((song) => (
-                    <tr key={song.id} className="hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-4 font-medium text-white max-w-[200px] truncate" title={song.title}>
-                        {song.title}
-                      </td>
-                      <td className="px-6 py-4 max-w-[150px] truncate" title={song.artist_name}>{song.artist_name || 'Unbekannt'}</td>
-                      <td className="px-6 py-4">{new Date(song.created_at).toLocaleDateString('de-DE')}</td>
-                      <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                        {song.audio_url && (
-                          <button
-                            onClick={() => openTrustedExternalUrl(song.audio_url)}
-                            className="p-2 text-blue-400 hover:text-white hover:bg-blue-500 rounded-lg transition-all"
-                            title="Song anhören"
-                          >
-                            <Play className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleApproveSong(song.id, song.title)}
-                          className="px-3 py-1.5 text-xs font-bold text-green-400 bg-green-500/10 hover:bg-green-500/20 rounded-md transition-all"
-                        >
-                          Freigeben
-                        </button>
-                        <button
-                          onClick={() => handleRejectSong(song.id, song.title)}
-                          className="px-3 py-1.5 text-xs font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded-md transition-all"
-                        >
-                          Ablehnen
-                        </button>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-12 text-center text-white/40">Keine ausstehenden Freigaben.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <ApprovalsTab
+              pendingSongs={pendingSongs}
+              onApprove={handleApproveSong}
+              onReject={handleRejectSong}
+            />
           )}
 
           {activeTab === 'moderation' && (
-            <div className="overflow-x-auto">
-              {reports.length === 0 ? (
-                <div className="p-12 text-center text-white/50 flex flex-col items-center">
-                  <ShieldAlert className="w-12 h-12 mb-4 opacity-50" />
-                  <p>Keine Meldungen vorhanden. Alles sieht gut aus!</p>
-                </div>
-              ) : (
-                <table className="w-full text-left text-sm text-white/70">
-                  <thead className="text-xs uppercase bg-black/40 text-white/50">
-                    <tr>
-                      <th className="px-6 py-4 font-semibold">Status</th>
-                      <th className="px-6 py-4 font-semibold">Typ</th>
-                      <th className="px-6 py-4 font-semibold">Grund</th>
-                      <th className="px-6 py-4 font-semibold">Datum</th>
-                      <th className="px-6 py-4 font-semibold text-right">Aktionen</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {reports.map((report) => (
-                      <tr key={report.id} className="hover:bg-white/5 transition-colors">
-                        <td className="px-6 py-4">
-                          {report.status === 'pending' ? (
-                            <span className="text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md text-xs font-bold border border-amber-400/20">Ausstehend</span>
-                          ) : (
-                            <span className="text-green-400 bg-green-400/10 px-2 py-1 rounded-md text-xs font-bold border border-green-400/20">Erledigt</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 capitalize text-white font-medium">
-                          {report.entity_type}
-                        </td>
-                        <td className="px-6 py-4 font-medium">
-                          {report.reason}
-                        </td>
-                        <td className="px-6 py-4 text-white/40">
-                          {new Date(report.created_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}
-                        </td>
-                        <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                          <button
-                            onClick={async () => {
-                              await supabase.from('reports').update({ status: 'resolved' }).eq('id', report.id);
-                              setReports(prev => prev.map(r => r.id === report.id ? { ...r, status: 'resolved' } : r));
-                            }}
-                            className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-all"
-                            title="Als erledigt markieren"
-                            disabled={report.status === 'resolved'}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                          <Link
-                            href={report.entity_type === 'playlist' ? `/playlist/${report.entity_id}` : `/artist/${report.entity_id}`}
-                            target="_blank"
-                            className="px-3 py-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 text-white rounded-md transition-colors"
-                          >
-                            Prüfen
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+            <ModerationTab reports={reports} onResolve={handleResolveReport} />
           )}
 
           {activeTab === 'ads' && isFullAdmin && (
-            <div className="p-8">
-              <div className="max-w-2xl mx-auto text-center">
-                <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Radio className="w-8 h-8 text-indigo-500" />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-4">Eigenwerbung Verwalten</h2>
-                <p className="text-white/60 mb-8">
-                  Lade hier eine neue Audiodatei hoch (.mp3, .m4a), die den Free-Nutzern nach jedem 3. Song abgespielt wird.
-                  Die neue Datei überschreibt automatisch die alte Werbung und ist sofort live.
-                </p>
-
-                <div className="bg-black/40 border border-white/10 rounded-2xl p-8 relative overflow-hidden group hover:border-indigo-500/50 transition-colors">
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    onChange={handleAdUpload}
-                    disabled={isUploadingAd}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
-                    title="Klicke hier, um eine Audiodatei auszuwählen"
-                  />
-                  <div className="flex flex-col items-center justify-center gap-4">
-                    {isUploadingAd ? (
-                      <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
-                    ) : (
-                      <UploadCloud className="w-10 h-10 text-white/50 group-hover:text-indigo-400 transition-colors" />
-                    )}
-                    <div>
-                      <p className="text-lg font-semibold text-white">
-                        {isUploadingAd ? 'Audiodatei wird hochgeladen...' : 'Klicke hier, um eine Audiodatei auszuwählen'}
-                      </p>
-                      <p className="text-sm text-white/40 mt-2">Maximal 10 MB (MP3, WAV, M4A)</p>
-                    </div>
-                  </div>
-                </div>
-
-                {uploadAdStatus && (
-                  <div className={`mt-6 p-4 rounded-xl text-sm font-medium border ${
-                    uploadAdStatus.includes('Erfolgreich')
-                      ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                      : uploadAdStatus.includes('Fehler')
-                        ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                        : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                  }`}>
-                    {uploadAdStatus}
-                  </div>
-                )}
-
-                {/* Ad Frequency Setting */}
-                <div className="mt-12 text-left bg-white/5 border border-white/10 rounded-2xl p-6">
-                  <h3 className="text-xl font-bold text-white mb-2">Werbe-Intervall</h3>
-                  <p className="text-white/60 mb-6 text-sm">
-                    Stelle hier ein, nach wie vielen Songs die Basic-Nutzer eine Werbung hören sollen.
-                    (Bisher war dieser Wert fest auf 3 eingestellt).
-                  </p>
-
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 flex items-center justify-between">
-                      <span className="text-white font-medium">Werbung abspielen nach jedem:</span>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => setAdFrequency(Math.max(1, adFrequency - 1))}
-                          className="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-                        >-</button>
-                        <span className="text-xl font-bold text-white w-8 text-center">{adFrequency}</span>
-                        <button
-                          onClick={() => setAdFrequency(adFrequency + 1)}
-                          className="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-                        >+</button>
-                        <span className="text-white/60 font-medium ml-2">. Song</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleSaveAdFrequency}
-                      disabled={isSavingAdFreq}
-                      className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl transition-colors disabled:opacity-50"
-                    >
-                      {isSavingAdFreq ? 'Speichert...' : 'Speichern'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* List of active ads */}
-                <div className="mt-12 text-left">
-                  <h3 className="text-xl font-bold text-white mb-4">Aktive Werbungen ({adFiles.length})</h3>
-                  {adFiles.length === 0 ? (
-                    <div className="p-8 text-center bg-white/5 border border-white/10 rounded-2xl">
-                      <p className="text-white/50">Keine Werbung hochgeladen. Nutze den Uploader oben!</p>
-                    </div>
-                  ) : (
-                    <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                      <ul className="divide-y divide-white/5">
-                        {adFiles.map((file) => (
-                          <li key={file.id || file.name} className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors">
-                            <div className="flex items-center gap-4 truncate mr-4">
-                              <div className="p-2 bg-indigo-500/20 rounded-lg">
-                                <Radio className="w-5 h-5 text-indigo-400" />
-                              </div>
-                              <div className="truncate">
-                                <p className="text-sm font-medium text-white truncate">{file.name}</p>
-                                <p className="text-xs text-white/50">
-                                  {file.created_at ? new Date(file.created_at).toLocaleDateString('de-DE') : 'Unbekannt'} • {(((file.metadata?.size as number) || 0) / 1024 / 1024).toFixed(2)} MB
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => handleAdDelete(file.name)}
-                              className="p-2 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all flex-shrink-0"
-                              title="Werbung löschen"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <AdsTab
+              isUploadingAd={isUploadingAd}
+              uploadAdStatus={uploadAdStatus}
+              adFiles={adFiles}
+              adFrequency={adFrequency}
+              isSavingAdFreq={isSavingAdFreq}
+              onAdUpload={handleAdUpload}
+              onAdDelete={handleAdDelete}
+              onAdFrequencyChange={setAdFrequency}
+              onSaveAdFrequency={handleSaveAdFrequency}
+            />
           )}
 
           {activeTab === 'spotlight' && (
-            <div className="p-8">
-              <div className="max-w-3xl mx-auto space-y-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-2">Home Spotlight Slider</h2>
-                  <p className="text-white/60 text-sm">
-                    Wähle, welcher Song, Künstler, welche Playlist und welche News im rotierenden Spotlight-Slider auf der Home erscheinen. Song-Spotlight setzt du wie gewohnt im Songs-Tab über das Funkel-Icon.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-accent/20 bg-accent/[0.055] p-6">
-                  <div className="mb-4 flex items-start justify-between gap-4">
-                    <div>
-                      <label className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-accent/90">
-                        <Megaphone className="h-4 w-4" />
-                        News Slide
-                      </label>
-                      <p className="mt-2 text-sm text-white/55">Vierter Highlight-Slide für Ankündigungen. Veröffentlichte Beiträge bleiben unter /news erreichbar.</p>
-                    </div>
-                    <label className="flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs font-bold text-white/70">
-                      <input
-                        type="checkbox"
-                        checked={highlightNews.enabled}
-                        onChange={(e) => setHighlightNews((prev) => ({ ...prev, enabled: e.target.checked }))}
-                        className="accent-primary"
-                      />
-                      Aktiv
-                    </label>
-                  </div>
-
-                  <div className="grid gap-3">
-                    <input
-                      type="text"
-                      value={highlightNews.title}
-                      onChange={(e) => setHighlightNews((prev) => ({ ...prev, title: e.target.value }))}
-                      placeholder="Headline, z.B. Neue App-Version ist live"
-                      className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
-                    />
-                    <input
-                      type="text"
-                      value={highlightNews.slug}
-                      onChange={(e) => setHighlightNews((prev) => ({ ...prev, slug: createSlug(e.target.value) }))}
-                      onBlur={() => setHighlightNews((prev) => ({ ...prev, slug: createSlug(prev.slug || prev.title) }))}
-                      placeholder="artikel-slug, z.B. app-version-1-0-9"
-                      className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
-                    />
-                    <textarea
-                      value={highlightNews.body}
-                      onChange={(e) => setHighlightNews((prev) => ({ ...prev, body: e.target.value }))}
-                      placeholder="Kurzer News-Text oder Ankündigung…"
-                      rows={4}
-                      className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
-                    />
-                    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
-                          {highlightNews.imageUrl ? (
-                            <Image src={highlightNews.imageUrl} alt="News Bild" fill sizes="96px" className="object-cover" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-white/35">
-                              <Megaphone className="h-8 w-8" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-black uppercase tracking-[0.2em] text-white/45">Artikelbild</p>
-                          <p className="mt-1 text-sm text-white/55">Wird im Home-Slide, News-Archiv und Artikel-Header genutzt.</p>
-                          <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/8 px-4 py-2 text-xs font-bold text-white hover:bg-white/12">
-                            {isUploadingNewsImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-                            {isUploadingNewsImage ? 'Lädt…' : 'Bild wählen'}
-                            <input type="file" accept="image/*" onChange={handleNewsImageUpload} className="hidden" disabled={isUploadingNewsImage} />
-                          </label>
-                          {uploadNewsImageStatus ? <p className="mt-2 text-xs text-emerald-300">{uploadNewsImageStatus}</p> : null}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <input
-                        type="text"
-                        value={highlightNews.ctaLabel}
-                        onChange={(e) => setHighlightNews((prev) => ({ ...prev, ctaLabel: e.target.value }))}
-                        placeholder="Button-Text optional"
-                        className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
-                      />
-                      <input
-                        type="text"
-                        value={highlightNews.ctaUrl}
-                        onChange={(e) => setHighlightNews((prev) => ({ ...prev, ctaUrl: e.target.value }))}
-                        placeholder="Button-Link optional, z.B. /playlists"
-                        className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex justify-end">
-                    <button
-                      onClick={handleSaveHighlightNews}
-                      disabled={savingHighlightNews}
-                      className="rounded-full bg-primary px-5 py-2 text-xs font-bold text-white transition-transform hover:scale-105 disabled:opacity-50"
-                    >
-                      {savingHighlightNews ? 'Speichert…' : 'News speichern'}
-                    </button>
-                  </div>
-
-                  {newsPosts.length > 0 ? (
-                    <div className="mt-6 border-t border-white/10 pt-5">
-                      <p className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/45">News-Historie</p>
-                      <div className="space-y-2">
-                        {newsPosts.map((post) => (
-                          <div key={post.id} className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-black/25 p-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="truncate text-sm font-black text-white">{post.title}</p>
-                                {post.is_featured ? (
-                                  <span className="rounded-full border border-accent/30 bg-accent/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-accent">Aktiver Slide</span>
-                                ) : null}
-                              </div>
-                              <p className="mt-1 text-xs text-white/40">/news/{post.slug}</p>
-                            </div>
-                            <div className="flex shrink-0 flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleEditNewsPost(post)}
-                                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-white/70 hover:bg-white/10"
-                              >
-                                Bearbeiten
-                              </button>
-                              {!post.is_featured ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSetFeaturedNewsPost(post)}
-                                  disabled={savingHighlightNews}
-                                  className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent hover:bg-accent/15 disabled:opacity-50"
-                                >
-                                  Als Slide setzen
-                                </button>
-                              ) : null}
-                              <Link
-                                href={`/news/${post.slug}`}
-                                target="_blank"
-                                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-white/70 hover:bg-white/10"
-                              >
-                                Öffnen
-                              </Link>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-6">
-                  <label className="block text-xs font-black uppercase tracking-[0.22em] text-fuchsia-300/80 mb-2">Artist Spotlight</label>
-                  <p className="text-sm text-white/55 mb-3">Der hervorgehobene Künstler in der zweiten Slide.</p>
-                  <select
-                    value={spotlightArtists.find((a) => a.is_spotlight)?.artist_name ?? ''}
-                    onChange={(e) => handleSetSpotlightArtist(e.target.value)}
-                    disabled={spotlightSaving === 'artist'}
-                    className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:outline-none focus:border-fuchsia-400/55 disabled:opacity-60"
-                  >
-                    <option value="">— Kein Artist-Spotlight —</option>
-                    {spotlightArtists.map((a) => (
-                      <option key={a.artist_name} value={a.artist_name}>{a.artist_name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-6">
-                  <label className="block text-xs font-black uppercase tracking-[0.22em] text-teal-300/80 mb-2">Playlist Spotlight</label>
-                  <p className="text-sm text-white/55 mb-3">Die hervorgehobene Playlist (z.B. {'„Playlist der Woche"'}) in der dritten Slide.</p>
-                  <select
-                    value={spotlightPlaylists.find((p) => p.is_spotlight)?.id ?? ''}
-                    onChange={(e) => handleSetSpotlightPlaylist(e.target.value)}
-                    disabled={spotlightSaving === 'playlist'}
-                    className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:outline-none focus:border-teal-300/55 disabled:opacity-60"
-                  >
-                    <option value="">— Kein Playlist-Spotlight —</option>
-                    {spotlightPlaylists.map((p) => (
-                      <option key={p.id} value={p.id}>{p.title}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <p className="text-xs text-white/40">
-                  Sobald ein Slot leer ist, wird die entsprechende Slide einfach weggelassen — der Slider zeigt dann nur die übrigen Slides.
-                </p>
-
-                <div className="mt-8 rounded-2xl border border-white/8 bg-white/[0.035] p-6">
-                  <div className="mb-1 flex items-center justify-between gap-3">
-                    <label className="block text-xs font-black uppercase tracking-[0.22em] text-teal-300/80">Reihenfolge: Offizielle Playlists</label>
-                    <button
-                      onClick={handleSaveOfficialOrder}
-                      disabled={savingOfficialOrder || officialOrder.length === 0}
-                      className="rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white transition-transform hover:scale-105 disabled:opacity-50"
-                    >
-                      {savingOfficialOrder ? 'Speichert…' : 'Reihenfolge speichern'}
-                    </button>
-                  </div>
-                  <p className="mb-3 text-sm text-white/55">Bestimmt die Reihenfolge der {'„Official YORIAX Playlists"'} auf der Startseite (oben in der Liste = ganz links).</p>
-                  <ul className="space-y-2">
-                    {officialOrder.map((p, index) => (
-                      <li key={p.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
-                        <span className="w-6 text-center text-sm font-bold text-white/40">{index + 1}</span>
-                        <span className="flex-1 truncate text-sm font-semibold text-white">{p.title}</span>
-                        <button
-                          onClick={() => moveOfficialPlaylist(index, -1)}
-                          disabled={index === 0}
-                          aria-label="Nach oben"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg leading-none text-white/70 transition-colors hover:bg-white/10 disabled:opacity-30"
-                        >↑</button>
-                        <button
-                          onClick={() => moveOfficialPlaylist(index, 1)}
-                          disabled={index === officialOrder.length - 1}
-                          aria-label="Nach unten"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg leading-none text-white/70 transition-colors hover:bg-white/10 disabled:opacity-30"
-                        >↓</button>
-                      </li>
-                    ))}
-                    {officialOrder.length === 0 && (
-                      <li className="px-1 text-sm text-white/40">Keine offiziellen Playlists gefunden.</li>
-                    )}
-                  </ul>
-                </div>
-
-                <div className="mt-8 rounded-2xl border border-white/8 bg-white/[0.035] p-6">
-                  <div className="mb-1 flex items-center justify-between gap-3">
-                    <label className="block text-xs font-black uppercase tracking-[0.22em] text-teal-300/80">Trending · 6 Plätze</label>
-                    <button
-                      onClick={handleSaveTrending}
-                      disabled={savingTrending}
-                      className="rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white transition-transform hover:scale-105 disabled:opacity-50"
-                    >
-                      {savingTrending ? 'Speichert…' : 'Trending speichern'}
-                    </button>
-                  </div>
-                  <p className="mb-3 text-sm text-white/55">
-                    Lege exakt die Songs für die {'„Trending"'}-Reihe auf Web und App fest (oben = erster). Maximal 6 Plätze; wenn die Liste leer ist, bleibt die Reihe leer.
-                  </p>
-
-                  <ul className="space-y-2">
-                    {trendingPicks.map((p, index) => (
-                      <li key={p.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5">
-                        <span className="w-6 text-center text-sm font-bold text-white/40">{index + 1}</span>
-                        <span className="flex-1 truncate text-sm font-semibold text-white">
-                          {p.title} <span className="font-normal text-white/45">· {p.artist_name}</span>
-                        </span>
-                        <button
-                          onClick={() => moveTrendingPick(index, -1)}
-                          disabled={index === 0}
-                          aria-label="Nach oben"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg leading-none text-white/70 transition-colors hover:bg-white/10 disabled:opacity-30"
-                        >↑</button>
-                        <button
-                          onClick={() => moveTrendingPick(index, 1)}
-                          disabled={index === trendingPicks.length - 1}
-                          aria-label="Nach unten"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg leading-none text-white/70 transition-colors hover:bg-white/10 disabled:opacity-30"
-                        >↓</button>
-                        <button
-                          onClick={() => removeTrendingPick(p.id)}
-                          aria-label="Entfernen"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-300 transition-colors hover:bg-red-500/20"
-                        >×</button>
-                      </li>
-                    ))}
-                    {trendingPicks.length === 0 && (
-                      <li className="px-1 text-sm text-white/40">Noch keine Trending-Songs gewählt.</li>
-                    )}
-                  </ul>
-
-                  {trendingPicks.length < 6 && (
-                    <div className="mt-4">
-                      <input
-                        type="text"
-                        value={trendingSearch}
-                        onChange={(e) => setTrendingSearch(e.target.value)}
-                        placeholder="Song suchen, um ihn hinzuzufügen…"
-                        className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-teal-300/55 focus:outline-none"
-                      />
-                      {trendingSearchResults.length > 0 && (
-                        <ul className="mt-2 max-h-60 overflow-y-auto rounded-xl border border-white/10 bg-black/50">
-                          {trendingSearchResults.map((s) => (
-                            <li key={s.id}>
-                              <button
-                                onClick={() => addTrendingPick(s)}
-                                className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/10"
-                              >
-                                <span className="truncate">{s.title} <span className="text-white/45">· {s.artist_name}</span></span>
-                                <span className="shrink-0 text-teal-300">+ Hinzufügen</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <SpotlightTab
+              highlightNews={highlightNews}
+              setHighlightNews={setHighlightNews}
+              savingHighlightNews={savingHighlightNews}
+              newsPosts={newsPosts}
+              isUploadingNewsImage={isUploadingNewsImage}
+              uploadNewsImageStatus={uploadNewsImageStatus}
+              spotlightArtists={spotlightArtists}
+              spotlightPlaylists={spotlightPlaylists}
+              spotlightSaving={spotlightSaving}
+              officialOrder={officialOrder}
+              savingOfficialOrder={savingOfficialOrder}
+              trendingPicks={trendingPicks}
+              trendingSearch={trendingSearch}
+              trendingSearchResults={trendingSearchResults}
+              savingTrending={savingTrending}
+              onSaveHighlightNews={handleSaveHighlightNews}
+              onNewsImageUpload={handleNewsImageUpload}
+              onEditNewsPost={handleEditNewsPost}
+              onSetFeaturedNewsPost={handleSetFeaturedNewsPost}
+              onSetSpotlightArtist={handleSetSpotlightArtist}
+              onSetSpotlightPlaylist={handleSetSpotlightPlaylist}
+              onMoveOfficialPlaylist={moveOfficialPlaylist}
+              onSaveOfficialOrder={handleSaveOfficialOrder}
+              onTrendingSearchChange={setTrendingSearch}
+              onAddTrendingPick={addTrendingPick}
+              onRemoveTrendingPick={removeTrendingPick}
+              onMoveTrendingPick={moveTrendingPick}
+              onSaveTrending={handleSaveTrending}
+            />
           )}
 
           {activeTab === 'bot' && (
-            <div className="p-8">
-              <div className="max-w-4xl mx-auto">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h2 className="text-2xl font-bold text-white mb-2">Bot- &amp; Admin-Aktivität</h2>
-                    <p className="text-white/60 text-sm max-w-2xl">
-                      Live-Protokoll aller Änderungen an der Datenbank durch Bots, KI-Assistenten
-                      oder Admins – z.&nbsp;B. Songs hochladen, umbenennen oder löschen und Playlists
-                      bearbeiten. Aktionen normaler Nutzer (z.&nbsp;B. Abspielen) erscheinen hier nicht.
-                    </p>
-                  </div>
-                  <div className={`${liveConnected ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-white/5 text-white/40 border-white/10'} border px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shrink-0`}>
-                    <span className="relative flex h-2 w-2">
-                      {liveConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
-                      <span className={`relative inline-flex rounded-full h-2 w-2 ${liveConnected ? 'bg-green-500' : 'bg-white/30'}`}></span>
-                    </span>
-                    {liveConnected ? 'Live' : 'Verbinde …'}
-                  </div>
-                </div>
-
-                {/* How to connect a bot / agent */}
-                <div className="mb-6 rounded-2xl border border-indigo-400/15 bg-indigo-500/[0.06] p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Terminal className="w-4 h-4 text-indigo-300" />
-                    <h3 className="text-sm font-bold text-white">So verbindest du deinen Bot</h3>
-                  </div>
-                  <p className="text-sm text-white/60 mb-4">
-                    Du musst nichts Spezielles einrichten: Jede Änderung an der Datenbank durch einen
-                    Bot, KI-Assistenten oder Admin landet automatisch in diesem Protokoll.
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-                      <div className="text-[11px] font-black uppercase tracking-wider text-teal-300/80 mb-1">Methode 1 · am einfachsten</div>
-                      <div className="text-sm font-semibold text-white mb-1">Supabase-MCP</div>
-                      <p className="text-xs text-white/55 leading-relaxed">
-                        Verbinde in deinem KI-Tool (Claude Desktop, Cursor, Antigravity) den
-                        Supabase-MCP-Server. Deine Aktionen erscheinen dann automatisch hier – das
-                        nutzt du bereits.
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-                      <div className="text-[11px] font-black uppercase tracking-wider text-indigo-300/80 mb-1">Methode 2 · eigene Tools</div>
-                      <div className="text-sm font-semibold text-white mb-1">YORIAX-MCP-Server</div>
-                      <p className="text-xs text-white/55 leading-relaxed">
-                        Für Komfort-Befehle (Song hochladen, umbenennen, Playlist verwalten) trägst
-                        du den YORIAX-Server in die MCP-Config deines Agenten ein.
-                      </p>
-                    </div>
-                  </div>
-                  <details className="mt-3">
-                    <summary className="cursor-pointer select-none text-xs text-white/50 hover:text-white/70">Config-Beispiel (Methode 2) anzeigen</summary>
-                    <pre className="mt-2 overflow-x-auto rounded-lg border border-white/10 bg-black/50 p-3 text-[11px] leading-relaxed text-white/70">{`"yoriax": {
-  "command": "node",
-  "args": ["/Pfad/zu/mcp-server/dist/index.js"],
-  "env": {
-    "SUPABASE_URL": "https://eiqelhjugiwckvxyixyh.supabase.co",
-    "SUPABASE_SERVICE_ROLE_KEY": "<dein Service-Role-Key>"
-  }
-}`}</pre>
-                  </details>
-                  <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
-                    <span className="rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-green-300">✓ Geloggt: Uploads, Umbenennungen, Löschungen, Playlists, Rollen</span>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-white/45">✗ Ignoriert: normales Abspielen &amp; Stöbern</span>
-                  </div>
-                </div>
-
-                <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                  <div className="p-4 border-b border-white/10 bg-black/20 flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-white/40" />
-                    <span className="text-sm font-semibold text-white/70">Aktivitäts-Protokoll</span>
-                  </div>
-                  {mcpLogs.length === 0 ? (
-                    <div className="p-8 text-center text-white/40 text-sm">
-                      Noch keine Aktivitäten. Sobald ein Bot, KI-Assistent oder Admin etwas ändert
-                      (Song hochladen, umbenennen, Playlist bearbeiten …), erscheint es hier sofort.
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-white/5 max-h-[600px] overflow-y-auto">
-                      {mcpLogs.map((log) => {
-                        const actor = typeof log.arguments?._akteur === 'string' ? (log.arguments._akteur as string) : null;
-                        const actorLabel = actor === 'system' ? 'Bot / MCP' : actor === 'service_role' ? 'Service' : actor;
-                        const detailKeys = log.arguments ? Object.keys(log.arguments).filter((k) => k !== '_akteur') : [];
-                        return (
-                          <div key={log.id} className="p-4 hover:bg-white/5 transition-colors">
-                            <div className="flex items-start justify-between gap-3 mb-1.5">
-                              <span className="text-sm font-semibold text-white/90">
-                                {log.response_summary || log.tool_name}
-                              </span>
-                              <span className="shrink-0 text-xs text-white/40">
-                                {new Date(log.created_at).toLocaleString('de-DE')}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="font-mono text-[11px] font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded">
-                                {log.tool_name}
-                              </span>
-                              {actorLabel && (
-                                <span className="text-[11px] text-white/40 bg-white/5 px-2 py-0.5 rounded">
-                                  {actorLabel}
-                                </span>
-                              )}
-                            </div>
-                            {detailKeys.length > 0 && (
-                              <details className="text-xs">
-                                <summary className="cursor-pointer select-none text-white/40 hover:text-white/60">Details</summary>
-                                <div className="mt-1 font-mono text-white/60 bg-black/40 p-2 rounded border border-white/5 break-all">
-                                  {JSON.stringify(log.arguments)}
-                                </div>
-                              </details>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <BotTab mcpLogs={mcpLogs} liveConnected={liveConnected} />
           )}
         </div>
 
