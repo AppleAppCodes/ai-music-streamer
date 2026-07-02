@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getPersonalizedSongs, type PlaybackSignal, type SongSignal } from '@/lib/homeRecommendations';
+import { loadFeaturedNewsPost, newsArticlePath } from '@/lib/news';
 import type { Song } from '@/lib/types';
 
 const SONG_SELECT =
@@ -33,11 +34,15 @@ export type SpotlightArtistSummary = {
 export type SpotlightPlaylistSummary = OfficialPlaylistSummary;
 
 export type HighlightNewsSummary = {
+  id: string | null;
+  slug: string | null;
   enabled: boolean;
   title: string | null;
   body: string | null;
+  image_url: string | null;
   cta_label: string | null;
   cta_url: string | null;
+  article_url: string | null;
 };
 
 type HomeInitialData = {
@@ -137,20 +142,42 @@ async function loadCuratedTrendingSongs(client: SupabaseClient, limit: number) {
 }
 
 async function loadHighlightNews(client: SupabaseClient): Promise<HighlightNewsSummary | null> {
+  const featured = await loadFeaturedNewsPost(client);
+  if (featured) {
+    const articleUrl = newsArticlePath(featured.slug);
+    return {
+      id: featured.id,
+      slug: featured.slug,
+      enabled: true,
+      title: featured.title,
+      body: featured.excerpt || featured.body,
+      image_url: featured.image_url,
+      cta_label: featured.cta_label,
+      cta_url: featured.cta_url || articleUrl,
+      article_url: articleUrl,
+    };
+  }
+
   const { data, error } = await client
     .from('app_settings')
-    .select('highlight_news_enabled, highlight_news_title, highlight_news_body, highlight_news_cta_label, highlight_news_cta_url')
+    .select('highlight_news_enabled, highlight_news_title, highlight_news_body, highlight_news_cta_label, highlight_news_cta_url, highlight_news_image_url, highlight_news_article_slug')
     .eq('id', 'global')
     .maybeSingle();
 
   if (error || !data) return null;
+  const slug = (data.highlight_news_article_slug as string | null) ?? null;
+  const articleUrl = slug ? newsArticlePath(slug) : null;
 
   return {
+    id: null,
+    slug,
     enabled: Boolean(data.highlight_news_enabled),
     title: (data.highlight_news_title as string | null) ?? null,
     body: (data.highlight_news_body as string | null) ?? null,
+    image_url: (data.highlight_news_image_url as string | null) ?? null,
     cta_label: (data.highlight_news_cta_label as string | null) ?? null,
-    cta_url: (data.highlight_news_cta_url as string | null) ?? null,
+    cta_url: ((data.highlight_news_cta_url as string | null) ?? null) || articleUrl,
+    article_url: articleUrl,
   };
 }
 

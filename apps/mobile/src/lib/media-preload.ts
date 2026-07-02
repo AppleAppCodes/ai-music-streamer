@@ -45,6 +45,10 @@ function collectHomeCoverUris(home: HomeMusicData) {
   if (isRemoteUri(spotlightPlaylistCover)) {
     uris.add(spotlightPlaylistCover);
   }
+  const highlightNewsImage = home.highlightNews?.image_url;
+  if (isRemoteUri(highlightNewsImage)) {
+    uris.add(highlightNewsImage);
+  }
 
   for (const playlist of home.officialPlaylists) {
     addPlaylistCover(uris, playlist);

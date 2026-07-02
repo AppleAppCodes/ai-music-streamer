@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { GENRES } from '@/lib/constants';
+import { newsArticlePath } from '@/lib/news';
 import { SITE_URL } from '@/lib/seo';
 import { createPublicClient } from '@/utils/supabase/public';
 
@@ -51,6 +52,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: `${baseUrl}/news`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    },
+    {
       url: `${baseUrl}/download`,
       lastModified: now,
       changeFrequency: 'monthly',
@@ -79,7 +86,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const supabase = createPublicClient();
 
-    const [{ data: songs }, { data: playlists }, { data: artistRows }] = await Promise.all([
+    const [{ data: songs }, { data: playlists }, { data: artistRows }, { data: newsRows }] = await Promise.all([
       supabase
         .from('songs')
         .select('id, created_at')
@@ -97,6 +104,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .not('artist_name', 'is', null)
         .order('plays', { ascending: false })
         .limit(2000),
+      supabase
+        .from('news_posts')
+        .select('slug, published_at, created_at, updated_at')
+        .eq('is_published', true)
+        .order('published_at', { ascending: false, nullsFirst: false })
+        .limit(200),
     ]);
 
     const songUrls = (songs || []).map((song) => ({
@@ -131,7 +144,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.75,
     }));
 
-    return [...staticRoutes, ...songUrls, ...playlistUrls, ...artistUrls];
+    const newsUrls = (newsRows || []).map((post) => ({
+      url: `${baseUrl}${newsArticlePath(post.slug)}`,
+      lastModified: new Date(post.updated_at || post.published_at || post.created_at || now),
+      changeFrequency: 'monthly' as const,
+      priority: 0.65,
+    }));
+
+    return [...staticRoutes, ...songUrls, ...playlistUrls, ...artistUrls, ...newsUrls];
   } catch {
     return staticRoutes;
   }

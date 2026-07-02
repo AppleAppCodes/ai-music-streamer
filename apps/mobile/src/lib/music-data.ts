@@ -43,6 +43,18 @@ export interface SpotlightPlaylist {
   creatorName: string;
 }
 
+export interface HighlightNews {
+  id: string | null;
+  slug: string | null;
+  title: string | null;
+  body: string | null;
+  image_url: string | null;
+  cta_label: string | null;
+  cta_url: string | null;
+  article_url: string | null;
+  enabled: boolean;
+}
+
 export interface HomeMusicData {
   totalSongs: number;
   trendingSongs: Song[];
@@ -52,6 +64,7 @@ export interface HomeMusicData {
   spotlightSong: Song | null;
   spotlightArtist: SpotlightArtist | null;
   spotlightPlaylist: SpotlightPlaylist | null;
+  highlightNews: HighlightNews | null;
 }
 
 export interface LibraryMusicData {
@@ -334,7 +347,7 @@ async function loadSongSignals(userId: string) {
 }
 
 export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
-  const [curatedTrendingSongs, popularSongs, latestSongs, signals, discoverPlaylistsData, spotlightSong, spotlightArtist, spotlightPlaylist] = await Promise.all([
+  const [curatedTrendingSongs, popularSongs, latestSongs, signals, discoverPlaylistsData, spotlightSong, spotlightArtist, spotlightPlaylist, highlightNews] = await Promise.all([
     loadCuratedTrendingSongs(6),
     loadSongs(96, 'plays'),
     loadSongs(48, 'created_at'),
@@ -343,6 +356,7 @@ export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
     loadSpotlightSong(),
     loadSpotlightArtist(),
     loadSpotlightPlaylist(),
+    loadHighlightNews(),
   ]);
   const songs = mergeSongs(curatedTrendingSongs, popularSongs, latestSongs);
   const trendingSongs = curatedTrendingSongs.slice(0, 6);
@@ -359,6 +373,78 @@ export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
     spotlightSong,
     spotlightArtist,
     spotlightPlaylist,
+    highlightNews,
+  };
+}
+
+function buildNewsArticleUrl(slug?: string | null) {
+  const value = slug?.trim();
+  return value ? `https://www.yoriax.com/news/${encodeURIComponent(value)}` : null;
+}
+
+async function loadHighlightNews(): Promise<HighlightNews | null> {
+  const client = requireClient();
+
+  const newsResult = await client
+    .from('news_posts')
+    .select('id, slug, title, excerpt, body, image_url, cta_label, cta_url, is_published, is_featured, published_at, created_at')
+    .eq('is_featured', true)
+    .eq('is_published', true)
+    .order('published_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!newsResult.error && newsResult.data) {
+    const row = newsResult.data as {
+      body?: string | null;
+      cta_label?: string | null;
+      cta_url?: string | null;
+      excerpt?: string | null;
+      id?: string | null;
+      image_url?: string | null;
+      slug?: string | null;
+      title?: string | null;
+    };
+    const slug = row.slug ?? null;
+    const articleUrl = buildNewsArticleUrl(slug);
+
+    return {
+      id: row.id ?? null,
+      slug,
+      title: row.title ?? null,
+      body: row.excerpt ?? row.body ?? null,
+      image_url: row.image_url ?? null,
+      cta_label: row.cta_label ?? null,
+      cta_url: row.cta_url ?? articleUrl,
+      article_url: articleUrl,
+      enabled: true,
+    };
+  }
+
+  const fallback = await client
+    .from('app_settings')
+    .select('highlight_news_enabled, highlight_news_title, highlight_news_body, highlight_news_cta_label, highlight_news_cta_url, highlight_news_image_url, highlight_news_article_slug')
+    .eq('id', 'global')
+    .maybeSingle();
+
+  if (fallback.error || !fallback.data || !fallback.data.highlight_news_enabled) {
+    return null;
+  }
+
+  const slug = (fallback.data.highlight_news_article_slug as string | null) ?? null;
+  const articleUrl = buildNewsArticleUrl(slug);
+
+  return {
+    id: null,
+    slug,
+    title: (fallback.data.highlight_news_title as string | null) ?? null,
+    body: (fallback.data.highlight_news_body as string | null) ?? null,
+    image_url: (fallback.data.highlight_news_image_url as string | null) ?? null,
+    cta_label: (fallback.data.highlight_news_cta_label as string | null) ?? null,
+    cta_url: ((fallback.data.highlight_news_cta_url as string | null) ?? null) || articleUrl,
+    article_url: articleUrl,
+    enabled: true,
   };
 }
 

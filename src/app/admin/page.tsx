@@ -102,11 +102,29 @@ type SongPerformanceRow = {
 };
 
 type HighlightNewsForm = {
+  id: string | null;
   enabled: boolean;
+  slug: string;
   title: string;
   body: string;
+  imageUrl: string;
   ctaLabel: string;
   ctaUrl: string;
+};
+
+type NewsPostData = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt?: string | null;
+  body?: string | null;
+  image_url?: string | null;
+  cta_label?: string | null;
+  cta_url?: string | null;
+  is_published: boolean;
+  is_featured: boolean;
+  published_at?: string | null;
+  created_at?: string | null;
 };
 
 function toAdminNumber(value?: number | string | null) {
@@ -129,6 +147,17 @@ function getTrendClasses(value?: number | null) {
   if (number > 0) return 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300';
   if (number < 0) return 'border-red-400/25 bg-red-400/10 text-red-300';
   return 'border-white/10 bg-white/5 text-white/45';
+}
+
+function createSlug(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 90);
 }
 
 function openTrustedExternalUrl(value?: string | null) {
@@ -185,13 +214,19 @@ export default function AdminPage() {
   const [trendingSearch, setTrendingSearch] = useState('');
   const [savingTrending, setSavingTrending] = useState(false);
   const [highlightNews, setHighlightNews] = useState<HighlightNewsForm>({
+    id: null,
     enabled: false,
+    slug: '',
     title: '',
     body: '',
+    imageUrl: '',
     ctaLabel: '',
     ctaUrl: '',
   });
   const [savingHighlightNews, setSavingHighlightNews] = useState(false);
+  const [newsPosts, setNewsPosts] = useState<NewsPostData[]>([]);
+  const [isUploadingNewsImage, setIsUploadingNewsImage] = useState(false);
+  const [uploadNewsImageStatus, setUploadNewsImageStatus] = useState<string | null>(null);
   const [expandedSongId, setExpandedSongId] = useState<string | null>(null);
 
   // Analytics
@@ -312,21 +347,50 @@ export default function AdminPage() {
 
         // Daily active users are returned by the admin users API above.
 
-        // Load Ad Frequency
-        const { data: settingsData } = await supabase
-          .from('app_settings')
-          .select('ad_frequency, highlight_news_enabled, highlight_news_title, highlight_news_body, highlight_news_cta_label, highlight_news_cta_url')
-          .eq('id', 'global')
-          .single();
+        // Load Ad Frequency + Spotlight News. News posts are the canonical
+        // source for the fourth Home slide; app_settings remains a legacy
+        // fallback so old clients do not break.
+        const [{ data: settingsData }, { data: newsRows, error: newsRowsError }] = await Promise.all([
+          supabase
+            .from('app_settings')
+            .select('ad_frequency, highlight_news_enabled, highlight_news_title, highlight_news_body, highlight_news_cta_label, highlight_news_cta_url, highlight_news_image_url, highlight_news_article_slug')
+            .eq('id', 'global')
+            .single(),
+          supabase
+            .from('news_posts')
+            .select('id, slug, title, excerpt, body, image_url, cta_label, cta_url, is_published, is_featured, published_at, created_at')
+            .order('created_at', { ascending: false })
+            .limit(80),
+        ]);
+        if (newsRowsError) {
+          console.error('Failed to load news posts:', newsRowsError);
+        }
+        const typedNewsPosts = (newsRows || []) as NewsPostData[];
+        setNewsPosts(typedNewsPosts);
         if (settingsData) {
           setAdFrequency(settingsData.ad_frequency);
-          setHighlightNews({
-            enabled: Boolean(settingsData.highlight_news_enabled),
-            title: (settingsData.highlight_news_title as string | null) ?? '',
-            body: (settingsData.highlight_news_body as string | null) ?? '',
-            ctaLabel: (settingsData.highlight_news_cta_label as string | null) ?? '',
-            ctaUrl: (settingsData.highlight_news_cta_url as string | null) ?? '',
-          });
+          const featuredNews = typedNewsPosts.find((post) => post.is_featured);
+          setHighlightNews(featuredNews
+            ? {
+                id: featuredNews.id,
+                enabled: true,
+                slug: featuredNews.slug,
+                title: featuredNews.title,
+                body: featuredNews.body ?? featuredNews.excerpt ?? '',
+                imageUrl: featuredNews.image_url ?? '',
+                ctaLabel: featuredNews.cta_label ?? '',
+                ctaUrl: featuredNews.cta_url ?? `/news/${featuredNews.slug}`,
+              }
+            : {
+                id: null,
+                enabled: Boolean(settingsData.highlight_news_enabled),
+                slug: (settingsData.highlight_news_article_slug as string | null) ?? '',
+                title: (settingsData.highlight_news_title as string | null) ?? '',
+                body: (settingsData.highlight_news_body as string | null) ?? '',
+                imageUrl: (settingsData.highlight_news_image_url as string | null) ?? '',
+                ctaLabel: (settingsData.highlight_news_cta_label as string | null) ?? '',
+                ctaUrl: (settingsData.highlight_news_cta_url as string | null) ?? '',
+              });
         }
 
         // Load Ads
@@ -570,20 +634,177 @@ export default function AdminPage() {
   const handleSaveHighlightNews = async () => {
     setSavingHighlightNews(true);
     try {
-      const { error } = await supabase
-        .from('app_settings')
-        .update({
-          highlight_news_enabled: highlightNews.enabled,
-          highlight_news_title: highlightNews.title.trim() || null,
-          highlight_news_body: highlightNews.body.trim() || null,
-          highlight_news_cta_label: highlightNews.ctaLabel.trim() || null,
-          highlight_news_cta_url: highlightNews.ctaUrl.trim() || null,
-        })
-        .eq('id', 'global');
-      if (error) throw error;
+      const title = highlightNews.title.trim();
+      if (!title) {
+        alert('Bitte gib eine News-Headline ein.');
+        return;
+      }
+
+      const slug = createSlug(highlightNews.slug || title);
+      if (!slug) {
+        alert('Bitte gib einen gültigen Artikel-Slug ein.');
+        return;
+      }
+
+      const wasFeatured = Boolean(highlightNews.id && newsPosts.some((post) => post.id === highlightNews.id && post.is_featured));
+      const hasOtherFeatured = newsPosts.some((post) => post.is_featured && post.id !== highlightNews.id);
+      const existingPublishedAt = highlightNews.id
+        ? newsPosts.find((post) => post.id === highlightNews.id)?.published_at
+        : null;
+      const payload = {
+        slug,
+        title,
+        excerpt: highlightNews.body.trim() || null,
+        body: highlightNews.body.trim() || null,
+        image_url: highlightNews.imageUrl.trim() || null,
+        cta_label: highlightNews.ctaLabel.trim() || null,
+        cta_url: highlightNews.ctaUrl.trim() || null,
+        is_published: true,
+        published_at: existingPublishedAt ?? new Date().toISOString(),
+      };
+
+      const saveResult = highlightNews.id
+        ? await supabase
+            .from('news_posts')
+            .update(payload)
+            .eq('id', highlightNews.id)
+            .select('id, slug, title, excerpt, body, image_url, cta_label, cta_url, is_published, is_featured, published_at, created_at')
+            .single()
+        : await supabase
+            .from('news_posts')
+            .insert(payload)
+            .select('id, slug, title, excerpt, body, image_url, cta_label, cta_url, is_published, is_featured, published_at, created_at')
+            .single();
+
+      if (saveResult.error || !saveResult.data) throw saveResult.error || new Error('News-Post konnte nicht gespeichert werden.');
+      const savedPost = saveResult.data as NewsPostData;
+
+      if (highlightNews.enabled) {
+        const { error: featuredError } = await supabase.rpc('set_featured_news_post', { post_id: savedPost.id });
+        if (featuredError) throw featuredError;
+        savedPost.is_featured = true;
+      } else if (wasFeatured) {
+        const { error: featuredError } = await supabase.rpc('set_featured_news_post', { post_id: null });
+        if (featuredError) throw featuredError;
+        savedPost.is_featured = false;
+      }
+
+      const shouldUpdateLegacyFallback = highlightNews.enabled || wasFeatured || !hasOtherFeatured;
+      if (shouldUpdateLegacyFallback) {
+        const { error } = await supabase
+          .from('app_settings')
+          .update({
+            highlight_news_enabled: highlightNews.enabled,
+            highlight_news_title: savedPost.title,
+            highlight_news_body: savedPost.excerpt ?? savedPost.body ?? null,
+            highlight_news_cta_label: savedPost.cta_label ?? null,
+            highlight_news_cta_url: savedPost.cta_url ?? `/news/${savedPost.slug}`,
+            highlight_news_image_url: savedPost.image_url ?? null,
+            highlight_news_article_slug: savedPost.slug,
+          })
+          .eq('id', 'global');
+        if (error) throw error;
+      }
+
+      setNewsPosts((prev) => {
+        const updated = prev
+          .map((post) => ({
+            ...post,
+            is_featured: highlightNews.enabled ? post.id === savedPost.id : (wasFeatured && post.id === savedPost.id ? false : post.is_featured),
+          }))
+          .filter((post) => post.id !== savedPost.id);
+        return [{ ...savedPost, is_featured: highlightNews.enabled }, ...updated];
+      });
+      setHighlightNews({
+        id: savedPost.id,
+        enabled: highlightNews.enabled,
+        slug: savedPost.slug,
+        title: savedPost.title,
+        body: savedPost.body ?? savedPost.excerpt ?? '',
+        imageUrl: savedPost.image_url ?? '',
+        ctaLabel: savedPost.cta_label ?? '',
+        ctaUrl: savedPost.cta_url ?? `/news/${savedPost.slug}`,
+      });
       alert('News-Slide gespeichert!');
     } catch (err: unknown) {
       alert('Fehler beim Speichern der News-Slide: ' + (err as Error).message);
+    } finally {
+      setSavingHighlightNews(false);
+    }
+  };
+
+  const handleNewsImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Bitte lade ein gültiges Bild hoch.');
+      event.target.value = '';
+      return;
+    }
+
+    setIsUploadingNewsImage(true);
+    setUploadNewsImageStatus('Bild wird hochgeladen…');
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const baseName = createSlug(highlightNews.slug || highlightNews.title || 'news') || 'news';
+      const path = `news/${Date.now()}-${baseName}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('covers')
+        .upload(path, file, { cacheControl: '31536000', upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('covers').getPublicUrl(path);
+      setHighlightNews((prev) => ({ ...prev, imageUrl: data.publicUrl }));
+      setUploadNewsImageStatus('Bild hochgeladen.');
+      setTimeout(() => setUploadNewsImageStatus(null), 4000);
+    } catch (err: unknown) {
+      setUploadNewsImageStatus(null);
+      alert('Fehler beim Hochladen des News-Bildes: ' + (err as Error).message);
+    } finally {
+      setIsUploadingNewsImage(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleEditNewsPost = (post: NewsPostData) => {
+    setHighlightNews({
+      id: post.id,
+      enabled: post.is_featured,
+      slug: post.slug,
+      title: post.title,
+      body: post.body ?? post.excerpt ?? '',
+      imageUrl: post.image_url ?? '',
+      ctaLabel: post.cta_label ?? '',
+      ctaUrl: post.cta_url ?? `/news/${post.slug}`,
+    });
+  };
+
+  const handleSetFeaturedNewsPost = async (post: NewsPostData) => {
+    setSavingHighlightNews(true);
+    try {
+      const { error: featuredError } = await supabase.rpc('set_featured_news_post', { post_id: post.id });
+      if (featuredError) throw featuredError;
+
+      const { error: settingsError } = await supabase
+        .from('app_settings')
+        .update({
+          highlight_news_enabled: true,
+          highlight_news_title: post.title,
+          highlight_news_body: post.excerpt ?? post.body ?? null,
+          highlight_news_cta_label: post.cta_label ?? null,
+          highlight_news_cta_url: post.cta_url ?? `/news/${post.slug}`,
+          highlight_news_image_url: post.image_url ?? null,
+          highlight_news_article_slug: post.slug,
+        })
+        .eq('id', 'global');
+      if (settingsError) throw settingsError;
+
+      setNewsPosts((prev) => prev.map((item) => ({ ...item, is_featured: item.id === post.id, is_published: item.id === post.id ? true : item.is_published })));
+      handleEditNewsPost({ ...post, is_featured: true, is_published: true });
+      alert('News-Post ist jetzt der Home-Slide.');
+    } catch (err: unknown) {
+      alert('Fehler beim Setzen des News-Slides: ' + (err as Error).message);
     } finally {
       setSavingHighlightNews(false);
     }
@@ -1518,7 +1739,7 @@ export default function AdminPage() {
                         <Megaphone className="h-4 w-4" />
                         News Slide
                       </label>
-                      <p className="mt-2 text-sm text-white/55">Vierter Highlight-Slide für Ankündigungen auf der Startseite.</p>
+                      <p className="mt-2 text-sm text-white/55">Vierter Highlight-Slide für Ankündigungen. Veröffentlichte Beiträge bleiben unter /news erreichbar.</p>
                     </div>
                     <label className="flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs font-bold text-white/70">
                       <input
@@ -1539,6 +1760,14 @@ export default function AdminPage() {
                       placeholder="Headline, z.B. Neue App-Version ist live"
                       className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
                     />
+                    <input
+                      type="text"
+                      value={highlightNews.slug}
+                      onChange={(e) => setHighlightNews((prev) => ({ ...prev, slug: createSlug(e.target.value) }))}
+                      onBlur={() => setHighlightNews((prev) => ({ ...prev, slug: createSlug(prev.slug || prev.title) }))}
+                      placeholder="artikel-slug, z.B. app-version-1-0-9"
+                      className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
+                    />
                     <textarea
                       value={highlightNews.body}
                       onChange={(e) => setHighlightNews((prev) => ({ ...prev, body: e.target.value }))}
@@ -1546,6 +1775,29 @@ export default function AdminPage() {
                       rows={4}
                       className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
                     />
+                    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
+                          {highlightNews.imageUrl ? (
+                            <Image src={highlightNews.imageUrl} alt="News Bild" fill sizes="96px" className="object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-white/35">
+                              <Megaphone className="h-8 w-8" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-white/45">Artikelbild</p>
+                          <p className="mt-1 text-sm text-white/55">Wird im Home-Slide, News-Archiv und Artikel-Header genutzt.</p>
+                          <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/8 px-4 py-2 text-xs font-bold text-white hover:bg-white/12">
+                            {isUploadingNewsImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                            {isUploadingNewsImage ? 'Lädt…' : 'Bild wählen'}
+                            <input type="file" accept="image/*" onChange={handleNewsImageUpload} className="hidden" disabled={isUploadingNewsImage} />
+                          </label>
+                          {uploadNewsImageStatus ? <p className="mt-2 text-xs text-emerald-300">{uploadNewsImageStatus}</p> : null}
+                        </div>
+                      </div>
+                    </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <input
                         type="text"
@@ -1573,6 +1825,53 @@ export default function AdminPage() {
                       {savingHighlightNews ? 'Speichert…' : 'News speichern'}
                     </button>
                   </div>
+
+                  {newsPosts.length > 0 ? (
+                    <div className="mt-6 border-t border-white/10 pt-5">
+                      <p className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/45">News-Historie</p>
+                      <div className="space-y-2">
+                        {newsPosts.map((post) => (
+                          <div key={post.id} className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-black/25 p-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="truncate text-sm font-black text-white">{post.title}</p>
+                                {post.is_featured ? (
+                                  <span className="rounded-full border border-accent/30 bg-accent/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-accent">Aktiver Slide</span>
+                                ) : null}
+                              </div>
+                              <p className="mt-1 text-xs text-white/40">/news/{post.slug}</p>
+                            </div>
+                            <div className="flex shrink-0 flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleEditNewsPost(post)}
+                                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-white/70 hover:bg-white/10"
+                              >
+                                Bearbeiten
+                              </button>
+                              {!post.is_featured ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetFeaturedNewsPost(post)}
+                                  disabled={savingHighlightNews}
+                                  className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent hover:bg-accent/15 disabled:opacity-50"
+                                >
+                                  Als Slide setzen
+                                </button>
+                              ) : null}
+                              <Link
+                                href={`/news/${post.slug}`}
+                                target="_blank"
+                                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-white/70 hover:bg-white/10"
+                              >
+                                Öffnen
+                              </Link>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-6">
