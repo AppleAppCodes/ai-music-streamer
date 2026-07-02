@@ -24,6 +24,9 @@ const NOW_PLAYING_REASSERT_DELAYS_MS = [160, 600] as const;
 // A play only counts once the listener actually heard this much of the song
 // (or it finished, for shorter tracks) — starting a song is not listening.
 const PLAY_COUNT_THRESHOLD_SECONDS = 25;
+// Radio mode appends one song per track; cap the queue so hours of autoplay
+// don't grow it (and the queue UI) without bound.
+const RADIO_QUEUE_MAX = 100;
 
 interface PlayerContextValue {
   activeSong: Song | null;
@@ -95,12 +98,11 @@ function clampVolume(volume: number) {
 }
 
 function getPlayerVolume(player: AudioPlayer) {
-  const volume = Reflect.get(player, 'volume');
-  return typeof volume === 'number' ? clampVolume(volume) : 1;
+  return typeof player.volume === 'number' ? clampVolume(player.volume) : 1;
 }
 
 function setAudioPlayerVolume(player: AudioPlayer, volume: number) {
-  Reflect.set(player, 'volume', clampVolume(volume));
+  player.volume = clampVolume(volume);
 }
 
 async function waitForPlayerReady(player: AudioPlayer, isCurrentRequest: () => boolean) {
@@ -547,7 +549,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         return;
       }
       const baseQueue = queue.length > 0 ? queue : [seed];
-      const newQueue = [...baseQueue, pick];
+      const newQueue = [...baseQueue, pick].slice(-RADIO_QUEUE_MAX);
       setQueueState(newQueue);
       playQueueSong(pick, newQueue.length - 1);
     } catch {
@@ -756,7 +758,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       activeSong,
       currentTime: isPreparingPlayback ? 0 : Math.max(0, Math.min(status.currentTime || 0, status.duration || activeSong?.duration || 0)),
       duration: status.duration || activeSong?.duration || 0,
-      error: error ?? status.error,
+      // Native errors are cryptic AVFoundation strings — show a friendly,
+      // localized message instead (the raw reason still lands in dev logs).
+      error: error ?? (status.error ? t('player.playbackFailed') : null),
       isBuffering: isPreparingPlayback || status.isBuffering,
       isPlaying: status.playing,
       isAdPlaying,
@@ -775,7 +779,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       seekTo,
       toggle,
     }),
-    [activeSong, error, isAdPlaying, isPreparingPlayback, pause, playSong, playNext, playPrevious, queue, queueIndex, reset, isShuffling, repeatMode, setQueue, toggleShuffle, toggleRepeat, seekTo, status.currentTime, status.duration, status.error, status.isBuffering, status.playing, toggle],
+    [activeSong, error, isAdPlaying, isPreparingPlayback, pause, playSong, playNext, playPrevious, queue, queueIndex, reset, isShuffling, repeatMode, setQueue, toggleShuffle, toggleRepeat, seekTo, status.currentTime, status.duration, status.error, status.isBuffering, status.playing, t, toggle],
   );
 
   const controlsValue = useMemo<PlayerControlsContextValue>(

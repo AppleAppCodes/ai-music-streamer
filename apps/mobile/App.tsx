@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { getLocales } from 'expo-localization';
 import { Animated, AppState, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -41,12 +42,7 @@ function AppShell() {
   const { loading: preferencesLoading, onboardingCompleted } = useMusicPreferences();
   const { reset } = usePlayerShell();
   const signedIn = Boolean(user);
-  const [startupMediaState, setStartupMediaState] = useState<{ ready: boolean; userId: string | null }>({
-    ready: false,
-    userId: null,
-  });
-  const startupMediaReady = !signedIn || (startupMediaState.ready && startupMediaState.userId === user?.id);
-  const appInitializing = initializing || (signedIn && (preferencesLoading || !startupMediaReady));
+  const appInitializing = initializing || (signedIn && preferencesLoading);
 
   useEffect(() => {
     if (!signedIn) reset();
@@ -54,11 +50,14 @@ function AppShell() {
 
   // Mark the user as active in-app (feeds the admin dashboard's "last active"
   // and daily-active-users, which the web previously updated only in-browser).
+  // Also records the device's region so app-only users get a country in the
+  // admin analytics (web fills it from the Vercel IP header instead).
   // Runs on sign-in and whenever the app returns to the foreground, throttled.
   useEffect(() => {
     const userId = user?.id;
     if (!signedIn || !userId || !supabase) return;
 
+    const region = getLocales()[0]?.regionCode ?? null;
     let lastPing = 0;
     const ping = () => {
       const now = Date.now();
@@ -66,7 +65,10 @@ function AppShell() {
       lastPing = now;
       void supabase!
         .from('profiles')
-        .update({ last_active_at: new Date().toISOString() })
+        .update({
+          last_active_at: new Date().toISOString(),
+          ...(region ? { country: region } : {}),
+        })
         .eq('id', userId);
     };
 
@@ -77,37 +79,14 @@ function AppShell() {
     return () => subscription.remove();
   }, [signedIn, user?.id]);
 
+  // Warm the image/video caches in the background — the UI must not wait for
+  // it. Gating startup on this preload added up to 2.4s of artificial launch
+  // time; Home has its own skeleton + persisted cache for instant paint.
   useEffect(() => {
-    if (!signedIn || !user?.id) {
-      setStartupMediaState({ ready: true, userId: null });
-      return;
-    }
-
-    let mounted = true;
-    const userId = user.id;
-    const timeout = setTimeout(() => {
-      if (mounted) {
-        setStartupMediaState({ ready: true, userId });
-      }
-    }, 2400);
-
-    setStartupMediaState({ ready: false, userId });
-
-    preloadStartupMedia(userId)
-      .catch((error) => {
-        console.warn('Startup media preload failed:', error);
-      })
-      .finally(() => {
-        clearTimeout(timeout);
-        if (mounted) {
-          setStartupMediaState({ ready: true, userId });
-        }
-      });
-
-    return () => {
-      mounted = false;
-      clearTimeout(timeout);
-    };
+    if (!signedIn || !user?.id) return;
+    preloadStartupMedia(user.id).catch((error) => {
+      console.warn('Startup media preload failed:', error);
+    });
   }, [signedIn, user?.id]);
 
   return (
