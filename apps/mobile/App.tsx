@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, AppState, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from './src/lib/auth-context';
@@ -16,6 +16,7 @@ import { YoriaxMark } from './src/components/YoriaxUI';
 import { DecorativeVideoView } from 'yoriax-decorative-video';
 import { I18nProvider, useI18n } from './src/lib/i18n';
 import { preloadStartupMedia } from './src/lib/media-preload';
+import { supabase } from './src/lib/supabase';
 
 export default function App() {
   return (
@@ -50,6 +51,31 @@ function AppShell() {
   useEffect(() => {
     if (!signedIn) reset();
   }, [reset, signedIn]);
+
+  // Mark the user as active in-app (feeds the admin dashboard's "last active"
+  // and daily-active-users, which the web previously updated only in-browser).
+  // Runs on sign-in and whenever the app returns to the foreground, throttled.
+  useEffect(() => {
+    const userId = user?.id;
+    if (!signedIn || !userId || !supabase) return;
+
+    let lastPing = 0;
+    const ping = () => {
+      const now = Date.now();
+      if (now - lastPing < 5 * 60 * 1000) return;
+      lastPing = now;
+      void supabase!
+        .from('profiles')
+        .update({ last_active_at: new Date().toISOString() })
+        .eq('id', userId);
+    };
+
+    ping();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') ping();
+    });
+    return () => subscription.remove();
+  }, [signedIn, user?.id]);
 
   useEffect(() => {
     if (!signedIn || !user?.id) {

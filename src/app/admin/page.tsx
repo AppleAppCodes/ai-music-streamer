@@ -53,6 +53,13 @@ interface ProfileData {
   avatar_url?: string;
   is_banned?: boolean;
   role?: string;
+  // Engagement (merged from get_admin_user_engagement)
+  songs_played?: number;
+  total_plays?: number;
+  last_played_at?: string | null;
+  likes?: number;
+  follows?: number;
+  playlists?: number;
 }
 
 interface SongData {
@@ -165,15 +172,30 @@ export default function AdminPage() {
         // Load Users via an admin-only SECURITY DEFINER RPC. Profile email /
         // account-state columns are no longer readable by the browser client
         // directly; the function self-authorizes via is_admin().
-        const { data: usersData, error: usersError } = await supabase.rpc('get_admin_user_list');
+        const [{ data: usersData, error: usersError }, { data: engagementData }] = await Promise.all([
+          supabase.rpc('get_admin_user_list'),
+          supabase.rpc('get_admin_user_engagement'),
+        ]);
         if (usersError) {
           console.error('Failed to load admin users:', usersError);
         } else if (usersData) {
-          const rows = usersData as ProfileData[];
+          type EngagementRow = { user_id: string; songs_played: number; total_plays: number; last_played_at: string | null; likes: number; follows: number; playlists: number };
+          const engagementById = new Map<string, EngagementRow>(
+            ((engagementData as EngagementRow[]) || []).map((e) => [e.user_id, e]),
+          );
+          const rows = (usersData as ProfileData[]).map((u) => {
+            const e = engagementById.get(u.id);
+            return e
+              ? { ...u, songs_played: e.songs_played, total_plays: e.total_plays, last_played_at: e.last_played_at, likes: e.likes, follows: e.follows, playlists: e.playlists }
+              : u;
+          });
           setProfiles(rows);
           const since = Date.now() - 24 * 60 * 60 * 1000;
           setDailyActiveUsers(
-            rows.filter((u) => u.last_active_at && new Date(u.last_active_at).getTime() >= since).length,
+            rows.filter((u) =>
+              (u.last_active_at && new Date(u.last_active_at).getTime() >= since) ||
+              (u.last_played_at && new Date(u.last_played_at).getTime() >= since),
+            ).length,
           );
         }
 
@@ -866,6 +888,8 @@ export default function AdminPage() {
                     <th className="px-6 py-4 font-semibold">Tarif (Plan)</th>
                     <th className="px-6 py-4 font-semibold">Land</th>
                     <th className="px-6 py-4 font-semibold">Zuletzt aktiv</th>
+                    <th className="px-6 py-4 font-semibold">Aktivität</th>
+                    <th className="px-6 py-4 font-semibold">Zuletzt gehört</th>
                     <th className="px-6 py-4 font-semibold">Beigetreten am</th>
                     <th className="px-6 py-4 font-semibold text-right">Aktion</th>
                   </tr>
@@ -901,6 +925,13 @@ export default function AdminPage() {
                       </td>
                       <td className="px-6 py-4">{profile.country || '-'}</td>
                       <td className="px-6 py-4">{profile.last_active_at ? new Date(profile.last_active_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-0.5 whitespace-nowrap">
+                          <span className="text-white/80">▶ {(profile.total_plays ?? 0).toLocaleString('de-DE')} <span className="text-white/40">({profile.songs_played ?? 0} Songs)</span></span>
+                          <span className="text-xs text-white/40">❤ {profile.likes ?? 0} · ✚ {profile.follows ?? 0} · ☰ {profile.playlists ?? 0}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">{profile.last_played_at ? new Date(profile.last_played_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</td>
                       <td className="px-6 py-4">{new Date(profile.created_at).toLocaleDateString('de-DE')}</td>
                       <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
                         <select
@@ -927,7 +958,7 @@ export default function AdminPage() {
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-white/40">Keine Nutzer gefunden.</td>
+                      <td colSpan={9} className="px-6 py-12 text-center text-white/40">Keine Nutzer gefunden.</td>
                     </tr>
                   )}
                 </tbody>
