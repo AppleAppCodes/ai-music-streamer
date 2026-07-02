@@ -1,8 +1,14 @@
 import { requireOptionalNativeModule, type EventSubscription, type NativeModule } from 'expo-modules-core';
 
+export type AudioInterruptionEvent = {
+  type: 'began' | 'ended';
+  shouldResume: boolean;
+};
+
 type RemoteCommandEvents = {
   onNextTrack(): void;
   onPreviousTrack(): void;
+  onAudioInterruption(event: AudioInterruptionEvent): void;
 };
 
 declare class YoriaxRemoteCommandsNativeModule extends NativeModule<RemoteCommandEvents> {
@@ -37,4 +43,16 @@ export function addTrackRemoteCommandListeners({
   return () => {
     subscriptions.forEach((subscription) => subscription.remove());
   };
+}
+
+/**
+ * Listen for AVAudioSession interruptions (phone calls, Siri, alarms).
+ * `ended` events carry iOS's own `shouldResume` hint, which is the reliable
+ * way to distinguish "interruption is over, keep playing" from a user pause.
+ * No-op (returns a no-op cleanup) when the native module is unavailable.
+ */
+export function addAudioInterruptionListener(listener: (event: AudioInterruptionEvent) => void) {
+  if (!YoriaxRemoteCommands) return () => {};
+  const subscription = YoriaxRemoteCommands.addListener('onAudioInterruption', listener);
+  return () => subscription.remove();
 }
