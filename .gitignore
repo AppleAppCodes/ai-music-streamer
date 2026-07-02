@@ -52,3 +52,4 @@ next-env.d.ts
 *.ipa
 apps/mobile/*.ipa
 
+lint_errors.txt

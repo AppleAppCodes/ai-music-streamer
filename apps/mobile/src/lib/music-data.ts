@@ -216,6 +216,16 @@ function getSingle<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
+// Unbiased Fisher–Yates shuffle (Array.sort with a random comparator is biased).
+function shuffleArray<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
+}
+
 function mergeSongs(...groups: Song[][]): Song[] {
   const merged = new Map<string, Song>();
 
@@ -787,7 +797,7 @@ export async function loadExploreFeed(userId: string): Promise<FeedPreviewSong[]
   const signals = await signalsPromise;
   const likedSongsSet = new Set(signals.likedSongs.map(l => l.song_id));
   
-  const shuffled = [...songs].sort(() => 0.5 - Math.random()).slice(0, 15);
+  const shuffled = shuffleArray(songs).slice(0, 15);
   
   const rowById = new Map(feedRows.map((row) => [row.id, row]));
 
@@ -1291,7 +1301,17 @@ export interface ArtistStat {
   createdAt: string;
 }
 
+// The artists screen aggregates over every song AND lists up to 500 storage
+// banners — cache the result like the charts do so reopening the screen is
+// instant and grows gracefully with the catalog.
+const ARTISTS_CACHE_TTL_MS = 300_000;
+let artistsCache: { data: ArtistStat[]; loadedAt: number } | null = null;
+
 export async function loadArtistsData(): Promise<ArtistStat[]> {
+  if (artistsCache && Date.now() - artistsCache.loadedAt < ARTISTS_CACHE_TTL_MS) {
+    return artistsCache.data;
+  }
+
   const client = requireClient();
 
   const { data: songsData, error: songsError } = await client
@@ -1336,5 +1356,7 @@ export async function loadArtistsData(): Promise<ArtistStat[]> {
     });
   }
 
-  return artistArray.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const sorted = artistArray.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  artistsCache = { data: sorted, loadedAt: Date.now() };
+  return sorted;
 }
