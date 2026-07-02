@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft, Radio, UploadCloud, Loader2, Edit2, FileAudio, Terminal, Play, Heart, Activity, UserPlus, Sparkles } from 'lucide-react';
@@ -76,6 +76,51 @@ interface SongData {
   spotlight_copy?: string | null;
   genre?: string | null;
   trending_sort_order?: number | null;
+  plays_24h?: number;
+  plays_7d?: number;
+  plays_30d?: number;
+  previous_7d?: number;
+  trend_percent?: number;
+  unique_listeners?: number;
+  likes_count?: number;
+  playlist_adds?: number;
+  last_played_at?: string | null;
+}
+
+type SongPerformanceRow = {
+  song_id: string;
+  plays_total: number | string | null;
+  plays_24h: number | string | null;
+  plays_7d: number | string | null;
+  plays_30d: number | string | null;
+  previous_7d: number | string | null;
+  trend_percent: number | string | null;
+  unique_listeners: number | string | null;
+  likes: number | string | null;
+  playlist_adds: number | string | null;
+  last_played_at: string | null;
+};
+
+function toAdminNumber(value?: number | string | null) {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatAdminNumber(value?: number | null) {
+  return (value ?? 0).toLocaleString('de-DE');
+}
+
+function formatTrendPercent(value?: number | null) {
+  const number = value ?? 0;
+  const prefix = number > 0 ? '+' : '';
+  return `${prefix}${number.toLocaleString('de-DE', { maximumFractionDigits: 1 })}%`;
+}
+
+function getTrendClasses(value?: number | null) {
+  const number = value ?? 0;
+  if (number > 0) return 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300';
+  if (number < 0) return 'border-red-400/25 bg-red-400/10 text-red-300';
+  return 'border-white/10 bg-white/5 text-white/45';
 }
 
 function openTrustedExternalUrl(value?: string | null) {
@@ -131,6 +176,7 @@ export default function AdminPage() {
   const [trendingPicks, setTrendingPicks] = useState<Array<{ id: string; title: string; artist_name: string }>>([]);
   const [trendingSearch, setTrendingSearch] = useState('');
   const [savingTrending, setSavingTrending] = useState(false);
+  const [expandedSongId, setExpandedSongId] = useState<string | null>(null);
 
   // Analytics
   const [totalStreams, setTotalStreams] = useState(0);
@@ -199,16 +245,45 @@ export default function AdminPage() {
           );
         }
 
-        // Load Songs & Streams
-        const { data: songsData } = await supabase
-          .from('songs')
-          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight, spotlight_copy, genre, trending_sort_order')
-          .order('created_at', { ascending: false });
+        // Load Songs & Streams. Performance metrics come from an admin-only
+        // aggregate RPC so the UI does not execute multiple count queries per song.
+        const [{ data: songsData }, { data: songPerformanceData, error: songPerformanceError }] = await Promise.all([
+          supabase
+            .from('songs')
+            .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight, spotlight_copy, genre, trending_sort_order')
+            .order('created_at', { ascending: false }),
+          supabase.rpc('get_admin_song_performance'),
+        ]);
+
+        if (songPerformanceError) {
+          console.error('Failed to load admin song performance:', songPerformanceError);
+        }
 
         if (songsData) {
-          setSongs(songsData);
-          setTotalStreams(songsData.reduce((acc, song) => acc + (song.plays || 0), 0));
-          const picks = (songsData as SongData[])
+          const performanceBySongId = new Map<string, SongPerformanceRow>(
+            ((songPerformanceData as SongPerformanceRow[]) || []).map((row) => [row.song_id, row]),
+          );
+          const mergedSongs = (songsData as SongData[]).map((song) => {
+            const performance = performanceBySongId.get(song.id);
+            return performance
+              ? {
+                  ...song,
+                  plays: toAdminNumber(performance.plays_total),
+                  plays_24h: toAdminNumber(performance.plays_24h),
+                  plays_7d: toAdminNumber(performance.plays_7d),
+                  plays_30d: toAdminNumber(performance.plays_30d),
+                  previous_7d: toAdminNumber(performance.previous_7d),
+                  trend_percent: toAdminNumber(performance.trend_percent),
+                  unique_listeners: toAdminNumber(performance.unique_listeners),
+                  likes_count: toAdminNumber(performance.likes),
+                  playlist_adds: toAdminNumber(performance.playlist_adds),
+                  last_played_at: performance.last_played_at,
+                }
+              : song;
+          });
+          setSongs(mergedSongs);
+          setTotalStreams(mergedSongs.reduce((acc, song) => acc + (song.plays || 0), 0));
+          const picks = mergedSongs
             .filter((s) => s.trending_sort_order != null)
             .sort((a, b) => (a.trending_sort_order ?? 0) - (b.trending_sort_order ?? 0))
             .map((s) => ({ id: s.id, title: s.title, artist_name: s.artist_name }));
@@ -973,97 +1048,161 @@ export default function AdminPage() {
                   <tr>
                     <th className="px-6 py-4 font-semibold">Song Titel</th>
                     <th className="px-6 py-4 font-semibold">Künstler</th>
-                    <th className="px-6 py-4 font-semibold">Plays</th>
+                    <th className="px-6 py-4 font-semibold">Performance</th>
+                    <th className="px-6 py-4 font-semibold">Engagement</th>
+                    <th className="px-6 py-4 font-semibold">Trend</th>
+                    <th className="px-6 py-4 font-semibold">Zuletzt</th>
                     <th className="px-6 py-4 font-semibold">AI Tool</th>
                     <th className="px-6 py-4 font-semibold text-right">Aktion</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {filteredSongs.length > 0 ? filteredSongs.map((song) => (
-                    <tr key={song.id} className="hover:bg-white/5 transition-colors group">
-                      <td className="px-6 py-4 font-medium text-white max-w-[200px] truncate" title={song.title}>
-                        <Link href={`/song/${song.id}`} className="hover:text-indigo-400 hover:underline">
-                          {song.title}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 max-w-[150px] truncate" title={song.artist_name}>{song.artist_name || 'Unbekannt'}</td>
-                      <td className="px-6 py-4 font-mono">{song.plays?.toLocaleString() || 0}</td>
-                      <td className="px-6 py-4">
-                        <span className="px-2 py-1 bg-white/5 rounded text-xs border border-white/10">
-                          {song.ai_tool || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                        <select
-                          value={song.genre ?? ''}
-                          onChange={(e) => handleChangeGenre(song.id, e.target.value)}
-                          title="Genre ändern"
-                          className="rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white/80 focus:border-indigo-400/55 focus:outline-none"
-                        >
-                          {!song.genre && <option value="" disabled>Genre…</option>}
-                          {song.genre && !GENRES.some((g) => g.name === song.genre) && (
-                            <option value={song.genre}>{song.genre}</option>
-                          )}
-                          {GENRES.map((g) => (
-                            <option key={g.name} value={g.name}>{g.name}</option>
-                          ))}
-                        </select>
-                        <label
-                          className="p-2 cursor-pointer text-white/40 hover:text-green-400 hover:bg-green-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                          title="Audiodatei austauschen"
-                        >
-                          {isReplacingAudio === song.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <FileAudio className="w-4 h-4" />
-                          )}
-                          <input
-                            type="file"
-                            accept="audio/*"
-                            className="hidden"
-                            onChange={(e) => handleReplaceAudio(e, song.id, song.title)}
-                            disabled={isReplacingAudio === song.id}
-                          />
-                        </label>
-                        <button
-                          onClick={() => handleSetSpotlightSong(song.id, song.title)}
-                          className={`p-2 rounded-lg transition-all ${
-                            song.is_spotlight
-                              ? 'text-fuchsia-300 bg-fuchsia-400/15'
-                              : 'text-white/40 hover:text-fuchsia-300 hover:bg-fuchsia-400/10 opacity-0 group-hover:opacity-100'
-                          }`}
-                          title={song.is_spotlight ? 'Aktuelles Home-Spotlight' : 'Als Home-Spotlight setzen'}
-                        >
-                          <Sparkles className="w-4 h-4" />
-                        </button>
-                        {song.is_spotlight ? (
-                          <button
-                            onClick={() => handleEditSpotlightCopy(song.id, song.title, song.spotlight_copy ?? null)}
-                            className="p-2 text-fuchsia-300/80 hover:text-fuchsia-200 hover:bg-fuchsia-400/10 rounded-lg transition-all"
-                            title={song.spotlight_copy ? 'Spotlight-Text bearbeiten' : 'Spotlight-Text setzen'}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                  {filteredSongs.length > 0 ? filteredSongs.map((song) => {
+                    const expanded = expandedSongId === song.id;
+                    const trend = song.trend_percent ?? 0;
+                    const isNewTrend = (song.previous_7d ?? 0) === 0 && (song.plays_7d ?? 0) > 0;
+
+                    return (
+                      <Fragment key={song.id}>
+                        <tr className="hover:bg-white/5 transition-colors group">
+                          <td className="px-6 py-4 font-medium text-white max-w-[220px] truncate" title={song.title}>
+                            <Link href={`/song/${song.id}`} className="hover:text-indigo-400 hover:underline">
+                              {song.title}
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4 max-w-[150px] truncate" title={song.artist_name}>{song.artist_name || 'Unbekannt'}</td>
+                          <td className="px-6 py-4">
+                            <div className="font-mono text-white">{formatAdminNumber(song.plays)}</div>
+                            <div className="mt-1 whitespace-nowrap text-xs text-white/40">
+                              24h {formatAdminNumber(song.plays_24h)} · 7d {formatAdminNumber(song.plays_7d)} · 30d {formatAdminNumber(song.plays_30d)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="whitespace-nowrap text-white/75">👤 {formatAdminNumber(song.unique_listeners)} Listener</div>
+                            <div className="mt-1 whitespace-nowrap text-xs text-white/40">
+                              ❤ {formatAdminNumber(song.likes_count)} · ☰ {formatAdminNumber(song.playlist_adds)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex min-w-[72px] justify-center rounded-full border px-2.5 py-1 text-xs font-bold ${getTrendClasses(trend)}`}>
+                              {isNewTrend ? 'Neu' : formatTrendPercent(trend)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-xs text-white/50">
+                            {song.last_played_at ? new Date(song.last_played_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-1 bg-white/5 rounded text-xs border border-white/10">
+                              {song.ai_tool || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setExpandedSongId(expanded ? null : song.id)}
+                              className={`p-2 rounded-lg transition-all ${
+                                expanded
+                                  ? 'text-indigo-300 bg-indigo-400/15'
+                                  : 'text-white/40 hover:text-indigo-300 hover:bg-indigo-400/10'
+                              }`}
+                              title={expanded ? 'Details schließen' : 'Performance-Details anzeigen'}
+                            >
+                              <Activity className="w-4 h-4" />
+                            </button>
+                            <select
+                              value={song.genre ?? ''}
+                              onChange={(e) => handleChangeGenre(song.id, e.target.value)}
+                              title="Genre ändern"
+                              className="rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white/80 focus:border-indigo-400/55 focus:outline-none"
+                            >
+                              {!song.genre && <option value="" disabled>Genre…</option>}
+                              {song.genre && !GENRES.some((g) => g.name === song.genre) && (
+                                <option value={song.genre}>{song.genre}</option>
+                              )}
+                              {GENRES.map((g) => (
+                                <option key={g.name} value={g.name}>{g.name}</option>
+                              ))}
+                            </select>
+                            <label
+                              className="p-2 cursor-pointer text-white/40 hover:text-green-400 hover:bg-green-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                              title="Audiodatei austauschen"
+                            >
+                              {isReplacingAudio === song.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <FileAudio className="w-4 h-4" />
+                              )}
+                              <input
+                                type="file"
+                                accept="audio/*"
+                                className="hidden"
+                                onChange={(e) => handleReplaceAudio(e, song.id, song.title)}
+                                disabled={isReplacingAudio === song.id}
+                              />
+                            </label>
+                            <button
+                              onClick={() => handleSetSpotlightSong(song.id, song.title)}
+                              className={`p-2 rounded-lg transition-all ${
+                                song.is_spotlight
+                                  ? 'text-fuchsia-300 bg-fuchsia-400/15'
+                                  : 'text-white/40 hover:text-fuchsia-300 hover:bg-fuchsia-400/10 opacity-0 group-hover:opacity-100'
+                              }`}
+                              title={song.is_spotlight ? 'Aktuelles Home-Spotlight' : 'Als Home-Spotlight setzen'}
+                            >
+                              <Sparkles className="w-4 h-4" />
+                            </button>
+                            {song.is_spotlight ? (
+                              <button
+                                onClick={() => handleEditSpotlightCopy(song.id, song.title, song.spotlight_copy ?? null)}
+                                className="p-2 text-fuchsia-300/80 hover:text-fuchsia-200 hover:bg-fuchsia-400/10 rounded-lg transition-all"
+                                title={song.spotlight_copy ? 'Spotlight-Text bearbeiten' : 'Spotlight-Text setzen'}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            ) : null}
+                            <button
+                              onClick={() => handleEditSongTitle(song.id, song.title)}
+                              className="p-2 text-white/40 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                              title="Song umbenennen"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSong(song.id, song.title)}
+                              className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                              title="Song endgültig löschen"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                        {expanded ? (
+                          <tr className="bg-indigo-500/[0.035]">
+                            <td colSpan={8} className="px-6 py-4">
+                              <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
+                                {[
+                                  ['Gesamt-Plays', formatAdminNumber(song.plays)],
+                                  ['24h', formatAdminNumber(song.plays_24h)],
+                                  ['7 Tage', formatAdminNumber(song.plays_7d)],
+                                  ['30 Tage', formatAdminNumber(song.plays_30d)],
+                                  ['Unique Listener', formatAdminNumber(song.unique_listeners)],
+                                  ['Likes', formatAdminNumber(song.likes_count)],
+                                  ['Playlist-Adds', formatAdminNumber(song.playlist_adds)],
+                                  ['Trend vs. Vorwoche', isNewTrend ? 'Neu' : formatTrendPercent(song.trend_percent)],
+                                ].map(([label, value]) => (
+                                  <div key={label} className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+                                    <div className="text-[10px] uppercase tracking-[0.18em] text-white/35">{label}</div>
+                                    <div className="mt-1 text-lg font-black text-white">{value}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
                         ) : null}
-                        <button
-                          onClick={() => handleEditSongTitle(song.id, song.title)}
-                          className="p-2 text-white/40 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                          title="Song umbenennen"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSong(song.id, song.title)}
-                          className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                          title="Song endgültig löschen"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  )) : (
+                      </Fragment>
+                    );
+                  }) : (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-white/40">Keine Songs gefunden.</td>
+                      <td colSpan={8} className="px-6 py-12 text-center text-white/40">Keine Songs gefunden.</td>
                     </tr>
                   )}
                 </tbody>
