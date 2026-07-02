@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getCuratedOrTrendingSongs, getPersonalizedSongs, type PlaybackSignal, type SongSignal } from '@/lib/homeRecommendations';
+import { getPersonalizedSongs, type PlaybackSignal, type SongSignal } from '@/lib/homeRecommendations';
 import type { Song } from '@/lib/types';
 
 const SONG_SELECT =
@@ -32,6 +32,14 @@ export type SpotlightArtistSummary = {
 
 export type SpotlightPlaylistSummary = OfficialPlaylistSummary;
 
+export type HighlightNewsSummary = {
+  enabled: boolean;
+  title: string | null;
+  body: string | null;
+  cta_label: string | null;
+  cta_url: string | null;
+};
+
 type HomeInitialData = {
   artistCovers: string[];
   trendingSongs: Song[];
@@ -40,6 +48,7 @@ type HomeInitialData = {
   spotlightSong: Song | null;
   spotlightArtist: SpotlightArtistSummary | null;
   spotlightPlaylist: SpotlightPlaylistSummary | null;
+  highlightNews: HighlightNewsSummary | null;
 };
 
 export type PublicChartsData = {
@@ -111,6 +120,38 @@ async function loadSongsByDate(client: SupabaseClient, limit: number) {
 
   if (error) throw new Error(error.message);
   return ((data || []) as unknown as SongRow[]).map(mapSong);
+}
+
+async function loadCuratedTrendingSongs(client: SupabaseClient, limit: number) {
+  const { data, error } = await client
+    .from('songs')
+    .select(SONG_SELECT_WITH_PROFILE)
+    .eq('is_approved', true)
+    .not('trending_sort_order', 'is', null)
+    .order('trending_sort_order', { ascending: true })
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(error.message);
+  return ((data || []) as unknown as SongRow[]).map(mapSong);
+}
+
+async function loadHighlightNews(client: SupabaseClient): Promise<HighlightNewsSummary | null> {
+  const { data, error } = await client
+    .from('app_settings')
+    .select('highlight_news_enabled, highlight_news_title, highlight_news_body, highlight_news_cta_label, highlight_news_cta_url')
+    .eq('id', 'global')
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return {
+    enabled: Boolean(data.highlight_news_enabled),
+    title: (data.highlight_news_title as string | null) ?? null,
+    body: (data.highlight_news_body as string | null) ?? null,
+    cta_label: (data.highlight_news_cta_label as string | null) ?? null,
+    cta_url: (data.highlight_news_cta_url as string | null) ?? null,
+  };
 }
 
 async function loadSpotlightArtist(client: SupabaseClient): Promise<SpotlightArtistSummary | null> {
@@ -269,7 +310,8 @@ async function loadOfficialPlaylists(client: SupabaseClient): Promise<OfficialPl
 }
 
 export async function loadHomeInitialData(client: SupabaseClient, userId: string): Promise<HomeInitialData> {
-  const [popularSongs, recentSongs, signals, officialPlaylists, spotlightSong, spotlightArtist, spotlightPlaylist] = await Promise.all([
+  const [curatedTrendingSongs, popularSongs, recentSongs, signals, officialPlaylists, spotlightSong, spotlightArtist, spotlightPlaylist, highlightNews] = await Promise.all([
+    loadCuratedTrendingSongs(client, 6),
     loadSongsByPopularity(client, 96),
     loadSongsByDate(client, 48),
     loadSongSignals(client, userId),
@@ -277,11 +319,12 @@ export async function loadHomeInitialData(client: SupabaseClient, userId: string
     loadSpotlightSong(client),
     loadSpotlightArtist(client),
     loadSpotlightPlaylist(client),
+    loadHighlightNews(client),
   ]);
 
-  const songs = mergeSongs(popularSongs, recentSongs);
+  const songs = mergeSongs(curatedTrendingSongs, popularSongs, recentSongs);
   const artistCovers = Array.from(new Set(songs.map((song) => song.cover_url).filter(Boolean))).slice(0, 4) as string[];
-  const trendingSongs = getCuratedOrTrendingSongs(songs, 6);
+  const trendingSongs = curatedTrendingSongs.slice(0, 6);
   const rankedRecommendations = getPersonalizedSongs(songs, signals, songs.length);
   const trendingIds = new Set(trendingSongs.map(({ id }) => id));
   const distinctRecommendations = rankedRecommendations.filter(({ id }) => !trendingIds.has(id));
@@ -294,6 +337,7 @@ export async function loadHomeInitialData(client: SupabaseClient, userId: string
     spotlightSong,
     spotlightArtist,
     spotlightPlaylist,
+    highlightNews,
   };
 }
 

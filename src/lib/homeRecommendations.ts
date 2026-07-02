@@ -93,14 +93,15 @@ export function getDailyTrendingSongs(songs: Song[], limit = 4, date = new Date(
   return dailyShuffle(selection.slice(0, limit), 'trending-order', date);
 }
 
-// Prefer the admin-curated Trending songs (trending_sort_order) when any are set;
-// otherwise fall back to the daily algorithm.
+// Home Trending is admin-curated only. If no songs are selected in the admin
+// Spotlight tab, the row intentionally stays empty instead of falling back to an
+// algorithm, so web and app always show the same hand-picked list.
 export function getCuratedOrTrendingSongs(songs: Song[], limit = 6, date = new Date()): Song[] {
-  const curated = songs
+  void date;
+  return songs
     .filter((song) => song.trending_sort_order != null)
-    .sort((a, b) => (a.trending_sort_order ?? 0) - (b.trending_sort_order ?? 0));
-  if (curated.length > 0) return curated.slice(0, limit);
-  return getDailyTrendingSongs(songs, limit, date);
+    .sort((a, b) => (a.trending_sort_order ?? 0) - (b.trending_sort_order ?? 0))
+    .slice(0, limit);
 }
 
 export function getPersonalizedSongs(

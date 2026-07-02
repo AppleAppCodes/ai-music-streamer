@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft, Radio, UploadCloud, Loader2, Edit2, FileAudio, Terminal, Play, Heart, Activity, UserPlus, Sparkles } from 'lucide-react';
+import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft, Radio, UploadCloud, Loader2, Edit2, FileAudio, Terminal, Play, Heart, Activity, UserPlus, Sparkles, Megaphone } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { isAdminUser, isModUser } from '@/lib/admin';
@@ -101,6 +101,14 @@ type SongPerformanceRow = {
   last_played_at: string | null;
 };
 
+type HighlightNewsForm = {
+  enabled: boolean;
+  title: string;
+  body: string;
+  ctaLabel: string;
+  ctaUrl: string;
+};
+
 function toAdminNumber(value?: number | string | null) {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -176,6 +184,14 @@ export default function AdminPage() {
   const [trendingPicks, setTrendingPicks] = useState<Array<{ id: string; title: string; artist_name: string }>>([]);
   const [trendingSearch, setTrendingSearch] = useState('');
   const [savingTrending, setSavingTrending] = useState(false);
+  const [highlightNews, setHighlightNews] = useState<HighlightNewsForm>({
+    enabled: false,
+    title: '',
+    body: '',
+    ctaLabel: '',
+    ctaUrl: '',
+  });
+  const [savingHighlightNews, setSavingHighlightNews] = useState(false);
   const [expandedSongId, setExpandedSongId] = useState<string | null>(null);
 
   // Analytics
@@ -297,8 +313,21 @@ export default function AdminPage() {
         // Daily active users are returned by the admin users API above.
 
         // Load Ad Frequency
-        const { data: settingsData } = await supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single();
-        if (settingsData) setAdFrequency(settingsData.ad_frequency);
+        const { data: settingsData } = await supabase
+          .from('app_settings')
+          .select('ad_frequency, highlight_news_enabled, highlight_news_title, highlight_news_body, highlight_news_cta_label, highlight_news_cta_url')
+          .eq('id', 'global')
+          .single();
+        if (settingsData) {
+          setAdFrequency(settingsData.ad_frequency);
+          setHighlightNews({
+            enabled: Boolean(settingsData.highlight_news_enabled),
+            title: (settingsData.highlight_news_title as string | null) ?? '',
+            body: (settingsData.highlight_news_body as string | null) ?? '',
+            ctaLabel: (settingsData.highlight_news_cta_label as string | null) ?? '',
+            ctaUrl: (settingsData.highlight_news_cta_url as string | null) ?? '',
+          });
+        }
 
         // Load Ads
         const { data: adsData } = await supabase.storage.from('ads').list();
@@ -535,6 +564,28 @@ export default function AdminPage() {
       alert('Fehler beim Speichern der Trending-Songs: ' + (err as Error).message);
     } finally {
       setSavingTrending(false);
+    }
+  };
+
+  const handleSaveHighlightNews = async () => {
+    setSavingHighlightNews(true);
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .update({
+          highlight_news_enabled: highlightNews.enabled,
+          highlight_news_title: highlightNews.title.trim() || null,
+          highlight_news_body: highlightNews.body.trim() || null,
+          highlight_news_cta_label: highlightNews.ctaLabel.trim() || null,
+          highlight_news_cta_url: highlightNews.ctaUrl.trim() || null,
+        })
+        .eq('id', 'global');
+      if (error) throw error;
+      alert('News-Slide gespeichert!');
+    } catch (err: unknown) {
+      alert('Fehler beim Speichern der News-Slide: ' + (err as Error).message);
+    } finally {
+      setSavingHighlightNews(false);
     }
   };
 
@@ -1456,8 +1507,72 @@ export default function AdminPage() {
                 <div>
                   <h2 className="text-2xl font-bold text-white mb-2">Home Spotlight Slider</h2>
                   <p className="text-white/60 text-sm">
-                    Wähle, welcher Song, Künstler und welche Playlist im rotierenden Spotlight-Slider auf der Home erscheinen. Song-Spotlight setzt du wie gewohnt im Songs-Tab über das Funkel-Icon.
+                    Wähle, welcher Song, Künstler, welche Playlist und welche News im rotierenden Spotlight-Slider auf der Home erscheinen. Song-Spotlight setzt du wie gewohnt im Songs-Tab über das Funkel-Icon.
                   </p>
+                </div>
+
+                <div className="rounded-2xl border border-accent/20 bg-accent/[0.055] p-6">
+                  <div className="mb-4 flex items-start justify-between gap-4">
+                    <div>
+                      <label className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-accent/90">
+                        <Megaphone className="h-4 w-4" />
+                        News Slide
+                      </label>
+                      <p className="mt-2 text-sm text-white/55">Vierter Highlight-Slide für Ankündigungen auf der Startseite.</p>
+                    </div>
+                    <label className="flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs font-bold text-white/70">
+                      <input
+                        type="checkbox"
+                        checked={highlightNews.enabled}
+                        onChange={(e) => setHighlightNews((prev) => ({ ...prev, enabled: e.target.checked }))}
+                        className="accent-primary"
+                      />
+                      Aktiv
+                    </label>
+                  </div>
+
+                  <div className="grid gap-3">
+                    <input
+                      type="text"
+                      value={highlightNews.title}
+                      onChange={(e) => setHighlightNews((prev) => ({ ...prev, title: e.target.value }))}
+                      placeholder="Headline, z.B. Neue App-Version ist live"
+                      className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
+                    />
+                    <textarea
+                      value={highlightNews.body}
+                      onChange={(e) => setHighlightNews((prev) => ({ ...prev, body: e.target.value }))}
+                      placeholder="Kurzer News-Text oder Ankündigung…"
+                      rows={4}
+                      className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
+                    />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input
+                        type="text"
+                        value={highlightNews.ctaLabel}
+                        onChange={(e) => setHighlightNews((prev) => ({ ...prev, ctaLabel: e.target.value }))}
+                        placeholder="Button-Text optional"
+                        className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        value={highlightNews.ctaUrl}
+                        onChange={(e) => setHighlightNews((prev) => ({ ...prev, ctaUrl: e.target.value }))}
+                        placeholder="Button-Link optional, z.B. /playlists"
+                        className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      onClick={handleSaveHighlightNews}
+                      disabled={savingHighlightNews}
+                      className="rounded-full bg-primary px-5 py-2 text-xs font-bold text-white transition-transform hover:scale-105 disabled:opacity-50"
+                    >
+                      {savingHighlightNews ? 'Speichert…' : 'News speichern'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-6">
@@ -1545,7 +1660,7 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <p className="mb-3 text-sm text-white/55">
-                    Lege bis zu 6 Songs für die {'„Trending"'}-Reihe auf der Startseite fest (oben = erster). Ist die Liste leer, greift automatisch der Algorithmus.
+                    Lege exakt die Songs für die {'„Trending"'}-Reihe auf Web und App fest (oben = erster). Maximal 6 Plätze; wenn die Liste leer ist, bleibt die Reihe leer.
                   </p>
 
                   <ul className="space-y-2">
@@ -1575,7 +1690,7 @@ export default function AdminPage() {
                       </li>
                     ))}
                     {trendingPicks.length === 0 && (
-                      <li className="px-1 text-sm text-white/40">Noch keine Trending-Songs gewählt — der Algorithmus entscheidet.</li>
+                      <li className="px-1 text-sm text-white/40">Noch keine Trending-Songs gewählt.</li>
                     )}
                   </ul>
 

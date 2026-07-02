@@ -1,9 +1,9 @@
-import { getDailyTrendingSongs, getPersonalizedSongs, type PlaybackSignal, type SongSignal } from './recommendations';
+import { getPersonalizedSongs, type PlaybackSignal, type SongSignal } from './recommendations';
 import { supabase } from './supabase';
 import type { DiscoverPlaylist, FeedClip, FeedPreviewSong, Playlist, Song } from './types';
 
 const SONG_SELECT =
-  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at, is_spotlight, spotlight_copy, is_approved';
+  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at, is_spotlight, spotlight_copy, is_approved, trending_sort_order';
 const SONG_SELECT_WITH_PROFILE = `${SONG_SELECT}, profiles!songs_creator_id_fkey(username)`;
 export const DAILY_NEW_RELEASES_PLAYLIST_ID = 'da114eeb-ecea-5e55-9ee1-ea5e5da11111';
 
@@ -167,6 +167,7 @@ function mapSong(row: SongRow): Song {
     is_spotlight: row.is_spotlight ?? false,
     spotlight_copy: row.spotlight_copy ?? null,
     is_approved: row.is_approved ?? true,
+    trending_sort_order: row.trending_sort_order ?? null,
   };
 }
 
@@ -229,6 +230,37 @@ async function loadSongs(limit = 80, orderBy: 'created_at' | 'plays' = 'created_
     .select(SONG_SELECT)
     .eq('is_approved', true)
     .order(orderBy, { ascending: false })
+    .limit(limit);
+
+  if (fallback.error) {
+    throw new Error(fallback.error.message);
+  }
+
+  return ((fallback.data || []) as SongRow[]).map(mapSong);
+}
+
+async function loadCuratedTrendingSongs(limit = 6): Promise<Song[]> {
+  const client = requireClient();
+  const withProfile = await client
+    .from('songs')
+    .select(SONG_SELECT_WITH_PROFILE)
+    .eq('is_approved', true)
+    .not('trending_sort_order', 'is', null)
+    .order('trending_sort_order', { ascending: true })
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (!withProfile.error) {
+    return ((withProfile.data || []) as SongRow[]).map(mapSong);
+  }
+
+  const fallback = await client
+    .from('songs')
+    .select(SONG_SELECT)
+    .eq('is_approved', true)
+    .not('trending_sort_order', 'is', null)
+    .order('trending_sort_order', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   if (fallback.error) {
@@ -302,7 +334,8 @@ async function loadSongSignals(userId: string) {
 }
 
 export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
-  const [popularSongs, latestSongs, signals, discoverPlaylistsData, spotlightSong, spotlightArtist, spotlightPlaylist] = await Promise.all([
+  const [curatedTrendingSongs, popularSongs, latestSongs, signals, discoverPlaylistsData, spotlightSong, spotlightArtist, spotlightPlaylist] = await Promise.all([
+    loadCuratedTrendingSongs(6),
     loadSongs(96, 'plays'),
     loadSongs(48, 'created_at'),
     loadSongSignals(userId),
@@ -311,8 +344,8 @@ export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
     loadSpotlightArtist(),
     loadSpotlightPlaylist(),
   ]);
-  const songs = mergeSongs(popularSongs, latestSongs);
-  const trendingSongs = getDailyTrendingSongs(songs, 6);
+  const songs = mergeSongs(curatedTrendingSongs, popularSongs, latestSongs);
+  const trendingSongs = curatedTrendingSongs.slice(0, 6);
   const rankedRecommendations = getPersonalizedSongs(songs, signals, songs.length);
   const trendingIds = new Set(trendingSongs.map(({ id }) => id));
   const distinctRecommendations = rankedRecommendations.filter(({ id }) => !trendingIds.has(id));
