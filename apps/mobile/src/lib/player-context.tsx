@@ -645,12 +645,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           setIsAdPlaying(false);
           setSongsPlayed(0);
 
-          if (supabase) {
-            supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single().then(({ data }) => {
-              if (data) setAdFrequency(data.ad_frequency);
-            });
-          }
-
           if (pendingSongToPlayAfterAdRef.current) {
             void playSongRef.current(pendingSongToPlayAfterAdRef.current);
             setPendingSongToPlayAfterAd(null);

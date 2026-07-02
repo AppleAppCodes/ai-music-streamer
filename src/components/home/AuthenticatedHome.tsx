@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { MouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import SongCard from '@/components/ui/SongCard';
-import { ChevronLeft, ChevronRight, Heart, ListMusic, Mic2, Move, Music, Pause, Pencil, Play, Sparkles, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, ListMusic, Megaphone, Mic2, Move, Music, Pause, Pencil, Play, Sparkles, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -12,9 +12,9 @@ import Image from 'next/image';
 
 import { Song } from '@/lib/types';
 import { getArtistStorageSlug, isArtistVideoFile } from '@/lib/artist-media';
-import { getCuratedOrTrendingSongs, getPersonalizedSongs } from '@/lib/homeRecommendations';
+import { getPersonalizedSongs } from '@/lib/homeRecommendations';
 import { isAdminUser } from '@/lib/admin';
-import type { OfficialPlaylistSummary, SpotlightArtistSummary, SpotlightPlaylistSummary } from '@/lib/public-music-data';
+import type { HighlightNewsSummary, OfficialPlaylistSummary, SpotlightArtistSummary, SpotlightPlaylistSummary } from '@/lib/public-music-data';
 
 type SongWithProfile = Song & {
   profiles?: {
@@ -30,7 +30,12 @@ type InitialHomeData = {
   spotlightSong: Song | null;
   spotlightArtist: SpotlightArtistSummary | null;
   spotlightPlaylist: SpotlightPlaylistSummary | null;
+  highlightNews: HighlightNewsSummary | null;
 };
+
+function newsPath(slug?: string | null) {
+  return slug?.trim() ? `/news/${encodeURIComponent(slug.trim())}` : null;
+}
 
 const HOME_SONG_GRID_CLASSES = 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-[repeat(auto-fill,minmax(160px,200px))]';
 const ARTIST_VIDEO_EXTENSIONS = /\.(mp4|webm|mov|m4v)$/i;
@@ -119,6 +124,7 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
   const [artistCovers, setArtistCovers] = useState<string[]>(initialHomeData?.artistCovers ?? []);
   const [spotlightSong, setSpotlightSong] = useState<Song | null>(initialHomeData?.spotlightSong ?? null);
   const [spotlightArtist, setSpotlightArtist] = useState<SpotlightArtistSummary | null>(initialHomeData?.spotlightArtist ?? null);
+  const [highlightNews, setHighlightNews] = useState<HighlightNewsSummary | null>(initialHomeData?.highlightNews ?? null);
   const [heroArtistVideoUrl, setHeroArtistVideoUrl] = useState<string | null>(null);
   const [heroArtistName, setHeroArtistName] = useState<string | null>(null);
   const [heroVideoPosition, setHeroVideoPosition] = useState<string | null>(null);
@@ -142,10 +148,26 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
     if (initialHomeData) return;
 
     async function loadMusic() {
-      const [{ data: allSongs }, { data: spotlightData }, { data: { session } }] = await Promise.all([
+      const [
+        { data: curatedTrendingData },
+        { data: allSongs },
+        { data: spotlightData },
+        { data: featuredNewsData },
+        { data: highlightNewsData },
+        { data: { session } },
+      ] = await Promise.all([
         supabase
           .from('songs')
           .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, spotlight_copy, trending_sort_order, profiles!songs_creator_id_fkey(username)')
+          .eq('is_approved', true)
+          .not('trending_sort_order', 'is', null)
+          .order('trending_sort_order', { ascending: true })
+          .order('created_at', { ascending: false })
+          .limit(6),
+        supabase
+          .from('songs')
+          .select('id, title, artist_name, cover_url, plays, created_at, audio_url, duration, genre, is_spotlight, spotlight_copy, trending_sort_order, profiles!songs_creator_id_fkey(username)')
+          .eq('is_approved', true)
           .order('plays', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(200),
@@ -157,22 +179,79 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle(),
+        supabase
+          .from('news_posts')
+          .select('id, slug, title, excerpt, body, image_url, cta_label, cta_url, is_published, is_featured, published_at, created_at')
+          .eq('is_featured', true)
+          .eq('is_published', true)
+          .order('published_at', { ascending: false, nullsFirst: false })
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('app_settings')
+          .select('highlight_news_enabled, highlight_news_title, highlight_news_body, highlight_news_cta_label, highlight_news_cta_url, highlight_news_image_url, highlight_news_article_slug')
+          .eq('id', 'global')
+          .maybeSingle(),
         supabase.auth.getSession(),
       ]);
 
-      const songs = ((allSongs || []) as unknown as SongWithProfile[]).map(song => ({
+      const curatedSongs = ((curatedTrendingData || []) as unknown as SongWithProfile[]).map(song => ({
         ...song,
         creatorName: song.profiles?.username || song.artist_name || 'Unknown'
       }));
+      const rankedSongs = ((allSongs || []) as unknown as SongWithProfile[]).map(song => ({
+        ...song,
+        creatorName: song.profiles?.username || song.artist_name || 'Unknown'
+      }));
+      const songs = Array.from(new Map([...curatedSongs, ...rankedSongs].map((song) => [song.id, song])).values());
       setSpotlightSong(spotlightData ? {
         ...spotlightData,
         creatorName: (spotlightData as unknown as SongWithProfile).profiles?.username || spotlightData.artist_name || 'Unknown'
       } as unknown as Song : null);
+      if (featuredNewsData) {
+        const featured = featuredNewsData as {
+          body?: string | null;
+          cta_label?: string | null;
+          cta_url?: string | null;
+          excerpt?: string | null;
+          id?: string | null;
+          image_url?: string | null;
+          slug?: string | null;
+          title?: string | null;
+        };
+        const articleUrl = newsPath(featured.slug ?? null);
+        setHighlightNews({
+          id: featured.id ?? null,
+          slug: featured.slug ?? null,
+          enabled: true,
+          title: featured.title ?? null,
+          body: featured.excerpt ?? featured.body ?? null,
+          image_url: featured.image_url ?? null,
+          cta_label: featured.cta_label ?? null,
+          cta_url: featured.cta_url ?? articleUrl,
+          article_url: articleUrl,
+        });
+      } else {
+        const fallbackSlug = (highlightNewsData?.highlight_news_article_slug as string | null) ?? null;
+        const articleUrl = newsPath(fallbackSlug);
+        setHighlightNews(highlightNewsData ? {
+          id: null,
+          slug: fallbackSlug,
+          enabled: Boolean(highlightNewsData.highlight_news_enabled),
+          title: (highlightNewsData.highlight_news_title as string | null) ?? null,
+          body: (highlightNewsData.highlight_news_body as string | null) ?? null,
+          image_url: (highlightNewsData.highlight_news_image_url as string | null) ?? null,
+          cta_label: (highlightNewsData.highlight_news_cta_label as string | null) ?? null,
+          cta_url: ((highlightNewsData.highlight_news_cta_url as string | null) ?? null) || articleUrl,
+          article_url: articleUrl,
+        } : null);
+      }
       
       const covers = Array.from(new Set(songs.map(s => s.cover_url).filter(Boolean))).slice(0, 4) as string[];
       setArtistCovers(covers);
 
-      const dailySongs = getCuratedOrTrendingSongs(songs, 6);
+      const dailySongs = curatedSongs.slice(0, 6);
       setDailyTrendingSongs(dailySongs);
 
       if (!session) {
@@ -675,11 +754,12 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
       </section>
 
       {/* Spotlight Slider */}
-      {(spotlightSong || spotlightArtist || initialHomeData?.spotlightPlaylist) ? (
+      {(spotlightSong || spotlightArtist || initialHomeData?.spotlightPlaylist || highlightNews?.enabled) ? (
         <SpotlightSlider
           song={spotlightSong}
           artist={spotlightArtist}
           playlist={initialHomeData?.spotlightPlaylist ?? null}
+          news={highlightNews}
           isAdmin={isAdmin}
           onSongCopyChange={(copy) => setSpotlightSong((prev) => (prev ? ({ ...prev, spotlight_copy: copy } as Song) : prev))}
           onArtistCopyChange={(copy) => setSpotlightArtist((prev) => (prev ? { ...prev, spotlight_copy: copy } : prev))}
@@ -742,16 +822,18 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
 
 const SPOTLIGHT_SLIDE_DURATION_MS = 8000;
 
-type SpotlightSlideKind = 'song' | 'artist' | 'playlist';
+type SpotlightSlideKind = 'song' | 'artist' | 'playlist' | 'news';
 type SpotlightSlide =
   | { kind: 'song'; song: Song }
   | { kind: 'artist'; artist: SpotlightArtistSummary }
-  | { kind: 'playlist'; playlist: SpotlightPlaylistSummary };
+  | { kind: 'playlist'; playlist: SpotlightPlaylistSummary }
+  | { kind: 'news'; news: HighlightNewsSummary };
 
 function SpotlightSlider({
   song,
   artist,
   playlist,
+  news,
   isAdmin,
   onSongCopyChange,
   onArtistCopyChange,
@@ -759,6 +841,7 @@ function SpotlightSlider({
   song: Song | null;
   artist: SpotlightArtistSummary | null;
   playlist: SpotlightPlaylistSummary | null;
+  news: HighlightNewsSummary | null;
   isAdmin: boolean;
   onSongCopyChange: (copy: string | null) => void;
   onArtistCopyChange: (copy: string | null) => void;
@@ -770,8 +853,9 @@ function SpotlightSlider({
     if (song) list.push({ kind: 'song', song });
     if (artist) list.push({ kind: 'artist', artist });
     if (playlist) list.push({ kind: 'playlist', playlist });
+    if (news?.enabled && (news.title?.trim() || news.body?.trim())) list.push({ kind: 'news', news });
     return list;
-  }, [song, artist, playlist]);
+  }, [song, artist, playlist, news]);
 
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -793,7 +877,9 @@ function SpotlightSlider({
     ? t('home.spotlight')
     : current.kind === 'artist'
       ? t('home.spotlightArtistEyebrow').toUpperCase()
-      : t('home.spotlightPlaylistEyebrow').toUpperCase();
+      : current.kind === 'playlist'
+        ? t('home.spotlightPlaylistEyebrow').toUpperCase()
+        : t('home.spotlightNewsEyebrow').toUpperCase();
 
   return (
     <section
@@ -843,6 +929,7 @@ function SpotlightSlider({
               {slide.kind === 'song' ? <SpotlightSongCard song={slide.song} isAdmin={isAdmin} onCopyChange={onSongCopyChange} /> : null}
               {slide.kind === 'artist' ? <SpotlightArtistCard artist={slide.artist} isAdmin={isAdmin} onCopyChange={onArtistCopyChange} /> : null}
               {slide.kind === 'playlist' ? <SpotlightPlaylistCard playlist={slide.playlist} /> : null}
+              {slide.kind === 'news' ? <SpotlightNewsCard news={slide.news} /> : null}
             </div>
           ))}
         </div>
@@ -859,7 +946,7 @@ function SpotlightSlider({
                 type="button"
                 onClick={() => goTo(index)}
                 className="relative h-[3px] w-10 overflow-hidden rounded-full bg-[#251033]/90 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] transition-colors hover:bg-[#321545]"
-                aria-label={t(slide.kind === 'song' ? 'home.spotlight' : slide.kind === 'artist' ? 'home.spotlightArtistEyebrow' : 'home.spotlightPlaylistEyebrow')}
+                aria-label={t(slide.kind === 'song' ? 'home.spotlight' : slide.kind === 'artist' ? 'home.spotlightArtistEyebrow' : slide.kind === 'playlist' ? 'home.spotlightPlaylistEyebrow' : 'home.spotlightNewsEyebrow')}
               >
                 {isActive ? (
                   <span
@@ -1121,6 +1208,50 @@ function SpotlightPlaylistCard({ playlist }: { playlist: SpotlightPlaylistSummar
               {t('home.spotlightPlaylistCta')}
             </Link>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpotlightNewsCard({ news }: { news: HighlightNewsSummary }) {
+  const { t } = useTranslation();
+  const title = news.title?.trim() || t('home.spotlightNewsDefaultTitle');
+  const body = news.body?.trim();
+  const ctaUrl = news.cta_url?.trim() || news.article_url?.trim();
+  const ctaLabel = news.cta_label?.trim() || t('home.spotlightNewsCta');
+  const isExternal = Boolean(ctaUrl && /^https?:\/\//i.test(ctaUrl));
+
+  return (
+    <div className="relative p-5 sm:p-7 w-full">
+      <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-accent/25 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-primary/30 blur-[120px]" />
+      <div className="relative flex h-full flex-col justify-center gap-5 sm:flex-row sm:items-center sm:gap-7">
+        {news.image_url ? (
+          <div className="relative hidden h-40 w-40 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-black/40 shadow-2xl sm:block">
+            <Image src={news.image_url} alt={title} fill sizes="160px" className="object-cover" />
+          </div>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.28em] text-accent/90">
+            <Megaphone className="h-3.5 w-3.5" />
+            {t('home.spotlightNewsEyebrow')}
+          </span>
+          <h3 className="mt-3 max-w-4xl text-3xl font-black leading-tight text-white sm:text-5xl">{title}</h3>
+          {body ? (
+            <p className="mt-4 max-w-3xl text-base font-semibold leading-7 text-white/62 line-clamp-3 sm:text-lg">{body}</p>
+          ) : null}
+          {ctaUrl ? (
+            <a
+              href={ctaUrl}
+              target={isExternal ? '_blank' : undefined}
+              rel={isExternal ? 'noopener noreferrer' : undefined}
+              className="mt-6 inline-flex w-fit items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-black text-black shadow-[0_14px_34px_rgba(255,255,255,0.16)] transition-transform hover:scale-105"
+            >
+              {ctaLabel}
+              <ChevronRight className="h-4 w-4" />
+            </a>
+          ) : null}
         </div>
       </div>
     </div>

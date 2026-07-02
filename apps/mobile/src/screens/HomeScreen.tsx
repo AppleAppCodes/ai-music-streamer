@@ -3,6 +3,7 @@ import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useEffect, useMemo, useState, memo, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { useNavigation } from '@react-navigation/native';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -12,7 +13,7 @@ import { CoverArt, IconButton, StateCard, YoriaxPlaylistCover } from '../compone
 import { UpdateBanner } from '../components/UpdateBanner';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
-import { loadHomeMusic, type HomeMusicData, type SpotlightArtist, type SpotlightPlaylist, DAILY_NEW_RELEASES_PLAYLIST_ID } from '../lib/music-data';
+import { loadHomeMusic, type HighlightNews, type HomeMusicData, type SpotlightArtist, type SpotlightPlaylist, DAILY_NEW_RELEASES_PLAYLIST_ID } from '../lib/music-data';
 import { readPersistedCache, writePersistedCache } from '../lib/persisted-cache';
 import { usePlayerControls } from '../lib/player-context';
 import { useMusicPreferences } from '../lib/music-preferences-context';
@@ -212,6 +213,7 @@ export function HomeScreen() {
             song={data.spotlightSong}
             artist={data.spotlightArtist}
             playlist={data.spotlightPlaylist}
+            news={data.highlightNews}
             onOpenArtist={handleOpenArtist}
             onOpenPlaylist={handleOpenPlaylist}
           />
@@ -274,18 +276,21 @@ const SongRailItem = memo(function SongRailItem({
 type SpotlightSlide =
   | { kind: 'song'; song: Song }
   | { kind: 'artist'; artist: SpotlightArtist }
-  | { kind: 'playlist'; playlist: SpotlightPlaylist };
+  | { kind: 'playlist'; playlist: SpotlightPlaylist }
+  | { kind: 'news'; news: HighlightNews };
 
 const SpotlightCarousel = memo(function SpotlightCarousel({
   song,
   artist,
   playlist,
+  news,
   onOpenArtist,
   onOpenPlaylist,
 }: {
   song?: Song | null;
   artist?: SpotlightArtist | null;
   playlist?: SpotlightPlaylist | null;
+  news?: HighlightNews | null;
   onOpenArtist: (artistName: string) => void;
   onOpenPlaylist: (playlistId: string) => void;
 }) {
@@ -298,8 +303,9 @@ const SpotlightCarousel = memo(function SpotlightCarousel({
     if (song) list.push({ kind: 'song', song });
     if (artist) list.push({ kind: 'artist', artist });
     if (playlist) list.push({ kind: 'playlist', playlist });
+    if (news?.enabled && (news.title?.trim() || news.body?.trim())) list.push({ kind: 'news', news });
     return list;
-  }, [song, artist, playlist]);
+  }, [song, artist, playlist, news]);
 
   const handleMomentumEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (width <= 0) return;
@@ -339,6 +345,7 @@ const SpotlightCarousel = memo(function SpotlightCarousel({
                 {slide.kind === 'song' ? <SpotlightSongSlide song={slide.song} /> : null}
                 {slide.kind === 'artist' ? <SpotlightArtistSlide artist={slide.artist} onOpen={onOpenArtist} /> : null}
                 {slide.kind === 'playlist' ? <SpotlightPlaylistSlide playlist={slide.playlist} onOpen={onOpenPlaylist} /> : null}
+                {slide.kind === 'news' ? <SpotlightNewsSlide news={slide.news} /> : null}
               </View>
             ))}
           </ScrollView>
@@ -356,6 +363,53 @@ const SpotlightCarousel = memo(function SpotlightCarousel({
         </View>
       ) : null}
     </View>
+  );
+});
+
+const SpotlightNewsSlide = memo(function SpotlightNewsSlide({ news }: { news: HighlightNews }) {
+  const { t } = useI18n();
+  const title = news.title?.trim() || t('home.spotlightNewsDefaultTitle');
+  const body = news.body?.trim();
+  const ctaUrl = news.cta_url?.trim() || news.article_url?.trim() || null;
+  const ctaLabel = news.cta_label?.trim() || t('home.spotlightNewsCta');
+
+  const handleOpen = useCallback(() => {
+    if (!ctaUrl) return;
+    void WebBrowser.openBrowserAsync(ctaUrl);
+  }, [ctaUrl]);
+
+  return (
+    <TouchableOpacity
+      accessibilityRole={ctaUrl ? 'link' : 'text'}
+      activeOpacity={ctaUrl ? 0.92 : 1}
+      disabled={!ctaUrl}
+      onPress={handleOpen}
+      style={styles.spotlightCard}
+    >
+      {news.image_url ? (
+        <CoverArt uri={news.image_url} size={118} radius={18} />
+      ) : (
+        <LinearGradient
+          colors={['rgba(20,184,166,0.5)', 'rgba(124,58,237,0.46)', 'rgba(12,10,18,0.96)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.spotlightNewsFallbackArt}
+        >
+          <Ionicons name="megaphone" size={34} color={theme.colors.text} />
+        </LinearGradient>
+      )}
+      <View style={styles.spotlightText}>
+        <Text style={styles.spotlightEyebrow} numberOfLines={1}>{t('home.spotlightNewsEyebrow')}</Text>
+        <Text style={styles.spotlightTitle} numberOfLines={1}>{title}</Text>
+        {body ? <Text style={styles.spotlightCopy} numberOfLines={3}>{body}</Text> : null}
+        {ctaUrl ? (
+          <View style={styles.spotlightAction}>
+            <Ionicons name="newspaper" size={15} color={theme.colors.text} />
+            <Text style={styles.spotlightActionText}>{ctaLabel}</Text>
+          </View>
+        ) : null}
+      </View>
+    </TouchableOpacity>
   );
 });
 
@@ -716,6 +770,16 @@ const styles = StyleSheet.create({
     shadowColor: theme.colors.primary,
     shadowOpacity: 0.2,
     shadowRadius: 18,
+  },
+  spotlightNewsFallbackArt: {
+    alignItems: 'center',
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 118,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 118,
   },
   spotlightCopy: {
     color: theme.colors.muted,

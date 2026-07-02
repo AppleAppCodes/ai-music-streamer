@@ -155,26 +155,6 @@ export default function PlayerSaveButton({
 
     setIsSaving(true);
 
-    const { data: existing, error: lookupError } = await supabase
-      .from('liked_songs')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('song_id', songId)
-      .limit(1);
-
-    if (lookupError) {
-      setIsSaving(false);
-      console.error('Error checking liked song:', lookupError);
-      return false;
-    }
-
-    if (existing?.length) {
-      setIsSaving(false);
-      setIsLiked(true);
-      emitLikedSongChange(songId, true);
-      return true;
-    }
-
     const { error } = await supabase
       .from('liked_songs')
       .insert({ user_id: userId, song_id: songId });

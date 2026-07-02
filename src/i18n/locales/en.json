@@ -103,6 +103,9 @@
     "spotlightEditError": "Failed to save: {{message}}",
     "spotlightPlaylistEyebrow": "Playlist of the week",
     "spotlightPlaylistCta": "Open playlist",
+    "spotlightNewsEyebrow": "News",
+    "spotlightNewsDefaultTitle": "New on YORIAX",
+    "spotlightNewsCta": "Learn more",
     "spotlightPrev": "Previous slide",
     "spotlightNext": "Next slide"
   },

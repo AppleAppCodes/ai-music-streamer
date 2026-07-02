@@ -132,12 +132,13 @@ export function ArtistScreen({ route, navigation }: Props) {
     [songs],
   );
   const monthlyListeners = useMemo(() => getMonthlyListeners(songs), [songs]);
-  // The artist is only "verified" if the catalogue contains at least one
-  // approved song. Admins and the creator still see their pending profile
-  // through RLS, but the badge should be honest about its state.
+  // Do not render the pending state while the approved catalogue is still
+  // loading. Public artist pages only fetch approved songs, so the old fallback
+  // briefly showed "pending" for already-approved spotlight artists.
   const hasApprovedSong = useMemo(() => songs.some((song) => song.is_approved !== false), [songs]);
-  const badgeLabel = hasApprovedSong ? t('artist.verified') : t('artist.pending');
-  const badgeTone: 'verified' | 'pending' = hasApprovedSong ? 'verified' : 'pending';
+  const showPendingBadge = !loading && songs.length > 0 && !hasApprovedSong;
+  const badgeLabel = showPendingBadge ? t('artist.pending') : t('artist.verified');
+  const badgeTone: 'verified' | 'pending' = showPendingBadge ? 'pending' : 'verified';
   const artistQueue = useMemo(
     () => songs.map((song) => ({ ...song, creatorName: song.creatorName || artistName })),
     [artistName, songs],

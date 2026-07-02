@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft, Radio, UploadCloud, Loader2, Edit2, FileAudio, Terminal, Play, Heart, Activity, UserPlus, Sparkles } from 'lucide-react';
+import { ShieldAlert, Users, Music, Trash2, Search, ArrowLeft, Radio, UploadCloud, Loader2, Edit2, FileAudio, Terminal, Play, Heart, Activity, UserPlus, Sparkles, Megaphone } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { isAdminUser, isModUser } from '@/lib/admin';
@@ -76,6 +76,88 @@ interface SongData {
   spotlight_copy?: string | null;
   genre?: string | null;
   trending_sort_order?: number | null;
+  plays_24h?: number;
+  plays_7d?: number;
+  plays_30d?: number;
+  previous_7d?: number;
+  trend_percent?: number;
+  unique_listeners?: number;
+  likes_count?: number;
+  playlist_adds?: number;
+  last_played_at?: string | null;
+}
+
+type SongPerformanceRow = {
+  song_id: string;
+  plays_total: number | string | null;
+  plays_24h: number | string | null;
+  plays_7d: number | string | null;
+  plays_30d: number | string | null;
+  previous_7d: number | string | null;
+  trend_percent: number | string | null;
+  unique_listeners: number | string | null;
+  likes: number | string | null;
+  playlist_adds: number | string | null;
+  last_played_at: string | null;
+};
+
+type HighlightNewsForm = {
+  id: string | null;
+  enabled: boolean;
+  slug: string;
+  title: string;
+  body: string;
+  imageUrl: string;
+  ctaLabel: string;
+  ctaUrl: string;
+};
+
+type NewsPostData = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt?: string | null;
+  body?: string | null;
+  image_url?: string | null;
+  cta_label?: string | null;
+  cta_url?: string | null;
+  is_published: boolean;
+  is_featured: boolean;
+  published_at?: string | null;
+  created_at?: string | null;
+};
+
+function toAdminNumber(value?: number | string | null) {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatAdminNumber(value?: number | null) {
+  return (value ?? 0).toLocaleString('de-DE');
+}
+
+function formatTrendPercent(value?: number | null) {
+  const number = value ?? 0;
+  const prefix = number > 0 ? '+' : '';
+  return `${prefix}${number.toLocaleString('de-DE', { maximumFractionDigits: 1 })}%`;
+}
+
+function getTrendClasses(value?: number | null) {
+  const number = value ?? 0;
+  if (number > 0) return 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300';
+  if (number < 0) return 'border-red-400/25 bg-red-400/10 text-red-300';
+  return 'border-white/10 bg-white/5 text-white/45';
+}
+
+function createSlug(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 90);
 }
 
 function openTrustedExternalUrl(value?: string | null) {
@@ -131,6 +213,21 @@ export default function AdminPage() {
   const [trendingPicks, setTrendingPicks] = useState<Array<{ id: string; title: string; artist_name: string }>>([]);
   const [trendingSearch, setTrendingSearch] = useState('');
   const [savingTrending, setSavingTrending] = useState(false);
+  const [highlightNews, setHighlightNews] = useState<HighlightNewsForm>({
+    id: null,
+    enabled: false,
+    slug: '',
+    title: '',
+    body: '',
+    imageUrl: '',
+    ctaLabel: '',
+    ctaUrl: '',
+  });
+  const [savingHighlightNews, setSavingHighlightNews] = useState(false);
+  const [newsPosts, setNewsPosts] = useState<NewsPostData[]>([]);
+  const [isUploadingNewsImage, setIsUploadingNewsImage] = useState(false);
+  const [uploadNewsImageStatus, setUploadNewsImageStatus] = useState<string | null>(null);
+  const [expandedSongId, setExpandedSongId] = useState<string | null>(null);
 
   // Analytics
   const [totalStreams, setTotalStreams] = useState(0);
@@ -199,16 +296,45 @@ export default function AdminPage() {
           );
         }
 
-        // Load Songs & Streams
-        const { data: songsData } = await supabase
-          .from('songs')
-          .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight, spotlight_copy, genre, trending_sort_order')
-          .order('created_at', { ascending: false });
+        // Load Songs & Streams. Performance metrics come from an admin-only
+        // aggregate RPC so the UI does not execute multiple count queries per song.
+        const [{ data: songsData }, { data: songPerformanceData, error: songPerformanceError }] = await Promise.all([
+          supabase
+            .from('songs')
+            .select('id, title, artist_name, plays, ai_tool, created_at, is_approved, audio_url, cover_url, is_spotlight, spotlight_copy, genre, trending_sort_order')
+            .order('created_at', { ascending: false }),
+          supabase.rpc('get_admin_song_performance'),
+        ]);
+
+        if (songPerformanceError) {
+          console.error('Failed to load admin song performance:', songPerformanceError);
+        }
 
         if (songsData) {
-          setSongs(songsData);
-          setTotalStreams(songsData.reduce((acc, song) => acc + (song.plays || 0), 0));
-          const picks = (songsData as SongData[])
+          const performanceBySongId = new Map<string, SongPerformanceRow>(
+            ((songPerformanceData as SongPerformanceRow[]) || []).map((row) => [row.song_id, row]),
+          );
+          const mergedSongs = (songsData as SongData[]).map((song) => {
+            const performance = performanceBySongId.get(song.id);
+            return performance
+              ? {
+                  ...song,
+                  plays: toAdminNumber(performance.plays_total),
+                  plays_24h: toAdminNumber(performance.plays_24h),
+                  plays_7d: toAdminNumber(performance.plays_7d),
+                  plays_30d: toAdminNumber(performance.plays_30d),
+                  previous_7d: toAdminNumber(performance.previous_7d),
+                  trend_percent: toAdminNumber(performance.trend_percent),
+                  unique_listeners: toAdminNumber(performance.unique_listeners),
+                  likes_count: toAdminNumber(performance.likes),
+                  playlist_adds: toAdminNumber(performance.playlist_adds),
+                  last_played_at: performance.last_played_at,
+                }
+              : song;
+          });
+          setSongs(mergedSongs);
+          setTotalStreams(mergedSongs.reduce((acc, song) => acc + (song.plays || 0), 0));
+          const picks = mergedSongs
             .filter((s) => s.trending_sort_order != null)
             .sort((a, b) => (a.trending_sort_order ?? 0) - (b.trending_sort_order ?? 0))
             .map((s) => ({ id: s.id, title: s.title, artist_name: s.artist_name }));
@@ -221,9 +347,51 @@ export default function AdminPage() {
 
         // Daily active users are returned by the admin users API above.
 
-        // Load Ad Frequency
-        const { data: settingsData } = await supabase.from('app_settings').select('ad_frequency').eq('id', 'global').single();
-        if (settingsData) setAdFrequency(settingsData.ad_frequency);
+        // Load Ad Frequency + Spotlight News. News posts are the canonical
+        // source for the fourth Home slide; app_settings remains a legacy
+        // fallback so old clients do not break.
+        const [{ data: settingsData }, { data: newsRows, error: newsRowsError }] = await Promise.all([
+          supabase
+            .from('app_settings')
+            .select('ad_frequency, highlight_news_enabled, highlight_news_title, highlight_news_body, highlight_news_cta_label, highlight_news_cta_url, highlight_news_image_url, highlight_news_article_slug')
+            .eq('id', 'global')
+            .single(),
+          supabase
+            .from('news_posts')
+            .select('id, slug, title, excerpt, body, image_url, cta_label, cta_url, is_published, is_featured, published_at, created_at')
+            .order('created_at', { ascending: false })
+            .limit(80),
+        ]);
+        if (newsRowsError) {
+          console.error('Failed to load news posts:', newsRowsError);
+        }
+        const typedNewsPosts = (newsRows || []) as NewsPostData[];
+        setNewsPosts(typedNewsPosts);
+        if (settingsData) {
+          setAdFrequency(settingsData.ad_frequency);
+          const featuredNews = typedNewsPosts.find((post) => post.is_featured);
+          setHighlightNews(featuredNews
+            ? {
+                id: featuredNews.id,
+                enabled: true,
+                slug: featuredNews.slug,
+                title: featuredNews.title,
+                body: featuredNews.body ?? featuredNews.excerpt ?? '',
+                imageUrl: featuredNews.image_url ?? '',
+                ctaLabel: featuredNews.cta_label ?? '',
+                ctaUrl: featuredNews.cta_url ?? `/news/${featuredNews.slug}`,
+              }
+            : {
+                id: null,
+                enabled: Boolean(settingsData.highlight_news_enabled),
+                slug: (settingsData.highlight_news_article_slug as string | null) ?? '',
+                title: (settingsData.highlight_news_title as string | null) ?? '',
+                body: (settingsData.highlight_news_body as string | null) ?? '',
+                imageUrl: (settingsData.highlight_news_image_url as string | null) ?? '',
+                ctaLabel: (settingsData.highlight_news_cta_label as string | null) ?? '',
+                ctaUrl: (settingsData.highlight_news_cta_url as string | null) ?? '',
+              });
+        }
 
         // Load Ads
         const { data: adsData } = await supabase.storage.from('ads').list();
@@ -460,6 +628,185 @@ export default function AdminPage() {
       alert('Fehler beim Speichern der Trending-Songs: ' + (err as Error).message);
     } finally {
       setSavingTrending(false);
+    }
+  };
+
+  const handleSaveHighlightNews = async () => {
+    setSavingHighlightNews(true);
+    try {
+      const title = highlightNews.title.trim();
+      if (!title) {
+        alert('Bitte gib eine News-Headline ein.');
+        return;
+      }
+
+      const slug = createSlug(highlightNews.slug || title);
+      if (!slug) {
+        alert('Bitte gib einen gültigen Artikel-Slug ein.');
+        return;
+      }
+
+      const wasFeatured = Boolean(highlightNews.id && newsPosts.some((post) => post.id === highlightNews.id && post.is_featured));
+      const hasOtherFeatured = newsPosts.some((post) => post.is_featured && post.id !== highlightNews.id);
+      const existingPublishedAt = highlightNews.id
+        ? newsPosts.find((post) => post.id === highlightNews.id)?.published_at
+        : null;
+      const payload = {
+        slug,
+        title,
+        excerpt: highlightNews.body.trim() || null,
+        body: highlightNews.body.trim() || null,
+        image_url: highlightNews.imageUrl.trim() || null,
+        cta_label: highlightNews.ctaLabel.trim() || null,
+        cta_url: highlightNews.ctaUrl.trim() || null,
+        is_published: true,
+        published_at: existingPublishedAt ?? new Date().toISOString(),
+      };
+
+      const saveResult = highlightNews.id
+        ? await supabase
+            .from('news_posts')
+            .update(payload)
+            .eq('id', highlightNews.id)
+            .select('id, slug, title, excerpt, body, image_url, cta_label, cta_url, is_published, is_featured, published_at, created_at')
+            .single()
+        : await supabase
+            .from('news_posts')
+            .insert(payload)
+            .select('id, slug, title, excerpt, body, image_url, cta_label, cta_url, is_published, is_featured, published_at, created_at')
+            .single();
+
+      if (saveResult.error || !saveResult.data) throw saveResult.error || new Error('News-Post konnte nicht gespeichert werden.');
+      const savedPost = saveResult.data as NewsPostData;
+
+      if (highlightNews.enabled) {
+        const { error: featuredError } = await supabase.rpc('set_featured_news_post', { post_id: savedPost.id });
+        if (featuredError) throw featuredError;
+        savedPost.is_featured = true;
+      } else if (wasFeatured) {
+        const { error: featuredError } = await supabase.rpc('set_featured_news_post', { post_id: null });
+        if (featuredError) throw featuredError;
+        savedPost.is_featured = false;
+      }
+
+      const shouldUpdateLegacyFallback = highlightNews.enabled || wasFeatured || !hasOtherFeatured;
+      if (shouldUpdateLegacyFallback) {
+        const { error } = await supabase
+          .from('app_settings')
+          .update({
+            highlight_news_enabled: highlightNews.enabled,
+            highlight_news_title: savedPost.title,
+            highlight_news_body: savedPost.excerpt ?? savedPost.body ?? null,
+            highlight_news_cta_label: savedPost.cta_label ?? null,
+            highlight_news_cta_url: savedPost.cta_url ?? `/news/${savedPost.slug}`,
+            highlight_news_image_url: savedPost.image_url ?? null,
+            highlight_news_article_slug: savedPost.slug,
+          })
+          .eq('id', 'global');
+        if (error) throw error;
+      }
+
+      setNewsPosts((prev) => {
+        const updated = prev
+          .map((post) => ({
+            ...post,
+            is_featured: highlightNews.enabled ? post.id === savedPost.id : (wasFeatured && post.id === savedPost.id ? false : post.is_featured),
+          }))
+          .filter((post) => post.id !== savedPost.id);
+        return [{ ...savedPost, is_featured: highlightNews.enabled }, ...updated];
+      });
+      setHighlightNews({
+        id: savedPost.id,
+        enabled: highlightNews.enabled,
+        slug: savedPost.slug,
+        title: savedPost.title,
+        body: savedPost.body ?? savedPost.excerpt ?? '',
+        imageUrl: savedPost.image_url ?? '',
+        ctaLabel: savedPost.cta_label ?? '',
+        ctaUrl: savedPost.cta_url ?? `/news/${savedPost.slug}`,
+      });
+      alert('News-Slide gespeichert!');
+    } catch (err: unknown) {
+      alert('Fehler beim Speichern der News-Slide: ' + (err as Error).message);
+    } finally {
+      setSavingHighlightNews(false);
+    }
+  };
+
+  const handleNewsImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Bitte lade ein gültiges Bild hoch.');
+      event.target.value = '';
+      return;
+    }
+
+    setIsUploadingNewsImage(true);
+    setUploadNewsImageStatus('Bild wird hochgeladen…');
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const baseName = createSlug(highlightNews.slug || highlightNews.title || 'news') || 'news';
+      const path = `news/${Date.now()}-${baseName}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('covers')
+        .upload(path, file, { cacheControl: '31536000', upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('covers').getPublicUrl(path);
+      setHighlightNews((prev) => ({ ...prev, imageUrl: data.publicUrl }));
+      setUploadNewsImageStatus('Bild hochgeladen.');
+      setTimeout(() => setUploadNewsImageStatus(null), 4000);
+    } catch (err: unknown) {
+      setUploadNewsImageStatus(null);
+      alert('Fehler beim Hochladen des News-Bildes: ' + (err as Error).message);
+    } finally {
+      setIsUploadingNewsImage(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleEditNewsPost = (post: NewsPostData) => {
+    setHighlightNews({
+      id: post.id,
+      enabled: post.is_featured,
+      slug: post.slug,
+      title: post.title,
+      body: post.body ?? post.excerpt ?? '',
+      imageUrl: post.image_url ?? '',
+      ctaLabel: post.cta_label ?? '',
+      ctaUrl: post.cta_url ?? `/news/${post.slug}`,
+    });
+  };
+
+  const handleSetFeaturedNewsPost = async (post: NewsPostData) => {
+    setSavingHighlightNews(true);
+    try {
+      const { error: featuredError } = await supabase.rpc('set_featured_news_post', { post_id: post.id });
+      if (featuredError) throw featuredError;
+
+      const { error: settingsError } = await supabase
+        .from('app_settings')
+        .update({
+          highlight_news_enabled: true,
+          highlight_news_title: post.title,
+          highlight_news_body: post.excerpt ?? post.body ?? null,
+          highlight_news_cta_label: post.cta_label ?? null,
+          highlight_news_cta_url: post.cta_url ?? `/news/${post.slug}`,
+          highlight_news_image_url: post.image_url ?? null,
+          highlight_news_article_slug: post.slug,
+        })
+        .eq('id', 'global');
+      if (settingsError) throw settingsError;
+
+      setNewsPosts((prev) => prev.map((item) => ({ ...item, is_featured: item.id === post.id, is_published: item.id === post.id ? true : item.is_published })));
+      handleEditNewsPost({ ...post, is_featured: true, is_published: true });
+      alert('News-Post ist jetzt der Home-Slide.');
+    } catch (err: unknown) {
+      alert('Fehler beim Setzen des News-Slides: ' + (err as Error).message);
+    } finally {
+      setSavingHighlightNews(false);
     }
   };
 
@@ -973,97 +1320,161 @@ export default function AdminPage() {
                   <tr>
                     <th className="px-6 py-4 font-semibold">Song Titel</th>
                     <th className="px-6 py-4 font-semibold">Künstler</th>
-                    <th className="px-6 py-4 font-semibold">Plays</th>
+                    <th className="px-6 py-4 font-semibold">Performance</th>
+                    <th className="px-6 py-4 font-semibold">Engagement</th>
+                    <th className="px-6 py-4 font-semibold">Trend</th>
+                    <th className="px-6 py-4 font-semibold">Zuletzt</th>
                     <th className="px-6 py-4 font-semibold">AI Tool</th>
                     <th className="px-6 py-4 font-semibold text-right">Aktion</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {filteredSongs.length > 0 ? filteredSongs.map((song) => (
-                    <tr key={song.id} className="hover:bg-white/5 transition-colors group">
-                      <td className="px-6 py-4 font-medium text-white max-w-[200px] truncate" title={song.title}>
-                        <Link href={`/song/${song.id}`} className="hover:text-indigo-400 hover:underline">
-                          {song.title}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 max-w-[150px] truncate" title={song.artist_name}>{song.artist_name || 'Unbekannt'}</td>
-                      <td className="px-6 py-4 font-mono">{song.plays?.toLocaleString() || 0}</td>
-                      <td className="px-6 py-4">
-                        <span className="px-2 py-1 bg-white/5 rounded text-xs border border-white/10">
-                          {song.ai_tool || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                        <select
-                          value={song.genre ?? ''}
-                          onChange={(e) => handleChangeGenre(song.id, e.target.value)}
-                          title="Genre ändern"
-                          className="rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white/80 focus:border-indigo-400/55 focus:outline-none"
-                        >
-                          {!song.genre && <option value="" disabled>Genre…</option>}
-                          {song.genre && !GENRES.some((g) => g.name === song.genre) && (
-                            <option value={song.genre}>{song.genre}</option>
-                          )}
-                          {GENRES.map((g) => (
-                            <option key={g.name} value={g.name}>{g.name}</option>
-                          ))}
-                        </select>
-                        <label
-                          className="p-2 cursor-pointer text-white/40 hover:text-green-400 hover:bg-green-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                          title="Audiodatei austauschen"
-                        >
-                          {isReplacingAudio === song.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <FileAudio className="w-4 h-4" />
-                          )}
-                          <input
-                            type="file"
-                            accept="audio/*"
-                            className="hidden"
-                            onChange={(e) => handleReplaceAudio(e, song.id, song.title)}
-                            disabled={isReplacingAudio === song.id}
-                          />
-                        </label>
-                        <button
-                          onClick={() => handleSetSpotlightSong(song.id, song.title)}
-                          className={`p-2 rounded-lg transition-all ${
-                            song.is_spotlight
-                              ? 'text-fuchsia-300 bg-fuchsia-400/15'
-                              : 'text-white/40 hover:text-fuchsia-300 hover:bg-fuchsia-400/10 opacity-0 group-hover:opacity-100'
-                          }`}
-                          title={song.is_spotlight ? 'Aktuelles Home-Spotlight' : 'Als Home-Spotlight setzen'}
-                        >
-                          <Sparkles className="w-4 h-4" />
-                        </button>
-                        {song.is_spotlight ? (
-                          <button
-                            onClick={() => handleEditSpotlightCopy(song.id, song.title, song.spotlight_copy ?? null)}
-                            className="p-2 text-fuchsia-300/80 hover:text-fuchsia-200 hover:bg-fuchsia-400/10 rounded-lg transition-all"
-                            title={song.spotlight_copy ? 'Spotlight-Text bearbeiten' : 'Spotlight-Text setzen'}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                  {filteredSongs.length > 0 ? filteredSongs.map((song) => {
+                    const expanded = expandedSongId === song.id;
+                    const trend = song.trend_percent ?? 0;
+                    const isNewTrend = (song.previous_7d ?? 0) === 0 && (song.plays_7d ?? 0) > 0;
+
+                    return (
+                      <Fragment key={song.id}>
+                        <tr className="hover:bg-white/5 transition-colors group">
+                          <td className="px-6 py-4 font-medium text-white max-w-[220px] truncate" title={song.title}>
+                            <Link href={`/song/${song.id}`} className="hover:text-indigo-400 hover:underline">
+                              {song.title}
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4 max-w-[150px] truncate" title={song.artist_name}>{song.artist_name || 'Unbekannt'}</td>
+                          <td className="px-6 py-4">
+                            <div className="font-mono text-white">{formatAdminNumber(song.plays)}</div>
+                            <div className="mt-1 whitespace-nowrap text-xs text-white/40">
+                              24h {formatAdminNumber(song.plays_24h)} · 7d {formatAdminNumber(song.plays_7d)} · 30d {formatAdminNumber(song.plays_30d)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="whitespace-nowrap text-white/75">👤 {formatAdminNumber(song.unique_listeners)} Listener</div>
+                            <div className="mt-1 whitespace-nowrap text-xs text-white/40">
+                              ❤ {formatAdminNumber(song.likes_count)} · ☰ {formatAdminNumber(song.playlist_adds)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex min-w-[72px] justify-center rounded-full border px-2.5 py-1 text-xs font-bold ${getTrendClasses(trend)}`}>
+                              {isNewTrend ? 'Neu' : formatTrendPercent(trend)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-xs text-white/50">
+                            {song.last_played_at ? new Date(song.last_played_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-1 bg-white/5 rounded text-xs border border-white/10">
+                              {song.ai_tool || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setExpandedSongId(expanded ? null : song.id)}
+                              className={`p-2 rounded-lg transition-all ${
+                                expanded
+                                  ? 'text-indigo-300 bg-indigo-400/15'
+                                  : 'text-white/40 hover:text-indigo-300 hover:bg-indigo-400/10'
+                              }`}
+                              title={expanded ? 'Details schließen' : 'Performance-Details anzeigen'}
+                            >
+                              <Activity className="w-4 h-4" />
+                            </button>
+                            <select
+                              value={song.genre ?? ''}
+                              onChange={(e) => handleChangeGenre(song.id, e.target.value)}
+                              title="Genre ändern"
+                              className="rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white/80 focus:border-indigo-400/55 focus:outline-none"
+                            >
+                              {!song.genre && <option value="" disabled>Genre…</option>}
+                              {song.genre && !GENRES.some((g) => g.name === song.genre) && (
+                                <option value={song.genre}>{song.genre}</option>
+                              )}
+                              {GENRES.map((g) => (
+                                <option key={g.name} value={g.name}>{g.name}</option>
+                              ))}
+                            </select>
+                            <label
+                              className="p-2 cursor-pointer text-white/40 hover:text-green-400 hover:bg-green-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                              title="Audiodatei austauschen"
+                            >
+                              {isReplacingAudio === song.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <FileAudio className="w-4 h-4" />
+                              )}
+                              <input
+                                type="file"
+                                accept="audio/*"
+                                className="hidden"
+                                onChange={(e) => handleReplaceAudio(e, song.id, song.title)}
+                                disabled={isReplacingAudio === song.id}
+                              />
+                            </label>
+                            <button
+                              onClick={() => handleSetSpotlightSong(song.id, song.title)}
+                              className={`p-2 rounded-lg transition-all ${
+                                song.is_spotlight
+                                  ? 'text-fuchsia-300 bg-fuchsia-400/15'
+                                  : 'text-white/40 hover:text-fuchsia-300 hover:bg-fuchsia-400/10 opacity-0 group-hover:opacity-100'
+                              }`}
+                              title={song.is_spotlight ? 'Aktuelles Home-Spotlight' : 'Als Home-Spotlight setzen'}
+                            >
+                              <Sparkles className="w-4 h-4" />
+                            </button>
+                            {song.is_spotlight ? (
+                              <button
+                                onClick={() => handleEditSpotlightCopy(song.id, song.title, song.spotlight_copy ?? null)}
+                                className="p-2 text-fuchsia-300/80 hover:text-fuchsia-200 hover:bg-fuchsia-400/10 rounded-lg transition-all"
+                                title={song.spotlight_copy ? 'Spotlight-Text bearbeiten' : 'Spotlight-Text setzen'}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            ) : null}
+                            <button
+                              onClick={() => handleEditSongTitle(song.id, song.title)}
+                              className="p-2 text-white/40 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                              title="Song umbenennen"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSong(song.id, song.title)}
+                              className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                              title="Song endgültig löschen"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                        {expanded ? (
+                          <tr className="bg-indigo-500/[0.035]">
+                            <td colSpan={8} className="px-6 py-4">
+                              <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
+                                {[
+                                  ['Gesamt-Plays', formatAdminNumber(song.plays)],
+                                  ['24h', formatAdminNumber(song.plays_24h)],
+                                  ['7 Tage', formatAdminNumber(song.plays_7d)],
+                                  ['30 Tage', formatAdminNumber(song.plays_30d)],
+                                  ['Unique Listener', formatAdminNumber(song.unique_listeners)],
+                                  ['Likes', formatAdminNumber(song.likes_count)],
+                                  ['Playlist-Adds', formatAdminNumber(song.playlist_adds)],
+                                  ['Trend vs. Vorwoche', isNewTrend ? 'Neu' : formatTrendPercent(song.trend_percent)],
+                                ].map(([label, value]) => (
+                                  <div key={label} className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+                                    <div className="text-[10px] uppercase tracking-[0.18em] text-white/35">{label}</div>
+                                    <div className="mt-1 text-lg font-black text-white">{value}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
                         ) : null}
-                        <button
-                          onClick={() => handleEditSongTitle(song.id, song.title)}
-                          className="p-2 text-white/40 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                          title="Song umbenennen"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSong(song.id, song.title)}
-                          className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                          title="Song endgültig löschen"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  )) : (
+                      </Fragment>
+                    );
+                  }) : (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-white/40">Keine Songs gefunden.</td>
+                      <td colSpan={8} className="px-6 py-12 text-center text-white/40">Keine Songs gefunden.</td>
                     </tr>
                   )}
                 </tbody>
@@ -1317,8 +1728,150 @@ export default function AdminPage() {
                 <div>
                   <h2 className="text-2xl font-bold text-white mb-2">Home Spotlight Slider</h2>
                   <p className="text-white/60 text-sm">
-                    Wähle, welcher Song, Künstler und welche Playlist im rotierenden Spotlight-Slider auf der Home erscheinen. Song-Spotlight setzt du wie gewohnt im Songs-Tab über das Funkel-Icon.
+                    Wähle, welcher Song, Künstler, welche Playlist und welche News im rotierenden Spotlight-Slider auf der Home erscheinen. Song-Spotlight setzt du wie gewohnt im Songs-Tab über das Funkel-Icon.
                   </p>
+                </div>
+
+                <div className="rounded-2xl border border-accent/20 bg-accent/[0.055] p-6">
+                  <div className="mb-4 flex items-start justify-between gap-4">
+                    <div>
+                      <label className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-accent/90">
+                        <Megaphone className="h-4 w-4" />
+                        News Slide
+                      </label>
+                      <p className="mt-2 text-sm text-white/55">Vierter Highlight-Slide für Ankündigungen. Veröffentlichte Beiträge bleiben unter /news erreichbar.</p>
+                    </div>
+                    <label className="flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs font-bold text-white/70">
+                      <input
+                        type="checkbox"
+                        checked={highlightNews.enabled}
+                        onChange={(e) => setHighlightNews((prev) => ({ ...prev, enabled: e.target.checked }))}
+                        className="accent-primary"
+                      />
+                      Aktiv
+                    </label>
+                  </div>
+
+                  <div className="grid gap-3">
+                    <input
+                      type="text"
+                      value={highlightNews.title}
+                      onChange={(e) => setHighlightNews((prev) => ({ ...prev, title: e.target.value }))}
+                      placeholder="Headline, z.B. Neue App-Version ist live"
+                      className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={highlightNews.slug}
+                      onChange={(e) => setHighlightNews((prev) => ({ ...prev, slug: createSlug(e.target.value) }))}
+                      onBlur={() => setHighlightNews((prev) => ({ ...prev, slug: createSlug(prev.slug || prev.title) }))}
+                      placeholder="artikel-slug, z.B. app-version-1-0-9"
+                      className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
+                    />
+                    <textarea
+                      value={highlightNews.body}
+                      onChange={(e) => setHighlightNews((prev) => ({ ...prev, body: e.target.value }))}
+                      placeholder="Kurzer News-Text oder Ankündigung…"
+                      rows={4}
+                      className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
+                    />
+                    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
+                          {highlightNews.imageUrl ? (
+                            <Image src={highlightNews.imageUrl} alt="News Bild" fill sizes="96px" className="object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-white/35">
+                              <Megaphone className="h-8 w-8" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-white/45">Artikelbild</p>
+                          <p className="mt-1 text-sm text-white/55">Wird im Home-Slide, News-Archiv und Artikel-Header genutzt.</p>
+                          <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/8 px-4 py-2 text-xs font-bold text-white hover:bg-white/12">
+                            {isUploadingNewsImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                            {isUploadingNewsImage ? 'Lädt…' : 'Bild wählen'}
+                            <input type="file" accept="image/*" onChange={handleNewsImageUpload} className="hidden" disabled={isUploadingNewsImage} />
+                          </label>
+                          {uploadNewsImageStatus ? <p className="mt-2 text-xs text-emerald-300">{uploadNewsImageStatus}</p> : null}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input
+                        type="text"
+                        value={highlightNews.ctaLabel}
+                        onChange={(e) => setHighlightNews((prev) => ({ ...prev, ctaLabel: e.target.value }))}
+                        placeholder="Button-Text optional"
+                        className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        value={highlightNews.ctaUrl}
+                        onChange={(e) => setHighlightNews((prev) => ({ ...prev, ctaUrl: e.target.value }))}
+                        placeholder="Button-Link optional, z.B. /playlists"
+                        className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-accent/55 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      onClick={handleSaveHighlightNews}
+                      disabled={savingHighlightNews}
+                      className="rounded-full bg-primary px-5 py-2 text-xs font-bold text-white transition-transform hover:scale-105 disabled:opacity-50"
+                    >
+                      {savingHighlightNews ? 'Speichert…' : 'News speichern'}
+                    </button>
+                  </div>
+
+                  {newsPosts.length > 0 ? (
+                    <div className="mt-6 border-t border-white/10 pt-5">
+                      <p className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/45">News-Historie</p>
+                      <div className="space-y-2">
+                        {newsPosts.map((post) => (
+                          <div key={post.id} className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-black/25 p-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="truncate text-sm font-black text-white">{post.title}</p>
+                                {post.is_featured ? (
+                                  <span className="rounded-full border border-accent/30 bg-accent/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-accent">Aktiver Slide</span>
+                                ) : null}
+                              </div>
+                              <p className="mt-1 text-xs text-white/40">/news/{post.slug}</p>
+                            </div>
+                            <div className="flex shrink-0 flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleEditNewsPost(post)}
+                                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-white/70 hover:bg-white/10"
+                              >
+                                Bearbeiten
+                              </button>
+                              {!post.is_featured ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetFeaturedNewsPost(post)}
+                                  disabled={savingHighlightNews}
+                                  className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent hover:bg-accent/15 disabled:opacity-50"
+                                >
+                                  Als Slide setzen
+                                </button>
+                              ) : null}
+                              <Link
+                                href={`/news/${post.slug}`}
+                                target="_blank"
+                                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-white/70 hover:bg-white/10"
+                              >
+                                Öffnen
+                              </Link>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-6">
@@ -1406,7 +1959,7 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <p className="mb-3 text-sm text-white/55">
-                    Lege bis zu 6 Songs für die {'„Trending"'}-Reihe auf der Startseite fest (oben = erster). Ist die Liste leer, greift automatisch der Algorithmus.
+                    Lege exakt die Songs für die {'„Trending"'}-Reihe auf Web und App fest (oben = erster). Maximal 6 Plätze; wenn die Liste leer ist, bleibt die Reihe leer.
                   </p>
 
                   <ul className="space-y-2">
@@ -1436,7 +1989,7 @@ export default function AdminPage() {
                       </li>
                     ))}
                     {trendingPicks.length === 0 && (
-                      <li className="px-1 text-sm text-white/40">Noch keine Trending-Songs gewählt — der Algorithmus entscheidet.</li>
+                      <li className="px-1 text-sm text-white/40">Noch keine Trending-Songs gewählt.</li>
                     )}
                   </ul>
 

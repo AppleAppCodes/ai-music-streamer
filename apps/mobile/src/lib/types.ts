@@ -13,6 +13,7 @@ export interface Song {
   is_spotlight?: boolean | null;
   spotlight_copy?: string | null;
   is_approved?: boolean | null;
+  trending_sort_order?: number | null;
 }
 
 export interface FeedClip {

@@ -103,6 +103,9 @@
     "spotlightEditError": "Fehler beim Speichern: {{message}}",
     "spotlightPlaylistEyebrow": "Playlist der Woche",
     "spotlightPlaylistCta": "Playlist öffnen",
+    "spotlightNewsEyebrow": "News",
+    "spotlightNewsDefaultTitle": "Neu auf YORIAX",
+    "spotlightNewsCta": "Mehr erfahren",
     "spotlightPrev": "Vorheriger Slide",
     "spotlightNext": "Nächster Slide"
   },

@@ -1,9 +1,9 @@
-import { getDailyTrendingSongs, getPersonalizedSongs, type PlaybackSignal, type SongSignal } from './recommendations';
+import { getPersonalizedSongs, type PlaybackSignal, type SongSignal } from './recommendations';
 import { supabase } from './supabase';
 import type { DiscoverPlaylist, FeedClip, FeedPreviewSong, Playlist, Song } from './types';
 
 const SONG_SELECT =
-  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at, is_spotlight, spotlight_copy, is_approved';
+  'id, creator_id, title, artist_name, cover_url, audio_url, genre, duration, plays, created_at, is_spotlight, spotlight_copy, is_approved, trending_sort_order';
 const SONG_SELECT_WITH_PROFILE = `${SONG_SELECT}, profiles!songs_creator_id_fkey(username)`;
 export const DAILY_NEW_RELEASES_PLAYLIST_ID = 'da114eeb-ecea-5e55-9ee1-ea5e5da11111';
 
@@ -21,6 +21,9 @@ type StorageFile = {
   name: string;
   updated_at?: string | null;
 };
+
+const FEED_CLIP_MAP_CACHE_TTL_MS = 60_000;
+let feedClipMapCache: { data: Map<string, FeedClip>; loadedAt: number } | null = null;
 
 export type ArtistMedia = {
   bannerUrl?: string | null;
@@ -43,6 +46,18 @@ export interface SpotlightPlaylist {
   creatorName: string;
 }
 
+export interface HighlightNews {
+  id: string | null;
+  slug: string | null;
+  title: string | null;
+  body: string | null;
+  image_url: string | null;
+  cta_label: string | null;
+  cta_url: string | null;
+  article_url: string | null;
+  enabled: boolean;
+}
+
 export interface HomeMusicData {
   totalSongs: number;
   trendingSongs: Song[];
@@ -52,6 +67,7 @@ export interface HomeMusicData {
   spotlightSong: Song | null;
   spotlightArtist: SpotlightArtist | null;
   spotlightPlaylist: SpotlightPlaylist | null;
+  highlightNews: HighlightNews | null;
 }
 
 export interface LibraryMusicData {
@@ -167,6 +183,7 @@ function mapSong(row: SongRow): Song {
     is_spotlight: row.is_spotlight ?? false,
     spotlight_copy: row.spotlight_copy ?? null,
     is_approved: row.is_approved ?? true,
+    trending_sort_order: row.trending_sort_order ?? null,
   };
 }
 
@@ -229,6 +246,37 @@ async function loadSongs(limit = 80, orderBy: 'created_at' | 'plays' = 'created_
     .select(SONG_SELECT)
     .eq('is_approved', true)
     .order(orderBy, { ascending: false })
+    .limit(limit);
+
+  if (fallback.error) {
+    throw new Error(fallback.error.message);
+  }
+
+  return ((fallback.data || []) as SongRow[]).map(mapSong);
+}
+
+async function loadCuratedTrendingSongs(limit = 6): Promise<Song[]> {
+  const client = requireClient();
+  const withProfile = await client
+    .from('songs')
+    .select(SONG_SELECT_WITH_PROFILE)
+    .eq('is_approved', true)
+    .not('trending_sort_order', 'is', null)
+    .order('trending_sort_order', { ascending: true })
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (!withProfile.error) {
+    return ((withProfile.data || []) as SongRow[]).map(mapSong);
+  }
+
+  const fallback = await client
+    .from('songs')
+    .select(SONG_SELECT)
+    .eq('is_approved', true)
+    .not('trending_sort_order', 'is', null)
+    .order('trending_sort_order', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   if (fallback.error) {
@@ -302,7 +350,8 @@ async function loadSongSignals(userId: string) {
 }
 
 export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
-  const [popularSongs, latestSongs, signals, discoverPlaylistsData, spotlightSong, spotlightArtist, spotlightPlaylist] = await Promise.all([
+  const [curatedTrendingSongs, popularSongs, latestSongs, signals, discoverPlaylistsData, spotlightSong, spotlightArtist, spotlightPlaylist, highlightNews] = await Promise.all([
+    loadCuratedTrendingSongs(6),
     loadSongs(96, 'plays'),
     loadSongs(48, 'created_at'),
     loadSongSignals(userId),
@@ -310,9 +359,10 @@ export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
     loadSpotlightSong(),
     loadSpotlightArtist(),
     loadSpotlightPlaylist(),
+    loadHighlightNews(),
   ]);
-  const songs = mergeSongs(popularSongs, latestSongs);
-  const trendingSongs = getDailyTrendingSongs(songs, 6);
+  const songs = mergeSongs(curatedTrendingSongs, popularSongs, latestSongs);
+  const trendingSongs = curatedTrendingSongs.slice(0, 6);
   const rankedRecommendations = getPersonalizedSongs(songs, signals, songs.length);
   const trendingIds = new Set(trendingSongs.map(({ id }) => id));
   const distinctRecommendations = rankedRecommendations.filter(({ id }) => !trendingIds.has(id));
@@ -326,6 +376,78 @@ export async function loadHomeMusic(userId: string): Promise<HomeMusicData> {
     spotlightSong,
     spotlightArtist,
     spotlightPlaylist,
+    highlightNews,
+  };
+}
+
+function buildNewsArticleUrl(slug?: string | null) {
+  const value = slug?.trim();
+  return value ? `https://www.yoriax.com/news/${encodeURIComponent(value)}` : null;
+}
+
+async function loadHighlightNews(): Promise<HighlightNews | null> {
+  const client = requireClient();
+
+  const newsResult = await client
+    .from('news_posts')
+    .select('id, slug, title, excerpt, body, image_url, cta_label, cta_url, is_published, is_featured, published_at, created_at')
+    .eq('is_featured', true)
+    .eq('is_published', true)
+    .order('published_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!newsResult.error && newsResult.data) {
+    const row = newsResult.data as {
+      body?: string | null;
+      cta_label?: string | null;
+      cta_url?: string | null;
+      excerpt?: string | null;
+      id?: string | null;
+      image_url?: string | null;
+      slug?: string | null;
+      title?: string | null;
+    };
+    const slug = row.slug ?? null;
+    const articleUrl = buildNewsArticleUrl(slug);
+
+    return {
+      id: row.id ?? null,
+      slug,
+      title: row.title ?? null,
+      body: row.excerpt ?? row.body ?? null,
+      image_url: row.image_url ?? null,
+      cta_label: row.cta_label ?? null,
+      cta_url: row.cta_url ?? articleUrl,
+      article_url: articleUrl,
+      enabled: true,
+    };
+  }
+
+  const fallback = await client
+    .from('app_settings')
+    .select('highlight_news_enabled, highlight_news_title, highlight_news_body, highlight_news_cta_label, highlight_news_cta_url, highlight_news_image_url, highlight_news_article_slug')
+    .eq('id', 'global')
+    .maybeSingle();
+
+  if (fallback.error || !fallback.data || !fallback.data.highlight_news_enabled) {
+    return null;
+  }
+
+  const slug = (fallback.data.highlight_news_article_slug as string | null) ?? null;
+  const articleUrl = buildNewsArticleUrl(slug);
+
+  return {
+    id: null,
+    slug,
+    title: (fallback.data.highlight_news_title as string | null) ?? null,
+    body: (fallback.data.highlight_news_body as string | null) ?? null,
+    image_url: (fallback.data.highlight_news_image_url as string | null) ?? null,
+    cta_label: (fallback.data.highlight_news_cta_label as string | null) ?? null,
+    cta_url: ((fallback.data.highlight_news_cta_url as string | null) ?? null) || articleUrl,
+    article_url: articleUrl,
+    enabled: true,
   };
 }
 
@@ -512,6 +634,10 @@ function getLikes(row: FeedRow): number {
 }
 
 async function loadFeedClipMap(): Promise<Map<string, FeedClip>> {
+  if (feedClipMapCache && Date.now() - feedClipMapCache.loadedAt < FEED_CLIP_MAP_CACHE_TTL_MS) {
+    return feedClipMapCache.data;
+  }
+
   const client = requireClient();
   const { data, error } = await client
     .from('song_feed_clips')
@@ -536,7 +662,9 @@ async function loadFeedClipMap(): Promise<Map<string, FeedClip>> {
     }];
   });
 
-  return new Map(clips.map((clip) => [clip.song_id, clip]));
+  const clipMap = new Map(clips.map((clip) => [clip.song_id, clip]));
+  feedClipMapCache = { data: clipMap, loadedAt: Date.now() };
+  return clipMap;
 }
 
 export async function loadFeedPreview(userId: string): Promise<FeedPreviewSong[]> {
@@ -993,20 +1121,10 @@ export async function createPlaylist(userId: string, title: string): Promise<Pla
 export async function addSongToPlaylist(playlistId: string, songId: string): Promise<void> {
   const client = requireClient();
 
-  // check if already in playlist
-  const { data: existing } = await client
-    .from('playlist_songs')
-    .select('song_id')
-    .eq('playlist_id', playlistId)
-    .eq('song_id', songId)
-    .single();
-
-  if (existing) return; // already added
-
   const { error } = await client
     .from('playlist_songs')
     .insert({ playlist_id: playlistId, song_id: songId });
-  if (error) throw new Error(error.message);
+  if (error && error.code !== '23505') throw new Error(error.message);
 }
 
 export async function removeSongFromPlaylist(playlistId: string, songId: string): Promise<void> {
@@ -1113,18 +1231,15 @@ export async function loadChartsData(): Promise<ChartsData> {
   const client = requireClient();
   const todayUtc = new Date().toISOString().slice(0, 10);
 
-  const [viralQuery, artistQuery, dailyQuery] = await Promise.all([
-    client.from('songs').select(SONG_SELECT_WITH_PROFILE).eq('is_approved', true).order('plays', { ascending: false }).limit(80),
+  const [rankedSongsQuery, dailyQuery] = await Promise.all([
     client.from('songs').select(SONG_SELECT_WITH_PROFILE).eq('is_approved', true).order('plays', { ascending: false }).limit(200),
     client.from('song_daily_plays').select('song_id, plays').eq('play_date', todayUtc).order('plays', { ascending: false }).limit(50),
   ]);
 
-  if (viralQuery.error) throw new Error(viralQuery.error.message);
-  if (artistQuery.error) throw new Error(artistQuery.error.message);
+  if (rankedSongsQuery.error) throw new Error(rankedSongsQuery.error.message);
   if (dailyQuery.error) throw new Error(dailyQuery.error.message);
 
-  const viralPool = ((viralQuery.data || []) as SongRow[]).map(mapSong);
-  const artistPool = ((artistQuery.data || []) as SongRow[]).map(mapSong);
+  const rankedPool = ((rankedSongsQuery.data || []) as SongRow[]).map(mapSong);
   const dailyPlays = (dailyQuery.data || []) as { song_id: string; plays: number }[];
 
   const dailyPlayMap: Record<string, number> = {};
@@ -1140,10 +1255,10 @@ export async function loadChartsData(): Promise<ChartsData> {
 
   if (dailySongRows.error) throw new Error(dailySongRows.error.message);
 
-  const viralSongs = viralPool.slice(0, 20);
+  const viralSongs = rankedPool.slice(0, 20);
   const songById = new Map<string, Song>();
 
-  [...viralPool, ...((dailySongRows.data || []) as SongRow[]).map(mapSong)].forEach((song) => {
+  [...rankedPool, ...((dailySongRows.data || []) as SongRow[]).map(mapSong)].forEach((song) => {
     songById.set(song.id, song);
   });
 
@@ -1151,8 +1266,8 @@ export async function loadChartsData(): Promise<ChartsData> {
     .map((songId) => songById.get(songId))
     .filter((song): song is Song => Boolean(song));
   const dailyIds = new Set(dailySongsFromToday.map(({ id }) => id));
-  const dailySongs = [...dailySongsFromToday, ...viralPool.filter((song) => !dailyIds.has(song.id))].slice(0, 50);
-  const artistCharts = buildArtistStatsFromSongs(artistPool).slice(0, 30);
+  const dailySongs = [...dailySongsFromToday, ...rankedPool.filter((song) => !dailyIds.has(song.id))].slice(0, 50);
+  const artistCharts = buildArtistStatsFromSongs(rankedPool).slice(0, 30);
   const data = { viralSongs, dailySongs, artistCharts, dailyPlayMap };
 
   chartsCache = { data, loadedAt: Date.now() };
