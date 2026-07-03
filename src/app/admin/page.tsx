@@ -108,10 +108,14 @@ export default function AdminPage() {
         // Load Users via an admin-only SECURITY DEFINER RPC. Profile email /
         // account-state columns are no longer readable by the browser client
         // directly; the function self-authorizes via is_admin().
-        const [{ data: usersData, error: usersError }, { data: engagementData }] = await Promise.all([
+        const [{ data: usersData, error: usersError }, { data: engagementData, error: engagementError }] = await Promise.all([
           supabase.rpc('get_admin_user_list'),
           supabase.rpc('get_admin_user_engagement'),
         ]);
+        if (engagementError) {
+          // Surface instead of silently rendering all-zero engagement columns.
+          console.error('Failed to load user engagement:', engagementError);
+        }
         if (usersError) {
           console.error('Failed to load admin users:', usersError);
         } else if (usersData) {
