@@ -160,6 +160,9 @@ export default function SidebarClient({
           <Link href="/agb" className="transition-colors hover:text-white/60">
             {t('nav.agb')}
           </Link>
+          <Link href="/widerruf" className="transition-colors hover:text-white/60">
+            {t('nav.widerruf')}
+          </Link>
         </div>
         {isAdmin && appVersionLabel ? (
           <div className="mt-4 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-white/22">

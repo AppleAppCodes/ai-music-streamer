@@ -149,7 +149,8 @@ export default function AgbPage() {
           Für kostenpflichtige Funktionen wie Abos werden Preis, Laufzeit und Vertragsbedingungen vor
           dem Kaufabschluss klar angezeigt; die Zahlungsabwicklung erfolgt über den
           Zahlungsdienstleister Stripe. Abos kannst du jederzeit zum Ende der jeweiligen Laufzeit
-          kündigen. Verbrauchern stehen die gesetzlichen Widerrufsrechte zu.
+          kündigen. Verbrauchern stehen die gesetzlichen Widerrufsrechte zu; Einzelheiten
+          findest du in der <a href="/widerruf">Widerrufsbelehrung</a>.
         </p>
       </section>
 
