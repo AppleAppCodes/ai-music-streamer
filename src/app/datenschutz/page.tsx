@@ -18,7 +18,7 @@ export default function DatenschutzPage() {
       description="Diese Datenschutzerklärung erklärt, welche Daten YORIAX verarbeitet und wofür sie genutzt werden."
     >
       <section>
-        <p className="text-sm font-bold uppercase tracking-[0.18em] text-white/45">Stand: 5. Juni 2026</p>
+        <p className="text-sm font-bold uppercase tracking-[0.18em] text-white/45">Stand: 3. Juli 2026</p>
       </section>
 
       <section>
@@ -63,6 +63,12 @@ export default function DatenschutzPage() {
           Die Website wird über Vercel bereitgestellt. Rechtsgrundlage ist unser berechtigtes Interesse
           an einem sicheren und stabilen Betrieb der Plattform gemäß Art. 6 Abs. 1 lit. f DSGVO.
         </p>
+        <p>
+          Zur Reichweitenmessung nutzen wir Vercel Web Analytics. Dabei werden Seitenaufrufe
+          aggregiert und ohne Cookies sowie ohne geräteübergreifende Nutzerprofile ausgewertet.
+          Rechtsgrundlage ist unser berechtigtes Interesse an der Analyse und Verbesserung des
+          Angebots gemäß Art. 6 Abs. 1 lit. f DSGVO.
+        </p>
       </section>
 
       <section>
@@ -72,7 +78,9 @@ export default function DatenschutzPage() {
           E-Mail-Adresse, Authentifizierungsdaten, Profilangaben, Session-Daten, Login-Zeitpunkte
           und technische Sicherheitsdaten. Bei Google Login erhalten wir die für die Anmeldung
           notwendigen Google-Kontodaten, insbesondere E-Mail-Adresse und Profilinformationen, soweit
-          du sie über Google freigibst.
+          du sie über Google freigibst. Bei Anmeldung mit Apple erhalten wir die von Apple
+          bereitgestellten Anmeldedaten; nutzt du {'„E-Mail-Adresse verbergen"'}, verarbeiten wir die
+          von Apple erzeugte Weiterleitungsadresse.
         </p>
         <p>
           Rechtsgrundlage ist die Durchführung des Nutzungsverhältnisses gemäß Art. 6 Abs. 1 lit. b
@@ -136,11 +144,29 @@ export default function DatenschutzPage() {
       </section>
 
       <section>
-        <h2>9. Cookies und lokale Speicherung</h2>
+        <h2>9. Bezahlung mit Stripe</h2>
+        <p>
+          Für kostenpflichtige Funktionen (z.&nbsp;B. Abos) nutzen wir den Zahlungsdienstleister
+          Stripe. Bei einem Kauf verarbeitet Stripe die für die Zahlungsabwicklung erforderlichen
+          Daten, insbesondere Zahlungsdaten, E-Mail-Adresse und Transaktionsdaten. Zahlungsdaten wie
+          vollständige Kartennummern werden ausschließlich bei Stripe verarbeitet und nicht auf
+          unseren Systemen gespeichert; wir erhalten von Stripe den Zahlungsstatus und die für die
+          Vertragsabwicklung nötigen Angaben.
+        </p>
+        <p>
+          Rechtsgrundlage ist die Vertragserfüllung gemäß Art. 6 Abs. 1 lit. b DSGVO. Stripe kann
+          Daten auch in den USA verarbeiten; Stripe ist nach dem EU-US Data Privacy Framework
+          zertifiziert und verwendet Standardvertragsklauseln.
+        </p>
+      </section>
+
+      <section>
+        <h2>10. Cookies und lokale Speicherung</h2>
         <p>
           YORIAX nutzt notwendige Speicherung für Login, Sicherheitsprüfung, Auth-Session und deine
           Cookie-Entscheidung. Komfort-Speicherung, zum Beispiel Sprache oder Player-Zustand, nutzen
-          wir nur, wenn du sie erlaubst. Analytics- und Marketing-Cookies sind aktuell deaktiviert.
+          wir nur, wenn du sie erlaubst. Analytics- und Marketing-Cookies setzen wir nicht ein; die
+          Reichweitenmessung (Abschnitt 3) arbeitet ohne Cookies.
         </p>
         <p>
           Du kannst deine Entscheidung jederzeit über die Cookie-Einstellungen auf der Plattform
@@ -149,7 +175,7 @@ export default function DatenschutzPage() {
       </section>
 
       <section>
-        <h2>10. Speicherdauer</h2>
+        <h2>11. Speicherdauer</h2>
         <p>
           Wir speichern personenbezogene Daten nur so lange, wie sie für die genannten Zwecke
           erforderlich sind. Account- und Plattformdaten werden grundsätzlich für die Dauer deines
@@ -159,18 +185,19 @@ export default function DatenschutzPage() {
       </section>
 
       <section>
-        <h2>11. Empfänger und Drittlandübermittlung</h2>
+        <h2>12. Empfänger und Drittlandübermittlung</h2>
         <p>
           Daten können an technische Dienstleister übermittelt werden, die uns beim Betrieb der
-          Plattform unterstützen. Dazu gehören insbesondere Supabase, Vercel, Cloudflare, Resend und
-          Google, soweit du Google Login nutzt. Soweit Daten außerhalb der EU oder des EWR verarbeitet
+          Plattform unterstützen. Dazu gehören insbesondere Supabase, Vercel, Cloudflare, Resend, Stripe
+          bei kostenpflichtigen Funktionen sowie Google oder Apple, soweit du den jeweiligen Login
+          nutzt. Soweit Daten außerhalb der EU oder des EWR verarbeitet
           werden, achten wir auf geeignete Garantien wie Standardvertragsklauseln oder vergleichbare
           Schutzmechanismen.
         </p>
       </section>
 
       <section>
-        <h2>12. Deine Rechte</h2>
+        <h2>13. Deine Rechte</h2>
         <p>
           Du hast nach Maßgabe der DSGVO das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung
           der Verarbeitung, Datenübertragbarkeit und Widerspruch gegen bestimmte Verarbeitungen. Wenn
@@ -184,7 +211,7 @@ export default function DatenschutzPage() {
       </section>
 
       <section>
-        <h2>13. Kontakt zu Datenschutzfragen</h2>
+        <h2>14. Kontakt zu Datenschutzfragen</h2>
         <p>
           Wenn du Fragen zum Datenschutz oder zur Ausübung deiner Rechte hast, erreichst du uns unter{' '}
           <a href="mailto:info@fragenta.com">

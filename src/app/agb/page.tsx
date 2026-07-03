@@ -143,11 +143,13 @@ export default function AgbPage() {
       </section>
 
       <section>
-        <h2>10. Kosten und zukünftige Bezahlfunktionen</h2>
+        <h2>10. Kosten und Bezahlfunktionen</h2>
         <p>
           Soweit Funktionen kostenlos angeboten werden, entstehen dir hierfür keine Plattformgebühren.
-          Wenn zukünftig kostenpflichtige Funktionen, Abos oder Creator-Modelle eingeführt werden,
-          gelten dafür zusätzliche Preis- und Vertragsinformationen, bevor Kosten entstehen.
+          Für kostenpflichtige Funktionen wie Abos werden Preis, Laufzeit und Vertragsbedingungen vor
+          dem Kaufabschluss klar angezeigt; die Zahlungsabwicklung erfolgt über den
+          Zahlungsdienstleister Stripe. Abos kannst du jederzeit zum Ende der jeweiligen Laufzeit
+          kündigen. Verbrauchern stehen die gesetzlichen Widerrufsrechte zu.
         </p>
       </section>
 
