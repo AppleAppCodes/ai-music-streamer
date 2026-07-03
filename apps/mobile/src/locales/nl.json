@@ -51,7 +51,10 @@
     "invalidCredentials": "Het e-mailadres of wachtwoord is onjuist.",
     "missingConfig": "Supabase is niet lokaal geconfigureerd in de native app.",
     "noLoginData": "Geen inloggegevens. URL: %{url}",
-    "reauthenticate": "Log opnieuw in voordat je je account verwijdert."
+    "reauthenticate": "Log opnieuw in voordat je je account verwijdert.",
+    "termsNotice": "Door in te loggen accepteer je onze",
+    "termsLinkAgb": "Voorwaarden",
+    "termsLinkPrivacy": "Privacyverklaring"
   },
   "home": {
     "artists": "Artiesten",

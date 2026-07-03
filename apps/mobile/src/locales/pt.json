@@ -51,7 +51,10 @@
     "invalidCredentials": "O e-mail ou a senha estão incorretos.",
     "missingConfig": "O Supabase não está configurado localmente no app nativo.",
     "noLoginData": "Sem dados de login. URL: %{url}",
-    "reauthenticate": "Entre novamente antes de excluir sua conta."
+    "reauthenticate": "Entre novamente antes de excluir sua conta.",
+    "termsNotice": "Ao entrar, você aceita nossos",
+    "termsLinkAgb": "Termos",
+    "termsLinkPrivacy": "Política de privacidade"
   },
   "home": {
     "artists": "Artistas",

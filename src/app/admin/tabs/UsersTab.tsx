@@ -20,6 +20,7 @@ export function UsersTab({
             <th className="px-6 py-4 font-semibold">Tarif (Plan)</th>
             <th className="px-6 py-4 font-semibold">Land</th>
             <th className="px-6 py-4 font-semibold">App / Gerät</th>
+            <th className="px-6 py-4 font-semibold">Quelle</th>
             <th className="px-6 py-4 font-semibold">Zuletzt aktiv</th>
             <th className="px-6 py-4 font-semibold">Aktivität</th>
             <th className="px-6 py-4 font-semibold">Zuletzt gehört</th>
@@ -65,6 +66,15 @@ export function UsersTab({
                   </div>
                 ) : '-'}
               </td>
+              <td className="px-6 py-4">
+                {profile.acquisition_source === 'apple_ads' ? (
+                  <span className="rounded-md border border-sky-400/25 bg-sky-400/10 px-2 py-1 text-xs font-bold text-sky-300" title={profile.acquisition_campaign_id ? `Kampagne ${profile.acquisition_campaign_id}` : undefined}>
+                    Apple Ads
+                  </span>
+                ) : profile.acquisition_source === 'organic' ? (
+                  <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs font-bold text-white/55">Organisch</span>
+                ) : '-'}
+              </td>
               <td className="px-6 py-4">{profile.last_active_at ? new Date(profile.last_active_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</td>
               <td className="px-6 py-4">
                 <div className="flex flex-col gap-0.5 whitespace-nowrap">
@@ -99,7 +109,7 @@ export function UsersTab({
             </tr>
           )) : (
             <tr>
-              <td colSpan={10} className="px-6 py-12 text-center text-white/40">Keine Nutzer gefunden.</td>
+              <td colSpan={11} className="px-6 py-12 text-center text-white/40">Keine Nutzer gefunden.</td>
             </tr>
           )}
         </tbody>

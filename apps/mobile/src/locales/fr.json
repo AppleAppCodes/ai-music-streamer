@@ -51,7 +51,10 @@
     "invalidCredentials": "L’e-mail ou le mot de passe est incorrect.",
     "missingConfig": "Supabase n’est pas configuré localement dans l’app native.",
     "noLoginData": "Aucune donnée de connexion. URL : %{url}",
-    "reauthenticate": "Reconnecte-toi avant de supprimer ton compte."
+    "reauthenticate": "Reconnecte-toi avant de supprimer ton compte.",
+    "termsNotice": "En te connectant, tu acceptes nos",
+    "termsLinkAgb": "CGU",
+    "termsLinkPrivacy": "Politique de confidentialité"
   },
   "home": {
     "artists": "Artistes",

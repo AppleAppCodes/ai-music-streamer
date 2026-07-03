@@ -19,6 +19,7 @@ import { YoriaxMark } from './src/components/YoriaxUI';
 import { DecorativeVideoView } from 'yoriax-decorative-video';
 import { I18nProvider, useI18n } from './src/lib/i18n';
 import { preloadStartupMedia } from './src/lib/media-preload';
+import { recordAcquisitionAttribution, recordTermsAcceptance } from './src/lib/acquisition';
 import { supabase } from './src/lib/supabase';
 
 export default function App() {
@@ -99,6 +100,14 @@ function AppShell() {
     preloadStartupMedia(user.id).catch((error) => {
       console.warn('Startup media preload failed:', error);
     });
+  }, [signedIn, user?.id]);
+
+  // Once per install/sign-in: Apple-Ads attribution (CAC/LTV) and the
+  // terms-acceptance log. Both are idempotent and fire-and-forget.
+  useEffect(() => {
+    if (!signedIn || !user?.id) return;
+    void recordAcquisitionAttribution(user.id);
+    void recordTermsAcceptance(user.id, 'ios');
   }, [signedIn, user?.id]);
 
   return (

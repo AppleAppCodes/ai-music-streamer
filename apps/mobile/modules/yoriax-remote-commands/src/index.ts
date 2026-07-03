@@ -14,6 +14,7 @@ type RemoteCommandEvents = {
 declare class YoriaxRemoteCommandsNativeModule extends NativeModule<RemoteCommandEvents> {
   activatePlaybackSession(): void;
   setEnabled(enabled: boolean): void;
+  getAdAttributionToken(): Promise<string | null>;
 }
 
 const YoriaxRemoteCommands = requireOptionalNativeModule<YoriaxRemoteCommandsNativeModule>('YoriaxRemoteCommands');
@@ -55,4 +56,17 @@ export function addAudioInterruptionListener(listener: (event: AudioInterruption
   if (!YoriaxRemoteCommands) return () => {};
   const subscription = YoriaxRemoteCommands.addListener('onAudioInterruption', listener);
   return () => subscription.remove();
+}
+
+/**
+ * Apple Search Ads attribution token (iOS 14.3+). Returns null on other
+ * platforms, older iOS versions, or when the token cannot be generated.
+ */
+export async function getAdAttributionToken(): Promise<string | null> {
+  if (!YoriaxRemoteCommands) return null;
+  try {
+    return await YoriaxRemoteCommands.getAdAttributionToken();
+  } catch {
+    return null;
+  }
 }
