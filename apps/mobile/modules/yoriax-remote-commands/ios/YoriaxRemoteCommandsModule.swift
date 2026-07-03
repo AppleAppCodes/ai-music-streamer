@@ -1,5 +1,6 @@
 import ExpoModulesCore
 import AVFoundation
+import AdServices
 import MediaPlayer
 import UIKit
 
@@ -59,6 +60,15 @@ public class YoriaxRemoteCommandsModule: Module {
       DispatchQueue.main.async {
         self.activatePlaybackSession()
       }
+    }
+
+    // Apple Search Ads attribution token (AdServices). The JS side posts it to
+    // Apple's attribution API to learn which ad campaign drove the install.
+    AsyncFunction("getAdAttributionToken") { () -> String? in
+      if #available(iOS 14.3, *) {
+        return try? AAAttribution.attributionToken()
+      }
+      return nil
     }
 
     Function("setEnabled") { (enabled: Bool) in

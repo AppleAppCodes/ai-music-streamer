@@ -44,6 +44,24 @@ export default function HeaderClient({ user, signOutAction }: HeaderClientProps)
     if (user) {
       // Background call to track activity and country
       fetch('/api/user/track', { method: 'POST' }).catch(() => {});
+
+      // Terms-acceptance log (exit due diligence): once per user+version,
+      // guarded by localStorage so it doesn't hit the DB on every page view.
+      const termsFlag = `yoriax:terms-logged:${user.id}:2026-07-03`;
+      if (!window.localStorage.getItem(termsFlag)) {
+        void supabase
+          .from('terms_acceptances')
+          .upsert(
+            [
+              { user_id: user.id, document: 'agb', version: '2026-07-03', source: 'web' },
+              { user_id: user.id, document: 'datenschutz', version: '2026-07-03', source: 'web' },
+            ],
+            { onConflict: 'user_id,document,version', ignoreDuplicates: true },
+          )
+          .then(({ error }) => {
+            if (!error) window.localStorage.setItem(termsFlag, '1');
+          });
+      }
     } else {
       notifyPlayerForceSignOut();
     }

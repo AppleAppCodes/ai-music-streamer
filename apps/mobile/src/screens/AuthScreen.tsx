@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   StyleSheet,
   Text,
@@ -242,6 +243,17 @@ export function AuthScreen() {
             {isSignUp ? t('auth.signInInstead') : t('auth.noAccount')}
           </Text>
         </TouchableOpacity>
+
+        <Text style={styles.termsNotice}>
+          {t('auth.termsNotice')}{' '}
+          <Text style={styles.termsLink} onPress={() => { void Linking.openURL('https://www.yoriax.com/agb'); }}>
+            {t('auth.termsLinkAgb')}
+          </Text>
+          {' · '}
+          <Text style={styles.termsLink} onPress={() => { void Linking.openURL('https://www.yoriax.com/datenschutz'); }}>
+            {t('auth.termsLinkPrivacy')}
+          </Text>
+        </Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -417,5 +429,17 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
     fontSize: 14,
     fontWeight: '700',
+  },
+  termsNotice: {
+    color: theme.colors.subtle,
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 16,
+    marginTop: 14,
+    textAlign: 'center',
+  },
+  termsLink: {
+    color: theme.colors.muted,
+    textDecorationLine: 'underline',
   },
 });

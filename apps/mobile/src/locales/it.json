@@ -51,7 +51,10 @@
     "invalidCredentials": "Email o password non corretti.",
     "missingConfig": "Supabase non è configurato localmente nell’app nativa.",
     "noLoginData": "Nessun dato di accesso. URL: %{url}",
-    "reauthenticate": "Accedi di nuovo prima di eliminare il tuo account."
+    "reauthenticate": "Accedi di nuovo prima di eliminare il tuo account.",
+    "termsNotice": "Accedendo accetti i nostri",
+    "termsLinkAgb": "Termini",
+    "termsLinkPrivacy": "Informativa sulla privacy"
   },
   "home": {
     "artists": "Artisti",

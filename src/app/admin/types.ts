@@ -16,6 +16,8 @@ export type MetricsDailyRow = {
   new_songs: number | null;
   total_songs: number | null;
   active_creators: number | null;
+  minutes_streamed?: number | null;
+  pro_users?: number | null;
 };
 
 export interface McpLog {
@@ -42,6 +44,9 @@ export interface ProfileData {
   app_version?: string | null;
   os_version?: string | null;
   device_model?: string | null;
+  // Acquisition attribution (set once per install by the app)
+  acquisition_source?: string | null;
+  acquisition_campaign_id?: string | null;
   // Engagement (merged from get_admin_user_engagement)
   songs_played?: number;
   total_plays?: number;

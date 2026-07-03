@@ -690,9 +690,37 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // We attach a direct listener to the native player object instead of using a React hook (useAudioPlayerStatus),
   // because React hooks do not update/execute when the app is in the background or screen is locked.
   const playCountedSongIdRef = useRef<string | null>(null);
+  // Listened-time accounting (#exit-metrics): accumulate real playing time and
+  // flush it in ~60s chunks. Delta-based so pauses/buffering don't count.
+  const listenSecondsRef = useRef(0);
+  const lastListenTickRef = useRef<number | null>(null);
 
   useEffect(() => {
     const subscription = player.addListener('playbackStatusUpdate', (status) => {
+      const currentTrack = activeSongRef.current;
+      if (status.playing && currentTrack && currentTrack.id !== 'yoriax-audio-ad' && !isAdPlayingRef.current) {
+        const nowMs = Date.now();
+        if (lastListenTickRef.current !== null) {
+          const deltaSeconds = (nowMs - lastListenTickRef.current) / 1000;
+          // Ignore implausible gaps (app suspension, clock jumps).
+          if (deltaSeconds > 0 && deltaSeconds <= 5) {
+            listenSecondsRef.current += deltaSeconds;
+          }
+        }
+        lastListenTickRef.current = nowMs;
+
+        if (listenSecondsRef.current >= 60 && supabase) {
+          const seconds = Math.round(listenSecondsRef.current);
+          listenSecondsRef.current = 0;
+          void supabase
+            .rpc('record_listen_time', { seconds })
+            .then(({ error }) => {
+              if (error) console.warn('record_listen_time failed:', error.message);
+            });
+        }
+      } else {
+        lastListenTickRef.current = null;
+      }
       // Count the play once the listener genuinely heard the song (threshold
       // reached or track finished). Runs in this native listener so background
       // listening counts too. The server keeps its own 30-min replay cooldown.

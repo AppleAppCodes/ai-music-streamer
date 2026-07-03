@@ -51,7 +51,10 @@
     "invalidCredentials": "The email or password is incorrect.",
     "missingConfig": "Supabase is not configured locally in the native app.",
     "noLoginData": "No sign-in data. URL: %{url}",
-    "reauthenticate": "Sign in again before deleting your account."
+    "reauthenticate": "Sign in again before deleting your account.",
+    "termsNotice": "By signing in you accept our",
+    "termsLinkAgb": "Terms",
+    "termsLinkPrivacy": "Privacy Policy"
   },
   "home": {
     "artists": "Artists",

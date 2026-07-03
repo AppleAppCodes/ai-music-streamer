@@ -51,7 +51,10 @@
     "invalidCredentials": "E-Mail oder Passwort ist nicht korrekt.",
     "missingConfig": "Supabase ist in der nativen App lokal noch nicht konfiguriert.",
     "noLoginData": "Keine Login-Daten. URL: %{url}",
-    "reauthenticate": "Bitte melde dich erneut an, bevor du deinen Account löschst."
+    "reauthenticate": "Bitte melde dich erneut an, bevor du deinen Account löschst.",
+    "termsNotice": "Mit der Anmeldung akzeptierst du unsere",
+    "termsLinkAgb": "AGB",
+    "termsLinkPrivacy": "Datenschutzerklärung"
   },
   "home": {
     "artists": "Künstler",

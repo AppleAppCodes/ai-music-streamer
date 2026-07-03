@@ -55,6 +55,20 @@ export async function POST(request: Request) {
         console.error('Error updating user subscription:', error);
         return NextResponse.json({ error: 'Failed to update database' }, { status: 500 });
       }
+
+      // Revenue time series: log the event (best effort, never blocks the webhook).
+      const { error: eventError } = await supabaseAdmin.from('subscription_events').insert({
+        user_id: userId,
+        event_type: 'subscribed',
+        tier: 'pro',
+        stripe_details: {
+          session_id: session.id,
+          amount_total: session.amount_total,
+          currency: session.currency,
+          subscription: session.subscription,
+        },
+      });
+      if (eventError) console.error('Failed to log subscription event:', eventError);
     }
   }
 
@@ -68,6 +82,14 @@ export async function POST(request: Request) {
         .from('profiles')
         .update({ subscription_tier: 'free' })
         .eq('id', userId);
+
+      const { error: eventError } = await supabaseAdmin.from('subscription_events').insert({
+        user_id: userId,
+        event_type: 'canceled',
+        tier: 'free',
+        stripe_details: { subscription_id: subscription.id },
+      });
+      if (eventError) console.error('Failed to log cancellation event:', eventError);
     }
   }
 

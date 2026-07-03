@@ -106,12 +106,14 @@ export function AnalyticsTab({ metrics }: { metrics: MetricsDailyRow[] }) {
   const last7 = metrics.slice(-7);
   const plays7d = last7.reduce((sum, row) => sum + (row.plays ?? 0), 0);
   const newUsers7d = last7.reduce((sum, row) => sum + (row.new_users ?? 0), 0);
+  const minutes7d = last7.reduce((sum, row) => sum + (row.minutes_streamed ?? 0), 0);
 
   const kpis: Array<[string, string, string]> = [
     ['Nutzer gesamt', formatAdminNumber(latest.total_users), `Stand ${formatDayLabel(latest.day)}`],
     ['Neue Nutzer (7 Tage)', formatAdminNumber(newUsers7d), 'Summe der letzten 7 Snapshots'],
     ['Plays (7 Tage)', formatAdminNumber(plays7d), 'echte Wiedergaben via Tracking'],
     ['DAU (gestern)', latest.dau === null ? '—' : formatAdminNumber(latest.dau), 'aktive Nutzer, erfasst seit 03.07.'],
+    ['Hörzeit (7 Tage)', `${formatAdminNumber(Math.round(minutes7d / 60))} h`, 'echte Wiedergabezeit, erfasst seit 03.07.'],
   ];
 
   return (
@@ -177,6 +179,13 @@ export function AnalyticsTab({ metrics }: { metrics: MetricsDailyRow[] }) {
             rows={metrics}
             getValue={(row) => row.new_likes}
             color="#fbbf24"
+          />
+          <MetricBarChart
+            title="Hörminuten pro Tag"
+            subtitle="seit 03.07. erfasst"
+            rows={metrics}
+            getValue={(row) => row.minutes_streamed ?? null}
+            color="#38bdf8"
           />
         </div>
       </div>
