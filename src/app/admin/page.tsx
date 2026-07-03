@@ -1182,7 +1182,7 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'analytics' && isFullAdmin && (
-            <AnalyticsTab metrics={dailyMetrics} />
+            <AnalyticsTab metrics={dailyMetrics} profiles={profiles} songs={songs} />
           )}
         </div>
 
