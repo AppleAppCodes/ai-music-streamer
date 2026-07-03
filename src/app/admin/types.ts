@@ -24,6 +24,10 @@ export interface ProfileData {
   avatar_url?: string;
   is_banned?: boolean;
   role?: string;
+  // Device metadata (set by the app's activity ping)
+  app_version?: string | null;
+  os_version?: string | null;
+  device_model?: string | null;
   // Engagement (merged from get_admin_user_engagement)
   songs_played?: number;
   total_plays?: number;
