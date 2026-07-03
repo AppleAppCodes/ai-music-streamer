@@ -2,7 +2,9 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
 import { getLocales } from 'expo-localization';
-import { Animated, AppState, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as Application from 'expo-application';
+import * as Device from 'expo-device';
+import { Animated, AppState, Easing, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from './src/lib/auth-context';
@@ -50,14 +52,21 @@ function AppShell() {
 
   // Mark the user as active in-app (feeds the admin dashboard's "last active"
   // and daily-active-users, which the web previously updated only in-browser).
-  // Also records the device's region so app-only users get a country in the
-  // admin analytics (web fills it from the Vercel IP header instead).
+  // Also records the device's region plus low-sensitivity device metadata
+  // (app version, OS version, device model — no IPs) so the admin can see who
+  // runs which app version. Covered in the privacy policy (/datenschutz).
   // Runs on sign-in and whenever the app returns to the foreground, throttled.
   useEffect(() => {
     const userId = user?.id;
     if (!signedIn || !userId || !supabase) return;
 
     const region = getLocales()[0]?.regionCode ?? null;
+    const appVersion = Application.nativeApplicationVersion
+      ? `${Application.nativeApplicationVersion} (${Application.nativeBuildVersion ?? '?'})`
+      : null;
+    const osVersion = `${Platform.OS} ${Device.osVersion ?? Platform.Version}`;
+    const deviceModel = Device.modelName ?? null;
+
     let lastPing = 0;
     const ping = () => {
       const now = Date.now();
@@ -68,6 +77,9 @@ function AppShell() {
         .update({
           last_active_at: new Date().toISOString(),
           ...(region ? { country: region } : {}),
+          ...(appVersion ? { app_version: appVersion } : {}),
+          os_version: osVersion,
+          ...(deviceModel ? { device_model: deviceModel } : {}),
         })
         .eq('id', userId);
     };

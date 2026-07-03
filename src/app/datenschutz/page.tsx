@@ -94,6 +94,14 @@ export default function DatenschutzPage() {
           abrufbar sein, wenn sie zur Darstellung auf YORIAX veröffentlicht werden. Lade daher nur
           Inhalte hoch, für die du die erforderlichen Rechte besitzt.
         </p>
+        <p>
+          Zur Verbesserung und Fehleranalyse der Apps verarbeiten wir außerdem technische
+          Nutzungsangaben zu deinem Account: Zeitpunkt der letzten Aktivität, Land bzw.
+          Geräteregion, App-Version, Betriebssystem-Version und Gerätemodell (z.&nbsp;B.
+          {' „iPhone 15"'}). IP-Adressen speichern wir dabei nicht. Rechtsgrundlage ist unser
+          berechtigtes Interesse an der Stabilität und Weiterentwicklung des Dienstes gemäß
+          Art. 6 Abs. 1 lit. f DSGVO.
+        </p>
       </section>
 
       <section>
