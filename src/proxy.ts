@@ -21,6 +21,7 @@ function isPublicPath(pathname: string) {
     || pathname.startsWith('/impressum')
     || pathname.startsWith('/datenschutz')
     || pathname.startsWith('/agb')
+    || pathname.startsWith('/widerruf')
     || pathname.startsWith('/auth')
     // Shareable public profile / detail pages — crawlers (WhatsApp,
     // Twitter, iMessage) need to render their OG/Twitter meta tags
@@ -48,7 +49,8 @@ function isPrelaunchAllowedPath(pathname: string) {
     || pathname.startsWith('/api/public')
     || pathname.startsWith('/impressum')
     || pathname.startsWith('/datenschutz')
-    || pathname.startsWith('/agb');
+    || pathname.startsWith('/agb')
+    || pathname.startsWith('/widerruf');
 }
 
 function getSafeSignedInRedirect(request: NextRequest) {
