@@ -2,7 +2,21 @@
 // The page component owns all state/handlers; the tab components in ./tabs
 // are presentation-only and receive everything via props.
 
-export type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot' | 'spotlight';
+export type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot' | 'spotlight' | 'analytics';
+
+export type MetricsDailyRow = {
+  day: string;
+  total_users: number | null;
+  new_users: number | null;
+  dau: number | null;
+  plays: number | null;
+  total_plays: number | null;
+  new_likes: number | null;
+  total_likes: number | null;
+  new_songs: number | null;
+  total_songs: number | null;
+  active_creators: number | null;
+};
 
 export interface McpLog {
   id: string;

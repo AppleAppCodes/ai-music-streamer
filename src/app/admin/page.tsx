@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { ShieldAlert, Users, Music, Search, ArrowLeft, Radio, Terminal, Play, Heart, Activity, UserPlus, Sparkles } from 'lucide-react';
+import { ShieldAlert, Users, Music, Search, ArrowLeft, Radio, Terminal, Play, Heart, Activity, UserPlus, Sparkles, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { isAdminUser, isModUser } from '@/lib/admin';
 import { UsersTab } from './tabs/UsersTab';
@@ -13,6 +13,7 @@ import { ModerationTab } from './tabs/ModerationTab';
 import { AdsTab } from './tabs/AdsTab';
 import { SpotlightTab } from './tabs/SpotlightTab';
 import { BotTab } from './tabs/BotTab';
+import { AnalyticsTab } from './tabs/AnalyticsTab';
 import {
   createSlug,
   readAudioFileDuration,
@@ -21,6 +22,7 @@ import {
   type AdFile,
   type HighlightNewsForm,
   type McpLog,
+  type MetricsDailyRow,
   type NewsPostData,
   type ProfileData,
   type Report,
@@ -43,6 +45,7 @@ export default function AdminPage() {
   const [adFiles, setAdFiles] = useState<AdFile[]>([]);
   const [isReplacingAudio, setIsReplacingAudio] = useState<string | null>(null);
   const [mcpLogs, setMcpLogs] = useState<McpLog[]>([]);
+  const [dailyMetrics, setDailyMetrics] = useState<MetricsDailyRow[]>([]);
   const [liveConnected, setLiveConnected] = useState(false);
   const [spotlightArtists, setSpotlightArtists] = useState<Array<{ artist_name: string; is_spotlight: boolean }>>([]);
   const [spotlightPlaylists, setSpotlightPlaylists] = useState<Array<{ id: string; title: string; is_spotlight: boolean }>>([]);
@@ -250,6 +253,14 @@ export default function AdminPage() {
           .order('created_at', { ascending: false })
           .limit(100);
         if (mcpData) setMcpLogs(mcpData);
+
+        // Load daily metric snapshots for the Analytics tab (admin-only RPC).
+        const { data: metricsData, error: metricsError } = await supabase.rpc('get_admin_daily_metrics', { days: 60 });
+        if (metricsError) {
+          console.error('Failed to load daily metrics:', metricsError);
+        } else if (metricsData) {
+          setDailyMetrics(metricsData as MetricsDailyRow[]);
+        }
 
         // Load lists for the Spotlight tab
         const { data: artistRows } = await supabase
@@ -1039,6 +1050,17 @@ export default function AdminPage() {
                   <Sparkles className="w-4 h-4" />
                   Spotlight
                 </button>
+                <button
+                  onClick={() => setActiveTab('analytics')}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    activeTab === 'analytics'
+                      ? 'bg-teal-500 text-white shadow-lg'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  Analytics
+                </button>
               </>
             )}
             <button
@@ -1157,6 +1179,10 @@ export default function AdminPage() {
 
           {activeTab === 'bot' && (
             <BotTab mcpLogs={mcpLogs} liveConnected={liveConnected} />
+          )}
+
+          {activeTab === 'analytics' && isFullAdmin && (
+            <AnalyticsTab metrics={dailyMetrics} />
           )}
         </div>
 
