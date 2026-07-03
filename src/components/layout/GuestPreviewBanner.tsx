@@ -22,6 +22,9 @@ export default function GuestPreviewBanner() {
           <Link href="/agb" className="underline-offset-4 transition-colors hover:text-white hover:underline">
             AGB
           </Link>
+          <Link href="/widerruf" className="underline-offset-4 transition-colors hover:text-white hover:underline">
+            Widerruf
+          </Link>
         </div>
       </div>
       <Link
