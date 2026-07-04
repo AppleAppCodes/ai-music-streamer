@@ -60,7 +60,7 @@ const ArtistSongRow = memo(function ArtistSongRow({
 });
 
 export function ArtistScreen({ route, navigation }: Props) {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const { artistId: artistName } = route.params;
   const insets = useSafeAreaInsets();
   const [songs, setSongs] = useState<Song[]>([]);
@@ -131,7 +131,6 @@ export function ArtistScreen({ route, navigation }: Props) {
     () => songs.reduce((acc, song) => acc + (song.plays || 0), 0),
     [songs],
   );
-  const monthlyListeners = useMemo(() => getMonthlyListeners(songs), [songs]);
   // Do not render the pending state while the approved catalogue is still
   // loading. Public artist pages only fetch approved songs, so the old fallback
   // briefly showed "pending" for already-approved spotlight artists.
@@ -285,9 +284,6 @@ export function ArtistScreen({ route, navigation }: Props) {
                 <View style={styles.heroContent}>
                   <VerifiedBadge label={badgeLabel} tone={badgeTone} />
                   <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
-                  <Text style={styles.subtitle}>
-                    {t('artist.listeners', { value: monthlyListeners.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US') })}
-                  </Text>
                   <Text style={styles.totalStreams}>{t('artist.totalStreams', { value: formatPlays(totalPlays) })}</Text>
                 </View>
               </View>
@@ -300,9 +296,6 @@ export function ArtistScreen({ route, navigation }: Props) {
                 <View style={styles.heroContent}>
                   <VerifiedBadge label={badgeLabel} tone={badgeTone} />
                   <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
-                  <Text style={styles.subtitle}>
-                    {t('artist.listeners', { value: monthlyListeners.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US') })}
-                  </Text>
                   <Text style={styles.totalStreams}>{t('artist.totalStreams', { value: formatPlays(totalPlays) })}</Text>
                 </View>
               </ImageBackground>
@@ -310,9 +303,6 @@ export function ArtistScreen({ route, navigation }: Props) {
               <View style={styles.hero}>
                 <VerifiedBadge label={badgeLabel} tone={badgeTone} />
                 <Text style={styles.title} numberOfLines={1}>{artistName}</Text>
-                <Text style={styles.subtitle}>
-                  {t('artist.listeners', { value: monthlyListeners.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US') })}
-                </Text>
                 <Text style={styles.totalStreams}>{t('artist.totalStreams', { value: formatPlays(totalPlays) })}</Text>
               </View>
             )}
@@ -513,21 +503,6 @@ function SocialLink({
   );
 }
 
-function getMonthlyListeners(songs: Song[]) {
-  if (songs.length === 0) return 0;
-
-  const totalPlays = songs.reduce((sum, song) => sum + (song.plays || 0), 0);
-  const oldestSong = songs.reduce((oldest, song) => {
-    const songDate = song.created_at ? new Date(song.created_at) : new Date();
-    const oldestDate = oldest.created_at ? new Date(oldest.created_at) : new Date();
-    return songDate < oldestDate ? song : oldest;
-  }, songs[0]);
-  const firstReleaseDate = oldestSong.created_at ? new Date(oldestSong.created_at) : new Date();
-  const monthsActive = Math.max(1, (Date.now() - firstReleaseDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-
-  return Math.round(totalPlays / monthsActive);
-}
-
 function normalizeExternalUrl(url: string) {
   const rawUrl = url.trim();
   if (!rawUrl) return null;
@@ -642,17 +617,11 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     textAlign: 'left',
   },
-  subtitle: {
-    color: theme.colors.muted,
-    fontSize: 14,
-    fontWeight: '800',
-    marginTop: 12,
-  },
   totalStreams: {
     color: theme.colors.subtle,
     fontSize: 12,
     fontWeight: '700',
-    marginTop: 4,
+    marginTop: 10,
   },
   stateBox: {
     padding: 40,
