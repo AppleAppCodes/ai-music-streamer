@@ -18,6 +18,7 @@ import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { registerAppleAdsTools } from './apple-ads.js';
+import { registerAnalyticsTools } from './analytics.js';
 const execAsync = promisify(exec);
 // ── Supabase Setup ──────────────────────────────────────────────────────────
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -439,6 +440,8 @@ end tell
 });
 // ── Apple Ads Tools (Apple Search Ads campaigns for the YORIAX app) ────────
 registerAppleAdsTools(server, logAction);
+// ── Analytics Tools (read-only platform KPIs from the honest tracking layer) ─
+registerAnalyticsTools(server, supabase);
 // ── Start Server ────────────────────────────────────────────────────────────
 async function main() {
     const transport = new StdioServerTransport();
