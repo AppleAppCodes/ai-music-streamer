@@ -285,7 +285,6 @@
     "followError": "Could not follow",
     "linkError": "Link unavailable",
     "linkErrorCopy": "This social link could not be opened.",
-    "listeners": "%{value} monthly listeners",
     "loadError": "Artist could not be loaded.",
     "popular": "Popular songs",
     "releases": "Singles & Albums",
