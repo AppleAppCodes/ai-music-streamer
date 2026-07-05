@@ -425,8 +425,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setActiveSong(song);
         // Do not update lock screen controls until the new source is ready and playing.
         // Doing it early triggers native route adjustments that interrupt active audio.
-        const ready = await waitForPlayerReady(player, isCurrentRequest);
+        let ready = await waitForPlayerReady(player, isCurrentRequest);
         if (!isCurrentRequest()) return;
+        if (!ready) {
+          // One silent retry before surfacing an error: most failures here are
+          // transient network stalls (cold CDN fetch + weak cellular moment),
+          // and a fresh load attempt usually succeeds.
+          player.replace({
+            name: song.title,
+            uri: song.audio_url,
+          });
+          ready = await waitForPlayerReady(player, isCurrentRequest);
+          if (!isCurrentRequest()) return;
+        }
         if (!ready) {
           // Surface the failure instead of "playing" a source that never loaded
           // (silent ghost playback on slow/broken networks).
