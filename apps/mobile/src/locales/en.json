@@ -110,7 +110,8 @@
     "sleepTimerActiveCopy": "Playback will stop in %{minutes} minutes.",
     "timerDelete": "Delete timer",
     "audioMissing": "This song has no audio file.",
-    "playbackFailed": "Playback could not be started."
+    "playbackFailed": "Playback could not be started.",
+    "connectionIssue": "No connection – couldn't load the song"
   },
   "save": {
     "close": "Close selection",

@@ -110,7 +110,8 @@
     "sleepTimerActiveCopy": "La reproducción se detendrá en %{minutes} minutos.",
     "timerDelete": "Eliminar temporizador",
     "audioMissing": "Esta canción no tiene archivo de audio.",
-    "playbackFailed": "No se pudo iniciar la reproducción."
+    "playbackFailed": "No se pudo iniciar la reproducción.",
+    "connectionIssue": "Sin conexión: no se pudo cargar la canción"
   },
   "save": {
     "close": "Cerrar selección",

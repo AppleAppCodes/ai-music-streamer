@@ -110,7 +110,8 @@
     "sleepTimerActiveCopy": "A reprodução vai parar em %{minutes} minutos.",
     "timerDelete": "Excluir timer",
     "audioMissing": "Esta música não tem arquivo de áudio.",
-    "playbackFailed": "Não foi possível iniciar a reprodução."
+    "playbackFailed": "Não foi possível iniciar a reprodução.",
+    "connectionIssue": "Sem conexão – não foi possível carregar a música"
   },
   "save": {
     "close": "Fechar seleção",

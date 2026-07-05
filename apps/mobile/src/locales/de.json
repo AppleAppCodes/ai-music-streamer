@@ -110,7 +110,8 @@
     "sleepTimerActiveCopy": "Die Wiedergabe stoppt in %{minutes} Minuten.",
     "timerDelete": "Timer löschen",
     "audioMissing": "Dieser Song hat keine Audio-Datei.",
-    "playbackFailed": "Playback konnte nicht gestartet werden."
+    "playbackFailed": "Playback konnte nicht gestartet werden.",
+    "connectionIssue": "Keine Verbindung – Song konnte nicht geladen werden"
   },
   "save": {
     "close": "Auswahl schließen",
