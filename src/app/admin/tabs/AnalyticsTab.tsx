@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { formatAdminNumber, type MetricsDailyRow, type ProfileData, type SongData } from '../types';
 
@@ -183,6 +184,7 @@ function buildReportHtml(metrics: MetricsDailyRow[], profiles: ProfileData[], so
   const newUsers30 = profiles.filter((p) => nowMs - new Date(p.created_at).getTime() <= 30 * dayMs).length;
   const active24h = profiles.filter((p) => isActiveSince(p, nowMs - dayMs)).length;
   const active7d = profiles.filter((p) => isActiveSince(p, nowMs - 7 * dayMs)).length;
+  const active30d = profiles.filter((p) => isActiveSince(p, nowMs - 30 * dayMs)).length;
 
   const approvedSongs = songs.filter((s) => s.is_approved !== false).length;
   const artistCount = new Set(songs.map((s) => s.artist_name).filter(Boolean)).size;
@@ -234,6 +236,7 @@ function buildReportHtml(metrics: MetricsDailyRow[], profiles: ProfileData[], so
     kpiCard('Neue Nutzer (30 Tage)', num(newUsers30)),
     kpiCard('Aktiv (letzte 24 h)', num(active24h)),
     kpiCard('Aktiv (letzte 7 Tage)', num(active7d)),
+    kpiCard('MAU (letzte 30 Tage)', num(active30d), 'Messung seit 03.07.2026'),
     kpiCard('Songs (freigegeben)', num(approvedSongs), `von ${num(songs.length)} gesamt`),
     kpiCard('Künstler im Katalog', num(artistCount)),
     kpiCard('Likes gesamt', num(totalLikes)),
@@ -367,6 +370,20 @@ export function AnalyticsTab({
   profiles: ProfileData[];
   songs: SongData[];
 }) {
+  // MAU live from the loaded user list: anyone active (app/web open or play)
+  // within the last 30 days. Activity tracking started 2026-07-03, so early
+  // on this undercounts users who were only active before that.
+  // (Hook stays above the early return — rules of hooks.)
+  const mau = useMemo(() => {
+    const nowMs = new Date().getTime();
+    const monthMs = 30 * 24 * 60 * 60 * 1000;
+    return profiles.filter(
+      (p) =>
+        (p.last_active_at && nowMs - new Date(p.last_active_at).getTime() <= monthMs) ||
+        (p.last_played_at && nowMs - new Date(p.last_played_at).getTime() <= monthMs),
+    ).length;
+  }, [profiles]);
+
   if (metrics.length === 0) {
     return (
       <div className="p-12 text-center text-white/50">
@@ -392,6 +409,7 @@ export function AnalyticsTab({
     ['Neue Nutzer (7 Tage)', formatAdminNumber(newUsers7d), 'Summe der letzten 7 Snapshots'],
     ['Plays (7 Tage)', formatAdminNumber(plays7d), 'echte Wiedergaben via Tracking'],
     ['DAU (gestern)', latest.dau === null ? '—' : formatAdminNumber(latest.dau), 'aktive Nutzer, erfasst seit 03.07.'],
+    ['MAU (30 Tage)', formatAdminNumber(mau), 'aktive Nutzer der letzten 30 Tage, Messung seit 03.07.'],
     ['Hörzeit (7 Tage)', `${formatAdminNumber(Math.round(minutes7d / 60))} h`, 'echte Wiedergabezeit, erfasst seit 03.07.'],
   ];
 
