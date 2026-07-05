@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { formatAdminNumber, type MetricsDailyRow, type ProfileData, type SongData } from '../types';
 
@@ -369,6 +370,20 @@ export function AnalyticsTab({
   profiles: ProfileData[];
   songs: SongData[];
 }) {
+  // MAU live from the loaded user list: anyone active (app/web open or play)
+  // within the last 30 days. Activity tracking started 2026-07-03, so early
+  // on this undercounts users who were only active before that.
+  // (Hook stays above the early return — rules of hooks.)
+  const mau = useMemo(() => {
+    const nowMs = Date.now();
+    const monthMs = 30 * 24 * 60 * 60 * 1000;
+    return profiles.filter(
+      (p) =>
+        (p.last_active_at && nowMs - new Date(p.last_active_at).getTime() <= monthMs) ||
+        (p.last_played_at && nowMs - new Date(p.last_played_at).getTime() <= monthMs),
+    ).length;
+  }, [profiles]);
+
   if (metrics.length === 0) {
     return (
       <div className="p-12 text-center text-white/50">
@@ -382,17 +397,6 @@ export function AnalyticsTab({
   const plays7d = last7.reduce((sum, row) => sum + (row.plays ?? 0), 0);
   const newUsers7d = last7.reduce((sum, row) => sum + (row.new_users ?? 0), 0);
   const minutes7d = last7.reduce((sum, row) => sum + (row.minutes_streamed ?? 0), 0);
-
-  // MAU live from the loaded user list: anyone active (app/web open or play)
-  // within the last 30 days. Activity tracking started 2026-07-03, so early
-  // on this undercounts users who were only active before that.
-  const nowMs = Date.now();
-  const monthMs = 30 * 24 * 60 * 60 * 1000;
-  const mau = profiles.filter(
-    (p) =>
-      (p.last_active_at && nowMs - new Date(p.last_active_at).getTime() <= monthMs) ||
-      (p.last_played_at && nowMs - new Date(p.last_played_at).getTime() <= monthMs),
-  ).length;
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const handleDownloadReport = () =>
