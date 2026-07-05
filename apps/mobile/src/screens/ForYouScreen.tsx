@@ -38,6 +38,7 @@ import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useI18n } from '../lib/i18n';
+import { offerPushAfterFollow } from '../lib/push-notifications';
 import { CoverArt } from '../components/YoriaxUI';
 import { prefetchImageUris } from '../lib/media-preload';
 
@@ -1281,10 +1282,14 @@ export function ForYouScreen() {
     try {
       const confirmedStatus = await toggleArtistFollow(user.id, artistName, isCurrentlyFollowing);
       setFollowedArtistsMap(prev => ({ ...prev, [artistName]: confirmedStatus }));
+      if (confirmedStatus) {
+        // Contextual push opt-in: the first follow is the natural moment.
+        void offerPushAfterFollow(user.id, artistName, t);
+      }
     } catch {
       setFollowedArtistsMap(prev => ({ ...prev, [artistName]: isCurrentlyFollowing }));
     }
-  }, [followedArtistsMap, user]);
+  }, [followedArtistsMap, user, t]);
 
   const resetExploreAfterFilterChange = useCallback(() => {
     transitionToken.current += 1;

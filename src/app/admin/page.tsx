@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { ShieldAlert, Users, Music, Search, ArrowLeft, Radio, Terminal, Play, Heart, Activity, UserPlus, Sparkles, TrendingUp } from 'lucide-react';
+import { ShieldAlert, Users, Music, Search, ArrowLeft, Radio, Terminal, Play, Heart, Activity, UserPlus, Sparkles, TrendingUp, BellRing } from 'lucide-react';
 import Link from 'next/link';
 import { isAdminUser, isModUser } from '@/lib/admin';
 import { UsersTab } from './tabs/UsersTab';
@@ -14,6 +14,7 @@ import { AdsTab } from './tabs/AdsTab';
 import { SpotlightTab } from './tabs/SpotlightTab';
 import { BotTab } from './tabs/BotTab';
 import { AnalyticsTab } from './tabs/AnalyticsTab';
+import { PushTab } from './tabs/PushTab';
 import {
   createSlug,
   readAudioFileDuration,
@@ -1061,6 +1062,17 @@ export default function AdminPage() {
                   <TrendingUp className="w-4 h-4" />
                   Analytics
                 </button>
+                <button
+                  onClick={() => setActiveTab('push')}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    activeTab === 'push'
+                      ? 'bg-amber-500 text-white shadow-lg'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <BellRing className="w-4 h-4" />
+                  Push
+                </button>
               </>
             )}
             <button
@@ -1183,6 +1195,10 @@ export default function AdminPage() {
 
           {activeTab === 'analytics' && isFullAdmin && (
             <AnalyticsTab metrics={dailyMetrics} profiles={profiles} songs={songs} />
+          )}
+
+          {activeTab === 'push' && isFullAdmin && (
+            <PushTab />
           )}
         </div>
 

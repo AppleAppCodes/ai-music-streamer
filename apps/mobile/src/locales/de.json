@@ -324,5 +324,11 @@
     "readFailed": "Sicherheitsprüfung konnte nicht gelesen werden.",
     "envMissing": "Turnstile Env fehlt",
     "envMissingCopy": "EXPO_PUBLIC_TURNSTILE_SITE_KEY ist für den nativen Login erforderlich."
+  },
+  "push": {
+    "offerTitle": "Nichts verpassen?",
+    "offerMessage": "Wir benachrichtigen dich, wenn %{artist} neue Musik veröffentlicht.",
+    "offerYes": "Ja, benachrichtigen",
+    "offerLater": "Später"
   }
 }

@@ -18,7 +18,7 @@ export default function DatenschutzPage() {
       description="Diese Datenschutzerklärung erklärt, welche Daten YORIAX verarbeitet und wofür sie genutzt werden."
     >
       <section>
-        <p className="text-sm font-bold uppercase tracking-[0.18em] text-white/45">Stand: 3. Juli 2026</p>
+        <p className="text-sm font-bold uppercase tracking-[0.18em] text-white/45">Stand: 5. Juli 2026</p>
       </section>
 
       <section>
@@ -109,6 +109,15 @@ export default function DatenschutzPage() {
           {' „iPhone 15"'}). IP-Adressen speichern wir dabei nicht. Rechtsgrundlage ist unser
           berechtigtes Interesse an der Stabilität und Weiterentwicklung des Dienstes gemäß
           Art. 6 Abs. 1 lit. f DSGVO.
+        </p>
+        <p>
+          <strong>Push-Benachrichtigungen (App):</strong> Wenn du in der iOS-App Mitteilungen
+          erlaubst, speichern wir einen pseudonymen Geräte-Token, um dir Benachrichtigungen zu
+          senden (z.&nbsp;B. neue Musik von Künstlern, denen du folgst, oder Neuigkeiten von
+          YORIAX). Der Versand erfolgt über den Benachrichtigungsdienst von Expo (Expo, Inc., USA)
+          und Apple. Die Erlaubnis ist freiwillig; du kannst sie jederzeit in den iOS-Einstellungen
+          widerrufen. Nicht mehr gültige Geräte-Tokens werden automatisch aus unserer Datenbank
+          entfernt. Rechtsgrundlage ist deine Einwilligung gemäß Art. 6 Abs. 1 lit. a DSGVO.
         </p>
       </section>
 

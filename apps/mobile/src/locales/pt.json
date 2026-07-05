@@ -324,5 +324,11 @@
     "readFailed": "Não foi possível ler a verificação de segurança.",
     "envMissing": "Ambiente Turnstile ausente",
     "envMissingCopy": "EXPO_PUBLIC_TURNSTILE_SITE_KEY é obrigatório para o login nativo."
+  },
+  "push": {
+    "offerTitle": "Não quer perder nada?",
+    "offerMessage": "Vamos avisar quando %{artist} lançar novas músicas.",
+    "offerYes": "Sim, avisar-me",
+    "offerLater": "Mais tarde"
   }
 }

@@ -324,5 +324,11 @@
     "readFailed": "De beveiligingscontrole kon niet worden gelezen.",
     "envMissing": "Turnstile-omgeving ontbreekt",
     "envMissingCopy": "EXPO_PUBLIC_TURNSTILE_SITE_KEY is vereist voor native inloggen."
+  },
+  "push": {
+    "offerTitle": "Niets missen?",
+    "offerMessage": "We sturen je een melding wanneer %{artist} nieuwe muziek uitbrengt.",
+    "offerYes": "Ja, stuur meldingen",
+    "offerLater": "Later"
   }
 }
