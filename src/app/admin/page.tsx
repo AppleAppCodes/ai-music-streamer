@@ -990,7 +990,7 @@ export default function AdminPage() {
 
         {/* Tabs & Search */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-          <div className="flex p-1 bg-white/5 rounded-xl border border-white/10">
+          <div className="flex flex-wrap whitespace-nowrap p-1 bg-white/5 rounded-xl border border-white/10">
             {isFullAdmin && (
               <>
                 <button
@@ -1115,7 +1115,7 @@ export default function AdminPage() {
             </button>
           </div>
 
-          <div className="relative w-full sm:w-72">
+          <div className="relative w-full shrink-0 sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <input
               type="text"
