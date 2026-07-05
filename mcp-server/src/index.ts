@@ -21,6 +21,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { registerAppleAdsTools } from './apple-ads.js';
 import { registerAnalyticsTools } from './analytics.js';
+import { registerAppStoreConnectTools } from './appstore-connect.js';
 
 const execAsync = promisify(exec);
 
@@ -570,6 +571,10 @@ registerAppleAdsTools(server, logAction);
 // ── Analytics Tools (read-only platform KPIs from the honest tracking layer) ─
 
 registerAnalyticsTools(server, supabase);
+
+// ── App Store Connect Tools (review status, TestFlight, reviews, sales) ─────
+
+registerAppStoreConnectTools(server);
 
 // ── Start Server ────────────────────────────────────────────────────────────
 
