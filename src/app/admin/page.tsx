@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { ShieldAlert, Users, Music, Search, ArrowLeft, Radio, Terminal, Play, Heart, Activity, UserPlus, Sparkles, TrendingUp, BellRing } from 'lucide-react';
+import { ShieldAlert, Users, Music, Search, ArrowLeft, Radio, Terminal, Play, Heart, Activity, UserPlus, Sparkles, TrendingUp, BellRing, Mic } from 'lucide-react';
 import Link from 'next/link';
 import { isAdminUser, isModUser } from '@/lib/admin';
 import { UsersTab } from './tabs/UsersTab';
@@ -15,6 +15,7 @@ import { SpotlightTab } from './tabs/SpotlightTab';
 import { BotTab } from './tabs/BotTab';
 import { AnalyticsTab } from './tabs/AnalyticsTab';
 import { PushTab } from './tabs/PushTab';
+import { ArtistsTab, type ArtistPerformanceRow } from './tabs/ArtistsTab';
 import {
   createSlug,
   readAudioFileDuration,
@@ -47,6 +48,7 @@ export default function AdminPage() {
   const [isReplacingAudio, setIsReplacingAudio] = useState<string | null>(null);
   const [mcpLogs, setMcpLogs] = useState<McpLog[]>([]);
   const [dailyMetrics, setDailyMetrics] = useState<MetricsDailyRow[]>([]);
+  const [artistPerformance, setArtistPerformance] = useState<ArtistPerformanceRow[]>([]);
   const [liveConnected, setLiveConnected] = useState(false);
   const [spotlightArtists, setSpotlightArtists] = useState<Array<{ artist_name: string; is_spotlight: boolean }>>([]);
   const [spotlightPlaylists, setSpotlightPlaylists] = useState<Array<{ id: string; title: string; is_spotlight: boolean }>>([]);
@@ -261,6 +263,14 @@ export default function AdminPage() {
           console.error('Failed to load daily metrics:', metricsError);
         } else if (metricsData) {
           setDailyMetrics(metricsData as MetricsDailyRow[]);
+        }
+
+        // Per-artist rollup for the Artists tab (admin-only RPC).
+        const { data: artistPerfData, error: artistPerfError } = await supabase.rpc('get_admin_artist_performance');
+        if (artistPerfError) {
+          console.error('Failed to load artist performance:', artistPerfError);
+        } else if (artistPerfData) {
+          setArtistPerformance(artistPerfData as ArtistPerformanceRow[]);
         }
 
         // Load lists for the Spotlight tab
@@ -1063,6 +1073,17 @@ export default function AdminPage() {
                   Analytics
                 </button>
                 <button
+                  onClick={() => setActiveTab('artists')}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    activeTab === 'artists'
+                      ? 'bg-violet-500 text-white shadow-lg'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Mic className="w-4 h-4" />
+                  Artists
+                </button>
+                <button
                   onClick={() => setActiveTab('push')}
                   className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                     activeTab === 'push'
@@ -1199,6 +1220,10 @@ export default function AdminPage() {
 
           {activeTab === 'push' && isFullAdmin && (
             <PushTab />
+          )}
+
+          {activeTab === 'artists' && isFullAdmin && (
+            <ArtistsTab rows={artistPerformance} />
           )}
         </div>
 
