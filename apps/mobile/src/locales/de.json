@@ -329,6 +329,14 @@
     "offerTitle": "Nichts verpassen?",
     "offerMessage": "Wir benachrichtigen dich, wenn %{artist} neue Musik veröffentlicht.",
     "offerYes": "Ja, benachrichtigen",
-    "offerLater": "Später"
+    "offerLater": "Später",
+    "listenOfferTitle": "Nichts Neues verpassen?",
+    "listenOfferMessage": "Du hörst fleißig! Wir sagen dir Bescheid, wenn es neue Musik und Highlights gibt.",
+    "settingsRow": "Push-Benachrichtigungen",
+    "settingsOn": "Aktiv – du wirst über Neues informiert",
+    "settingsOff": "Aus – antippen zum Aktivieren",
+    "settingsDeniedTitle": "In iOS deaktiviert",
+    "settingsDeniedMessage": "Benachrichtigungen sind in den iOS-Einstellungen ausgeschaltet. Öffne sie, um Mitteilungen wieder zu erlauben.",
+    "openSettings": "Einstellungen öffnen"
   }
 }

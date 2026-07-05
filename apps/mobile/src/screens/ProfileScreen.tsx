@@ -1,5 +1,5 @@
 import { Alert, ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../lib/auth-context';
 import { supabase } from '../lib/supabase';
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useI18n } from '../lib/i18n';
+import { enablePushFromSettings, getPushPermissionState } from '../lib/push-notifications';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -50,6 +51,23 @@ export function ProfileScreen({ navigation }: Props) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [pushGranted, setPushGranted] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    void getPushPermissionState().then(({ granted }) => {
+      if (mounted) setPushGranted(granted);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  async function handlePushRow() {
+    if (!user) return;
+    const granted = await enablePushFromSettings(user.id, t);
+    setPushGranted(granted);
+  }
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -281,6 +299,27 @@ export function ProfileScreen({ navigation }: Props) {
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
           </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityRole="button"
+            activeOpacity={0.84}
+            onPress={() => void handlePushRow()}
+            style={[styles.preferenceCard, styles.preferenceCardStacked]}
+          >
+            <View style={styles.preferenceIcon}>
+              <Ionicons
+                name={pushGranted ? 'notifications' : 'notifications-off-outline'}
+                size={22}
+                color={pushGranted ? theme.colors.primaryLight : theme.colors.muted}
+              />
+            </View>
+            <View style={styles.preferenceCopy}>
+              <Text style={styles.preferenceTitle}>{t('push.settingsRow')}</Text>
+              <Text style={styles.preferenceText}>
+                {pushGranted === null ? '…' : pushGranted ? t('push.settingsOn') : t('push.settingsOff')}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.accountSection}>
@@ -459,6 +498,9 @@ const styles = StyleSheet.create({
   inputHint: {
     color: theme.colors.muted,
     fontSize: 12,
+  },
+  preferenceCardStacked: {
+    marginTop: 10,
   },
   preferenceCard: {
     alignItems: 'center',

@@ -7,6 +7,7 @@ import { useAuth } from './auth-context';
 import { supabase } from './supabase';
 import { fetchRadioNextSong } from './music-data';
 import { maybeRequestReview, recordReviewWorthyPlay } from './review-prompt';
+import { maybeOfferPushAfterListening } from './push-notifications';
 import { useI18n } from './i18n';
 
 interface StorageListItem {
@@ -181,6 +182,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Blocks the rating prompt for the rest of the session after any playback
   // problem — never ask for stars right after something went wrong.
   const sessionHadPlaybackErrorRef = useRef(false);
+  // The native status listener runs outside React renders; refs keep the
+  // current user and translator reachable for the push-offer gate.
+  const userIdRef = useRef<string | null>(null);
+  const translateRef = useRef<typeof t>(t);
   const intendsToPlayRef = useRef(false);
   const playNextRef = useRef<() => void>(() => {});
   const playPreviousRef = useRef<() => void>(() => {});
@@ -203,6 +208,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const isAdPlayingRef = useRef(false);
   const [adFrequency, setAdFrequency] = useState(3);
+
+  useEffect(() => {
+    userIdRef.current = user?.id ?? null;
+  }, [user?.id]);
+  useEffect(() => {
+    translateRef.current = t;
+  }, [t]);
   const [pendingSongToPlayAfterAd, setPendingSongToPlayAfterAd] = useState<Song | null>(null);
   const [availableAds, setAvailableAds] = useState<StorageListItem[]>([]);
 
@@ -743,6 +755,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       ) {
         playCountedSongIdRef.current = currentSong.id;
         void recordReviewWorthyPlay();
+        // Fallback push offer for engaged listeners who never follow anyone
+        // (gated inside: >= 15 counted plays, cooldown, max offers).
+        if (userIdRef.current) {
+          void maybeOfferPushAfterListening(userIdRef.current, translateRef.current);
+        }
         if (supabase) {
           void supabase
             .rpc('increment_song_plays', { target_song_id: currentSong.id })
