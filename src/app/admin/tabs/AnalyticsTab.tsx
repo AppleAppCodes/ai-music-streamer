@@ -375,7 +375,7 @@ export function AnalyticsTab({
   // on this undercounts users who were only active before that.
   // (Hook stays above the early return — rules of hooks.)
   const mau = useMemo(() => {
-    const nowMs = Date.now();
+    const nowMs = new Date().getTime();
     const monthMs = 30 * 24 * 60 * 60 * 1000;
     return profiles.filter(
       (p) =>
