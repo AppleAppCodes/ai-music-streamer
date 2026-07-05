@@ -1,8 +1,58 @@
-import { Fragment } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Activity, Edit2, FileAudio, Loader2, Sparkles, Trash2 } from 'lucide-react';
+import { Activity, ArrowDownWideNarrow, Edit2, FileAudio, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { GENRES } from '@/lib/constants';
 import { formatAdminNumber, formatTrendPercent, getTrendClasses, type SongData } from '../types';
+
+type SongSortKey =
+  | 'newest'
+  | 'oldest'
+  | 'tracked'
+  | 'plays7d'
+  | 'display'
+  | 'title'
+  | 'artist'
+  | 'lastPlayed'
+  | 'listeners'
+  | 'trend';
+
+const SORT_OPTIONS: Array<[SongSortKey, string]> = [
+  ['newest', 'Upload: neueste zuerst'],
+  ['oldest', 'Upload: älteste zuerst'],
+  ['tracked', 'Echte Plays (gesamt)'],
+  ['plays7d', 'Echte Plays (7 Tage)'],
+  ['display', 'Anzeige-Plays'],
+  ['listeners', 'Hörer'],
+  ['trend', 'Trend vs. Vorwoche'],
+  ['lastPlayed', 'Zuletzt gehört'],
+  ['title', 'Titel A–Z'],
+  ['artist', 'Künstler A–Z'],
+];
+
+function compareSongs(a: SongData, b: SongData, key: SongSortKey): number {
+  switch (key) {
+    case 'newest':
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    case 'oldest':
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    case 'tracked':
+      return (b.plays_tracked_total ?? 0) - (a.plays_tracked_total ?? 0);
+    case 'plays7d':
+      return (b.plays_7d ?? 0) - (a.plays_7d ?? 0);
+    case 'display':
+      return (b.plays ?? 0) - (a.plays ?? 0);
+    case 'listeners':
+      return (b.unique_listeners ?? 0) - (a.unique_listeners ?? 0);
+    case 'trend':
+      return (b.trend_percent ?? 0) - (a.trend_percent ?? 0);
+    case 'lastPlayed':
+      return (b.last_played_at ? new Date(b.last_played_at).getTime() : 0) - (a.last_played_at ? new Date(a.last_played_at).getTime() : 0);
+    case 'title':
+      return a.title.localeCompare(b.title, 'de');
+    case 'artist':
+      return (a.artist_name ?? '').localeCompare(b.artist_name ?? '', 'de');
+  }
+}
 
 export function SongsTab({
   songs,
@@ -27,8 +77,29 @@ export function SongsTab({
   onEditSongTitle: (id: string, currentTitle: string) => void;
   onDeleteSong: (id: string, title: string) => void;
 }) {
+  const [sortKey, setSortKey] = useState<SongSortKey>('newest');
+  const sortedSongs = useMemo(
+    () => [...songs].sort((a, b) => compareSongs(a, b, sortKey)),
+    [songs, sortKey],
+  );
+
   return (
     <div className="overflow-x-auto">
+      <div className="flex items-center gap-2 px-6 py-3">
+        <ArrowDownWideNarrow className="h-4 w-4 text-white/40" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-white/40">Sortieren</span>
+        <select
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value as SongSortKey)}
+          className="rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/80 focus:border-indigo-500 focus:outline-none"
+        >
+          {SORT_OPTIONS.map(([key, label]) => (
+            <option key={key} value={key} className="bg-neutral-900">
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
       <table className="w-full text-left text-sm text-white/70">
         <thead className="text-xs uppercase bg-black/40 text-white/50">
           <tr>
@@ -43,7 +114,7 @@ export function SongsTab({
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
-          {songs.length > 0 ? songs.map((song) => {
+          {sortedSongs.length > 0 ? sortedSongs.map((song) => {
             const expanded = expandedSongId === song.id;
             const trend = song.trend_percent ?? 0;
             const isNewTrend = (song.previous_7d ?? 0) === 0 && (song.plays_7d ?? 0) > 0;
