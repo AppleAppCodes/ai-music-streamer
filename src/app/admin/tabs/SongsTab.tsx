@@ -58,9 +58,14 @@ export function SongsTab({
                   </td>
                   <td className="px-6 py-4 max-w-[150px] truncate" title={song.artist_name}>{song.artist_name || 'Unbekannt'}</td>
                   <td className="px-6 py-4">
-                    <div className="font-mono text-white">{formatAdminNumber(song.plays)}</div>
+                    <div className="whitespace-nowrap font-mono text-white" title="Echte, getrackte Wiedergaben (seit 31.05.)">
+                      {formatAdminNumber(song.plays_tracked_total)} <span className="font-sans text-[10px] uppercase tracking-wider text-emerald-400/80">echt</span>
+                    </div>
                     <div className="mt-1 whitespace-nowrap text-xs text-white/40">
                       24h {formatAdminNumber(song.plays_24h)} · 7d {formatAdminNumber(song.plays_7d)} · 30d {formatAdminNumber(song.plays_30d)}
+                    </div>
+                    <div className="mt-0.5 whitespace-nowrap text-xs text-white/30" title="Öffentlicher Anzeige-Zähler in der App">
+                      Anzeige: {formatAdminNumber(song.plays)}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -166,7 +171,8 @@ export function SongsTab({
                     <td colSpan={8} className="px-6 py-4">
                       <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
                         {[
-                          ['Gesamt-Plays', formatAdminNumber(song.plays)],
+                          ['Echte Plays gesamt', formatAdminNumber(song.plays_tracked_total)],
+                          ['Anzeige-Plays', formatAdminNumber(song.plays)],
                           ['24h', formatAdminNumber(song.plays_24h)],
                           ['7 Tage', formatAdminNumber(song.plays_7d)],
                           ['30 Tage', formatAdminNumber(song.plays_30d)],

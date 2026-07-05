@@ -169,6 +169,7 @@ export default function AdminPage() {
               ? {
                   ...song,
                   plays: toAdminNumber(performance.plays_total),
+                  plays_tracked_total: toAdminNumber(performance.plays_tracked_total),
                   plays_24h: toAdminNumber(performance.plays_24h),
                   plays_7d: toAdminNumber(performance.plays_7d),
                   plays_30d: toAdminNumber(performance.plays_30d),

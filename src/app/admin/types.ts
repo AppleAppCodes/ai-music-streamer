@@ -70,6 +70,7 @@ export interface SongData {
   spotlight_copy?: string | null;
   genre?: string | null;
   trending_sort_order?: number | null;
+  plays_tracked_total?: number;
   plays_24h?: number;
   plays_7d?: number;
   plays_30d?: number;
@@ -84,6 +85,7 @@ export interface SongData {
 export type SongPerformanceRow = {
   song_id: string;
   plays_total: number | string | null;
+  plays_tracked_total: number | string | null;
   plays_24h: number | string | null;
   plays_7d: number | string | null;
   plays_30d: number | string | null;
