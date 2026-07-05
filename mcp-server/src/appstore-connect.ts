@@ -119,6 +119,31 @@ async function ascRequest(config: AscConfig, pathname: string, accept?: string):
   });
 }
 
+async function ascMutate(config: AscConfig, method: 'POST' | 'PATCH', pathname: string, body: unknown): Promise<any> {
+  const res = await fetch(`${API_BASE}${pathname}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${getBearerToken(config)}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    let detail = text.slice(0, 400);
+    try {
+      const parsed = JSON.parse(text);
+      detail = (parsed.errors ?? [])
+        .map((e: any) => `${e.status} ${e.code}: ${e.detail ?? e.title}`)
+        .join(' | ') || detail;
+    } catch {
+      // keep raw text
+    }
+    throw new Error(`App Store Connect API ${res.status}: ${detail}`);
+  }
+  return text ? JSON.parse(text) : null;
+}
+
 async function ascJson(config: AscConfig, pathname: string): Promise<any> {
   const res = await ascRequest(config, pathname);
   const text = await res.text();
@@ -163,7 +188,20 @@ function formatDate(value?: string): string {
   return new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-export function registerAppStoreConnectTools(server: McpServer) {
+type LogFn = (toolName: string, args: unknown, summary: string) => Promise<void>;
+
+// Version states that still accept changes / a (re-)submission.
+const EDITABLE_VERSION_STATES = new Set([
+  'PREPARE_FOR_SUBMISSION',
+  'READY_FOR_REVIEW',
+  'DEVELOPER_REJECTED',
+  'REJECTED',
+  'METADATA_REJECTED',
+  'INVALID_BINARY',
+  'WAITING_FOR_EXPORT_COMPLIANCE',
+]);
+
+export function registerAppStoreConnectTools(server: McpServer, logAction?: LogFn) {
   // ── Tool: asc_app_status ──────────────────────────────────────────────────
   server.tool(
     'asc_app_status',
@@ -337,6 +375,127 @@ export function registerAppStoreConnectTools(server: McpServer) {
         };
       } catch (err: any) {
         return { content: [{ type: 'text', text: `❌ ${err.message}` }] };
+      }
+    }
+  );
+
+  // ── Tool: asc_submit_for_review ───────────────────────────────────────────
+  server.tool(
+    'asc_submit_for_review',
+    'Reicht eine YORIAX-Version mit einem bestimmten TestFlight-Build bei Apple zur App-Store-Prüfung ein. ACHTUNG, folgenreiche Aktion: Ohne confirm=true läuft nur ein PROBELAUF, der zeigt, was passieren würde. WICHTIG: Setze confirm NIEMALS eigenmächtig auf true — rufe das Tool zuerst ohne confirm auf, zeige David die Probelauf-Zusammenfassung und warte auf seine AUSDRÜCKLICHE Bestätigung. Erst dann mit confirm=true erneut aufrufen.',
+    {
+      version: z.string().regex(/^\d+(\.\d+){1,2}$/).describe('Store-Versionsnummer, z. B. "1.2" (wird angelegt, falls sie noch nicht existiert)'),
+      build_number: z.string().regex(/^\d+$/).describe('TestFlight-Build-Nummer, z. B. "180" (muss fertig verarbeitet sein)'),
+      release_notes: z.string().max(4000).optional().describe('Optional: "Neuigkeiten"-Text für diese Version (wird für alle Sprachen gesetzt)'),
+      confirm: z.boolean().optional().describe('Nur nach ausdrücklicher Bestätigung durch David auf true setzen — sonst Probelauf'),
+    },
+    async ({ version, build_number, release_notes, confirm }) => {
+      const config = loadConfig();
+      if (!config) return { content: [{ type: 'text', text: SETUP_HELP }] };
+      try {
+        // Resolve the build (read-only, also in the dry run).
+        const buildsJson = await ascJson(
+          config,
+          `/builds?filter[app]=${config.appId}&filter[version]=${build_number}&sort=-uploadedDate&limit=1&fields[builds]=version,processingState,expired`
+        );
+        const build = buildsJson.data?.[0];
+        if (!build) {
+          return { content: [{ type: 'text', text: `❌ Build ${build_number} wurde in App Store Connect nicht gefunden.` }] };
+        }
+        if (build.attributes?.expired || build.attributes?.processingState !== 'VALID') {
+          return { content: [{ type: 'text', text: `❌ Build ${build_number} ist nicht verwendbar (Status: ${build.attributes?.processingState}${build.attributes?.expired ? ', abgelaufen' : ''}).` }] };
+        }
+
+        // Resolve the store version (read-only, also in the dry run).
+        const versionsJson = await ascJson(
+          config,
+          `/apps/${config.appId}/appStoreVersions?limit=10&fields[appStoreVersions]=versionString,appVersionState`
+        );
+        const existing = (versionsJson.data ?? []).find((v: any) => v.attributes?.versionString === version);
+        if (existing && !EDITABLE_VERSION_STATES.has(existing.attributes?.appVersionState)) {
+          return { content: [{ type: 'text', text: `❌ Version ${version} existiert bereits im Zustand ${existing.attributes?.appVersionState} und kann nicht (erneut) eingereicht werden. Wähle eine neue Versionsnummer.` }] };
+        }
+
+        if (!confirm) {
+          const lines = [
+            '🧪 PROBELAUF — es wurde NICHTS eingereicht.',
+            '',
+            `Version: ${version} ${existing ? `(existiert, Zustand ${existing.attributes?.appVersionState})` : '(wird neu angelegt)'}`,
+            `Build: ${build_number} (verarbeitet ✓)`,
+            `Neuigkeiten-Text: ${release_notes ? `wird gesetzt (${release_notes.length} Zeichen)` : 'unverändert/keiner'}`,
+            '',
+            'Wenn David AUSDRÜCKLICH zustimmt, rufe das Tool erneut mit confirm=true auf.',
+          ];
+          return { content: [{ type: 'text', text: lines.join('\n') }] };
+        }
+
+        // 1. Ensure the version exists.
+        let versionId: string = existing?.id;
+        if (!versionId) {
+          const created = await ascMutate(config, 'POST', '/appStoreVersions', {
+            data: {
+              type: 'appStoreVersions',
+              attributes: { platform: 'IOS', versionString: version },
+              relationships: { app: { data: { type: 'apps', id: config.appId } } },
+            },
+          });
+          versionId = created.data.id;
+        }
+
+        // 2. Attach the build.
+        await ascMutate(config, 'PATCH', `/appStoreVersions/${versionId}/relationships/build`, {
+          data: { type: 'builds', id: build.id },
+        });
+
+        // 3. Optional release notes for every existing localization.
+        if (release_notes) {
+          const locales = await ascJson(
+            config,
+            `/appStoreVersions/${versionId}/appStoreVersionLocalizations?limit=20&fields[appStoreVersionLocalizations]=locale`
+          );
+          for (const localization of locales.data ?? []) {
+            await ascMutate(config, 'PATCH', `/appStoreVersionLocalizations/${localization.id}`, {
+              data: { type: 'appStoreVersionLocalizations', id: localization.id, attributes: { whatsNew: release_notes } },
+            });
+          }
+        }
+
+        // 4. Review submission: reuse an open draft or create one, add the
+        //    version as item, then submit.
+        const openSubmissions = await ascJson(
+          config,
+          `/reviewSubmissions?filter[app]=${config.appId}&filter[state]=READY_FOR_REVIEW&limit=1`
+        );
+        let submissionId: string = openSubmissions.data?.[0]?.id;
+        if (!submissionId) {
+          const createdSubmission = await ascMutate(config, 'POST', '/reviewSubmissions', {
+            data: {
+              type: 'reviewSubmissions',
+              attributes: { platform: 'IOS' },
+              relationships: { app: { data: { type: 'apps', id: config.appId } } },
+            },
+          });
+          submissionId = createdSubmission.data.id;
+        }
+        await ascMutate(config, 'POST', '/reviewSubmissionItems', {
+          data: {
+            type: 'reviewSubmissionItems',
+            relationships: {
+              reviewSubmission: { data: { type: 'reviewSubmissions', id: submissionId } },
+              appStoreVersion: { data: { type: 'appStoreVersions', id: versionId } },
+            },
+          },
+        });
+        await ascMutate(config, 'PATCH', `/reviewSubmissions/${submissionId}`, {
+          data: { type: 'reviewSubmissions', id: submissionId, attributes: { submitted: true } },
+        });
+
+        await logAction?.('asc_submit_for_review', { version, build_number }, `Version ${version} mit Build ${build_number} zur App-Review eingereicht`);
+        return {
+          content: [{ type: 'text', text: `✅ Version ${version} mit Build ${build_number} wurde bei Apple zur Prüfung eingereicht. Status jederzeit über asc_app_status abrufbar.` }],
+        };
+      } catch (err: any) {
+        return { content: [{ type: 'text', text: `❌ Einreichung fehlgeschlagen: ${err.message}\n\nHäufige Ursachen: fehlende Pflicht-Metadaten (Screenshots, Beschreibung, Neuigkeiten-Text) oder eine bereits laufende Prüfung. Details ggf. in App Store Connect prüfen.` }] };
       }
     }
   );

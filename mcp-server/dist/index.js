@@ -443,8 +443,9 @@ end tell
 registerAppleAdsTools(server, logAction);
 // ── Analytics Tools (read-only platform KPIs from the honest tracking layer) ─
 registerAnalyticsTools(server, supabase);
-// ── App Store Connect Tools (review status, TestFlight, reviews, sales) ─────
-registerAppStoreConnectTools(server);
+// ── App Store Connect Tools (review status, TestFlight, reviews, sales,
+//    guarded review submission) ─────────────────────────────────────────────
+registerAppStoreConnectTools(server, logAction);
 // ── Start Server ────────────────────────────────────────────────────────────
 async function main() {
     const transport = new StdioServerTransport();

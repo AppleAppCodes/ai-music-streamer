@@ -572,9 +572,10 @@ registerAppleAdsTools(server, logAction);
 
 registerAnalyticsTools(server, supabase);
 
-// ── App Store Connect Tools (review status, TestFlight, reviews, sales) ─────
+// ── App Store Connect Tools (review status, TestFlight, reviews, sales,
+//    guarded review submission) ─────────────────────────────────────────────
 
-registerAppStoreConnectTools(server);
+registerAppStoreConnectTools(server, logAction);
 
 // ── Start Server ────────────────────────────────────────────────────────────
 

@@ -16,4 +16,6 @@
  * (aud "appstoreconnect-v1", max 20 minutes lifetime) — no token exchange.
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-export declare function registerAppStoreConnectTools(server: McpServer): void;
+type LogFn = (toolName: string, args: unknown, summary: string) => Promise<void>;
+export declare function registerAppStoreConnectTools(server: McpServer, logAction?: LogFn): void;
+export {};
