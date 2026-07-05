@@ -2,7 +2,7 @@
 // The page component owns all state/handlers; the tab components in ./tabs
 // are presentation-only and receive everything via props.
 
-export type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot' | 'spotlight' | 'analytics';
+export type AdminTab = 'users' | 'songs' | 'approvals' | 'moderation' | 'ads' | 'bot' | 'spotlight' | 'analytics' | 'push';
 
 export type MetricsDailyRow = {
   day: string;

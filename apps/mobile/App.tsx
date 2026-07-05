@@ -20,6 +20,7 @@ import { DecorativeVideoView } from 'yoriax-decorative-video';
 import { I18nProvider, useI18n } from './src/lib/i18n';
 import { preloadStartupMedia } from './src/lib/media-preload';
 import { recordAcquisitionAttribution, recordTermsAcceptance } from './src/lib/acquisition';
+import { syncPushTokenIfPermitted } from './src/lib/push-notifications';
 import { supabase } from './src/lib/supabase';
 
 export default function App() {
@@ -108,6 +109,8 @@ function AppShell() {
     if (!signedIn || !user?.id) return;
     void recordAcquisitionAttribution(user.id);
     void recordTermsAcceptance(user.id, 'ios');
+    // Silent token refresh — only does anything if push permission exists.
+    void syncPushTokenIfPermitted(user.id);
   }, [signedIn, user?.id]);
 
   return (

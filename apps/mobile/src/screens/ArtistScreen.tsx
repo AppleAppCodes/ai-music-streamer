@@ -13,6 +13,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../lib/auth-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../lib/i18n';
+import { offerPushAfterFollow } from '../lib/push-notifications';
 import { ArtistVideoMedia } from '../components/ArtistVideoMedia';
 import { SongListRow } from '../components/SongListRow';
 import { CoverArt } from '../components/YoriaxUI';
@@ -229,6 +230,8 @@ export function ArtistScreen({ route, navigation }: Props) {
           .insert({ user_id: user.id, artist_name: artistName });
         if (followError) throw new Error(followError.message);
         setIsFollowing(true);
+        // Contextual push opt-in: the first follow is the natural moment.
+        void offerPushAfterFollow(user.id, artistName, t);
       }
     } catch (followError) {
       Alert.alert(

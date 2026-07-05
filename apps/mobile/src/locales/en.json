@@ -324,5 +324,11 @@
     "readFailed": "The security check could not be read.",
     "envMissing": "Turnstile environment missing",
     "envMissingCopy": "EXPO_PUBLIC_TURNSTILE_SITE_KEY is required for native sign-in."
+  },
+  "push": {
+    "offerTitle": "Never miss a drop?",
+    "offerMessage": "We'll notify you when %{artist} releases new music.",
+    "offerYes": "Yes, notify me",
+    "offerLater": "Later"
   }
 }
