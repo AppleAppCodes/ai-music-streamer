@@ -6,6 +6,7 @@ import type { Song } from './types';
 import { useAuth } from './auth-context';
 import { supabase } from './supabase';
 import { fetchRadioNextSong } from './music-data';
+import { maybeRequestReview, recordReviewWorthyPlay } from './review-prompt';
 import { useI18n } from './i18n';
 
 interface StorageListItem {
@@ -177,6 +178,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isShuffling, setIsShuffling] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'none' | 'all' | 'one'>('none');
   const finishEventConsumedRef = useRef(false);
+  // Blocks the rating prompt for the rest of the session after any playback
+  // problem — never ask for stars right after something went wrong.
+  const sessionHadPlaybackErrorRef = useRef(false);
   const intendsToPlayRef = useRef(false);
   const playNextRef = useRef<() => void>(() => {});
   const playPreviousRef = useRef<() => void>(() => {});
@@ -414,6 +418,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (!ready) {
           // Surface the failure instead of "playing" a source that never loaded
           // (silent ghost playback on slow/broken networks).
+          sessionHadPlaybackErrorRef.current = true;
           setError(t('player.playbackFailed'));
           return;
         }
@@ -446,6 +451,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setLockScreenMetadata(player, song);
       scheduleNowPlayingRefresh(song, playRequestId);
     } catch (playError) {
+      sessionHadPlaybackErrorRef.current = true;
       setError(playError instanceof Error ? playError.message : t('player.playbackFailed'));
     } finally {
       if (isCurrentRequest()) {
@@ -736,6 +742,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         && ((status.currentTime || 0) >= PLAY_COUNT_THRESHOLD_SECONDS || status.didJustFinish)
       ) {
         playCountedSongIdRef.current = currentSong.id;
+        void recordReviewWorthyPlay();
         if (supabase) {
           void supabase
             .rpc('increment_song_plays', { target_song_id: currentSong.id })
@@ -766,6 +773,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             playNextRef.current();
           }
           return;
+        }
+
+        // A song just finished for an engaged listener — the one moment where
+        // asking for a rating feels natural. The gate inside decides if it is
+        // actually time; errors this session or a repeating ad path never get here.
+        if (!sessionHadPlaybackErrorRef.current) {
+          void maybeRequestReview();
         }
 
         if (repeatModeRef.current === 'one') {
