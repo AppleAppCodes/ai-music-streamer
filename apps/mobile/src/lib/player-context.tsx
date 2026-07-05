@@ -439,10 +439,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           if (!isCurrentRequest()) return;
         }
         if (!ready) {
-          // Surface the failure instead of "playing" a source that never loaded
-          // (silent ghost playback on slow/broken networks).
+          // Two straight load timeouts — that is a connectivity problem, so
+          // say so ("no connection" first, the mini player truncates) instead
+          // of a generic failure that reads like an app bug.
           sessionHadPlaybackErrorRef.current = true;
-          setError(t('player.playbackFailed'));
+          setError(t('player.connectionIssue'));
           return;
         }
 

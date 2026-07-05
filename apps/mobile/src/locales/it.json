@@ -110,7 +110,8 @@
     "sleepTimerActiveCopy": "La riproduzione si fermerà tra %{minutes} minuti.",
     "timerDelete": "Elimina timer",
     "audioMissing": "Questo brano non ha un file audio.",
-    "playbackFailed": "Impossibile avviare la riproduzione."
+    "playbackFailed": "Impossibile avviare la riproduzione.",
+    "connectionIssue": "Nessuna connessione: impossibile caricare il brano"
   },
   "save": {
     "close": "Chiudi selezione",

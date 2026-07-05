@@ -110,7 +110,8 @@
     "sleepTimerActiveCopy": "Het afspelen stopt over %{minutes} minuten.",
     "timerDelete": "Timer verwijderen",
     "audioMissing": "Dit nummer heeft geen audiobestand.",
-    "playbackFailed": "Afspelen kon niet worden gestart."
+    "playbackFailed": "Afspelen kon niet worden gestart.",
+    "connectionIssue": "Geen verbinding – nummer kon niet worden geladen"
   },
   "save": {
     "close": "Selectie sluiten",

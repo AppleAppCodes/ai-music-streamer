@@ -110,7 +110,8 @@
     "sleepTimerActiveCopy": "La lecture s’arrêtera dans %{minutes} minutes.",
     "timerDelete": "Supprimer le minuteur",
     "audioMissing": "Ce titre n’a pas de fichier audio.",
-    "playbackFailed": "Impossible de démarrer la lecture."
+    "playbackFailed": "Impossible de démarrer la lecture.",
+    "connectionIssue": "Pas de connexion – impossible de charger le titre"
   },
   "save": {
     "close": "Fermer la sélection",
