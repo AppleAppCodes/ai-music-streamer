@@ -329,6 +329,14 @@
     "offerTitle": "Never miss a drop?",
     "offerMessage": "We'll notify you when %{artist} releases new music.",
     "offerYes": "Yes, notify me",
-    "offerLater": "Later"
+    "offerLater": "Later",
+    "listenOfferTitle": "Never miss new music?",
+    "listenOfferMessage": "You listen a lot! We can let you know when fresh music and highlights drop.",
+    "settingsRow": "Push notifications",
+    "settingsOn": "On – you'll hear about new drops",
+    "settingsOff": "Off – tap to enable",
+    "settingsDeniedTitle": "Disabled in iOS",
+    "settingsDeniedMessage": "Notifications are turned off in your iOS settings. Open Settings to allow them again.",
+    "openSettings": "Open Settings"
   }
 }

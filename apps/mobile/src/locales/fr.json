@@ -329,6 +329,14 @@
     "offerTitle": "Ne rien manquer ?",
     "offerMessage": "Nous te préviendrons quand %{artist} sortira de la nouvelle musique.",
     "offerYes": "Oui, me prévenir",
-    "offerLater": "Plus tard"
+    "offerLater": "Plus tard",
+    "listenOfferTitle": "Ne rien manquer ?",
+    "listenOfferMessage": "Tu écoutes beaucoup ! On peut te prévenir des nouveautés et des temps forts.",
+    "settingsRow": "Notifications push",
+    "settingsOn": "Activées – tu seras prévenu des nouveautés",
+    "settingsOff": "Désactivées – appuie pour activer",
+    "settingsDeniedTitle": "Désactivées dans iOS",
+    "settingsDeniedMessage": "Les notifications sont désactivées dans les réglages iOS. Ouvre-les pour les autoriser à nouveau.",
+    "openSettings": "Ouvrir les Réglages"
   }
 }

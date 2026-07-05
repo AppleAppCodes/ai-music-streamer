@@ -329,6 +329,14 @@
     "offerTitle": "Niets missen?",
     "offerMessage": "We sturen je een melding wanneer %{artist} nieuwe muziek uitbrengt.",
     "offerYes": "Ja, stuur meldingen",
-    "offerLater": "Later"
+    "offerLater": "Later",
+    "listenOfferTitle": "Niets nieuws missen?",
+    "listenOfferMessage": "Je luistert veel! We kunnen je laten weten wanneer er nieuwe muziek en highlights zijn.",
+    "settingsRow": "Pushmeldingen",
+    "settingsOn": "Aan – je hoort het bij nieuws",
+    "settingsOff": "Uit – tik om in te schakelen",
+    "settingsDeniedTitle": "Uitgeschakeld in iOS",
+    "settingsDeniedMessage": "Meldingen staan uit in je iOS-instellingen. Open ze om meldingen weer toe te staan.",
+    "openSettings": "Instellingen openen"
   }
 }

@@ -26,6 +26,15 @@ const MIN_DAYS_INSTALLED = 3;
 const PROMPT_COOLDOWN_DAYS = 90;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Honestly counted plays on this install (also gates the push offer). */
+export async function getCountedPlays(): Promise<number> {
+  try {
+    return Number(await AsyncStorage.getItem(PLAY_COUNT_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 /** Call once per honestly counted play (same spot that reports the play). */
 export async function recordReviewWorthyPlay(): Promise<void> {
   try {

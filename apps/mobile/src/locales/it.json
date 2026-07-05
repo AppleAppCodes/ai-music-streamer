@@ -329,6 +329,14 @@
     "offerTitle": "Non perderti nulla?",
     "offerMessage": "Ti avviseremo quando %{artist} pubblicherà nuova musica.",
     "offerYes": "Sì, avvisami",
-    "offerLater": "Più tardi"
+    "offerLater": "Più tardi",
+    "listenOfferTitle": "Non perderti le novità?",
+    "listenOfferMessage": "Ascolti tanto! Possiamo avvisarti quando escono nuova musica e novità.",
+    "settingsRow": "Notifiche push",
+    "settingsOn": "Attive – ti avviseremo sulle novità",
+    "settingsOff": "Disattivate – tocca per attivare",
+    "settingsDeniedTitle": "Disattivate in iOS",
+    "settingsDeniedMessage": "Le notifiche sono disattivate nelle impostazioni iOS. Aprile per consentirle di nuovo.",
+    "openSettings": "Apri Impostazioni"
   }
 }
