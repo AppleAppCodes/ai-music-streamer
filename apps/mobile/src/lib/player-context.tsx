@@ -17,7 +17,10 @@ interface PlayOptions {
   fadeInMs?: number;
 }
 
-const PLAYBACK_READY_TIMEOUT_MS = 2500;
+// Generous for cellular: a cold CDN fetch over LTE can need several seconds;
+// the error should mean "really failed", not "slow network moment" (seen live
+// 2026-07-04 with a healthy file that simply missed the old 2.5s window).
+const PLAYBACK_READY_TIMEOUT_MS = 8000;
 const PLAYBACK_READY_POLL_MS = 50;
 const PAUSE_FADE_OUT_MS = 90;
 const NOW_PLAYING_REASSERT_DELAYS_MS = [160, 600] as const;
