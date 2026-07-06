@@ -307,6 +307,19 @@ export default function AdminPage() {
 
       if (reportsData) setReports(reportsData);
 
+      // Mods only see the moderation + approvals tabs; songs RLS hides
+      // foreign unapproved rows, so the queue comes via a guarded RPC.
+      if (!adminCheck) {
+        const { data: pendingRows, error: pendingError } = await supabase.rpc('get_pending_songs');
+        if (pendingError) {
+          console.error('Failed to load pending songs:', pendingError);
+        } else if (pendingRows) {
+          setSongs((pendingRows as Pick<SongData, 'id' | 'title' | 'artist_name' | 'audio_url' | 'created_at'>[]).map(
+            (row) => ({ ...row, plays: 0, is_approved: false }),
+          ));
+        }
+      }
+
       setIsLoading(false);
     };
 
@@ -873,8 +886,10 @@ export default function AdminPage() {
     }
   };
 
+  // Approval goes through a guarded RPC so mods (not only admins) can
+  // moderate; rejecting only ever deletes still-unapproved songs.
   const handleApproveSong = async (id: string, title: string) => {
-    const { error } = await supabase.from('songs').update({ is_approved: true }).eq('id', id);
+    const { error } = await supabase.rpc('moderate_song_approval', { target_song_id: id, approve: true });
     if (!error) {
       setSongs(songs.map(s => s.id === id ? { ...s, is_approved: true } : s));
       alert(`Song "${title}" wurde freigegeben.`);
@@ -885,7 +900,7 @@ export default function AdminPage() {
 
   const handleRejectSong = async (id: string, title: string) => {
     if (confirm(`Möchtest du den Song "${title}" wirklich ablehnen und löschen?`)) {
-      const { error } = await supabase.from('songs').delete().eq('id', id);
+      const { error } = await supabase.rpc('moderate_song_approval', { target_song_id: id, approve: false });
       if (!error) {
         setSongs(songs.filter(s => s.id !== id));
         alert(`Song "${title}" wurde gelöscht.`);
@@ -1016,20 +1031,6 @@ export default function AdminPage() {
                   Songs
                 </button>
                 <button
-                  onClick={() => setActiveTab('approvals')}
-                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                    activeTab === 'approvals'
-                      ? 'bg-indigo-500 text-white shadow-lg'
-                      : 'text-white/60 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <ShieldAlert className="w-4 h-4" />
-                  Freigaben
-                  {pendingSongs.length > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1">{pendingSongs.length}</span>
-                  )}
-                </button>
-                <button
                   onClick={() => setActiveTab('ads')}
                   className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                     activeTab === 'ads'
@@ -1097,6 +1098,20 @@ export default function AdminPage() {
                 </button>
               </>
             )}
+            <button
+              onClick={() => setActiveTab('approvals')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === 'approvals'
+                  ? 'bg-indigo-500 text-white shadow-lg'
+                  : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <ShieldAlert className="w-4 h-4" />
+              Freigaben
+              {pendingSongs.length > 0 && (
+                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1">{pendingSongs.length}</span>
+              )}
+            </button>
             <button
               onClick={() => setActiveTab('moderation')}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
