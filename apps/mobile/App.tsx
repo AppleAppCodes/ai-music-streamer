@@ -74,16 +74,31 @@ function AppShell() {
       const now = Date.now();
       if (now - lastPing < 5 * 60 * 1000) return;
       lastPing = now;
-      void supabase!
-        .from('profiles')
-        .update({
-          last_active_at: new Date().toISOString(),
-          ...(region ? { country: region } : {}),
-          ...(appVersion ? { app_version: appVersion } : {}),
-          os_version: osVersion,
-          ...(deviceModel ? { device_model: deviceModel } : {}),
-        })
-        .eq('id', userId);
+      void (async () => {
+        // On cold start this effect can fire before the client finished
+        // restoring the auth session — the update would then run as anon and
+        // RLS silently matches zero rows (204, nothing written). getSession()
+        // resolves only after hydration, so the token is attached for real.
+        const { data } = await supabase!.auth.getSession();
+        if (!data.session) {
+          lastPing = 0; // let the next foreground event retry immediately
+          return;
+        }
+        const { error } = await supabase!
+          .from('profiles')
+          .update({
+            last_active_at: new Date().toISOString(),
+            ...(region ? { country: region } : {}),
+            ...(appVersion ? { app_version: appVersion } : {}),
+            os_version: osVersion,
+            ...(deviceModel ? { device_model: deviceModel } : {}),
+          })
+          .eq('id', userId);
+        if (error) {
+          lastPing = 0;
+          console.warn('activity ping failed:', error.message);
+        }
+      })();
     };
 
     ping();
