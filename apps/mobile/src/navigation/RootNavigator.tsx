@@ -19,7 +19,7 @@ import { PlaylistScreen } from '../screens/PlaylistScreen';
 import { FullscreenPlayer } from '../screens/FullscreenPlayer';
 import { LikedSongsScreen } from '../screens/LikedSongsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
-import { ChartsScreen } from '../screens/ChartsScreen';
+import { RadioScreen } from '../screens/RadioScreen';
 import { ArtistsScreen } from '../screens/ArtistsScreen';
 import { PlaylistDiscoverScreen } from '../screens/PlaylistDiscoverScreen';
 import { MusicPreferencesScreen } from '../screens/MusicPreferencesScreen';
@@ -245,8 +245,9 @@ function RootNavigationContent() {
       return;
     }
 
-    if (section === 'charts') {
-      navigationRef.navigate('Charts');
+    // Charts was replaced by Radio; old deep links keep working.
+    if (section === 'charts' || section === 'radio') {
+      navigationRef.navigate('Radio');
       return;
     }
 
@@ -320,8 +321,8 @@ function RootNavigationContent() {
           options={{ presentation: 'card' }}
         />
         <Stack.Screen
-          name="Charts"
-          component={ChartsScreen}
+          name="Radio"
+          component={RadioScreen}
           options={{ presentation: 'card' }}
         />
         <Stack.Screen

@@ -13,7 +13,7 @@ export type RootStackParamList = {
   Artist: { artistId: string };
   LikedSongs: undefined;
   Profile: undefined;
-  Charts: undefined;
+  Radio: undefined;
   Artists: undefined;
   PlaylistDiscover: undefined;
   MusicPreferences: undefined;

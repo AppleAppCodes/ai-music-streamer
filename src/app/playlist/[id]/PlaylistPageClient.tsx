@@ -1389,8 +1389,8 @@ export default function PlaylistPage() {
                   : t('playlist.findMusicDiscoverDesc')}
               </p>
               {!isOwner ? (
-                <Link href="/charts/viral" className="px-6 py-2.5 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform">
-                  {t('playlist.browseCharts')}
+                <Link href="/playlists" className="px-6 py-2.5 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform">
+                  {t('nav.discoverPlaylists')}
                 </Link>
               ) : null}
             </div>

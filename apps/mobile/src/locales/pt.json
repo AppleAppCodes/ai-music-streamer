@@ -59,8 +59,6 @@
   "home": {
     "artists": "Artistas",
     "artistsSubtitle": "Descubra novos criadores",
-    "charts": "Paradas",
-    "chartsSubtitle": "Virais, Diárias, Artistas",
     "error": "Não foi possível carregar o início",
     "favorites": "Músicas curtidas",
     "favoritesSubtitle": "Suas faixas salvas",
@@ -84,7 +82,9 @@
     "spotlightNewsCta": "Saber mais",
     "spotlightSwipeHint": "Deslize para ver mais",
     "trending": "Em alta hoje",
-    "officialPlaylists": "Playlists oficiais YORIAX"
+    "officialPlaylists": "Playlists oficiais YORIAX",
+    "radio": "Radio",
+    "radioSubtitle": "Estações sem fim"
   },
   "update": {
     "title": "Nova versão disponível",
@@ -299,22 +299,6 @@
     "verified": "Artista verificado",
     "pending": "Aguardando aprovação"
   },
-  "charts": {
-    "artistSubtitle": "Artistas com mais reproduções totais no YORIAX.",
-    "artistTitle": "Paradas de artistas",
-    "dailySubtitle": "O que mais toca hoje no YORIAX.",
-    "dailyTitle": "Paradas diárias",
-    "emptyArtists": "Ainda não há artistas",
-    "emptyArtistsCopy": "As paradas de artistas aparecerão quando músicas forem publicadas.",
-    "emptySongs": "Ainda não há músicas",
-    "emptySongsCopy": "Estas paradas serão preenchidas conforme novas reproduções forem contabilizadas.",
-    "loading": "Carregando paradas",
-    "loadingCopy": "Buscando as paradas YORIAX mais recentes.",
-    "today": "Hoje",
-    "unavailable": "Paradas indisponíveis",
-    "viralSubtitle": "Músicas com o maior impulso na plataforma.",
-    "viralTitle": "Paradas virais"
-  },
   "errors": {
     "feedLoad": "Não foi possível carregar o feed.",
     "preferencesLoad": "Não foi possível carregar as preferências musicais."
@@ -339,5 +323,18 @@
     "settingsDeniedTitle": "Desativadas no iOS",
     "settingsDeniedMessage": "As notificações estão desativadas nos ajustes do iOS. Abra-os para permitir novamente.",
     "openSettings": "Abrir Ajustes"
+  },
+  "radio": {
+    "title": "Radio",
+    "tagline": "Escolha uma estação — a música não para.",
+    "yourMix": "Seu mix",
+    "yourMixCopy": "Sua estação pessoal com seus gêneros favoritos",
+    "genres": "Estações por gênero",
+    "moods": "Estações por clima",
+    "startError": "Não foi possível iniciar a estação.",
+    "moodHappy": "Feliz",
+    "moodChill": "Chill",
+    "moodEnergetic": "Energia",
+    "moodDark": "Sombrio"
   }
 }

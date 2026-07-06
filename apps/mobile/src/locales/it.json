@@ -59,8 +59,6 @@
   "home": {
     "artists": "Artisti",
     "artistsSubtitle": "Scopri nuovi creator",
-    "charts": "Classifiche",
-    "chartsSubtitle": "Virali, Giornaliere, Artisti",
     "error": "Impossibile caricare la home",
     "favorites": "Brani che ti piacciono",
     "favoritesSubtitle": "I tuoi brani salvati",
@@ -84,7 +82,9 @@
     "spotlightNewsCta": "Scopri di più",
     "spotlightSwipeHint": "Scorri per vedere altro",
     "trending": "Di tendenza oggi",
-    "officialPlaylists": "Playlist ufficiali YORIAX"
+    "officialPlaylists": "Playlist ufficiali YORIAX",
+    "radio": "Radio",
+    "radioSubtitle": "Stazioni senza fine"
   },
   "update": {
     "title": "Nuova versione disponibile",
@@ -299,22 +299,6 @@
     "verified": "Artista verificato",
     "pending": "In attesa di approvazione"
   },
-  "charts": {
-    "artistSubtitle": "Artisti con più riproduzioni totali su YORIAX.",
-    "artistTitle": "Classifiche artisti",
-    "dailySubtitle": "I brani più ascoltati oggi su YORIAX.",
-    "dailyTitle": "Classifiche giornaliere",
-    "emptyArtists": "Ancora nessun artista",
-    "emptyArtistsCopy": "Le classifiche degli artisti appariranno quando verranno pubblicati brani.",
-    "emptySongs": "Ancora nessun brano",
-    "emptySongsCopy": "Queste classifiche si riempiranno man mano che verranno conteggiate nuove riproduzioni.",
-    "loading": "Caricamento classifiche",
-    "loadingCopy": "Recupero delle ultime classifiche YORIAX.",
-    "today": "Oggi",
-    "unavailable": "Classifiche non disponibili",
-    "viralSubtitle": "Brani con il maggiore slancio sulla piattaforma.",
-    "viralTitle": "Classifiche virali"
-  },
   "errors": {
     "feedLoad": "Impossibile caricare il feed.",
     "preferencesLoad": "Impossibile caricare le preferenze musicali."
@@ -339,5 +323,18 @@
     "settingsDeniedTitle": "Disattivate in iOS",
     "settingsDeniedMessage": "Le notifiche sono disattivate nelle impostazioni iOS. Aprile per consentirle di nuovo.",
     "openSettings": "Apri Impostazioni"
+  },
+  "radio": {
+    "title": "Radio",
+    "tagline": "Scegli una stazione: il mix non si ferma mai.",
+    "yourMix": "Il tuo mix",
+    "yourMixCopy": "La tua stazione personale con i tuoi generi preferiti",
+    "genres": "Stazioni per genere",
+    "moods": "Stazioni per mood",
+    "startError": "Impossibile avviare la stazione.",
+    "moodHappy": "Felice",
+    "moodChill": "Chill",
+    "moodEnergetic": "Energia",
+    "moodDark": "Dark"
   }
 }

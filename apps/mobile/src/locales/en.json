@@ -59,8 +59,6 @@
   "home": {
     "artists": "Artists",
     "artistsSubtitle": "Discover new creators",
-    "charts": "Charts",
-    "chartsSubtitle": "Viral, Daily, Artists",
     "error": "Home could not be loaded",
     "favorites": "Liked Songs",
     "favoritesSubtitle": "Your saved tracks",
@@ -84,7 +82,9 @@
     "spotlightNewsCta": "Learn more",
     "spotlightSwipeHint": "Swipe for more",
     "trending": "Trending today",
-    "officialPlaylists": "YORIAX Official Playlists"
+    "officialPlaylists": "YORIAX Official Playlists",
+    "radio": "Radio",
+    "radioSubtitle": "Endless stations"
   },
   "update": {
     "title": "New version available",
@@ -299,22 +299,6 @@
     "verified": "Verified artist",
     "pending": "Awaiting approval"
   },
-  "charts": {
-    "artistSubtitle": "Artists with the strongest total streams on YORIAX.",
-    "artistTitle": "Artist Charts",
-    "dailySubtitle": "What is being played most on YORIAX today.",
-    "dailyTitle": "Daily Charts",
-    "emptyArtists": "No artists yet",
-    "emptyArtistsCopy": "Artist charts will appear when songs are published.",
-    "emptySongs": "No songs yet",
-    "emptySongsCopy": "These charts will fill as new plays are counted.",
-    "loading": "Loading charts",
-    "loadingCopy": "Fetching the latest YORIAX rankings.",
-    "today": "Today",
-    "unavailable": "Charts unavailable",
-    "viralSubtitle": "Songs with the strongest platform momentum.",
-    "viralTitle": "Viral Charts"
-  },
   "errors": {
     "feedLoad": "Feed could not be loaded.",
     "preferencesLoad": "Music preferences could not be loaded."
@@ -339,5 +323,18 @@
     "settingsDeniedTitle": "Disabled in iOS",
     "settingsDeniedMessage": "Notifications are turned off in your iOS settings. Open Settings to allow them again.",
     "openSettings": "Open Settings"
+  },
+  "radio": {
+    "title": "Radio",
+    "tagline": "Pick a station — the mix never stops.",
+    "yourMix": "Your Mix",
+    "yourMixCopy": "Your personal station from your favorite genres",
+    "genres": "Genre stations",
+    "moods": "Mood stations",
+    "startError": "Couldn't start the station.",
+    "moodHappy": "Happy",
+    "moodChill": "Chill",
+    "moodEnergetic": "Energy",
+    "moodDark": "Dark"
   }
 }
