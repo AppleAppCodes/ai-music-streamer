@@ -47,8 +47,13 @@ type Translate = (key: string, options?: Record<string, string | number>) => str
 
 async function registerToken(userId: string): Promise<boolean> {
   try {
+    if (!supabase) return false;
+    // Cold-start guard: an anon upsert would be RLS-rejected; wait for the
+    // hydrated session so the token write actually lands.
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) return false;
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId: EAS_PROJECT_ID });
-    if (!token || !supabase) return false;
+    if (!token) return false;
     const { error } = await supabase.from('push_tokens').upsert(
       { token, user_id: userId, platform: Platform.OS, updated_at: new Date().toISOString() },
       { onConflict: 'token' },

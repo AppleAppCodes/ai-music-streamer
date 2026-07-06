@@ -17,6 +17,12 @@ export async function recordAcquisitionAttribution(userId: string) {
   try {
     if (await AsyncStorage.getItem(CHECK_FLAG_KEY)) return;
 
+    // Cold-start guard: without a hydrated session the update below would run
+    // as anon — RLS silently matches zero rows AND the once-flag would burn,
+    // losing this install's attribution forever. Retry on the next launch.
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) return;
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('acquisition_source')
@@ -82,6 +88,10 @@ export const TERMS_VERSIONS = { agb: '2026-07-03', datenschutz: '2026-07-03' } a
 export async function recordTermsAcceptance(userId: string, source: 'ios' | 'web') {
   if (!supabase) return;
   try {
+    // Same cold-start guard as above: never write as anon.
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) return;
+
     await supabase.from('terms_acceptances').upsert(
       [
         { user_id: userId, document: 'agb', version: TERMS_VERSIONS.agb, source },
