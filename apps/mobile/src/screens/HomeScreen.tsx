@@ -120,10 +120,10 @@ export function HomeScreen() {
     },
     {
       accent: '#eab308', // Yellow
-      icon: 'trending-up',
-      label: t('home.charts'),
-      subtitle: t('home.chartsSubtitle'),
-      onPress: () => navigation.navigate('Charts'),
+      icon: 'radio',
+      label: t('home.radio'),
+      subtitle: t('home.radioSubtitle'),
+      onPress: () => navigation.navigate('Radio'),
     },
     {
       accent: '#0d9488', // Teal

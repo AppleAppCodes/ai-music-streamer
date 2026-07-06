@@ -59,8 +59,6 @@
   "home": {
     "artists": "Artistes",
     "artistsSubtitle": "Découvre de nouveaux créateurs",
-    "charts": "Classements",
-    "chartsSubtitle": "Viral, Quotidien, Artistes",
     "error": "Impossible de charger l’accueil",
     "favorites": "Titres likés",
     "favoritesSubtitle": "Tes morceaux enregistrés",
@@ -84,7 +82,9 @@
     "spotlightNewsCta": "En savoir plus",
     "spotlightSwipeHint": "Glisse pour en voir plus",
     "trending": "Tendances du jour",
-    "officialPlaylists": "Playlists officielles YORIAX"
+    "officialPlaylists": "Playlists officielles YORIAX",
+    "radio": "Radio",
+    "radioSubtitle": "Stations en continu"
   },
   "update": {
     "title": "Nouvelle version disponible",
@@ -299,22 +299,6 @@
     "verified": "Artiste vérifié",
     "pending": "En attente d’approbation"
   },
-  "charts": {
-    "artistSubtitle": "Artistes avec le plus d’écoutes au total sur YORIAX.",
-    "artistTitle": "Classements des artistes",
-    "dailySubtitle": "Les titres les plus écoutés aujourd’hui sur YORIAX.",
-    "dailyTitle": "Classements quotidiens",
-    "emptyArtists": "Pas encore d’artistes",
-    "emptyArtistsCopy": "Les classements des artistes apparaîtront quand des titres seront publiés.",
-    "emptySongs": "Pas encore de titres",
-    "emptySongsCopy": "Ces classements se rempliront à mesure que de nouvelles écoutes seront comptabilisées.",
-    "loading": "Chargement des classements",
-    "loadingCopy": "Récupération des derniers classements YORIAX.",
-    "today": "Aujourd’hui",
-    "unavailable": "Classements indisponibles",
-    "viralSubtitle": "Titres avec la plus forte dynamique sur la plateforme.",
-    "viralTitle": "Classements viraux"
-  },
   "errors": {
     "feedLoad": "Impossible de charger le fil.",
     "preferencesLoad": "Impossible de charger les préférences musicales."
@@ -339,5 +323,18 @@
     "settingsDeniedTitle": "Désactivées dans iOS",
     "settingsDeniedMessage": "Les notifications sont désactivées dans les réglages iOS. Ouvre-les pour les autoriser à nouveau.",
     "openSettings": "Ouvrir les Réglages"
+  },
+  "radio": {
+    "title": "Radio",
+    "tagline": "Choisis une station — le mix ne s'arrête jamais.",
+    "yourMix": "Ton mix",
+    "yourMixCopy": "Ta station personnelle basée sur tes genres préférés",
+    "genres": "Stations par genre",
+    "moods": "Stations par humeur",
+    "startError": "Impossible de démarrer la station.",
+    "moodHappy": "Joyeux",
+    "moodChill": "Chill",
+    "moodEnergetic": "Énergie",
+    "moodDark": "Sombre"
   }
 }

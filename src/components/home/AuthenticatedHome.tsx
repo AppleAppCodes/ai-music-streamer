@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { MouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import SongCard from '@/components/ui/SongCard';
-import { ChevronLeft, ChevronRight, Heart, ListMusic, Megaphone, Mic2, Move, Music, Pause, Pencil, Play, Sparkles, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, ListMusic, Megaphone, Mic2, Move, Music, Pause, Pencil, Play, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -439,13 +439,6 @@ export default function AuthenticatedHome({ initialHomeData }: { initialHomeData
       color: "bg-gradient-primary",
       images: ["linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)"],
       link: "/collection/tracks"
-    },
-    {
-      title: t('home.quickAccess.charts'),
-      icon: TrendingUp,
-      color: "bg-yellow-500",
-      images: ["linear-gradient(135deg, #eab308 0%, #a16207 100%)"],
-      link: "/charts/viral"
     },
     {
       title: t('home.quickAccess.artists'),

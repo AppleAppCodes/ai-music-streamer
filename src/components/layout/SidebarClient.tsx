@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Library, PlusCircle, Heart, TrendingUp, Mic2, ListMusic, UserCheck, Sparkles } from 'lucide-react';
+import { Home, Library, PlusCircle, Heart, Mic2, ListMusic, UserCheck, Sparkles } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import CreatePlaylistButton from '@/components/ui/CreatePlaylistButton';
@@ -95,10 +95,6 @@ export default function SidebarClient({
           <Link href="/feed" className={navLinkClass('/feed')}>
             <Sparkles className={iconClass('/feed')} />
             {t('nav.feed')}
-          </Link>
-          <Link href="/charts/viral" className={navLinkClass('/charts/viral')}>
-            <TrendingUp className={iconClass('/charts/viral')} />
-            {t('nav.viralCharts')}
           </Link>
           <Link href="/artists" className={navLinkClass('/artists')}>
             <Mic2 className={iconClass('/artists')} />

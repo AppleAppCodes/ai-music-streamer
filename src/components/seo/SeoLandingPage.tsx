@@ -157,8 +157,8 @@ export default function SeoLandingPage({ content, songs }: SeoLandingPageProps) 
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-teal-200">Trending on YORIAX</p>
                 <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Popular AI music to start with</h2>
               </div>
-              <Link href="/charts/viral" className="hidden text-sm font-black text-white/62 underline-offset-4 hover:text-white hover:underline sm:block">
-                Viral charts
+              <Link href="/playlists" className="hidden text-sm font-black text-white/62 underline-offset-4 hover:text-white hover:underline sm:block">
+                Playlists
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

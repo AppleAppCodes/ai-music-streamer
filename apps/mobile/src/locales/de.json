@@ -59,8 +59,6 @@
   "home": {
     "artists": "Künstler",
     "artistsSubtitle": "Neue Creator entdecken",
-    "charts": "Charts",
-    "chartsSubtitle": "Viral, Daily, Artists",
     "error": "Home konnte nicht geladen werden",
     "favorites": "Lieblingssongs",
     "favoritesSubtitle": "Deine gespeicherten Tracks",
@@ -84,7 +82,9 @@
     "spotlightNewsCta": "Mehr erfahren",
     "spotlightSwipeHint": "Wische für mehr",
     "trending": "Trending heute",
-    "officialPlaylists": "YORIAX Offizielle Playlists"
+    "officialPlaylists": "YORIAX Offizielle Playlists",
+    "radio": "Radio",
+    "radioSubtitle": "Endlos-Stationen"
   },
   "update": {
     "title": "Neue Version verfügbar",
@@ -299,22 +299,6 @@
     "verified": "Verifizierter Künstler",
     "pending": "Wartet auf Freigabe"
   },
-  "charts": {
-    "artistSubtitle": "Künstler mit den stärksten Gesamt-Streams auf YORIAX.",
-    "artistTitle": "Artist Charts",
-    "dailySubtitle": "Was heute auf YORIAX am meisten gehört wird.",
-    "dailyTitle": "Daily Charts",
-    "emptyArtists": "Noch keine Künstler",
-    "emptyArtistsCopy": "Sobald Songs veröffentlicht sind, erscheinen Künstler-Charts hier.",
-    "emptySongs": "Noch keine Songs",
-    "emptySongsCopy": "Diese Charts füllen sich, sobald neue Plays gezählt werden.",
-    "loading": "Charts werden geladen",
-    "loadingCopy": "Wir holen die aktuellen YORIAX-Rankings.",
-    "today": "Heute",
-    "unavailable": "Charts nicht verfügbar",
-    "viralSubtitle": "Songs mit der stärksten Plattform-Dynamik.",
-    "viralTitle": "Viral Charts"
-  },
   "errors": {
     "feedLoad": "Feed konnte nicht geladen werden.",
     "preferencesLoad": "Musikgeschmack konnte nicht geladen werden."
@@ -339,5 +323,18 @@
     "settingsDeniedTitle": "In iOS deaktiviert",
     "settingsDeniedMessage": "Benachrichtigungen sind in den iOS-Einstellungen ausgeschaltet. Öffne sie, um Mitteilungen wieder zu erlauben.",
     "openSettings": "Einstellungen öffnen"
+  },
+  "radio": {
+    "title": "Radio",
+    "tagline": "Station wählen – der Mix läuft endlos weiter.",
+    "yourMix": "Dein Mix",
+    "yourMixCopy": "Deine persönliche Station aus deinen Lieblings-Genres",
+    "genres": "Genre-Stationen",
+    "moods": "Mood-Stationen",
+    "startError": "Station konnte nicht gestartet werden.",
+    "moodHappy": "Happy",
+    "moodChill": "Chill",
+    "moodEnergetic": "Energie",
+    "moodDark": "Dark"
   }
 }
