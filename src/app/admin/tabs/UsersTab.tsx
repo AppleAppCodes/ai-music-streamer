@@ -1,6 +1,29 @@
 import Image from 'next/image';
 import type { ProfileData } from '../types';
 
+// Onboarding cell: chosen genres, an explicit skip, or "never reached it".
+function OnboardingCell({ profile }: { profile: ProfileData }) {
+  const genres = profile.favorite_genres ?? [];
+  if (genres.length > 0) {
+    const shown = genres.slice(0, 3);
+    const rest = genres.length - shown.length;
+    return (
+      <div className="flex flex-wrap gap-1">
+        {shown.map((genre) => (
+          <span key={genre} className="rounded-md border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-xs font-semibold text-emerald-300">
+            {genre}
+          </span>
+        ))}
+        {rest > 0 && <span className="text-xs text-white/40">+{rest}</span>}
+      </div>
+    );
+  }
+  if (profile.onboarding_skipped === true) {
+    return <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs font-bold text-white/45">Übersprungen</span>;
+  }
+  return <span className="text-white/40">-</span>;
+}
+
 export function UsersTab({
   profiles,
   onRoleChange,
@@ -21,6 +44,7 @@ export function UsersTab({
             <th className="px-6 py-4 font-semibold">Land</th>
             <th className="px-6 py-4 font-semibold">App / Gerät</th>
             <th className="px-6 py-4 font-semibold">Quelle</th>
+            <th className="px-6 py-4 font-semibold">Onboarding</th>
             <th className="px-6 py-4 font-semibold">Zuletzt aktiv</th>
             <th className="px-6 py-4 font-semibold">Aktivität</th>
             <th className="px-6 py-4 font-semibold">Zuletzt gehört</th>
@@ -75,6 +99,7 @@ export function UsersTab({
                   <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs font-bold text-white/55">Organisch</span>
                 ) : '-'}
               </td>
+              <td className="px-6 py-4"><OnboardingCell profile={profile} /></td>
               <td className="px-6 py-4">{profile.last_active_at ? new Date(profile.last_active_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</td>
               <td className="px-6 py-4">
                 <div className="flex flex-col gap-0.5 whitespace-nowrap">
@@ -109,7 +134,7 @@ export function UsersTab({
             </tr>
           )) : (
             <tr>
-              <td colSpan={11} className="px-6 py-12 text-center text-white/40">Keine Nutzer gefunden.</td>
+              <td colSpan={12} className="px-6 py-12 text-center text-white/40">Keine Nutzer gefunden.</td>
             </tr>
           )}
         </tbody>

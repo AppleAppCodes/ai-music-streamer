@@ -54,6 +54,9 @@ export interface ProfileData {
   likes?: number;
   follows?: number;
   playlists?: number;
+  // Onboarding (from user_music_preferences): null skip = never reached it.
+  favorite_genres?: string[] | null;
+  onboarding_skipped?: boolean | null;
 }
 
 export interface SongData {
