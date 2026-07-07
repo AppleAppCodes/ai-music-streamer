@@ -1,20 +1,42 @@
+import { useState } from 'react';
 import Image from 'next/image';
 import type { ProfileData } from '../types';
 
 // Onboarding cell: chosen genres, an explicit skip, or "never reached it".
+// Genres collapse to the first three; clicking "+N" reveals the full list.
 function OnboardingCell({ profile }: { profile: ProfileData }) {
+  const [expanded, setExpanded] = useState(false);
   const genres = profile.favorite_genres ?? [];
+
   if (genres.length > 0) {
-    const shown = genres.slice(0, 3);
+    const shown = expanded ? genres : genres.slice(0, 3);
     const rest = genres.length - shown.length;
     return (
-      <div className="flex flex-wrap gap-1">
+      <div className="flex max-w-[220px] flex-wrap items-center gap-1">
         {shown.map((genre) => (
           <span key={genre} className="rounded-md border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-xs font-semibold text-emerald-300">
             {genre}
           </span>
         ))}
-        {rest > 0 && <span className="text-xs text-white/40">+{rest}</span>}
+        {rest > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="rounded-md border border-white/15 bg-white/5 px-1.5 py-0.5 text-xs font-bold text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
+            title="Alle Genres anzeigen"
+          >
+            +{rest}
+          </button>
+        )}
+        {expanded && genres.length > 3 && (
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            className="text-xs font-bold text-white/40 transition-colors hover:text-white/70"
+          >
+            weniger
+          </button>
+        )}
       </div>
     );
   }
