@@ -125,14 +125,14 @@ export default function AdminPage() {
         if (usersError) {
           console.error('Failed to load admin users:', usersError);
         } else if (usersData) {
-          type EngagementRow = { user_id: string; songs_played: number; total_plays: number; last_played_at: string | null; likes: number; follows: number; playlists: number };
+          type EngagementRow = { user_id: string; songs_played: number; total_plays: number; last_played_at: string | null; likes: number; follows: number; playlists: number; favorite_genres: string[] | null; onboarding_skipped: boolean | null };
           const engagementById = new Map<string, EngagementRow>(
             ((engagementData as EngagementRow[]) || []).map((e) => [e.user_id, e]),
           );
           const rows = (usersData as ProfileData[]).map((u) => {
             const e = engagementById.get(u.id);
             return e
-              ? { ...u, songs_played: e.songs_played, total_plays: e.total_plays, last_played_at: e.last_played_at, likes: e.likes, follows: e.follows, playlists: e.playlists }
+              ? { ...u, songs_played: e.songs_played, total_plays: e.total_plays, last_played_at: e.last_played_at, likes: e.likes, follows: e.follows, playlists: e.playlists, favorite_genres: e.favorite_genres, onboarding_skipped: e.onboarding_skipped }
               : u;
           });
           setProfiles(rows);
