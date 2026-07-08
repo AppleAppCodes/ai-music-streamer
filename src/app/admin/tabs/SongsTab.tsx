@@ -135,6 +135,9 @@ export function SongsTab({
                     <div className="mt-1 whitespace-nowrap text-xs text-white/40">
                       24h {formatAdminNumber(song.plays_24h)} · 7d {formatAdminNumber(song.plays_7d)} · 30d {formatAdminNumber(song.plays_30d)}
                     </div>
+                    <div className="mt-0.5 whitespace-nowrap text-xs text-sky-300/70" title="Anspielungen (Song gestartet, egal wie lange) — Interesse vs. echtes Hören">
+                      ▷ {formatAdminNumber(song.starts_total)} Starts
+                    </div>
                     <div className="mt-0.5 whitespace-nowrap text-xs text-white/30" title="Öffentlicher Anzeige-Zähler in der App">
                       Anzeige: {formatAdminNumber(song.plays)}
                     </div>
@@ -243,6 +246,7 @@ export function SongsTab({
                       <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
                         {[
                           ['Echte Plays gesamt', formatAdminNumber(song.plays_tracked_total)],
+                          ['Anspielungen (Starts)', formatAdminNumber(song.starts_total)],
                           ['Anzeige-Plays', formatAdminNumber(song.plays)],
                           ['24h', formatAdminNumber(song.plays_24h)],
                           ['7 Tage', formatAdminNumber(song.plays_7d)],
