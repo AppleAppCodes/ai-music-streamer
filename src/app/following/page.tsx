@@ -105,8 +105,8 @@ export default function FollowingPage() {
             <p className="text-white/50 max-w-md">
               Folge Künstlern, die dir gefallen, um hier ihre neusten Releases zu sehen.
             </p>
-            <Link href="/charts/viral" className="mt-6 px-6 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-full font-bold transition-colors">
-              Charts entdecken
+            <Link href="/artists" className="mt-6 px-6 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-full font-bold transition-colors">
+              Künstler entdecken
             </Link>
           </div>
         ) : (

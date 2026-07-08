@@ -8,11 +8,11 @@ const content: SeoLandingPageContent = {
   eyebrow: 'AI Songs',
   title: 'Find AI songs, new artists, and viral tracks in one catalog.',
   description:
-    'Browse AI songs on YORIAX with track pages, artist links, cover art, genres, playlists, and charts designed for discovering music made with artificial intelligence.',
+    'Browse AI songs on YORIAX with track pages, artist links, cover art, genres, and playlists designed for discovering music made with artificial intelligence.',
   primaryLink: {
-    href: '/charts/viral',
-    label: 'Open AI song charts',
-    description: 'Discover the most played and fastest-rising AI songs.',
+    href: '/playlists',
+    label: 'Browse AI playlists',
+    description: 'Curated playlists that group AI songs by mood and genre.',
   },
   secondaryLink: {
     href: '/artists',
@@ -27,7 +27,7 @@ const content: SeoLandingPageContent = {
   proofPoints: [
     'Public song pages include canonical URLs, Open Graph images, and MusicRecording structured data.',
     'Genre and artist links help listeners discover more AI songs with a similar sound.',
-    'Charts and playlists create fresh entry points for new listeners and returning fans.',
+    'Genres and playlists create fresh entry points for new listeners and returning fans.',
   ],
   sections: [
     {
@@ -35,8 +35,8 @@ const content: SeoLandingPageContent = {
       body: 'Each public song page can carry track-specific metadata, cover artwork, artist attribution, genre, duration, and release information.',
     },
     {
-      title: 'Charts for what is moving',
-      body: 'Viral and trending surfaces help AI songs gain visibility when listeners respond to them, not just when they are uploaded.',
+      title: 'Genres for every sound',
+      body: 'Genre pages group AI songs by style so listeners can dive into lo-fi, R&B, pop, electronic, and more.',
     },
     {
       title: 'Playlists for discovery',
@@ -47,7 +47,7 @@ const content: SeoLandingPageContent = {
     {
       question: 'Where can I listen to AI songs?',
       answer:
-        'You can listen to AI songs on YORIAX through public song pages, viral charts, genre pages, artist pages, and playlists.',
+        'You can listen to AI songs on YORIAX through public song pages, genre pages, artist pages, and playlists.',
     },
     {
       question: 'Are AI songs on YORIAX organized by genre?',
@@ -82,7 +82,7 @@ const content: SeoLandingPageContent = {
 export const metadata: Metadata = buildPageMetadata({
   title: 'AI Songs to Stream and Discover',
   description:
-    'Find AI songs on YORIAX: stream tracks, discover AI artists, browse genres, and follow viral AI music charts.',
+    'Find AI songs on YORIAX: stream tracks, discover AI artists, browse genres, and explore curated playlists.',
   path: '/ai-songs',
 });
 

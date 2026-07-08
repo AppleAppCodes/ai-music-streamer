@@ -14,7 +14,6 @@ export const appleAppSiteAssociation = {
           '/playlists',
           '/discover/playlists',
           '/artists',
-          '/charts/viral',
           '/collection/tracks',
           '/feed',
         ],
