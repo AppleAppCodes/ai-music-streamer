@@ -6,14 +6,13 @@ const content = `# ${SITE_NAME}
 
 > ${DEFAULT_DESCRIPTION}
 
-YORIAX is an AI-native music streaming and discovery platform. The public catalog focuses on AI music, AI songs, AI artists, viral AI music charts, genres, and playlists.
+YORIAX is an AI-native music streaming and discovery platform. The public catalog focuses on AI music, AI songs, AI artists, genres, and playlists.
 
 ## Core Pages
 
 - [YORIAX](${SITE_URL}/)
 - [AI Music](${SITE_URL}/ai-music)
 - [AI Songs](${SITE_URL}/ai-songs)
-- [Viral AI Music Charts](${SITE_URL}/charts/viral)
 - [AI Music Genres](${SITE_URL}/genres)
 - [AI Artists](${SITE_URL}/artists)
 - [AI Music Playlists](${SITE_URL}/discover/playlists)

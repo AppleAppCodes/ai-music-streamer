@@ -9,7 +9,7 @@ export const DEFAULT_OG_IMAGE = '/brand/yoriax-og.png';
 export const DEFAULT_OG_ALT = 'YORIAX logo on a dark purple music background';
 export const DEFAULT_TITLE = 'YORIAX | AI Music Streaming';
 export const DEFAULT_DESCRIPTION =
-  'Discover AI-native music, stream new songs from emerging creators, explore viral charts, and build playlists on YORIAX.';
+  'Discover AI-native music, stream new songs from emerging creators, explore genres, and build playlists on YORIAX.';
 
 const DEFAULT_KEYWORDS = [
   'YORIAX',
