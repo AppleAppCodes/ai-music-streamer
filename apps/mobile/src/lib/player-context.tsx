@@ -723,6 +723,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // We attach a direct listener to the native player object instead of using a React hook (useAudioPlayerStatus),
   // because React hooks do not update/execute when the app is in the background or screen is locked.
   const playCountedSongIdRef = useRef<string | null>(null);
+  // "Starts" (Anspielungen): fire once when a new song begins playing, no
+  // matter how long — the raw intent metric next to the 25s honest play.
+  const startRecordedSongIdRef = useRef<string | null>(null);
   // Listened-time accounting (#exit-metrics): accumulate real playing time and
   // flush it in ~60s chunks. Delta-based so pauses/buffering don't count.
   const listenSecondsRef = useRef(0);
@@ -754,6 +757,26 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       } else {
         lastListenTickRef.current = null;
       }
+      // Record a "start" the moment a new song is actually playing — counts
+      // every song begun (intent), separate from the 25s honest play.
+      const startedSong = activeSongRef.current;
+      if (
+        status.playing
+        && startedSong
+        && startedSong.id !== 'yoriax-audio-ad'
+        && !isAdPlayingRef.current
+        && startRecordedSongIdRef.current !== startedSong.id
+      ) {
+        startRecordedSongIdRef.current = startedSong.id;
+        if (supabase) {
+          void supabase
+            .rpc('record_song_start', { target_song_id: startedSong.id })
+            .then(({ error }) => {
+              if (error) console.warn('record_song_start failed:', error.message);
+            });
+        }
+      }
+
       // Count the play once the listener genuinely heard the song (threshold
       // reached or track finished). Runs in this native listener so background
       // listening counts too. The server keeps its own 30-min replay cooldown.

@@ -82,6 +82,7 @@ export default function AudioPlayer() {
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const isPlayingRef = useRef(isPlaying);
   const countedSongIdRef = useRef<string | null>(null);
+  const startedSongIdRef = useRef<string | null>(null);
   const desktopMenuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +97,14 @@ export default function AudioPlayer() {
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+
+  // Record a "start" (Anspielung) once a new song begins playing — the raw
+  // intent metric, separate from the 30s honest play below.
+  useEffect(() => {
+    if (!currentSong || !isPlaying || startedSongIdRef.current === currentSong.id) return;
+    startedSongIdRef.current = currentSong.id;
+    fetch(`/api/songs/${currentSong.id}/start`, { method: 'POST' }).catch(console.error);
+  }, [currentSong, isPlaying]);
 
   // Count play when song has played for 30 seconds
   useEffect(() => {

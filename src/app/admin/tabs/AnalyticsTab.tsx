@@ -16,7 +16,7 @@ function formatAverage(value: number) {
 }
 
 /** Lightweight bar chart (pure SVG, no dependency) for one metric per day. */
-function MetricBarChart({
+function MetricBarChart<T extends { day: string }>({
   title,
   subtitle,
   rows,
@@ -26,8 +26,8 @@ function MetricBarChart({
 }: {
   title: string;
   subtitle: string;
-  rows: MetricsDailyRow[];
-  getValue: (row: MetricsDailyRow) => number | null;
+  rows: T[];
+  getValue: (row: T) => number | null;
   color: string;
   /** Hide the Σ stat where summing days makes no sense (e.g. DAU). */
   showSum?: boolean;
@@ -363,10 +363,12 @@ ${topSongs.length > 0
 
 export function AnalyticsTab({
   metrics,
+  dailyStarts,
   profiles,
   songs,
 }: {
   metrics: MetricsDailyRow[];
+  dailyStarts: Array<{ day: string; starts: number }>;
   profiles: ProfileData[];
   songs: SongData[];
 }) {
@@ -397,6 +399,8 @@ export function AnalyticsTab({
   const plays7d = last7.reduce((sum, row) => sum + (row.plays ?? 0), 0);
   const newUsers7d = last7.reduce((sum, row) => sum + (row.new_users ?? 0), 0);
   const minutes7d = last7.reduce((sum, row) => sum + (row.minutes_streamed ?? 0), 0);
+  const starts7d = dailyStarts.slice(-7).reduce((sum, row) => sum + (row.starts ?? 0), 0);
+  const startToPlay = starts7d > 0 ? Math.round((plays7d / starts7d) * 100) : null;
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const handleDownloadReport = () =>
@@ -407,7 +411,9 @@ export function AnalyticsTab({
   const kpis: Array<[string, string, string]> = [
     ['Nutzer gesamt', formatAdminNumber(latest.total_users), `Stand ${formatDayLabel(latest.day)}`],
     ['Neue Nutzer (7 Tage)', formatAdminNumber(newUsers7d), 'Summe der letzten 7 Snapshots'],
-    ['Plays (7 Tage)', formatAdminNumber(plays7d), 'echte Wiedergaben via Tracking'],
+    ['Anspielungen (7 Tage)', formatAdminNumber(starts7d), 'Songs gestartet (Interesse), erfasst seit 08.07.'],
+    ['Plays (7 Tage)', formatAdminNumber(plays7d), 'echte Wiedergaben (25s+) via Tracking'],
+    ['Start→Play-Quote', startToPlay === null ? '—' : `${startToPlay} %`, 'wie viele Starts zu echten Plays werden'],
     ['DAU (gestern)', latest.dau === null ? '—' : formatAdminNumber(latest.dau), 'aktive Nutzer, erfasst seit 03.07.'],
     ['MAU (30 Tage)', formatAdminNumber(mau), 'aktive Nutzer der letzten 30 Tage, Messung seit 03.07.'],
     ['Hörzeit (7 Tage)', `${formatAdminNumber(Math.round(minutes7d / 60))} h`, 'echte Wiedergabezeit, erfasst seit 03.07.'],
@@ -468,8 +474,15 @@ export function AnalyticsTab({
             color="#34d399"
           />
           <MetricBarChart
+            title="Anspielungen pro Tag"
+            subtitle="Songs gestartet (seit 08.07.)"
+            rows={dailyStarts}
+            getValue={(row) => row.starts}
+            color="#38bdf8"
+          />
+          <MetricBarChart
             title="Plays pro Tag"
-            subtitle="echte Wiedergaben"
+            subtitle="echte Wiedergaben (25s+)"
             rows={metrics}
             getValue={(row) => row.plays}
             color="#a78bfa"

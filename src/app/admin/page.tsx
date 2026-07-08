@@ -48,6 +48,7 @@ export default function AdminPage() {
   const [isReplacingAudio, setIsReplacingAudio] = useState<string | null>(null);
   const [mcpLogs, setMcpLogs] = useState<McpLog[]>([]);
   const [dailyMetrics, setDailyMetrics] = useState<MetricsDailyRow[]>([]);
+  const [dailyStarts, setDailyStarts] = useState<Array<{ day: string; starts: number }>>([]);
   const [artistPerformance, setArtistPerformance] = useState<ArtistPerformanceRow[]>([]);
   const [liveConnected, setLiveConnected] = useState(false);
   const [spotlightArtists, setSpotlightArtists] = useState<Array<{ artist_name: string; is_spotlight: boolean }>>([]);
@@ -170,6 +171,7 @@ export default function AdminPage() {
                   ...song,
                   plays: toAdminNumber(performance.plays_total),
                   plays_tracked_total: toAdminNumber(performance.plays_tracked_total),
+                  starts_total: toAdminNumber(performance.starts_total),
                   plays_24h: toAdminNumber(performance.plays_24h),
                   plays_7d: toAdminNumber(performance.plays_7d),
                   plays_30d: toAdminNumber(performance.plays_30d),
@@ -264,6 +266,14 @@ export default function AdminPage() {
           console.error('Failed to load daily metrics:', metricsError);
         } else if (metricsData) {
           setDailyMetrics(metricsData as MetricsDailyRow[]);
+        }
+
+        // Daily "starts" (Anspielungen) for the analytics funnel view.
+        const { data: startsData, error: startsError } = await supabase.rpc('get_admin_daily_starts', { days: 60 });
+        if (startsError) {
+          console.error('Failed to load daily starts:', startsError);
+        } else if (startsData) {
+          setDailyStarts((startsData as Array<{ day: string; starts: number | string }>).map((r) => ({ day: r.day, starts: Number(r.starts) })));
         }
 
         // Per-artist rollup for the Artists tab (admin-only RPC).
@@ -1231,7 +1241,7 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'analytics' && isFullAdmin && (
-            <AnalyticsTab metrics={dailyMetrics} profiles={profiles} songs={songs} />
+            <AnalyticsTab metrics={dailyMetrics} dailyStarts={dailyStarts} profiles={profiles} songs={songs} />
           )}
 
           {activeTab === 'push' && isFullAdmin && (
