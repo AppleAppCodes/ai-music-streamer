@@ -90,6 +90,22 @@ async function toStationQueue(orFilter: string | null): Promise<Song[]> {
   return shuffle(songs).slice(0, STATION_SIZE);
 }
 
+/** The current hand-picked spotlight song — the first thing a new user hears
+ * right after onboarding. Falls back to null if none is set. */
+export async function fetchSpotlightSong(): Promise<Song | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('songs')
+    .select(SONG_SELECT)
+    .eq('is_spotlight', true)
+    .eq('is_approved', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as unknown as Song;
+}
+
 export async function fetchGenreStationSongs(station: MusicGenre): Promise<Song[]> {
   const aliases = Array.from(new Set([station.label, ...station.aliases]));
   return toStationQueue(aliasFilter(aliases, ['genre', 'secondary_genre']));

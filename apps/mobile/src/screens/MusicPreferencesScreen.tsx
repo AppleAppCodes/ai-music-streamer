@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YoriaxMark } from '../components/YoriaxUI';
 import { MUSIC_GENRES, getGenreId } from '../lib/genre-catalog';
 import { supabase } from '../lib/supabase';
+import { fetchSpotlightSong } from '../lib/radio-stations';
+import { usePlayerControls } from '../lib/player-context';
 import { useMusicPreferences } from '../lib/music-preferences-context';
 import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
@@ -24,11 +26,23 @@ type Props = NativeStackScreenProps<RootStackParamList, 'MusicPreferences'>;
 
 export function MusicPreferencesOnboarding() {
   const { favoriteGenres, save } = useMusicPreferences();
+  const { playSong } = usePlayerControls();
   return (
     <MusicPreferencesPicker
       allowSkip
       initialGenres={favoriteGenres}
-      onSave={(genres, skipped) => save(genres, skipped)}
+      onSave={async (genres, skipped) => {
+        await save(genres, skipped);
+        // First impression: auto-start the hand-picked spotlight song right
+        // after onboarding so a new user hears music immediately instead of
+        // landing on a silent home screen. Never block finishing on this.
+        try {
+          const song = await fetchSpotlightSong();
+          if (song) void playSong(song);
+        } catch {
+          // ignore — onboarding still completes
+        }
+      }}
     />
   );
 }
