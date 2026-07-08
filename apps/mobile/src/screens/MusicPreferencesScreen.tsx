@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YoriaxMark } from '../components/YoriaxUI';
-import { MUSIC_GENRES } from '../lib/genre-catalog';
+import { MUSIC_GENRES, getGenreId } from '../lib/genre-catalog';
+import { supabase } from '../lib/supabase';
 import { useMusicPreferences } from '../lib/music-preferences-context';
 import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
@@ -61,6 +62,35 @@ function MusicPreferencesPicker({
   const insets = useSafeAreaInsets();
   const [selectedGenres, setSelectedGenres] = useState(() => new Set(initialGenres));
   const [saving, setSaving] = useState(false);
+
+  // Only offer genres that actually have approved songs, so nobody picks a
+  // dead-end genre. Fail-safe: on error/empty, show the full catalogue (null).
+  const [activeGenreIds, setActiveGenreIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      try {
+        if (!supabase) return;
+        const { data, error } = await supabase.rpc('get_active_genres');
+        if (error || !Array.isArray(data) || data.length === 0) return;
+        const ids = new Set((data as string[]).map((g) => getGenreId(g)));
+        if (mounted) setActiveGenreIds(ids);
+      } catch {
+        // keep null → show all
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Keep any already-selected genre visible even if it is currently empty,
+  // so a returning user can still deselect it.
+  const visibleGenres = useMemo(() => {
+    if (!activeGenreIds) return MUSIC_GENRES;
+    const keep = new Set([...activeGenreIds, ...initialGenres]);
+    return MUSIC_GENRES.filter((genre) => keep.has(genre.id));
+  }, [activeGenreIds, initialGenres]);
   const selectedCount = selectedGenres.size;
   const buttonLabel = allowSkip ? t('onboarding.save') : t('onboarding.update');
 
@@ -147,7 +177,7 @@ function MusicPreferencesPicker({
         </View>
 
         <View style={styles.genreGrid}>
-          {MUSIC_GENRES.map((genre) => {
+          {visibleGenres.map((genre) => {
             const selected = selectedGenres.has(genre.id);
             return (
               <TouchableOpacity
