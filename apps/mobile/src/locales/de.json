@@ -95,11 +95,14 @@
   "player": {
     "addedToFavorites": "Hinzugefügt zu: Lieblingssongs.",
     "addToFavorites": "Zu Lieblingssongs hinzufügen",
+    "audioMissing": "Dieser Song hat keine Audio-Datei.",
     "changeDestinations": "Speicherorte ändern",
+    "connectionIssue": "Keine Verbindung – Song konnte nicht geladen werden",
     "details": "Song-Details",
     "duration": "Dauer: %{duration}",
     "noSong": "Kein Song aktiv",
     "options": "Optionen",
+    "playbackFailed": "Playback konnte nicht gestartet werden.",
     "repeatAll": "Playlist wiederholen",
     "repeatNone": "Wiederholung aus",
     "repeatOne": "Aktuellen Song wiederholen",
@@ -109,9 +112,7 @@
     "sleepTimerActive": "Sleeptimer aktiv",
     "sleepTimerActiveCopy": "Die Wiedergabe stoppt in %{minutes} Minuten.",
     "timerDelete": "Timer löschen",
-    "audioMissing": "Dieser Song hat keine Audio-Datei.",
-    "playbackFailed": "Playback konnte nicht gestartet werden.",
-    "connectionIssue": "Keine Verbindung – Song konnte nicht geladen werden"
+    "upNext": "Als Nächstes"
   },
   "save": {
     "close": "Auswahl schließen",
@@ -124,6 +125,10 @@
     "title": "Neue Playlist"
   },
   "onboarding": {
+    "building": "Deine Station wird zusammengestellt …",
+    "buildingMore": "+%{count} weitere Genres",
+    "buildingReady": "%{count} Songs für dich in der Warteschlange",
+    "buildingReadyGeneric": "Deine Station steht bereit",
     "close": "Musikgeschmack schließen",
     "description": "Deine Auswahl verbessert „Für dich ausgewählt“ auf Home und den swipebaren Für-dich-Feed. Auch Genres ohne aktuelle Songs merken wir uns für spätere Releases.",
     "eyebrow": "MUSIKGESCHMACK",

@@ -115,24 +115,42 @@ export async function fetchMoodStationSongs(station: MoodStation): Promise<Song[
   return toStationQueue(`mood.ilike.${quotedPattern(station.dbValue)}`);
 }
 
+/** Station queue straight from a list of favorite genres (ids or labels) —
+ * used right after onboarding, before the preferences are readable from the
+ * DB. Falls back to the whole catalogue for an empty/unknown selection. */
+export async function fetchGenresMixSongs(favorites: string[]): Promise<Song[]> {
+  const aliases = Array.from(
+    new Set(
+      favorites.flatMap((favorite) => {
+        const catalogEntry = MUSIC_GENRES.find((genre) => genre.id === getGenreId(favorite));
+        return catalogEntry ? [catalogEntry.label, ...catalogEntry.aliases] : [favorite];
+      }),
+    ),
+  );
+  return toStationQueue(aliases.length > 0 ? aliasFilter(aliases, ['genre', 'secondary_genre']) : null);
+}
+
+/** Starter queue for the first-run autoplay: the hand-picked spotlight song
+ * first (when one is set), then a mix from the freshly chosen genres. */
+export async function fetchOnboardingStarterQueue(favorites: string[]): Promise<Song[]> {
+  const [spotlight, mix] = await Promise.all([
+    fetchSpotlightSong().catch(() => null),
+    fetchGenresMixSongs(favorites).catch(() => [] as Song[]),
+  ]);
+  if (!spotlight) return mix;
+  return [spotlight, ...mix.filter((song) => song.id !== spotlight.id)];
+}
+
 /** Personal station from the onboarding favorite genres; falls back to all. */
 export async function fetchMixStationSongs(userId: string): Promise<Song[]> {
-  let aliases: string[] = [];
+  let favorites: string[] = [];
   if (supabase) {
     const { data } = await supabase
       .from('user_music_preferences')
       .select('favorite_genres')
       .eq('user_id', userId)
       .maybeSingle();
-    const favorites: string[] = Array.isArray(data?.favorite_genres) ? data.favorite_genres : [];
-    aliases = Array.from(
-      new Set(
-        favorites.flatMap((favorite) => {
-          const catalogEntry = MUSIC_GENRES.find((genre) => genre.id === getGenreId(favorite));
-          return catalogEntry ? [catalogEntry.label, ...catalogEntry.aliases] : [favorite];
-        }),
-      ),
-    );
+    favorites = Array.isArray(data?.favorite_genres) ? data.favorite_genres : [];
   }
-  return toStationQueue(aliases.length > 0 ? aliasFilter(aliases, ['genre', 'secondary_genre']) : null);
+  return fetchGenresMixSongs(favorites);
 }

@@ -13,10 +13,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YoriaxMark } from '../components/YoriaxUI';
-import { MUSIC_GENRES, getGenreId } from '../lib/genre-catalog';
+import { StationBuildingOverlay, stationBuildDurationMs } from '../components/StationBuildingOverlay';
+import { MUSIC_GENRES, getGenreId, type MusicGenre } from '../lib/genre-catalog';
 import { supabase } from '../lib/supabase';
-import { fetchSpotlightSong } from '../lib/radio-stations';
+import { fetchOnboardingStarterQueue } from '../lib/radio-stations';
+import { armFirstSessionFunnel, recordFunnelEvent } from '../lib/funnel';
 import { usePlayerControls } from '../lib/player-context';
+import type { Song } from '../lib/types';
 import { useMusicPreferences } from '../lib/music-preferences-context';
 import type { RootStackParamList } from '../navigation/types';
 import { theme } from '../theme';
@@ -24,26 +27,57 @@ import { useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MusicPreferences'>;
 
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 export function MusicPreferencesOnboarding() {
   const { favoriteGenres, save } = useMusicPreferences();
-  const { playSong } = usePlayerControls();
+  const { playSong, setQueue } = usePlayerControls();
+  const [staging, setStaging] = useState<{ genres: MusicGenre[]; queueCount: number | null } | null>(null);
+
   return (
-    <MusicPreferencesPicker
-      allowSkip
-      initialGenres={favoriteGenres}
-      onSave={async (genres, skipped) => {
-        await save(genres, skipped);
-        // First impression: auto-start the hand-picked spotlight song right
-        // after onboarding so a new user hears music immediately instead of
-        // landing on a silent home screen. Never block finishing on this.
-        try {
-          const song = await fetchSpotlightSong();
-          if (song) void playSong(song);
-        } catch {
-          // ignore — onboarding still completes
-        }
-      }}
-    />
+    <>
+      <MusicPreferencesPicker
+        allowSkip
+        initialGenres={favoriteGenres}
+        onSave={async (genres, skipped) => {
+          // The starter queue loads while the build choreography plays — the
+          // overlay is theatre, the fetch underneath is real.
+          const queuePromise = fetchOnboardingStarterQueue(genres).catch(() => [] as Song[]);
+
+          if (!skipped) {
+            const chosen = genres
+              .map((id) => MUSIC_GENRES.find((genre) => genre.id === id))
+              .filter((genre): genre is MusicGenre => Boolean(genre));
+            setStaging({ genres: chosen, queueCount: null });
+            void queuePromise.then((songs) => {
+              setStaging((current) => (current ? { ...current, queueCount: songs.length } : current));
+            });
+            // save() flips the app to the main UI and unmounts this screen, so
+            // the choreography has to finish before it runs.
+            await sleep(stationBuildDurationMs(chosen.length));
+          }
+
+          try {
+            await save(genres, skipped);
+          } catch (error) {
+            setStaging(null); // let the picker surface its save error
+            throw error;
+          }
+          recordFunnelEvent('onboarding_completed', { genres: genres.length, skipped });
+
+          // First impression: a new user hears their station immediately
+          // instead of landing on a silent home screen — but never block
+          // finishing onboarding on the music itself.
+          const songs = await Promise.race([queuePromise, sleep(2500).then(() => [] as Song[])]);
+          if (songs.length > 0) {
+            setQueue(songs, 0);
+            armFirstSessionFunnel(songs[0].id);
+            void playSong(songs[0], { fadeInMs: 1400 });
+          }
+        }}
+      />
+      {staging ? <StationBuildingOverlay genres={staging.genres} queueCount={staging.queueCount} /> : null}
+    </>
   );
 }
 

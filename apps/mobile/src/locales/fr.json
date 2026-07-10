@@ -95,11 +95,14 @@
   "player": {
     "addedToFavorites": "Ajouté aux Titres likés.",
     "addToFavorites": "Ajouter aux Titres likés",
+    "audioMissing": "Ce titre n’a pas de fichier audio.",
     "changeDestinations": "Modifier les emplacements d’enregistrement",
+    "connectionIssue": "Pas de connexion – impossible de charger le titre",
     "details": "Détails du titre",
     "duration": "Durée : %{duration}",
     "noSong": "Aucun titre en cours",
     "options": "Options",
+    "playbackFailed": "Impossible de démarrer la lecture.",
     "repeatAll": "Répéter la playlist",
     "repeatNone": "Répétition désactivée",
     "repeatOne": "Répéter le titre actuel",
@@ -109,9 +112,7 @@
     "sleepTimerActive": "Minuteur de veille actif",
     "sleepTimerActiveCopy": "La lecture s’arrêtera dans %{minutes} minutes.",
     "timerDelete": "Supprimer le minuteur",
-    "audioMissing": "Ce titre n’a pas de fichier audio.",
-    "playbackFailed": "Impossible de démarrer la lecture.",
-    "connectionIssue": "Pas de connexion – impossible de charger le titre"
+    "upNext": "À suivre"
   },
   "save": {
     "close": "Fermer la sélection",
@@ -124,6 +125,10 @@
     "title": "Nouvelle playlist"
   },
   "onboarding": {
+    "building": "Ta station se prépare…",
+    "buildingMore": "+%{count} autres genres",
+    "buildingReady": "%{count} titres en file pour toi",
+    "buildingReadyGeneric": "Ta station est prête",
     "close": "Fermer les préférences musicales",
     "description": "Ta sélection améliore « Sélectionné pour toi » sur l’accueil et le fil Pour toi. Nous retenons aussi les genres sans titres actuels pour les futures sorties.",
     "eyebrow": "GOÛTS MUSICAUX",

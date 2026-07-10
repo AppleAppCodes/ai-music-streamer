@@ -95,11 +95,14 @@
   "player": {
     "addedToFavorites": "Toegevoegd aan Leuke nummers.",
     "addToFavorites": "Toevoegen aan Leuke nummers",
+    "audioMissing": "Dit nummer heeft geen audiobestand.",
     "changeDestinations": "Opslaglocaties wijzigen",
+    "connectionIssue": "Geen verbinding – nummer kon niet worden geladen",
     "details": "Nummerdetails",
     "duration": "Duur: %{duration}",
     "noSong": "Geen actief nummer",
     "options": "Opties",
+    "playbackFailed": "Afspelen kon niet worden gestart.",
     "repeatAll": "Playlist herhalen",
     "repeatNone": "Herhalen uit",
     "repeatOne": "Huidig nummer herhalen",
@@ -109,9 +112,7 @@
     "sleepTimerActive": "Slaaptimer actief",
     "sleepTimerActiveCopy": "Het afspelen stopt over %{minutes} minuten.",
     "timerDelete": "Timer verwijderen",
-    "audioMissing": "Dit nummer heeft geen audiobestand.",
-    "playbackFailed": "Afspelen kon niet worden gestart.",
-    "connectionIssue": "Geen verbinding – nummer kon niet worden geladen"
+    "upNext": "Hierna"
   },
   "save": {
     "close": "Selectie sluiten",
@@ -124,6 +125,10 @@
     "title": "Nieuwe playlist"
   },
   "onboarding": {
+    "building": "Je station wordt samengesteld…",
+    "buildingMore": "+%{count} andere genres",
+    "buildingReady": "%{count} nummers voor je in de wachtrij",
+    "buildingReadyGeneric": "Je station staat klaar",
     "close": "Muziekvoorkeuren sluiten",
     "description": "Je selectie verbetert «Voor jou geselecteerd» op Home en de veegbare Voor jou-feed. We onthouden ook genres zonder huidige nummers voor toekomstige releases.",
     "eyebrow": "MUZIEKSMAAK",

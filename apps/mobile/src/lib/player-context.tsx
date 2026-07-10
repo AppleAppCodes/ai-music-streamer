@@ -8,6 +8,7 @@ import { supabase } from './supabase';
 import { fetchRadioNextSong } from './music-data';
 import { maybeRequestReview, recordReviewWorthyPlay } from './review-prompt';
 import { maybeOfferPushAfterListening } from './push-notifications';
+import { notifyFunnelSong25s, notifyFunnelSongStart } from './funnel';
 import { useI18n } from './i18n';
 
 interface StorageListItem {
@@ -768,6 +769,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         && startRecordedSongIdRef.current !== startedSong.id
       ) {
         startRecordedSongIdRef.current = startedSong.id;
+        notifyFunnelSongStart(startedSong.id);
         if (supabase) {
           void supabase
             .rpc('record_song_start', { target_song_id: startedSong.id })
@@ -789,6 +791,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         && ((status.currentTime || 0) >= PLAY_COUNT_THRESHOLD_SECONDS || status.didJustFinish)
       ) {
         playCountedSongIdRef.current = currentSong.id;
+        notifyFunnelSong25s(currentSong.id);
         void recordReviewWorthyPlay();
         // Fallback push offer for engaged listeners who never follow anyone
         // (gated inside: >= 15 counted plays, cooldown, max offers).
