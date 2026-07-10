@@ -136,6 +136,10 @@ export async function fetchGenresMixSongs(favorites: string[]): Promise<Song[]> 
 
 // ── "Dein Mix von heute" ────────────────────────────────────────────────────
 
+/** Sentinel id for the virtual daily-mix playlist (it has no DB row — the
+ * songs are assembled client-side per user+day). */
+export const DAILY_MIX_PLAYLIST_ID = 'daily-mix';
+
 const DAILY_MIX_SIZE = 15;
 const DAILY_MIX_DISCOVERY = 3;
 

@@ -9,11 +9,12 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CoverArt, IconButton, StateCard, YoriaxPlaylistCover } from '../components/YoriaxUI';
+import { CoverArt, IconButton, StateCard, YoriaxMark, YoriaxPlaylistCover } from '../components/YoriaxUI';
 import { UpdateBanner } from '../components/UpdateBanner';
 import { formatPlays } from '../lib/format';
 import { useAuth } from '../lib/auth-context';
-import { loadHomeMusic, type HighlightNews, type HomeMusicData, type SpotlightArtist, type SpotlightPlaylist, DAILY_NEW_RELEASES_PLAYLIST_ID } from '../lib/music-data';
+import { loadHomeMusic, loadPlaylistDetails, type HighlightNews, type HomeMusicData, type SpotlightArtist, type SpotlightPlaylist, DAILY_NEW_RELEASES_PLAYLIST_ID } from '../lib/music-data';
+import { DAILY_MIX_PLAYLIST_ID, fetchDailyMixSongs } from '../lib/radio-stations';
 import { readPersistedCache, writePersistedCache } from '../lib/persisted-cache';
 import { usePlayerControls } from '../lib/player-context';
 import { useMusicPreferences } from '../lib/music-preferences-context';
@@ -141,9 +142,46 @@ export function HomeScreen() {
     },
   ], [navigation, t]);
 
+  const { playSong, setQueue } = usePlayerControls();
+  const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null);
+
+  // The daily mix sits first in the official rail as a virtual playlist —
+  // no DB row, the songs are assembled per user+day on demand.
+  const dailyMixPlaylist = useMemo<DiscoverPlaylist>(() => ({
+    id: DAILY_MIX_PLAYLIST_ID,
+    title: t('dailyMix.title'),
+    description: t('home.dailyMixSubtitle'),
+    cover_url: null,
+    is_public: true,
+    creatorName: 'YORIAX Team',
+    isOfficial: true,
+  }), [t]);
+
   const handleOpenPlaylist = useCallback((playlistId: string) => {
+    if (playlistId === DAILY_MIX_PLAYLIST_ID) {
+      navigation.navigate('DailyMix');
+      return;
+    }
     navigation.navigate('Playlist', { playlistId });
   }, [navigation]);
+
+  // Cover tap = instant playback (the play badge); text tap opens as before.
+  const handlePlayPlaylist = useCallback(async (playlist: DiscoverPlaylist) => {
+    if (!user || playingPlaylistId) return;
+    setPlayingPlaylistId(playlist.id);
+    try {
+      const songs = playlist.id === DAILY_MIX_PLAYLIST_ID
+        ? await fetchDailyMixSongs(user.id, favoriteGenres)
+        : (await loadPlaylistDetails(playlist.id)).songs;
+      if (songs.length === 0) return;
+      setQueue(songs, 0);
+      void playSong(songs[0]);
+    } catch {
+      // A cover tap is fire-and-forget — tapping again retries.
+    } finally {
+      setPlayingPlaylistId(null);
+    }
+  }, [favoriteGenres, playSong, playingPlaylistId, setQueue, user]);
 
   const handleOpenArtist = useCallback((artistName: string) => {
     navigation.navigate('Artist', { artistId: artistName });
@@ -199,29 +237,6 @@ export function HomeScreen() {
         ))}
       </View>
 
-      <TouchableOpacity
-        accessibilityRole="button"
-        activeOpacity={0.85}
-        onPress={() => navigation.navigate('DailyMix')}
-        style={styles.dailyMixShell}
-      >
-        <LinearGradient
-          colors={['rgba(124,58,237,0.32)', 'rgba(45,212,191,0.14)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.dailyMixCard}
-        >
-          <View style={styles.dailyMixIcon}>
-            <Ionicons name="sparkles" size={22} color={theme.colors.accent} />
-          </View>
-          <View style={styles.dailyMixText}>
-            <Text style={styles.dailyMixLabel} numberOfLines={1}>{t('home.dailyMix')}</Text>
-            <Text style={styles.dailyMixSubtitle} numberOfLines={1}>{t('home.dailyMixSubtitle')}</Text>
-          </View>
-          <Ionicons name="play-circle" size={34} color={theme.colors.text} />
-        </LinearGradient>
-      </TouchableOpacity>
-
       {loading && !data ? <StateCard title={t('home.loading')} message={t('home.loadingCopy')} loading /> : null}
       {error ? <StateCard icon="warning" title={t('home.error')} message={error} /> : null}
 
@@ -229,8 +244,10 @@ export function HomeScreen() {
         <View style={styles.sections}>
           <PlaylistRail
             title={t('home.officialPlaylists')}
-            playlists={data.officialPlaylists}
+            playlists={[dailyMixPlaylist, ...data.officialPlaylists]}
             onPressPlaylist={handleOpenPlaylist}
+            onPlayPlaylist={handlePlayPlaylist}
+            playingPlaylistId={playingPlaylistId}
           />
           <SpotlightCarousel
             song={data.spotlightSong}
@@ -592,47 +609,79 @@ const SongRail = memo(function SongRail({ title, songs }: { title: string; songs
 const PlaylistRailItem = memo(function PlaylistRailItem({
   playlist,
   onPress,
+  onPlay,
+  playLoading,
 }: {
   playlist: DiscoverPlaylist;
   onPress: (id: string) => void;
+  onPlay: (playlist: DiscoverPlaylist) => void;
+  playLoading: boolean;
 }) {
   const { t } = useI18n();
   const isDailyNewReleases = playlist.id === DAILY_NEW_RELEASES_PLAYLIST_ID || playlist.id === 'daily-new-releases';
+  const isDailyMix = playlist.id === DAILY_MIX_PLAYLIST_ID;
 
   return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      activeOpacity={0.96}
-      onPress={() => onPress(playlist.id)}
-      style={styles.songCard}
-    >
-      {isDailyNewReleases ? (
-        <YoriaxPlaylistCover size={132} radius={18} />
-      ) : (
-        <CoverArt uri={playlist.cover_url} size={132} radius={18} />
-      )}
-      <Text style={styles.songTitle} numberOfLines={1}>
-        {playlist.title}
-      </Text>
-      <Text style={styles.songArtist} numberOfLines={1}>
-        {t('playlistDiscover.by', { creator: playlist.creatorName })}
-        {playlist.isOfficial && (
-          <>
-            {' '}
-            <Ionicons name="shield-checkmark" size={12} color="#5eead4" />
-          </>
+    <View style={styles.songCard}>
+      <TouchableOpacity
+        accessibilityLabel={t('dailyMix.playAll')}
+        accessibilityRole="button"
+        activeOpacity={0.9}
+        onPress={() => onPlay(playlist)}
+        style={styles.coverWrap}
+      >
+        {isDailyMix ? (
+          <LinearGradient
+            colors={['rgba(124,58,237,0.9)', 'rgba(45,212,191,0.55)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.dailyMixCover}
+          >
+            <YoriaxMark size={38} />
+            <Ionicons name="musical-notes" size={22} color="rgba(255,255,255,0.92)" style={styles.dailyMixCoverNote} />
+          </LinearGradient>
+        ) : isDailyNewReleases ? (
+          <YoriaxPlaylistCover size={132} radius={18} />
+        ) : (
+          <CoverArt uri={playlist.cover_url} size={132} radius={18} />
         )}
-      </Text>
-      {playlist.description ? (
-        <Text style={styles.songMeta} numberOfLines={1}>
-          {playlist.description}
+        <View style={styles.coverPlayBadge}>
+          {playLoading ? (
+            <ActivityIndicator size="small" color={theme.colors.background} />
+          ) : (
+            <Ionicons name="play" size={16} color={theme.colors.background} style={styles.coverPlayIcon} />
+          )}
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        accessibilityRole="button"
+        activeOpacity={0.8}
+        onPress={() => onPress(playlist.id)}
+      >
+        <Text style={styles.songTitle} numberOfLines={1}>
+          {playlist.title}
         </Text>
-      ) : (
-        <Text style={styles.songMeta}>
-          {t('playlistDiscover.publicPlaylist')}
+        <Text style={styles.songArtist} numberOfLines={1}>
+          {t('playlistDiscover.by', { creator: playlist.creatorName })}
+          {playlist.isOfficial && (
+            <>
+              {' '}
+              <Ionicons name="shield-checkmark" size={12} color="#5eead4" />
+            </>
+          )}
         </Text>
-      )}
-    </TouchableOpacity>
+        {playlist.description ? (
+          <Text style={styles.songMeta} numberOfLines={1}>
+            {playlist.description}
+          </Text>
+        ) : (
+          <Text style={styles.songMeta}>
+            {t('playlistDiscover.publicPlaylist')}
+          </Text>
+        )}
+      </TouchableOpacity>
+    </View>
   );
 });
 
@@ -640,10 +689,14 @@ const PlaylistRail = memo(function PlaylistRail({
   title,
   playlists,
   onPressPlaylist,
+  onPlayPlaylist,
+  playingPlaylistId,
 }: {
   title: string;
   playlists: DiscoverPlaylist[];
   onPressPlaylist: (id: string) => void;
+  onPlayPlaylist: (playlist: DiscoverPlaylist) => void;
+  playingPlaylistId: string | null;
 }) {
   if (!playlists || playlists.length === 0) return null;
 
@@ -656,6 +709,8 @@ const PlaylistRail = memo(function PlaylistRail({
             key={playlist.id}
             playlist={playlist}
             onPress={onPressPlaylist}
+            onPlay={onPlayPlaylist}
+            playLoading={playingPlaylistId === playlist.id}
           />
         ))}
       </ScrollView>
@@ -690,40 +745,40 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
   },
-  dailyMixShell: {
-    marginTop: 12,
-  },
-  dailyMixCard: {
+  coverPlayBadge: {
     alignItems: 'center',
-    borderColor: 'rgba(124,58,237,0.55)',
-    borderRadius: 22,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 13,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-  },
-  dailyMixIcon: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(45,212,191,0.16)',
-    borderRadius: 14,
-    height: 44,
+    backgroundColor: theme.colors.text,
+    borderRadius: 999,
+    bottom: 8,
+    height: 32,
     justifyContent: 'center',
-    width: 44,
+    position: 'absolute',
+    right: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    width: 32,
   },
-  dailyMixText: {
-    flex: 1,
+  coverWrap: {
+    position: 'relative',
   },
-  dailyMixLabel: {
-    color: theme.colors.text,
-    fontSize: 15,
-    fontWeight: '900',
+  coverPlayIcon: {
+    marginLeft: 2,
   },
-  dailyMixSubtitle: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 3,
+  dailyMixCover: {
+    alignItems: 'center',
+    borderColor: 'rgba(255,255,255,0.16)',
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 132,
+    justifyContent: 'center',
+    width: 132,
+  },
+  dailyMixCoverNote: {
+    bottom: 10,
+    position: 'absolute',
+    right: 10,
   },
   quickTileShell: {
     width: '48.5%',
