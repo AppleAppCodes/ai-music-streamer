@@ -2,6 +2,16 @@ import { useMemo } from 'react';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { formatAdminNumber, type MetricsDailyRow, type ProfileData, type SongData } from '../types';
 
+// Lives here (not in ../types) so the tab stays self-contained — the RPC
+// get_admin_retention_cohorts is only consumed by this view.
+export type RetentionCohortRow = {
+  cohort_week: string;
+  cohort_size: number;
+  d1: number;
+  d7: number;
+  w1: number;
+};
+
 function formatDayLabel(day: string) {
   const date = new Date(day);
   return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
@@ -366,11 +376,13 @@ export function AnalyticsTab({
   dailyStarts,
   profiles,
   songs,
+  retention = [],
 }: {
   metrics: MetricsDailyRow[];
   dailyStarts: Array<{ day: string; starts: number }>;
   profiles: ProfileData[];
   songs: SongData[];
+  retention?: RetentionCohortRow[];
 }) {
   // MAU live from the loaded user list: anyone active (app/web open or play)
   // within the last 30 days. Activity tracking started 2026-07-03, so early
@@ -517,7 +529,68 @@ export function AnalyticsTab({
             color="#38bdf8"
           />
         </div>
+
+        {retention.length > 0 ? <RetentionCohortTable rows={retention} /> : null}
       </div>
+    </div>
+  );
+}
+
+/** D1/D7 retention per signup week. "Aktiv" = actually listened
+ * (user_activity_days), not merely opened. A cohort only shows a value once
+ * every member could have reached that day — until then the cell stays "…". */
+function RetentionCohortTable({ rows }: { rows: RetentionCohortRow[] }) {
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  const cells = (row: RetentionCohortRow) => {
+    const weekStart = new Date(row.cohort_week).getTime();
+    // Last signup of the cohort week is weekStart+6d; their D1 lies on +7d,
+    // their D7 on +13d — before that the metric is still filling up.
+    const d1Mature = now >= weekStart + 8 * dayMs;
+    const d7Mature = now >= weekStart + 14 * dayMs;
+    const pct = (numerator: number) =>
+      row.cohort_size > 0 ? `${Math.round((numerator / row.cohort_size) * 100)} %` : '—';
+    return {
+      d1: d1Mature ? pct(row.d1) : '…',
+      d7: d7Mature ? pct(row.d7) : '…',
+      w1: d7Mature ? pct(row.w1) : '…',
+    };
+  };
+
+  return (
+    <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+      <p className="text-sm font-bold text-white">Retention-Kohorten</p>
+      <p className="mb-4 text-[11px] text-white/40">
+        Pro Anmelde-Woche: Anteil, der danach wieder gehört hat (D1 = Folgetag, D7 = genau 7 Tage später,
+        W1 = irgendwann in den ersten 7 Tagen). „Aktiv" = echte Hörzeit, erfasst seit 03.07. — ältere
+        Kohorten untererfasst. „…" = Kohorte noch nicht alt genug.
+      </p>
+      <table className="w-full text-left text-sm">
+        <thead>
+          <tr className="text-[11px] uppercase tracking-wider text-white/40">
+            <th className="pb-2 font-semibold">Woche ab</th>
+            <th className="pb-2 text-right font-semibold">Nutzer</th>
+            <th className="pb-2 text-right font-semibold">D1</th>
+            <th className="pb-2 text-right font-semibold">D7</th>
+            <th className="pb-2 text-right font-semibold">W1</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const c = cells(row);
+            return (
+              <tr key={row.cohort_week} className="border-t border-white/5 text-white/80">
+                <td className="py-2">{formatDayFull(row.cohort_week)}</td>
+                <td className="py-2 text-right">{formatAdminNumber(row.cohort_size)}</td>
+                <td className="py-2 text-right">{c.d1}</td>
+                <td className="py-2 text-right">{c.d7}</td>
+                <td className="py-2 text-right font-semibold text-white">{c.w1}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -23,6 +23,7 @@ import { RadioScreen } from '../screens/RadioScreen';
 import { ArtistsScreen } from '../screens/ArtistsScreen';
 import { PlaylistDiscoverScreen } from '../screens/PlaylistDiscoverScreen';
 import { MusicPreferencesScreen } from '../screens/MusicPreferencesScreen';
+import { DailyMixScreen } from '../screens/DailyMixScreen';
 import { MiniPlayer } from '../components/MiniPlayer';
 import { usePlayerControls, usePlayerShell } from '../lib/player-context';
 import { PlayerOverlayProvider, usePlayerOverlay } from '../lib/player-overlay-context';
@@ -339,6 +340,11 @@ function RootNavigationContent() {
           name="MusicPreferences"
           component={MusicPreferencesScreen}
           options={{ presentation: 'fullScreenModal' }}
+        />
+        <Stack.Screen
+          name="DailyMix"
+          component={DailyMixScreen}
+          options={{ presentation: 'card' }}
         />
       </Stack.Navigator>
       {hasActiveSong && activeRoute !== 'ForYou' ? (

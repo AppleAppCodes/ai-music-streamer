@@ -13,7 +13,7 @@ import { ModerationTab } from './tabs/ModerationTab';
 import { AdsTab } from './tabs/AdsTab';
 import { SpotlightTab } from './tabs/SpotlightTab';
 import { BotTab } from './tabs/BotTab';
-import { AnalyticsTab } from './tabs/AnalyticsTab';
+import { AnalyticsTab, type RetentionCohortRow } from './tabs/AnalyticsTab';
 import { PushTab } from './tabs/PushTab';
 import { ArtistsTab, type ArtistPerformanceRow } from './tabs/ArtistsTab';
 import {
@@ -49,6 +49,7 @@ export default function AdminPage() {
   const [mcpLogs, setMcpLogs] = useState<McpLog[]>([]);
   const [dailyMetrics, setDailyMetrics] = useState<MetricsDailyRow[]>([]);
   const [dailyStarts, setDailyStarts] = useState<Array<{ day: string; starts: number }>>([]);
+  const [retentionCohorts, setRetentionCohorts] = useState<RetentionCohortRow[]>([]);
   const [artistPerformance, setArtistPerformance] = useState<ArtistPerformanceRow[]>([]);
   const [liveConnected, setLiveConnected] = useState(false);
   const [spotlightArtists, setSpotlightArtists] = useState<Array<{ artist_name: string; is_spotlight: boolean }>>([]);
@@ -274,6 +275,20 @@ export default function AdminPage() {
           console.error('Failed to load daily starts:', startsError);
         } else if (startsData) {
           setDailyStarts((startsData as Array<{ day: string; starts: number | string }>).map((r) => ({ day: r.day, starts: Number(r.starts) })));
+        }
+
+        // D1/D7 retention per signup week (admin-only RPC).
+        const { data: retentionData, error: retentionError } = await supabase.rpc('get_admin_retention_cohorts', { weeks: 12 });
+        if (retentionError) {
+          console.error('Failed to load retention cohorts:', retentionError);
+        } else if (retentionData) {
+          setRetentionCohorts((retentionData as Array<Record<string, string | number>>).map((r) => ({
+            cohort_week: String(r.cohort_week),
+            cohort_size: Number(r.cohort_size),
+            d1: Number(r.d1),
+            d7: Number(r.d7),
+            w1: Number(r.w1),
+          })));
         }
 
         // Per-artist rollup for the Artists tab (admin-only RPC).
@@ -1241,7 +1256,7 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'analytics' && isFullAdmin && (
-            <AnalyticsTab metrics={dailyMetrics} dailyStarts={dailyStarts} profiles={profiles} songs={songs} />
+            <AnalyticsTab metrics={dailyMetrics} dailyStarts={dailyStarts} profiles={profiles} songs={songs} retention={retentionCohorts} />
           )}
 
           {activeTab === 'push' && isFullAdmin && (
