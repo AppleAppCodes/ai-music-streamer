@@ -95,11 +95,14 @@
   "player": {
     "addedToFavorites": "Adicionado às Músicas curtidas.",
     "addToFavorites": "Adicionar às Músicas curtidas",
+    "audioMissing": "Esta música não tem arquivo de áudio.",
     "changeDestinations": "Alterar locais de salvamento",
+    "connectionIssue": "Sem conexão – não foi possível carregar a música",
     "details": "Detalhes da música",
     "duration": "Duração: %{duration}",
     "noSong": "Nenhuma música ativa",
     "options": "Opções",
+    "playbackFailed": "Não foi possível iniciar a reprodução.",
     "repeatAll": "Repetir playlist",
     "repeatNone": "Repetição desativada",
     "repeatOne": "Repetir música atual",
@@ -109,9 +112,7 @@
     "sleepTimerActive": "Timer de desligamento ativo",
     "sleepTimerActiveCopy": "A reprodução vai parar em %{minutes} minutos.",
     "timerDelete": "Excluir timer",
-    "audioMissing": "Esta música não tem arquivo de áudio.",
-    "playbackFailed": "Não foi possível iniciar a reprodução.",
-    "connectionIssue": "Sem conexão – não foi possível carregar a música"
+    "upNext": "A seguir"
   },
   "save": {
     "close": "Fechar seleção",
@@ -124,6 +125,10 @@
     "title": "Nova playlist"
   },
   "onboarding": {
+    "building": "Montando sua estação…",
+    "buildingMore": "+%{count} outros gêneros",
+    "buildingReady": "%{count} músicas na fila para você",
+    "buildingReadyGeneric": "Sua estação está pronta",
     "close": "Fechar preferências musicais",
     "description": "Sua seleção melhora «Selecionado para você» no início e o feed deslizável Para você. Também guardamos gêneros sem músicas atuais para lançamentos futuros.",
     "eyebrow": "GOSTO MUSICAL",

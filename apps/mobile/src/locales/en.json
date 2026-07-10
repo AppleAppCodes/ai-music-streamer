@@ -95,11 +95,14 @@
   "player": {
     "addedToFavorites": "Added to Liked Songs.",
     "addToFavorites": "Add to Liked Songs",
+    "audioMissing": "This song has no audio file.",
     "changeDestinations": "Change save locations",
+    "connectionIssue": "No connection – couldn't load the song",
     "details": "Song details",
     "duration": "Duration: %{duration}",
     "noSong": "No active song",
     "options": "Options",
+    "playbackFailed": "Playback could not be started.",
     "repeatAll": "Repeat playlist",
     "repeatNone": "Repeat off",
     "repeatOne": "Repeat current song",
@@ -109,9 +112,7 @@
     "sleepTimerActive": "Sleep timer active",
     "sleepTimerActiveCopy": "Playback will stop in %{minutes} minutes.",
     "timerDelete": "Delete timer",
-    "audioMissing": "This song has no audio file.",
-    "playbackFailed": "Playback could not be started.",
-    "connectionIssue": "No connection – couldn't load the song"
+    "upNext": "Up next"
   },
   "save": {
     "close": "Close selection",
@@ -124,6 +125,10 @@
     "title": "New playlist"
   },
   "onboarding": {
+    "building": "Building your station…",
+    "buildingMore": "+%{count} more genres",
+    "buildingReady": "%{count} songs queued up for you",
+    "buildingReadyGeneric": "Your station is ready",
     "close": "Close music preferences",
     "description": "Your selection improves “Selected for you” on Home and the swipeable For You feed. We also remember genres without current songs for future releases.",
     "eyebrow": "MUSIC TASTE",

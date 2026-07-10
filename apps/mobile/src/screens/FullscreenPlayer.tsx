@@ -59,10 +59,16 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
   const [saveToastAnimation] = useState(() => new RNAnimated.Value(0));
   const [saveToastVisible, setSaveToastVisible] = useState(false);
   const [saveToastSongId, setSaveToastSongId] = useState<string | null>(null);
-  const { 
-    activeSong, currentTime, duration, isPlaying, isBuffering, isAdPlaying, toggle, 
-    pause, playNext, playPrevious, isShuffling, repeatMode, toggleShuffle, toggleRepeat, seekTo
+  const {
+    activeSong, currentTime, duration, isPlaying, isBuffering, isAdPlaying, toggle,
+    pause, playNext, playPrevious, isShuffling, repeatMode, toggleShuffle, toggleRepeat, seekTo,
+    queue, queueIndex
   } = usePlayer();
+  // Open loop: show what's queued next so a listener knows more is coming.
+  // Hidden while shuffling (the pick is random) and on repeat-one.
+  const upNextSong = !isAdPlaying && !isShuffling && repeatMode !== 'one' && queueIndex >= 0
+    ? queue[queueIndex + 1] ?? (repeatMode === 'all' ? queue[0] : undefined)
+    : undefined;
   const activeSongId = activeSong?.id;
   const isCurrentSongLiked = Boolean(activeSongId && likedSongId === activeSongId && isLiked);
   const repeatActive = repeatMode !== 'none';
@@ -667,6 +673,16 @@ export function FullscreenPlayer({ onClose }: { onClose: () => void }) {
           </TouchableOpacity>
         </View>
         
+        {upNextSong ? (
+          <View style={styles.upNextRow}>
+            <Text style={styles.upNextLabel}>{t('player.upNext')}</Text>
+            <Text style={styles.upNextTitle} numberOfLines={1}>
+              {upNextSong.title}
+              {upNextSong.artist_name ? ` · ${upNextSong.artist_name}` : ''}
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.bottomControlsRow}>
           <TouchableOpacity onPress={handleShareSong} style={styles.secondaryControlButton}>
             <Ionicons name="share-social-outline" size={24} color={theme.colors.muted} />
@@ -991,6 +1007,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
+  },
+  upNextRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    marginBottom: 6,
+    paddingHorizontal: 24,
+    width: '100%',
+  },
+  upNextLabel: {
+    color: theme.colors.subtle,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  upNextTitle: {
+    color: theme.colors.muted,
+    flexShrink: 1,
+    fontSize: 12.5,
+    fontWeight: '800',
   },
   saveToastContainer: {
     alignItems: 'center',

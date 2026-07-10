@@ -95,11 +95,14 @@
   "player": {
     "addedToFavorites": "Aggiunto ai Brani che ti piacciono.",
     "addToFavorites": "Aggiungi ai Brani che ti piacciono",
+    "audioMissing": "Questo brano non ha un file audio.",
     "changeDestinations": "Modifica le posizioni di salvataggio",
+    "connectionIssue": "Nessuna connessione: impossibile caricare il brano",
     "details": "Dettagli del brano",
     "duration": "Durata: %{duration}",
     "noSong": "Nessun brano attivo",
     "options": "Opzioni",
+    "playbackFailed": "Impossibile avviare la riproduzione.",
     "repeatAll": "Ripeti playlist",
     "repeatNone": "Ripetizione disattivata",
     "repeatOne": "Ripeti brano attuale",
@@ -109,9 +112,7 @@
     "sleepTimerActive": "Timer di spegnimento attivo",
     "sleepTimerActiveCopy": "La riproduzione si fermerà tra %{minutes} minuti.",
     "timerDelete": "Elimina timer",
-    "audioMissing": "Questo brano non ha un file audio.",
-    "playbackFailed": "Impossibile avviare la riproduzione.",
-    "connectionIssue": "Nessuna connessione: impossibile caricare il brano"
+    "upNext": "A seguire"
   },
   "save": {
     "close": "Chiudi selezione",
@@ -124,6 +125,10 @@
     "title": "Nuova playlist"
   },
   "onboarding": {
+    "building": "Stiamo creando la tua stazione…",
+    "buildingMore": "+%{count} altri generi",
+    "buildingReady": "%{count} brani in coda per te",
+    "buildingReadyGeneric": "La tua stazione è pronta",
     "close": "Chiudi preferenze musicali",
     "description": "La tua selezione migliora « Selezionati per te » nella home e il feed scorrevole Per te. Ricordiamo anche i generi senza brani attuali per le uscite future.",
     "eyebrow": "GUSTI MUSICALI",
