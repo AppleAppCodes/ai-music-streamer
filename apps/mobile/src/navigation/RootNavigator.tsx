@@ -265,26 +265,38 @@ function RootNavigationContent() {
     navigationRef.navigate('MainTabs', { screen: 'Home' });
   }, [navigationRef, openPlayer, playSong, setQueue]);
 
+  // Accessed via ref so the effect below never re-runs: handleDeepLink's
+  // identity changes with playSong (ad counter), and a re-run used to call
+  // getInitialURL() AGAIN — which returns the LAUNCH url for the whole process
+  // lifetime, so the launch link's song suddenly replaced whatever was playing
+  // (e.g. a radio station) on the next song transition.
+  const handleDeepLinkRef = useRef(handleDeepLink);
+  useEffect(() => {
+    handleDeepLinkRef.current = handleDeepLink;
+  }, [handleDeepLink]);
+
   useEffect(() => {
     let mounted = true;
 
+    // The launch URL is handled exactly once per mount; live links keep
+    // arriving through the event listener.
     Linking.getInitialURL()
       .then((url) => {
-        if (mounted && url) void handleDeepLink(url);
+        if (mounted && url) void handleDeepLinkRef.current(url);
       })
       .catch((error: unknown) => {
         console.error('[DeepLink] Failed to read initial URL', error);
       });
 
     const subscription = Linking.addEventListener('url', ({ url }) => {
-      void handleDeepLink(url);
+      void handleDeepLinkRef.current(url);
     });
 
     return () => {
       mounted = false;
       subscription.remove();
     };
-  }, [handleDeepLink]);
+  }, []);
 
   return (
     <NavigationContainer
