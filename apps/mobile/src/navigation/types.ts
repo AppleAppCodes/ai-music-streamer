@@ -17,4 +17,5 @@ export type RootStackParamList = {
   Artists: undefined;
   PlaylistDiscover: undefined;
   MusicPreferences: undefined;
+  DailyMix: undefined;
 };

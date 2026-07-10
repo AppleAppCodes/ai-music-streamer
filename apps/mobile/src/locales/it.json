@@ -59,6 +59,8 @@
   "home": {
     "artists": "Artisti",
     "artistsSubtitle": "Scopri nuovi creator",
+    "dailyMix": "Il tuo mix di oggi",
+    "dailyMixSubtitle": "Ogni giorno fresco, dai tuoi generi",
     "error": "Impossibile caricare la home",
     "favorites": "Brani che ti piacciono",
     "favoritesSubtitle": "I tuoi brani salvati",
@@ -66,25 +68,25 @@
     "latest": "Novità su YORIAX",
     "loading": "Preparazione della tua home",
     "loadingCopy": "La tua selezione YORIAX è quasi pronta.",
+    "officialPlaylists": "Playlist ufficiali YORIAX",
     "playlists": "Playlist",
     "playlistsSubtitle": "Community e curate",
+    "radio": "Radio",
+    "radioSubtitle": "Stazioni senza fine",
     "refreshError": "Impossibile aggiornare la home.",
     "spotlight": "IN PRIMO PIANO",
-    "spotlightBubbleButtCopy": "Il nostro singolo in primo piano del momento: diretto, orecchiabile e pensato per restarti in testa dal primo ascolto.",
-    "spotlightSingle": "Singolo in primo piano",
+    "spotlightArtistCta": "Vedi profilo",
     "spotlightArtistEyebrow": "Artista in primo piano",
     "spotlightArtistStats": "%{songs} brani · %{plays} riproduzioni",
-    "spotlightArtistCta": "Vedi profilo",
-    "spotlightPlaylistEyebrow": "Playlist della settimana",
-    "spotlightPlaylistCta": "Apri playlist",
-    "spotlightNewsEyebrow": "News",
-    "spotlightNewsDefaultTitle": "Novità su YORIAX",
+    "spotlightBubbleButtCopy": "Il nostro singolo in primo piano del momento: diretto, orecchiabile e pensato per restarti in testa dal primo ascolto.",
     "spotlightNewsCta": "Scopri di più",
+    "spotlightNewsDefaultTitle": "Novità su YORIAX",
+    "spotlightNewsEyebrow": "News",
+    "spotlightPlaylistCta": "Apri playlist",
+    "spotlightPlaylistEyebrow": "Playlist della settimana",
+    "spotlightSingle": "Singolo in primo piano",
     "spotlightSwipeHint": "Scorri per vedere altro",
-    "trending": "Di tendenza oggi",
-    "officialPlaylists": "Playlist ufficiali YORIAX",
-    "radio": "Radio",
-    "radioSubtitle": "Stazioni senza fine"
+    "trending": "Di tendenza oggi"
   },
   "update": {
     "title": "Nuova versione disponibile",
@@ -341,5 +343,17 @@
     "moodChill": "Chill",
     "moodEnergetic": "Energia",
     "moodDark": "Dark"
+  },
+  "dailyMix": {
+    "empty": "Ancora nessun mix",
+    "emptyCopy": "Oggi non siamo riusciti a creare un mix. Riprova più tardi.",
+    "error": "Impossibile caricare il mix",
+    "eyebrow": "NUOVO OGNI GIORNO",
+    "loading": "Stiamo mixando i tuoi brani",
+    "loadingCopy": "Un attimo: stiamo preparando i tuoi brani.",
+    "playAll": "Riproduci",
+    "songCount": "%{count} brani · %{date}",
+    "subtitle": "Mixato dai tuoi generi preferiti con qualche scoperta, nuovo ogni giorno.",
+    "title": "Il tuo mix di oggi"
   }
 }

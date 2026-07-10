@@ -115,11 +115,8 @@ export async function fetchMoodStationSongs(station: MoodStation): Promise<Song[
   return toStationQueue(`mood.ilike.${quotedPattern(station.dbValue)}`);
 }
 
-/** Station queue straight from a list of favorite genres (ids or labels) —
- * used right after onboarding, before the preferences are readable from the
- * DB. Falls back to the whole catalogue for an empty/unknown selection. */
-export async function fetchGenresMixSongs(favorites: string[]): Promise<Song[]> {
-  const aliases = Array.from(
+function aliasesForFavorites(favorites: string[]): string[] {
+  return Array.from(
     new Set(
       favorites.flatMap((favorite) => {
         const catalogEntry = MUSIC_GENRES.find((genre) => genre.id === getGenreId(favorite));
@@ -127,7 +124,66 @@ export async function fetchGenresMixSongs(favorites: string[]): Promise<Song[]> 
       }),
     ),
   );
+}
+
+/** Station queue straight from a list of favorite genres (ids or labels) —
+ * used right after onboarding, before the preferences are readable from the
+ * DB. Falls back to the whole catalogue for an empty/unknown selection. */
+export async function fetchGenresMixSongs(favorites: string[]): Promise<Song[]> {
+  const aliases = aliasesForFavorites(favorites);
   return toStationQueue(aliases.length > 0 ? aliasFilter(aliases, ['genre', 'secondary_genre']) : null);
+}
+
+// ── "Dein Mix von heute" ────────────────────────────────────────────────────
+
+const DAILY_MIX_SIZE = 15;
+const DAILY_MIX_DISCOVERY = 3;
+
+// FNV-1a — a cheap deterministic score so the mix is a stable shuffle for one
+// user+day and reshuffles at local midnight (ritual beats randomness).
+function seededScore(seed: string, id: string): number {
+  const input = `${seed}:${id}`;
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function localDayString(date = new Date()): string {
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/** The personal daily mix: a deterministic per-user-per-day selection from the
+ * favorite genres, plus a few discovery tracks from outside them (woven into
+ * the middle so the mix never ends on strangers). Same list all day long. */
+export async function fetchDailyMixSongs(userId: string, favorites: string[]): Promise<Song[]> {
+  const seed = `${userId}:${localDayString()}`;
+  const aliases = aliasesForFavorites(favorites);
+  const genreFilter = aliases.length > 0 ? aliasFilter(aliases, ['genre', 'secondary_genre']) : null;
+
+  const [genrePool, fullPool] = await Promise.all([
+    fetchApprovedSongs(genreFilter),
+    genreFilter ? fetchApprovedSongs(null) : Promise.resolve([] as Song[]),
+  ]);
+
+  const byScore = (a: Song, b: Song) => seededScore(seed, a.id) - seededScore(seed, b.id);
+  const baseCount = genreFilter ? DAILY_MIX_SIZE - DAILY_MIX_DISCOVERY : DAILY_MIX_SIZE;
+  const base = [...genrePool].sort(byScore).slice(0, baseCount);
+
+  const knownIds = new Set(genrePool.map((song) => song.id));
+  const discovery = genreFilter
+    ? fullPool.filter((song) => !knownIds.has(song.id)).sort(byScore).slice(0, DAILY_MIX_DISCOVERY)
+    : [];
+
+  const mix = [...base];
+  discovery.forEach((song, index) => {
+    mix.splice(Math.min(4 + index * 5, mix.length), 0, song);
+  });
+  return mix;
 }
 
 /** Starter queue for the first-run autoplay: the hand-picked spotlight song

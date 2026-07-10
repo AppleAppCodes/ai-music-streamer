@@ -199,6 +199,29 @@ export function HomeScreen() {
         ))}
       </View>
 
+      <TouchableOpacity
+        accessibilityRole="button"
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate('DailyMix')}
+        style={styles.dailyMixShell}
+      >
+        <LinearGradient
+          colors={['rgba(124,58,237,0.32)', 'rgba(45,212,191,0.14)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.dailyMixCard}
+        >
+          <View style={styles.dailyMixIcon}>
+            <Ionicons name="sparkles" size={22} color={theme.colors.accent} />
+          </View>
+          <View style={styles.dailyMixText}>
+            <Text style={styles.dailyMixLabel} numberOfLines={1}>{t('home.dailyMix')}</Text>
+            <Text style={styles.dailyMixSubtitle} numberOfLines={1}>{t('home.dailyMixSubtitle')}</Text>
+          </View>
+          <Ionicons name="play-circle" size={34} color={theme.colors.text} />
+        </LinearGradient>
+      </TouchableOpacity>
+
       {loading && !data ? <StateCard title={t('home.loading')} message={t('home.loadingCopy')} loading /> : null}
       {error ? <StateCard icon="warning" title={t('home.error')} message={error} /> : null}
 
@@ -666,6 +689,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  dailyMixShell: {
+    marginTop: 12,
+  },
+  dailyMixCard: {
+    alignItems: 'center',
+    borderColor: 'rgba(124,58,237,0.55)',
+    borderRadius: 22,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 13,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+  },
+  dailyMixIcon: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(45,212,191,0.16)',
+    borderRadius: 14,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  dailyMixText: {
+    flex: 1,
+  },
+  dailyMixLabel: {
+    color: theme.colors.text,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  dailyMixSubtitle: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 3,
   },
   quickTileShell: {
     width: '48.5%',

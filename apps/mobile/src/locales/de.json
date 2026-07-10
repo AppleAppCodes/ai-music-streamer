@@ -59,6 +59,8 @@
   "home": {
     "artists": "Künstler",
     "artistsSubtitle": "Neue Creator entdecken",
+    "dailyMix": "Dein Mix von heute",
+    "dailyMixSubtitle": "Täglich frisch aus deinen Genres",
     "error": "Home konnte nicht geladen werden",
     "favorites": "Lieblingssongs",
     "favoritesSubtitle": "Deine gespeicherten Tracks",
@@ -66,25 +68,25 @@
     "latest": "Neu auf YORIAX",
     "loading": "Startseite wird vorbereitet",
     "loadingCopy": "Deine YORIAX-Auswahl ist gleich bereit.",
+    "officialPlaylists": "YORIAX Offizielle Playlists",
     "playlists": "Playlists",
     "playlistsSubtitle": "Community & kuratiert",
+    "radio": "Radio",
+    "radioSubtitle": "Endlos-Stationen",
     "refreshError": "Home konnte nicht aktualisiert werden.",
     "spotlight": "SPOTLIGHT",
-    "spotlightBubbleButtCopy": "Unser aktueller Single-Spotlight: direkt, catchy und genau der Track, der beim ersten Bounce hängen bleibt.",
-    "spotlightSingle": "Single Highlight",
+    "spotlightArtistCta": "Profil ansehen",
     "spotlightArtistEyebrow": "Artist Highlight",
     "spotlightArtistStats": "%{songs} Songs · %{plays} Aufrufe",
-    "spotlightArtistCta": "Profil ansehen",
-    "spotlightPlaylistEyebrow": "Playlist der Woche",
-    "spotlightPlaylistCta": "Playlist öffnen",
-    "spotlightNewsEyebrow": "News",
-    "spotlightNewsDefaultTitle": "Neu auf YORIAX",
+    "spotlightBubbleButtCopy": "Unser aktueller Single-Spotlight: direkt, catchy und genau der Track, der beim ersten Bounce hängen bleibt.",
     "spotlightNewsCta": "Mehr erfahren",
+    "spotlightNewsDefaultTitle": "Neu auf YORIAX",
+    "spotlightNewsEyebrow": "News",
+    "spotlightPlaylistCta": "Playlist öffnen",
+    "spotlightPlaylistEyebrow": "Playlist der Woche",
+    "spotlightSingle": "Single Highlight",
     "spotlightSwipeHint": "Wische für mehr",
-    "trending": "Trending heute",
-    "officialPlaylists": "YORIAX Offizielle Playlists",
-    "radio": "Radio",
-    "radioSubtitle": "Endlos-Stationen"
+    "trending": "Trending heute"
   },
   "update": {
     "title": "Neue Version verfügbar",
@@ -341,5 +343,17 @@
     "moodChill": "Chill",
     "moodEnergetic": "Energie",
     "moodDark": "Dark"
+  },
+  "dailyMix": {
+    "empty": "Noch kein Mix",
+    "emptyCopy": "Heute konnten wir keinen Mix zusammenstellen. Schau später wieder vorbei.",
+    "error": "Mix konnte nicht geladen werden",
+    "eyebrow": "TÄGLICH NEU",
+    "loading": "Dein Mix wird gemischt",
+    "loadingCopy": "Einen Moment – wir stellen deine Songs zusammen.",
+    "playAll": "Abspielen",
+    "songCount": "%{count} Songs · %{date}",
+    "subtitle": "Aus deinen Lieblingsgenres gemischt, mit ein paar Entdeckungen – jeden Tag neu.",
+    "title": "Dein Mix von heute"
   }
 }

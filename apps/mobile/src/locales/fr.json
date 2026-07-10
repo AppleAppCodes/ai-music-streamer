@@ -59,6 +59,8 @@
   "home": {
     "artists": "Artistes",
     "artistsSubtitle": "Découvre de nouveaux créateurs",
+    "dailyMix": "Ton mix du jour",
+    "dailyMixSubtitle": "Chaque jour, frais de tes genres",
     "error": "Impossible de charger l’accueil",
     "favorites": "Titres likés",
     "favoritesSubtitle": "Tes morceaux enregistrés",
@@ -66,25 +68,25 @@
     "latest": "Nouveautés sur YORIAX",
     "loading": "Préparation de ton accueil",
     "loadingCopy": "Ta sélection YORIAX est presque prête.",
+    "officialPlaylists": "Playlists officielles YORIAX",
     "playlists": "Playlists",
     "playlistsSubtitle": "Communauté et sélections",
+    "radio": "Radio",
+    "radioSubtitle": "Stations en continu",
     "refreshError": "Impossible d’actualiser l’accueil.",
     "spotlight": "À LA UNE",
-    "spotlightBubbleButtCopy": "Notre single à la une du moment : direct, accrocheur et fait pour rester en tête dès la première écoute.",
-    "spotlightSingle": "Single à la une",
+    "spotlightArtistCta": "Voir le profil",
     "spotlightArtistEyebrow": "Artiste à la une",
     "spotlightArtistStats": "%{songs} titres · %{plays} écoutes",
-    "spotlightArtistCta": "Voir le profil",
-    "spotlightPlaylistEyebrow": "Playlist de la semaine",
-    "spotlightPlaylistCta": "Ouvrir la playlist",
-    "spotlightNewsEyebrow": "Actualités",
-    "spotlightNewsDefaultTitle": "Nouveau sur YORIAX",
+    "spotlightBubbleButtCopy": "Notre single à la une du moment : direct, accrocheur et fait pour rester en tête dès la première écoute.",
     "spotlightNewsCta": "En savoir plus",
+    "spotlightNewsDefaultTitle": "Nouveau sur YORIAX",
+    "spotlightNewsEyebrow": "Actualités",
+    "spotlightPlaylistCta": "Ouvrir la playlist",
+    "spotlightPlaylistEyebrow": "Playlist de la semaine",
+    "spotlightSingle": "Single à la une",
     "spotlightSwipeHint": "Glisse pour en voir plus",
-    "trending": "Tendances du jour",
-    "officialPlaylists": "Playlists officielles YORIAX",
-    "radio": "Radio",
-    "radioSubtitle": "Stations en continu"
+    "trending": "Tendances du jour"
   },
   "update": {
     "title": "Nouvelle version disponible",
@@ -341,5 +343,17 @@
     "moodChill": "Chill",
     "moodEnergetic": "Énergie",
     "moodDark": "Sombre"
+  },
+  "dailyMix": {
+    "empty": "Pas encore de mix",
+    "emptyCopy": "Impossible de préparer un mix aujourd'hui. Reviens plus tard.",
+    "error": "Impossible de charger le mix",
+    "eyebrow": "NOUVEAU CHAQUE JOUR",
+    "loading": "Préparation de ton mix",
+    "loadingCopy": "Un instant, on assemble tes titres.",
+    "playAll": "Lecture",
+    "songCount": "%{count} titres · %{date}",
+    "subtitle": "Mixé à partir de tes genres préférés avec quelques découvertes, renouvelé chaque jour.",
+    "title": "Ton mix du jour"
   }
 }

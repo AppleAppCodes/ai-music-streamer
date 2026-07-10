@@ -59,6 +59,8 @@
   "home": {
     "artists": "Artiesten",
     "artistsSubtitle": "Ontdek nieuwe makers",
+    "dailyMix": "Jouw mix van vandaag",
+    "dailyMixSubtitle": "Elke dag vers uit jouw genres",
     "error": "Home kon niet worden geladen",
     "favorites": "Leuke nummers",
     "favoritesSubtitle": "Je opgeslagen nummers",
@@ -66,25 +68,25 @@
     "latest": "Nieuw op YORIAX",
     "loading": "Je home wordt voorbereid",
     "loadingCopy": "Je YORIAX-selectie is bijna klaar.",
+    "officialPlaylists": "Officiële YORIAX-playlists",
     "playlists": "Playlists",
     "playlistsSubtitle": "Community en samengesteld",
+    "radio": "Radio",
+    "radioSubtitle": "Eindeloze stations",
     "refreshError": "Home kon niet worden vernieuwd.",
     "spotlight": "SPOTLIGHT",
-    "spotlightBubbleButtCopy": "Onze huidige single in de spotlight: direct, catchy en gemaakt om vanaf de eerste beat te blijven hangen.",
-    "spotlightSingle": "Single in de spotlight",
+    "spotlightArtistCta": "Profiel bekijken",
     "spotlightArtistEyebrow": "Artiest in de spotlight",
     "spotlightArtistStats": "%{songs} nummers · %{plays} plays",
-    "spotlightArtistCta": "Profiel bekijken",
-    "spotlightPlaylistEyebrow": "Playlist van de week",
-    "spotlightPlaylistCta": "Playlist openen",
-    "spotlightNewsEyebrow": "Nieuws",
-    "spotlightNewsDefaultTitle": "Nieuw op YORIAX",
+    "spotlightBubbleButtCopy": "Onze huidige single in de spotlight: direct, catchy en gemaakt om vanaf de eerste beat te blijven hangen.",
     "spotlightNewsCta": "Meer lezen",
+    "spotlightNewsDefaultTitle": "Nieuw op YORIAX",
+    "spotlightNewsEyebrow": "Nieuws",
+    "spotlightPlaylistCta": "Playlist openen",
+    "spotlightPlaylistEyebrow": "Playlist van de week",
+    "spotlightSingle": "Single in de spotlight",
     "spotlightSwipeHint": "Veeg voor meer",
-    "trending": "Trending vandaag",
-    "officialPlaylists": "Officiële YORIAX-playlists",
-    "radio": "Radio",
-    "radioSubtitle": "Eindeloze stations"
+    "trending": "Trending vandaag"
   },
   "update": {
     "title": "Nieuwe versie beschikbaar",
@@ -341,5 +343,17 @@
     "moodChill": "Chill",
     "moodEnergetic": "Energie",
     "moodDark": "Donker"
+  },
+  "dailyMix": {
+    "empty": "Nog geen mix",
+    "emptyCopy": "We konden vandaag geen mix samenstellen. Kom later terug.",
+    "error": "Mix kon niet worden geladen",
+    "eyebrow": "ELKE DAG NIEUW",
+    "loading": "Jouw mix wordt gemixt",
+    "loadingCopy": "Momentje – we stellen je nummers samen.",
+    "playAll": "Afspelen",
+    "songCount": "%{count} nummers · %{date}",
+    "subtitle": "Gemixt uit je favoriete genres met een paar ontdekkingen – elke dag nieuw.",
+    "title": "Jouw mix van vandaag"
   }
 }
